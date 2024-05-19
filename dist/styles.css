@@ -27,6 +27,7 @@ body {
     top: 0;
     bottom: 0;
     left: 0;
+    z-index: 2; /* Ensure the icon bar is on top */
 }
 
 .icon {
@@ -67,6 +68,7 @@ body {
     bottom: 0;
     left: 56px; /* Start the panel just to the right of the icon bar */
     overflow: hidden;
+    z-index: 1; /* Ensure the panel is below the icon bar */
 }
 
 #panel.collapsed {
@@ -78,8 +80,14 @@ body {
     padding: 10px;
     visibility: visible;
     opacity: 1;
-    transition: opacity 0.3s;
+    transition: opacity 0.3s, transform 0.3s;
     transform: translateX(0);
+}
+
+#panel.collapsed #panel-content {
+    visibility: visible; /* Keep visibility to prevent reflow issues */
+    opacity: 0;
+    transform: translateX(-250px); /* Slide content off to the side */
 }
 
 #main {
@@ -88,6 +96,7 @@ body {
     flex-direction: column;
     height: 100vh;
     margin-left: 56px; /* Ensure main content starts after the icon bar */
+    transition: margin-left 0.3s; /* Smooth transition for resizing */
 }
 
 #controls {

@@ -15,6 +15,7 @@ function toggleSidebar(iconId) {
     const panel = document.getElementById('panel');
     const fileList = document.getElementById('fileList');
     const helpContent = document.getElementById('helpContent');
+    const main = document.getElementById('main');
 
     const icons = document.querySelectorAll('.icon');
     let alreadyActive = false;
@@ -34,8 +35,10 @@ function toggleSidebar(iconId) {
 
     if (alreadyActive) {
         panel.classList.add('collapsed');
+        main.style.marginLeft = '56px';
     } else {
         panel.classList.remove('collapsed');
+        main.style.marginLeft = '306px';
         if (iconId === 'filesIcon') {
             listFiles();
             fileList.style.display = 'block';
