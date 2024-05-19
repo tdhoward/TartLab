@@ -1,0 +1,173 @@
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    height: 100vh;
+    margin: 0;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-size: 18px; /* Increase text size */
+}
+
+#sidebar {
+    display: flex;
+    height: 100vh;
+    background-color: #252526;
+    border-right: 1px solid #333;
+    position: relative; /* Ensure child elements are positioned correctly */
+}
+
+#iconBar {
+    width: 56px;
+    background-color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    position: fixed; /* Keep the icon bar fixed on the left */
+    top: 0;
+    bottom: 0;
+    left: 0;
+}
+
+.icon {
+    width: 100%;
+    padding: 10px 0;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.icon img {
+    width: 32px;
+    height: 32px;
+}
+
+.icon.active {
+    background-color: #1e1e1e;
+}
+
+.icon.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: #80cbc4;
+}
+
+#panel {
+    width: 250px;
+    border-left: 1px solid #333;
+    background-color: #252526;
+    transition: transform 0.3s, opacity 0.3s;
+    position: absolute; /* Ensure the panel does not overlap with icons */
+    top: 0;
+    bottom: 0;
+    left: 56px; /* Start the panel just to the right of the icon bar */
+    overflow: hidden;
+}
+
+#panel.collapsed {
+    transform: translateX(-250px); /* Slide the panel off to the left */
+    opacity: 0;
+}
+
+#panel-content {
+    padding: 10px;
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 0.3s;
+    transform: translateX(0);
+}
+
+#main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin-left: 56px; /* Ensure main content starts after the icon bar */
+}
+
+#controls {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #333;
+    background-color: #333;
+    flex-shrink: 0; /* Prevents controls from shrinking */
+}
+
+#controls input {
+    flex-grow: 1;
+    margin-left: 10px;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    border: 1px solid #333;
+    padding: 8px; /* Increase padding for better readability */
+    font-size: 18px; /* Increase text size */
+}
+
+#tabs {
+    display: flex;
+    border-bottom: 1px solid #333;
+    background-color: #252526;
+    flex-shrink: 0; /* Prevents tabs from shrinking */
+}
+
+.tab {
+    padding: 10px;
+    cursor: pointer;
+    border-right: 1px solid #333;
+    background-color: #252526;
+    color: #d4d4d4;
+    font-size: 18px; /* Increase text size */
+}
+
+.tab.active {
+    background-color: #1e1e1e;
+}
+
+#editor {
+    flex-grow: 1;
+    overflow: auto; /* Ensures the editor has its own scroll bars */
+}
+
+.CodeMirror {
+    height: 100%; /* Ensure the editor uses the full height */
+}
+
+button {
+    margin-right: 10px;
+    background-color: #007acc;
+    color: #fff;
+    border: none;
+    padding: 8px 15px; /* Increase padding for better readability */
+    cursor: pointer;
+    font-size: 18px; /* Increase text size */
+}
+
+.CodeMirror-gutters {
+    background-color: #1e1e1e; /* Match editor background */
+    border-right: 1px solid #333; /* Match editor border */
+}
+
+.CodeMirror-linenumber {
+    color: #4d4d4d !important; /* Darker gray for line numbers with higher specificity */
+    padding-right: 15px; /* Add padding to the right of line numbers */
+}
+
+.CodeMirror-activeline-background {
+    background: #2a2a2a; /* Highlight the current line */
+}
+
+.CodeMirror .CodeMirror-activeline .CodeMirror-linenumber {
+    color: #d4d4d4 !important; /* Brighter color for active line number */
+}
+
+@media (max-width: 768px) {
+    #panel {
+        width: 0;
+    }
+}

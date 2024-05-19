@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Python IDE for Kids</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.6/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.6/theme/monokai.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.6/addon/lint/lint.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="sidebar">
+		<div id="iconBar">
+			<div class="icon" id="filesIcon">
+				<img src="files.svg" alt="Files Icon" width="32" height="32">
+			</div>
+			<div class="icon" id="helpIcon">
+				<img src="help.svg" alt="Help Icon" width="32" height="32">
+			</div>
+		</div>
+		<div id="panel" class="collapsed">
+			<div id="panel-content">
+				<div id="fileList"></div>
+				<div id="helpContent" style="display: none;">Help content goes here...</div>
+			</div>
+		</div>
+    </div>
+    <div id="main">
+        <div id="controls">
+            <input type="text" id="filename" placeholder="Filename">
+            <button onclick="saveFile()">Save</button>
+        </div>
+        <div id="tabs"></div>
+        <div id="editor"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.6/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.6/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.6/addon/display/autorefresh.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.6/addon/selection/active-line.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.6/addon/lint/lint.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
