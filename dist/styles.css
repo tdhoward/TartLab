@@ -99,13 +99,27 @@ body {
     transition: margin-left 0.3s; /* Smooth transition for resizing */
 }
 
+#tab-controls-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #333;
+    background-color: #252526;
+}
+
+#tabs {
+    display: flex;
+    flex-shrink: 1;
+    overflow-x: auto; /* Allows tabs to scroll horizontally if needed */
+    background-color: #252526;
+}
+
 #controls {
+    flex-shrink: 0;
+    padding: 10px;
+    background-color: #333;
     display: flex;
     align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #333;
-    background-color: #333;
-    flex-shrink: 0; /* Prevents controls from shrinking */
 }
 
 #controls input {
@@ -118,13 +132,6 @@ body {
     font-size: 18px; /* Increase text size */
 }
 
-#tabs {
-    display: flex;
-    border-bottom: 1px solid #333;
-    background-color: #252526;
-    flex-shrink: 0; /* Prevents tabs from shrinking */
-}
-
 .tab {
     padding: 10px;
     cursor: pointer;
@@ -132,15 +139,37 @@ body {
     background-color: #252526;
     color: #d4d4d4;
     font-size: 18px; /* Increase text size */
+    display: flex;
+    align-items: center;
 }
 
 .tab.active {
     background-color: #1e1e1e;
 }
 
-#editor {
-    flex-grow: 1;
-    overflow: auto; /* Ensures the editor has its own scroll bars */
+.tab button {
+    margin-left: 10px;
+    background-color: transparent;
+    border: none;
+    color: #d4d4d4;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.tab.plus {
+    background-color: #333;
+    color: #fff;
+    font-size: 24px;
+    justify-content: center;
+}
+
+
+.editor-instance {
+    display: none; /* Hide all editor instances by default */
+}
+
+.editor-instance.active {
+    display: block; /* Show the active editor instance */
 }
 
 .CodeMirror {
@@ -174,6 +203,13 @@ button {
     cursor: pointer;
     font-size: 18px; /* Increase text size */
 }
+
+button:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+    color: #aaa;
+}
+
 
 @media (max-width: 768px) {
     #panel {
