@@ -18,7 +18,7 @@ body {
 
 #iconBar {
     width: 56px;
-    background-color: #333;
+    background-color: #444963; /* Updated background color */
     display: flex;
     flex-direction: column;
     align-items: center;
