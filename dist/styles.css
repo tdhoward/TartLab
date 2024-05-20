@@ -61,7 +61,7 @@ body {
 #panel {
     width: 250px;
     border-left: 1px solid #333;
-    background-color: #252526;
+    background-color: #141829; /* Updated background color */
     transition: transform 0.3s, opacity 0.3s;
     position: absolute; /* Ensure the panel does not overlap with icons */
     top: 0;
@@ -147,14 +147,8 @@ body {
     height: 100%; /* Ensure the editor uses the full height */
 }
 
-button {
-    margin-right: 10px;
-    background-color: #007acc;
-    color: #fff;
-    border: none;
-    padding: 8px 15px; /* Increase padding for better readability */
-    cursor: pointer;
-    font-size: 18px; /* Increase text size */
+.CodeMirror-activeline-background {
+    background: #1c1f2b; /* Updated line highlight background color */
 }
 
 .CodeMirror-gutters {
@@ -167,12 +161,18 @@ button {
     padding-right: 15px; /* Add padding to the right of line numbers */
 }
 
-.CodeMirror-activeline-background {
-    background: #2a2a2a; /* Highlight the current line */
+.CodeMirror-activeline .CodeMirror-linenumber {
+    color: #d4d4d4 !important; /* Brighter color for active line number */
 }
 
-.CodeMirror .CodeMirror-activeline .CodeMirror-linenumber {
-    color: #d4d4d4 !important; /* Brighter color for active line number */
+button {
+    margin-right: 10px;
+    background-color: #007acc;
+    color: #fff;
+    border: none;
+    padding: 8px 15px; /* Increase padding for better readability */
+    cursor: pointer;
+    font-size: 18px; /* Increase text size */
 }
 
 @media (max-width: 768px) {
