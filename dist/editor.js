@@ -24,11 +24,15 @@ function createTab(filename, content) {
         theme: 'monokai',
         autoRefresh: true,
         styleActiveLine: { nonEmpty: true },
-        gutters: ["CodeMirror-linenumbers"]
+        gutters: ["CodeMirror-linenumbers"],
+        indentWithTabs: true,  // Use tabs for indentation
+        tabSize: 4,            // Tab size set to 4
+        indentUnit: 4          // Indent unit set to 4
     });
 
     editor.on('change', () => {
         updateSaveButton();
+        editor.isDirty = true; // Mark editor as having unsaved changes
     });
 
     editors[filename] = { editor, tab, editorDiv, filename };
@@ -60,6 +64,13 @@ function closeTab(event) {
     const filename = event.target.getAttribute('data-filename');
     const editorData = editors[filename];
     const isActive = activeEditor && activeEditor.filename === filename;
+
+    if (editorData.editor.isDirty) {
+        const confirmClose = confirm('You have unsaved changes. Are you sure you want to close this tab?');
+        if (!confirmClose) {
+            return; // Do not close the tab if the user cancels
+        }
+    }
 
     editorData.tab.remove();
     editorData.editorDiv.remove();
