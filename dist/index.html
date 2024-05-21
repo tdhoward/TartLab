@@ -6,7 +6,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.6/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.6/theme/monokai.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.6/addon/lint/lint.min.css">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles/base.css">
+    <link rel="stylesheet" href="styles/sidebar.css">
+    <link rel="stylesheet" href="styles/tabs.css">
+    <link rel="stylesheet" href="styles/editor.css">
 </head>
 <body>
     <div id="sidebar">
@@ -31,6 +34,7 @@
                 <!-- Tabs will be dynamically added here -->
             </div>
             <div id="controls">
+                <button onclick="createNewFileTab()">New</button>
                 <button onclick="saveFile()" disabled>Save</button>
             </div>
         </div>

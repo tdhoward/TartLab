@@ -1,0 +1,81 @@
+#sidebar {
+    display: flex;
+    height: 100vh;
+    background-color: #252526;
+    border-right: 1px solid #333;
+    position: relative; /* Ensure child elements are positioned correctly */
+}
+
+#iconBar {
+    width: 56px;
+    background-color: #444963; /* Updated background color */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    position: fixed; /* Keep the icon bar fixed on the left */
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2; /* Ensure the icon bar is on top */
+}
+
+.icon {
+    width: 100%;
+    padding: 10px 0;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.icon img {
+    width: 32px;
+    height: 32px;
+}
+
+.icon.active {
+    background-color: #1e1e1e;
+}
+
+.icon.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: #80cbc4;
+}
+
+#panel {
+    width: 250px;
+    border-left: 1px solid #333;
+    background-color: #141829; /* Updated background color */
+    transition: transform 0.3s, opacity 0.3s;
+    position: absolute; /* Ensure the panel does not overlap with icons */
+    top: 0;
+    bottom: 0;
+    left: 56px; /* Start the panel just to the right of the icon bar */
+    overflow: hidden;
+    z-index: 1; /* Ensure the panel is below the icon bar */
+}
+
+#panel.collapsed {
+    transform: translateX(-250px); /* Slide the panel off to the left */
+    opacity: 0;
+}
+
+#panel-content {
+    padding: 10px;
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 0.3s, transform 0.3s;
+    transform: translateX(0);
+}
+
+#panel.collapsed #panel-content {
+    visibility: visible; /* Keep visibility to prevent reflow issues */
+    opacity: 0;
+    transform: translateX(-250px); /* Slide content off to the side */
+}

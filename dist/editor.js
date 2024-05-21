@@ -10,7 +10,8 @@ function createTab(filename, content) {
     tab.dataset.filename = filename;
     tab.innerHTML = `${filename} <button class="close-tab" data-filename="${filename}">X</button>`;
     tab.onclick = () => switchToTab(filename);
-    tabsDiv.insertBefore(tab, tabsDiv.lastElementChild); // Insert before the "+" tab
+
+    tabsDiv.appendChild(tab); // Append the new tab to the end of the tabs container
 
     const editorDiv = document.createElement('div');
     editorDiv.className = 'editor-instance';
@@ -50,6 +51,7 @@ function switchToTab(filename) {
     activeEditor.editorDiv.style.display = 'block';
     activeEditor.tab.classList.add('active');
     activeEditor.editor.refresh();
+    activeEditor.editor.focus();  // Ensure the editor gains keyboard focus
     updateSaveButton();
 }
 

@@ -1,8 +1,15 @@
 import { listFilesInSidebar, toggleSidebar } from './sidebar.js';
-import { createNewFileTab, updatePlusTab, updateSaveButton } from './tabs.js';
 import { createTab, switchToTab, closeTab, editors, activeEditor } from './editor.js';
+import { updateSaveButton } from './tabs.js';
 
-const saveButton = document.querySelector('#controls button');
+let newFileCounter = 1;
+
+function createNewFileTab() {
+    const filename = `New file ${newFileCounter++}`;
+    createTab(filename, '');
+}
+
+const saveButton = document.querySelector('#controls button:nth-child(2)');
 
 function saveFile() {
     if (!activeEditor) {
@@ -24,14 +31,11 @@ function saveFile() {
 
 // Initially list files and add the "+" tab
 listFilesInSidebar();
-updatePlusTab();
 updateSaveButton(); // Ensure the Save button starts disabled
 
 document.getElementById('filesIcon').onclick = () => toggleSidebar('filesIcon');
 document.getElementById('helpIcon').onclick = () => toggleSidebar('helpIcon');
-document.querySelector('#controls button').onclick = saveFile;
-
-// Expose closeTab to the global scope
-window.closeTab = closeTab;
+document.querySelector('#controls button:nth-child(2)').onclick = saveFile;
+document.querySelector('#controls button:nth-child(1)').onclick = createNewFileTab;
 
 export { saveButton };

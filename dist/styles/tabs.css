@@ -1,0 +1,68 @@
+#main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin-left: 56px; /* Ensure main content starts after the icon bar */
+    transition: margin-left 0.3s; /* Smooth transition for resizing */
+}
+
+#tab-controls-container {
+    display: flex; /* Use flex layout */
+    align-items: center; /* Align items in the center vertically */
+    border-bottom: 1px solid #333;
+    background-color: #252526;
+    flex-wrap: nowrap; /* Prevent items from wrapping */
+}
+
+#tabs {
+    display: flex; /* Use flex layout */
+    flex-grow: 1; /* Allow tabs to grow */
+    overflow-x: auto; /* Allows tabs to scroll horizontally if needed */
+    background-color: #252526;
+    white-space: nowrap; /* Prevent tabs from wrapping */
+}
+
+.tab {
+    padding: 10px 48px 10px 10px; /* Increase padding to the right to account for the close button */
+    cursor: pointer;
+    border-right: 1px solid #333;
+    background-color: #252526;
+    color: #d4d4d4;
+    font-size: 18px; /* Increase text size */
+    display: flex;
+    align-items: center;
+    position: relative; /* Ensure positioning of the close button */
+    flex-shrink: 0; /* Prevent tabs from shrinking */
+}
+
+.tab.active {
+    background-color: #1e1e1e;
+}
+
+.tab button.close-tab {
+    margin-right: 8px;
+    background-color: transparent;
+    border: none;
+    color: #d4d4d4;
+    cursor: pointer;
+    font-size: 14px; /* Make the close button smaller */
+    position: absolute;
+    right: 0px;
+    top: 50%;
+    padding: 8px 11px; /* Add padding for better click area */
+    transform: translateY(-50%); /* Center the button vertically */
+    transition: background-color 0.3s;
+}
+
+.tab button.close-tab:hover {
+    background-color: #ff5c5c; /* Suitable shade of red */
+    color: #fff; /* Change text color to white for contrast */
+}
+
+#controls {
+    background-color: #333;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0; /* Prevent controls from shrinking */
+}
