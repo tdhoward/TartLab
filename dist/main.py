@@ -55,17 +55,26 @@ def ensure_settings():
 # Function to serve static files
 def serve_file(client, path):
     try:
-        with open(path, 'rb') as file:
+        # Normalize the path to avoid security issues
+        if '..' in path:
+            raise OSError
+        full_path = path if path.startswith('/') else '/' + path
+        extension = full_path.split('.')[-1]
+        content_type = FILE_TYPES.get(f'.{extension}', 'application/octet-stream')
+        with open(full_path, 'rb') as file:
             client.send('HTTP/1.1 200 OK\r\n')
-            client.send('Content-Type: {}\r\n'.format(FILE_TYPES.get(uos.path.splitext(path)[1], 'application/octet-stream')))
+            client.send(f'Content-Type: {content_type}\r\n')
+            client.send('Connection: close\r\n')  # Ensure the connection is closed after serving the file
             client.send('\r\n')
             while True:
                 chunk = file.read(1024)
                 if not chunk:
                     break
                 client.send(chunk)
+        print(f"Served file: {full_path} with response code 200")
     except OSError:
         client.send('HTTP/1.1 404 Not Found\r\n\r\n')
+        print(f"File not found: {full_path} with response code 404")
 
 # Function to list files in the /files directory
 def list_files():
@@ -82,6 +91,7 @@ def handle_api_request(client, method, path):
         client.send('HTTP/1.1 200 OK\r\n')
         client.send('Content-Type: application/json\r\n\r\n')
         client.send(response)
+        print(f"API request: {path} with response code 200")
     elif method == 'POST' and path.startswith('/files/'):
         filename = path[len('/files/'):]
         content_length = 0
@@ -89,8 +99,8 @@ def handle_api_request(client, method, path):
             line = client.readline()
             if not line or line == b'\r\n':
                 break
-            if line.startswith(b'Content-Length:'):
-                content_length = int(line.split(b':')[1].strip())
+            if line.startswith('Content-Length:'):
+                content_length = int(line.split(':')[1].strip())
         
         content = client.read(content_length)
         data = ujson.loads(content)
@@ -98,6 +108,7 @@ def handle_api_request(client, method, path):
             file.write(data['content'])
         
         client.send('HTTP/1.1 200 OK\r\n\r\n')
+        print(f"API request: {path} with response code 200")
 
 # Main loop to handle client connections
 def start_server():
@@ -113,7 +124,10 @@ def start_server():
         print('Client connected from', addr)
         try:
             request_line = client.readline().decode()
+            if not request_line or len(request_line.split()) < 3:
+                raise ValueError('Invalid request line')
             method, path, _ = request_line.split()
+            print(f"Request line: {request_line.strip()}")
             if path.startswith('/api'):
                 handle_api_request(client, method, path[len('/api'):])
             else:
@@ -133,6 +147,10 @@ settings = ensure_settings()
 ap = network.WLAN(network.AP_IF)
 ap.active(True)
 ap.config(essid=settings['ap_name'], password=PASSWORD)
+
+# Print the IP address of the AP
+print('Access Point "{}" started'.format(settings['ap_name']))
+print('Connect to IP:', ap.ifconfig()[0])
 
 # Start the server
 start_server()
