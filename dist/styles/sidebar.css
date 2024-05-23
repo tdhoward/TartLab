@@ -3,21 +3,21 @@
     height: 100vh;
     background-color: #252526;
     border-right: 1px solid #333;
-    position: relative; /* Ensure child elements are positioned correctly */
+    position: relative;
 }
 
 #iconBar {
     width: 56px;
-    background-color: #444963; /* Updated background color */
+    background-color: #444963;
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 10px 0;
-    position: fixed; /* Keep the icon bar fixed on the left */
+    position: fixed;
     top: 0;
     bottom: 0;
     left: 0;
-    z-index: 2; /* Ensure the icon bar is on top */
+    z-index: 2;
 }
 
 .icon {
@@ -51,31 +51,70 @@
 #panel {
     width: 250px;
     border-left: 1px solid #333;
-    background-color: #141829; /* Updated background color */
+    background-color: #141829;
     transition: transform 0.3s, opacity 0.3s;
-    position: absolute; /* Ensure the panel does not overlap with icons */
+    position: absolute;
     top: 0;
     bottom: 0;
-    left: 56px; /* Start the panel just to the right of the icon bar */
+    left: 56px;
     overflow: hidden;
-    z-index: 1; /* Ensure the panel is below the icon bar */
+    z-index: 1;
 }
 
 #panel.collapsed {
-    transform: translateX(-250px); /* Slide the panel off to the left */
+    transform: translateX(-250px);
     opacity: 0;
 }
 
 #panel-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     padding: 10px;
+    box-sizing: border-box; /* Include padding in the height calculation */
     visibility: visible;
     opacity: 1;
     transition: opacity 0.3s, transform 0.3s;
-    transform: translateX(0);
 }
 
 #panel.collapsed #panel-content {
-    visibility: visible; /* Keep visibility to prevent reflow issues */
+    visibility: visible;
     opacity: 0;
-    transform: translateX(-250px); /* Slide content off to the side */
+    transform: translateX(-250px);
+}
+
+#fileList {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+#helpContent {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+#space-usage-container {
+    margin-top: auto; /* Push to the bottom */
+    padding: 10px;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+}
+
+#space-usage-text {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+#space-usage-bar {
+    position: relative;
+    height: 20px;
+    background-color: #444;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+#used-space {
+    height: 100%;
+    border-radius: 5px;
 }

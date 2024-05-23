@@ -4,23 +4,27 @@
     border-top: 1px solid #333;
     display: flex;
     flex-direction: column;
-    transition: max-height 0.3s;
-    max-height: 0;
+    transition: max-height 0.3s ease;
+    max-height: 50px; /* Initially only show the header */
     overflow: hidden;
-    height: auto; /* Ensure the height is set to auto */
 }
 
 #webrepl-header {
-    padding: 10px;
+    padding: 10px; /* Adjust padding to ensure total height is 50px */
     cursor: pointer;
     background-color: #333;
     border-bottom: 1px solid #444;
+    display: flex;
+    align-items: center; /* Center content vertically */
+    height: 50px; /* Fixed height for the header */
+    box-sizing: border-box; /* Include padding in height calculation */
 }
 
 #webrepl-content {
     display: flex;
     flex-direction: column;
     padding: 10px;
+    flex-grow: 1;
 }
 
 #webrepl-console {
@@ -31,7 +35,7 @@
     padding: 10px;
     font-family: monospace;
     resize: none;
-    height: 200px; /* Ensure the console has a fixed height */
+    height: 200px;
 }
 
 #webrepl-input {

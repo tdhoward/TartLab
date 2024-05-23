@@ -6,6 +6,7 @@ function toggleSidebar(iconId) {
     const fileList = document.getElementById('fileList');
     const helpContent = document.getElementById('helpContent');
     const main = document.getElementById('main');
+    const spaceUsageContainer = document.getElementById('space-usage-container');
 
     const icons = document.querySelectorAll('.icon');
     let alreadyActive = false;
@@ -26,6 +27,7 @@ function toggleSidebar(iconId) {
     if (alreadyActive) {
         panel.classList.add('collapsed');
         main.style.marginLeft = '56px';
+        spaceUsageContainer.style.display = 'none'; // Hide space usage bar when panel is collapsed
     } else {
         panel.classList.remove('collapsed');
         main.style.marginLeft = '306px';
@@ -33,9 +35,11 @@ function toggleSidebar(iconId) {
             listFilesInSidebar();
             fileList.style.display = 'block';
             helpContent.style.display = 'none';
+            spaceUsageContainer.style.display = 'block'; // Show space usage bar when files panel is open
         } else if (iconId === 'helpIcon') {
             fileList.style.display = 'none';
             helpContent.style.display = 'block';
+            spaceUsageContainer.style.display = 'none'; // Hide space usage bar when help panel is open
         }
     }
 }
@@ -54,6 +58,35 @@ function listFilesInSidebar() {
             });
         })
         .catch(error => alert('Error listing files: ' + error));
+
+    fetchSpaceUsage(); // Fetch space usage data
+}
+
+function fetchSpaceUsage() {
+    fetch(`${apiBaseUrl}/space`)
+        .then(response => response.json())
+        .then(data => {
+            const usedBytes = data.total_bytes - data.free_bytes;
+            const totalBytes = data.total_bytes;
+            const usedMB = (usedBytes / (1024 * 1024)).toFixed(2);
+            const totalMB = (totalBytes / (1024 * 1024)).toFixed(2);
+            const usedPercentage = (usedBytes / totalBytes) * 100;
+
+            const spaceUsageText = document.getElementById('space-usage-text');
+            const usedSpace = document.getElementById('used-space');
+
+            spaceUsageText.innerHTML = `Used: ${usedMB} MB / ${totalMB} MB`;
+
+            usedSpace.style.width = `${usedPercentage}%`;
+            if (usedPercentage < 60) {
+                usedSpace.style.backgroundColor = 'green';
+            } else if (usedPercentage < 80) {
+                usedSpace.style.backgroundColor = 'yellow';
+            } else {
+                usedSpace.style.backgroundColor = 'red';
+            }
+        })
+        .catch(error => alert('Error fetching space usage: ' + error));
 }
 
 export { listFilesInSidebar, toggleSidebar };

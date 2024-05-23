@@ -1,10 +1,16 @@
 let ws;
 const webreplConsole = document.getElementById('webrepl-console');
 const webreplInput = document.getElementById('webrepl-input');
+let isPanelExpanded = false; // Track the state of the panel
 
 function toggleWebReplPanel() {
     const panel = document.getElementById('webrepl-panel');
-    panel.style.maxHeight = panel.style.maxHeight === '0px' ? '400px' : '0px';
+    if (isPanelExpanded) {
+        panel.style.maxHeight = '50px';
+    } else {
+        panel.style.maxHeight = '400px';
+    }
+    isPanelExpanded = !isPanelExpanded; // Toggle the state
 }
 
 function connectWebRepl() {
@@ -26,7 +32,7 @@ function connectWebRepl() {
     };
     
     ws.onerror = (error) => {
-        webreplConsole.value += 'WebREPL error: ' + error + '\n';
+        webreplConsole.value += `WebREPL error: ${error.message || error.type}\n`;
     };
 }
 
