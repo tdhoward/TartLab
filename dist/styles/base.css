@@ -5,7 +5,22 @@ body {
     margin: 0;
     background-color: #1e1e1e;
     color: #d4d4d4;
-    font-size: 18px; /* Increase text size */
+    font-size: 18px;
+}
+
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(30, 30, 30, 0.9);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    z-index: 9999;
 }
 
 #main {

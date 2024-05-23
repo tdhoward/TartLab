@@ -10,15 +10,20 @@
     <link rel="stylesheet" href="styles/sidebar.css">
     <link rel="stylesheet" href="styles/tabs.css">
     <link rel="stylesheet" href="styles/editor.css">
+    <link rel="stylesheet" href="styles/webrepl.css">
+	<link rel="icon" href="/favicon.ico" type="image/x-icon">
 </head>
 <body>
+    <div id="loading-overlay">
+        Loading, please wait...
+    </div>
     <div id="sidebar">
         <div id="iconBar">
             <div class="icon" id="filesIcon">
-                <img src="files.svg" alt="Files Icon" width="32" height="32">
+                <img src="img/files.svg" alt="Files Icon" width="32" height="32">
             </div>
             <div class="icon" id="helpIcon">
-                <img src="help.svg" alt="Help Icon" width="32" height="32">
+                <img src="img/help.svg" alt="Help Icon" width="32" height="32">
             </div>
         </div>
         <div id="panel" class="collapsed">
@@ -41,6 +46,13 @@
         <div id="editor">
             <!-- Editor instances will be dynamically added here -->
         </div>
+        <div id="webrepl-panel">
+            <div id="webrepl-header" onclick="toggleWebReplPanel()">WebREPL (click to toggle)</div>
+            <div id="webrepl-content">
+                <textarea id="webrepl-console" readonly></textarea>
+                <input type="text" id="webrepl-input" placeholder="Type commands here...">
+            </div>
+        </div>
     </div>
 
     <script type="module" src="main.js"></script>
@@ -49,5 +61,6 @@
     <script src="libs/autorefresh.min.js"></script>
     <script src="libs/active-line.min.js"></script>
     <script src="libs/lint.min.js"></script>
+    <script src="webrepl-client.js"></script>
 </body>
 </html>

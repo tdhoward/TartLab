@@ -1,4 +1,5 @@
-const apiBaseUrl = 'https://your-api-url.com';
+const hostname = window.location.hostname;
+const apiBaseUrl = `http://${hostname}/api`;
 
 function toggleSidebar(iconId) {
     const panel = document.getElementById('panel');

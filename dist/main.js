@@ -2,6 +2,9 @@ import { listFilesInSidebar, toggleSidebar } from './sidebar.js';
 import { createTab, switchToTab, closeTab, editors, activeEditor } from './editor.js';
 import { updateSaveButton } from './tabs.js';
 
+const hostname = window.location.hostname;
+const apiBaseUrl = `http://${hostname}/api`;
+
 let newFileCounter = 1;
 
 function createNewFileTab() {
@@ -37,5 +40,10 @@ document.getElementById('filesIcon').onclick = () => toggleSidebar('filesIcon');
 document.getElementById('helpIcon').onclick = () => toggleSidebar('helpIcon');
 document.querySelector('#controls button:nth-child(2)').onclick = saveFile;
 document.querySelector('#controls button:nth-child(1)').onclick = createNewFileTab;
+
+// Hide the loading overlay once the content is fully loaded
+window.addEventListener('load', () => {
+    document.getElementById('loading-overlay').style.display = 'none';
+});
 
 export { saveButton };

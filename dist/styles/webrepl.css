@@ -1,0 +1,44 @@
+#webrepl-panel {
+    background-color: #252526;
+    color: #d4d4d4;
+    border-top: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    transition: max-height 0.3s;
+    max-height: 0;
+    overflow: hidden;
+    height: auto; /* Ensure the height is set to auto */
+}
+
+#webrepl-header {
+    padding: 10px;
+    cursor: pointer;
+    background-color: #333;
+    border-bottom: 1px solid #444;
+}
+
+#webrepl-content {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+}
+
+#webrepl-console {
+    flex-grow: 1;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    border: none;
+    padding: 10px;
+    font-family: monospace;
+    resize: none;
+    height: 200px; /* Ensure the console has a fixed height */
+}
+
+#webrepl-input {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    border: none;
+    padding: 10px;
+    font-family: monospace;
+    margin-top: 10px;
+}
