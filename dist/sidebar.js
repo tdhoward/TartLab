@@ -1,3 +1,5 @@
+import { createTab, switchToTab, editors } from './editor.js';
+
 const hostname = window.location.hostname;
 const apiBaseUrl = `http://${hostname}/api`;
 
@@ -46,25 +48,59 @@ function toggleSidebar(iconId) {
 
 function listFilesInSidebar() {
     fetch(`${apiBaseUrl}/files`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             const fileListDiv = document.getElementById('fileList');
             fileListDiv.innerHTML = '';
             data.files.forEach(file => {
                 const fileItem = document.createElement('div');
                 fileItem.textContent = file;
-                fileItem.onclick = () => loadFile(file);
+                fileItem.className = 'file-item';
+                fileItem.onclick = () => openFile(file);
                 fileListDiv.appendChild(fileItem);
             });
         })
-        .catch(error => alert('Error listing files: ' + error));
+        .catch(error => {
+            const fileListDiv = document.getElementById('fileList');
+            fileListDiv.innerHTML = '<div class="error">Can\'t connect.</div>';
+        });
 
     fetchSpaceUsage(); // Fetch space usage data
 }
 
+function openFile(filename) {
+    if (editors[filename]) {
+        switchToTab(filename);
+    } else {
+        fetch(`${apiBaseUrl}/files/${encodeURIComponent(filename)}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.text();
+            })
+            .then(content => {
+                createTab(filename, content);
+            })
+            .catch(error => {
+                alert('Error opening file: ' + error);
+            });
+    }
+}
+
 function fetchSpaceUsage() {
     fetch(`${apiBaseUrl}/space`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             const usedBytes = data.total_bytes - data.free_bytes;
             const totalBytes = data.total_bytes;
@@ -86,7 +122,12 @@ function fetchSpaceUsage() {
                 usedSpace.style.backgroundColor = 'red';
             }
         })
-        .catch(error => alert('Error fetching space usage: ' + error));
+        .catch(error => {
+            const spaceUsageText = document.getElementById('space-usage-text');
+            const usedSpace = document.getElementById('used-space');
+            spaceUsageText.innerHTML = '<div class="error">Can\'t connect.</div>';
+            usedSpace.style.width = '0%';
+        });
 }
 
 export { listFilesInSidebar, toggleSidebar };

@@ -88,6 +88,16 @@
     overflow-y: auto;
 }
 
+.file-item {
+    cursor: pointer;
+    padding: 5px;
+    border-bottom: 1px solid #333;
+}
+
+.file-item:hover {
+    background-color: #333;
+}
+
 #helpContent {
     flex-grow: 1;
     overflow-y: auto;
@@ -117,4 +127,10 @@
 #used-space {
     height: 100%;
     border-radius: 5px;
+}
+
+.error {
+    color: red;
+    text-align: center;
+    margin-top: 10px;
 }
