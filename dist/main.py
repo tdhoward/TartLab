@@ -7,21 +7,10 @@ import utime
 import random
 import uasyncio as asyncio
 
-from ahttpserver import HTTPResponse, HTTPServer, sendfile
+from ahttpserver import HTTPResponse, HTTPServer
 from ahttpserver.sse import EventSource
+from ahttpserver.servefile import serve_file
 
-
-# HTML, JS, CSS files to serve
-FILE_TYPES = {
-    'html': 'text/html',
-    'css': 'text/css',
-    'js': 'application/javascript',
-    'svg': 'image/svg+xml',
-    'png': 'image/png',
-    'py': 'text/x-python',
-    'ico': 'image/x-icon',
-    'jpg': 'image/jpeg',
-}
 
 # Function to generate a random AP name (currently not used)
 def generate_ap_name():
@@ -55,14 +44,18 @@ def initialize():
 
 # Function to connect to a local WiFi network
 def connect_to_wifi(ssid, password):
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    wlan.connect(ssid, password)
-    while not wlan.isconnected():
-        print('Connecting to WiFi...')
-        sleep(1)
-    print('Connected to WiFi. Network config:', wlan.ifconfig())
-    return wlan.ifconfig()[0]
+    try:
+        wlan = network.WLAN(network.STA_IF)
+        wlan.active(True)
+        wlan.connect(ssid, password)
+        while not wlan.isconnected():
+            print('Connecting to WiFi...')
+            sleep(1)
+        print('Connected to WiFi. Network config:', wlan.ifconfig())
+        return wlan.ifconfig()[0]
+    except:
+        print(f'Error connecting to the {ssid} access point!')
+        return '0.0.0.0'
 
 
 initialize()
@@ -71,10 +64,8 @@ app = HTTPServer(ip_address, 80)
 
 
 def unquote(s):
-    """Kindly rewritten by Damien from Micropython"""
-    """No longer uses caching because of memory limitations"""
     res = s.split('%')
-    for i in xrange(1, len(res)):
+    for i in range(1, len(res)):
         item = res[i]
         try:
             res[i] = chr(int(item[:2], 16)) + item[2:]
@@ -82,58 +73,38 @@ def unquote(s):
             res[i] = '%' + item
     return "".join(res)
     
-# Since there is no strftime in micropython...
-# Days and Months mappings for HTTP-date format (for Last-Modified header)
-DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-def format_http_date(gmtime_tuple):
-    # gmtime_tuple format: (year, month, mday, hour, minute, second, weekday, yearday)
-    year, month, mday, hour, minute, second, weekday, _ = gmtime_tuple
-    return "{}, {:02d} {} {:04d} {:02d}:{:02d}:{:02d} GMT".format(
-        DAYS[weekday], mday, MONTHS[month - 1], year, hour, minute, second
-    )
-
-# Serve static files
+# Serve static files with caching
 @app.route("GET", "/*")
-async def serve_file(reader, writer, request):
-    path = request.path
-    if path == '/':
-        path = '/index.html'
-    full_path = path if path.startswith('/') else '/' + path
-    extension = full_path.split('.')[-1]
-    caching = True
-    content_type = FILE_TYPES.get(extension, 'application/octet-stream')
-    extra_headers = dict()
-    try:
-        # Set up headers for caching
-        file_stat = os.stat(full_path)
-        if caching:
-            last_modified_time = file_stat[8]  # The 8th element is the last modified time
-            last_modified_str = format_http_date(utime.gmtime(last_modified_time))
-            last_modified_bytes = last_modified_str.encode()
-            # b'If-Modified-Since': b'Wed, 22 May 2024 17:57:58 GMT'
-            if b'If-Modified-Since' in request.header:
-                print(request.header[b'If-Modified-Since'])
-                if request.header[b'If-Modified-Since'] == last_modified_bytes:
-                    response = HTTPResponse(304)
-                    await response.send(writer)
-                    return
-            extra_headers['Last-Modified'] = last_modified_str
-            extra_headers['Cache-Control'] = 'public, max-age=3600'
-        else:
-            extra_headers['Cache-Control'] = 'no-cache'
-        file_size = str(file_stat[6])  # in bytes
-        extra_headers['Content-Length'] = file_size
-        response = HTTPResponse(200, content_type, close=True, header=extra_headers)
-        await response.send(writer)
-        await sendfile(writer, full_path)
-        await writer.drain()
-        print(f"Served file: {full_path} with response code 200")
-    except OSError:
-        response = HTTPResponse(404)
-        await response.send(writer)
-        print(f"File not found: {full_path} with response code 404")
+async def static_files(reader, writer, request):
+    local_path = "/static/"
+    url_path = "/"
+    subpath = request.path[len(url_path):]
+    if subpath == '':
+        subpath = 'index.html'
+    full_path = local_path + subpath
+    await serve_file(reader, writer, request, full_path, True)
+
+
+# Serve user files with no caching
+@app.route("GET", "/files/user/*")
+async def user_files(reader, writer, request):
+    local_path = "/files/user/"
+    url_path = "/files/user/"
+    subpath = request.path[len(url_path):]
+    full_path = local_path + subpath
+    await serve_file(reader, writer, request, full_path, False)
+
+
+# Serve help files with caching
+@app.route("GET", "/files/help/*")
+async def help_files(reader, writer, request):
+    local_path = "/files/help/"
+    url_path = "/files/help/"
+    subpath = request.path[len(url_path):]
+    full_path = local_path + subpath
+    await serve_file(reader, writer, request, full_path, True)
+
 
 # Function to list files in the /files directory
 def list_files():
