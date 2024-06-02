@@ -6,10 +6,47 @@ import ujson
 import utime
 import random
 import uasyncio as asyncio
+import machine
 
 from ahttpserver import HTTPResponse, HTTPServer
 from ahttpserver.sse import EventSource
 from ahttpserver.servefile import serve_file
+
+#import webrepl
+
+sta_if = network.WLAN(network.STA_IF) # create station interface
+ap_if = network.WLAN(network.AP_IF) #  create access-point interface
+
+def connect_to_wifi(ssid: str, key: str):
+    retries = 0
+    ap_if.active(False) #  de-activate the interfaces
+    #sta_if.active(False)
+    utime.sleep(1)
+
+    if not sta_if.isconnected():
+        print('Connecting to network...')
+        sta_if.active(True)
+        #sta_if.ifconfig((config.WiFi_device, '255.255.255.0', config.gateway, '8.8.8.8'))
+        sta_if.connect(ssid, key)
+
+        while (retries < 5):
+            if (sta_if.isconnected()):
+                print(sta_if.ifconfig())
+                return sta_if.ifconfig()[0]
+            print ('.', end = '')
+            utime.sleep(1)
+            retries += 1
+
+        if (retries == 5):
+            sta_if.disconnect()  #  disconnect or you get errors
+            sta_if.active(False)
+            print("Unable to connect!")
+            print(sta_if.ifconfig())
+            return "0.0.0.0"
+    else:
+        print("Already connected!")
+        print(sta_if.ifconfig())
+        return sta_if.ifconfig()[0]
 
 
 # Function to generate a random AP name (currently not used)
@@ -41,27 +78,11 @@ def initialize():
         with open('settings.json', 'w') as f:
             ujson.dump(settings, f)
 
-
-# Function to connect to a local WiFi network
-def connect_to_wifi(ssid, password):
-    try:
-        wlan = network.WLAN(network.STA_IF)
-        wlan.active(True)
-        wlan.connect(ssid, password)
-        while not wlan.isconnected():
-            print('Connecting to WiFi...')
-            sleep(1)
-        print('Connected to WiFi. Network config:', wlan.ifconfig())
-        return wlan.ifconfig()[0]
-    except:
-        print(f'Error connecting to the {ssid} access point!')
-        return '0.0.0.0'
-
-
 initialize()
 ip_address = connect_to_wifi(settings['wifi_ssid'], settings['wifi_password'])
+# TODO: check if ip_address is "0.0.0.0", and set up soft AP instead.
 app = HTTPServer(ip_address, 80)
-
+#webrepl.start()
 
 def unquote(s):
     res = s.split('%')
@@ -73,8 +94,15 @@ def unquote(s):
             res[i] = '%' + item
     return "".join(res)
     
+# Function to list files in the /files directory
+def list_files():
+    try:
+        return [f for f in os.listdir('/files')]
+    except OSError:
+        return []
 
-# Serve static files with caching
+
+# GET requests
 @app.route("GET", "/*")
 async def static_files(reader, writer, request):
     local_path = "/static/"
@@ -85,7 +113,6 @@ async def static_files(reader, writer, request):
     full_path = local_path + subpath
     await serve_file(reader, writer, request, full_path, True)
 
-
 # Serve user files with no caching
 @app.route("GET", "/files/user/*")
 async def user_files(reader, writer, request):
@@ -94,7 +121,6 @@ async def user_files(reader, writer, request):
     subpath = request.path[len(url_path):]
     full_path = local_path + subpath
     await serve_file(reader, writer, request, full_path, False)
-
 
 # Serve help files with caching
 @app.route("GET", "/files/help/*")
@@ -105,38 +131,29 @@ async def help_files(reader, writer, request):
     full_path = local_path + subpath
     await serve_file(reader, writer, request, full_path, True)
 
-
-# Function to list files in the /files directory
-def list_files():
-    try:
-        return [f for f in os.listdir('/files')]
-    except OSError:
-        return []
-
-# Handle /api GET requests
-@app.route("GET", "/api/*")
+@app.route("GET", "/api/files")
 async def handle_api(reader, writer, request):
-    path = request.path
-    if path == '/api/files':
-        response = HTTPResponse(200, "application/json", close=True)
-        await response.send(writer)
-        await writer.drain()
-        writer.write(ujson.dumps({'files': list_files()}))
-        await writer.drain()
-        print(f"API request: {path} with response code 200")
-    elif path == '/api/space':
-        response = HTTPResponse(200, "application/json", close=True)
-        await response.send(writer)
-        await writer.drain()
-        fs_stat = os.statvfs('/')
-        total = fs_stat[0] * fs_stat[2]
-        free = fs_stat[0] * fs_stat[3]
-        writer.write(ujson.dumps({'total_bytes': total, 'free_bytes': free}))
-        await writer.drain()
-        print(f"API request: {path} with response code 200")
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    writer.write(ujson.dumps({'files': list_files()}))
+    await writer.drain()
+    print(f"API request: {request.path} with response code 200")
+
+@app.route("GET", "/api/space")
+async def handle_api(reader, writer, request):
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    fs_stat = os.statvfs('/')
+    total = fs_stat[0] * fs_stat[2]
+    free = fs_stat[0] * fs_stat[3]
+    writer.write(ujson.dumps({'total_bytes': total, 'free_bytes': free}))
+    await writer.drain()
+    print(f"API request: {request.path} with response code 200")
 
 
-# Handle /api POST requests for files
+# Handle API POST requests for files
 @app.route("POST", "/api/files/*")
 async def handle_api(reader, writer, request):
     path = request.path
@@ -152,7 +169,7 @@ async def handle_api(reader, writer, request):
     print(f"API request: POST {path} with response code 200")
 
 
-# Handle /api DELETE requests for files
+# Handle API DELETE requests for files
 @app.route("DELETE", "/api/files/*")
 async def handle_api(reader, writer, request):
     path = request.path
