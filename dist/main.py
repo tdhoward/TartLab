@@ -17,27 +17,72 @@ from ahttpserver.servefile import serve_file
 sta_if = network.WLAN(network.STA_IF) # create station interface
 ap_if = network.WLAN(network.AP_IF) #  create access-point interface
 
-def connect_to_wifi(ssid: str, key: str):
-    retries = 0
-    ap_if.active(False) #  de-activate the interfaces
-    #sta_if.active(False)
-    utime.sleep(1)
 
+'''
+import network
+ssid="TnJHoward2_slow"
+ssid2="TnJHoward2"
+key="ChristDiedForUs"
+sta_if = network.WLAN(network.STA_IF)
+ap_if = network.WLAN(network.AP_IF)
+ap_if.disconnect()
+ap_if.active(False)
+sta_if.disconnect()
+sta_if.active(False)
+
+sta_if.isconnected()
+sta_if.active(True)
+sta_if.scan()
+sta_if.connect(ssid, key)
+sta_if.ifconfig()
+sta_if.status()
+
+network.STAT_IDLE               1000
+network.STAT_CONNECTING         1001
+network.STAT_GOT_IP             1010
+network.STAT_BEACON_TIMEOUT     200
+network.STAT_NO_AP_FOUND        201
+network.STAT_WRONG_PASSWORD     202
+network.STAT_ASSOC_FAIL         203
+network.STAT_HANDSHAKE_TIMEOUT  204
+
+Maybe eventually change this to poll for RSSI. Warn users when Wifi is weak.
+
+'''
+
+def connect_to_wifi(ssid: str, key: str):
+    retries = 20
+    try:
+        ap_if.disconnect()
+        sta_if.disconnect()
+    except:
+        pass
+    ap_if.active(False) #  de-activate the interfaces
+    sta_if.active(False)
+    utime.sleep(1)
+    sta_if.active(True)
+    network_names = []
+    while ssid not in network_names:
+        print("Scanning for WiFi networks...")
+        networks = sta_if.scan()
+        network_names = [i[0].decode("utf-8") for i in networks]
+    print(f'Found {ssid} network in scan.')
     if not sta_if.isconnected():
-        print('Connecting to network...')
+        print(f'Connecting to {ssid} network...')
         sta_if.active(True)
         #sta_if.ifconfig((config.WiFi_device, '255.255.255.0', config.gateway, '8.8.8.8'))
         sta_if.connect(ssid, key)
 
-        while (retries < 5):
+        # TODO: instead of just blindly waiting for a timeout, check for sta_if.status() and react accordingly.
+        while (retries > 0):
             if (sta_if.isconnected()):
                 print(sta_if.ifconfig())
                 return sta_if.ifconfig()[0]
             print ('.', end = '')
             utime.sleep(1)
-            retries += 1
+            retries -= 1
 
-        if (retries == 5):
+        if (retries == 0):
             sta_if.disconnect()  #  disconnect or you get errors
             sta_if.active(False)
             print("Unable to connect!")
@@ -94,10 +139,10 @@ def unquote(s):
             res[i] = '%' + item
     return "".join(res)
     
-# Function to list files in the /files directory
-def list_files():
+# Function to list files in the specified directory
+def list_files(folder):
     try:
-        return [f for f in os.listdir('/files')]
+        return [f for f in os.listdir(folder)]
     except OSError:
         return []
 
@@ -131,12 +176,12 @@ async def help_files(reader, writer, request):
     full_path = local_path + subpath
     await serve_file(reader, writer, request, full_path, True)
 
-@app.route("GET", "/api/files")
+@app.route("GET", "/api/files/*")
 async def handle_api(reader, writer, request):
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
-    writer.write(ujson.dumps({'files': list_files()}))
+    writer.write(ujson.dumps({'files': list_files(request.path[len('/api'):])}))
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
 
@@ -224,3 +269,4 @@ except KeyboardInterrupt:
 finally:
     asyncio.run(app.stop())
     asyncio.new_event_loop()
+
