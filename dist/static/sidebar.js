@@ -47,7 +47,7 @@ function toggleSidebar(iconId) {
 }
 
 function listFilesInSidebar() {
-    fetch(`${apiBaseUrl}/files`)
+    fetch(`${apiBaseUrl}/files/user`)
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -77,7 +77,7 @@ function openFile(filename) {
     if (editors[filename]) {
         switchToTab(filename);
     } else {
-        fetch(`${apiBaseUrl}/files/${encodeURIComponent(filename)}`)
+        fetch(`/files/user/${encodeURIComponent(filename)}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');

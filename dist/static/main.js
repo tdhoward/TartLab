@@ -20,9 +20,9 @@ function saveFile() {
         return;
     }
 
-    const filename = activeEditor.filename;
+    const filename = encodeURIComponent(activeEditor.filename); // URI encode the filename
     const content = activeEditor.editor.getValue();
-    fetch(`${apiBaseUrl}/files/${filename}`, {
+    fetch(`${apiBaseUrl}/files/user/${filename}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content })
