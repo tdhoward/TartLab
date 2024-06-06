@@ -46,3 +46,41 @@ button:disabled {
     cursor: not-allowed !important;
     color: #aaa !important;
 }
+
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 300px;
+    z-index: 10000;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 18px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    animation: fadeInOut 4s ease-in-out;
+}
+
+.toast.info {
+    background-color: #007acc;
+}
+
+.toast.warning {
+    background-color: #ffa500;
+}
+
+.toast.error {
+    background-color: #ff5c5c;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(10px); }
+    10%, 90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(10px); }
+}

@@ -35,6 +35,7 @@ function createTab(filename, content) {
         editor.isDirty = true; // Mark editor as having unsaved changes
     });
 
+    editor.isDirty = false; // Initial state is not dirty
     editors[filename] = { editor, tab, editorDiv, filename };
 
     // Stop propagation when the close button is clicked

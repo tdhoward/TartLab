@@ -16,7 +16,7 @@ const saveButton = document.querySelector('#controls button:nth-child(2)');
 
 function saveFile() {
     if (!activeEditor) {
-        alert('No file is currently open.');
+        showToast('No file is currently open.', 'warning');
         return;
     }
 
@@ -28,8 +28,25 @@ function saveFile() {
         body: JSON.stringify({ content })
     })
     .then(response => response.json())
-    .then(data => alert('File saved successfully!'))
-    .catch(error => alert('Error saving file: ' + error));
+    .then(data => {
+        showToast('File saved successfully!', 'info');
+        activeEditor.editor.isDirty = false; // Mark editor as not dirty after saving
+    })
+    .catch(error => showToast('Error saving file: ' + error, 'error'));
+}
+
+// Function to show toast messages
+function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerText = message;
+
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+        toast.remove();
+    }, 4000);
 }
 
 // Initially list files and add the "+" tab

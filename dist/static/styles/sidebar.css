@@ -8,7 +8,7 @@
 
 #iconBar {
     width: 56px;
-    background-color: #444963;
+    background-color:  #155884;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -35,7 +35,7 @@
 }
 
 .icon.active {
-    background-color: #1e1e1e;
+    background-color: #032b55;
 }
 
 .icon.active::before {
@@ -45,7 +45,7 @@
     top: 0;
     bottom: 0;
     width: 4px;
-    background-color: #80cbc4;
+    background-color: #41b3ff;
 }
 
 #panel {
