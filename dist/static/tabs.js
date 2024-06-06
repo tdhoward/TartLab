@@ -18,7 +18,8 @@ function updatePlusTab() {
 }
 
 function updateSaveButton() {
-    if (!activeEditor || activeEditor.editor.getValue() === '') {
+    const saveButton = document.querySelector('#controls button:nth-child(2)');
+    if (!activeEditor || activeEditor.editor.getValue() === '' || !activeEditor.editor.isDirty) {
         saveButton.disabled = true;
     } else {
         saveButton.disabled = false;

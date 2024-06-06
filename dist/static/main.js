@@ -31,11 +31,11 @@ function saveFile() {
     .then(data => {
         showToast('File saved successfully!', 'info');
         activeEditor.editor.isDirty = false; // Mark editor as not dirty after saving
+        updateSaveButton(); // Update the Save button state
     })
     .catch(error => showToast('Error saving file: ' + error, 'error'));
 }
 
-// Function to show toast messages
 function showToast(message, type = 'info') {
     const toastContainer = document.getElementById('toast-container');
     const toast = document.createElement('div');
