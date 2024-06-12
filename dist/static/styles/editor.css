@@ -3,11 +3,15 @@
     overflow: auto; /* Ensures the editor has its own scroll bars */
     display: flex;
     flex-direction: column; /* Ensure child elements can fill the height */
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: 256px 256px;
 }
 
 .editor-instance {
     flex-grow: 1;
     display: flex;
+    width: 100%;
 }
 
 .CodeMirror {

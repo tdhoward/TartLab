@@ -17,10 +17,18 @@ body {
     background-color: rgba(30, 30, 30, 0.9);
     color: #fff;
     display: flex;
+    flex-direction: column; /* Arrange logo and text vertically */
     justify-content: center;
     align-items: center;
-    font-size: 24px;
+    font-size: 28px;
     z-index: 9999;
+    padding-bottom: 50px; /* Adjust this value to move the content upwards */
+}
+
+#loading-logo {
+    width: 256px;
+    height: 256px;
+    margin-bottom: 0px; /* Space between logo and text */
 }
 
 #main {
