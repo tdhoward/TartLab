@@ -49,37 +49,6 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
-function setBackgroundSVGColor(url, color) {
-    fetch(url)
-        .then(response => response.text())
-        .then(svg => {
-            // Create a temporary DOM element to hold the SVG
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(svg, 'image/svg+xml');
-            const svgElement = doc.querySelector('svg');
-
-            // Change the fill color
-            svgElement.setAttribute('fill', color);
-            console.info(svgElement);
-
-            // Serialize the modified SVG
-            const serializer = new XMLSerializer();
-            const svgString = serializer.serializeToString(svgElement);
-
-            // Create a data URL from the modified SVG
-            const svgDataUrl = 'data:image/svg+xml;base64,' + btoa(svgString);
-
-            // Set the data URL as the background image of the editor
-            document.getElementById('editor').style.backgroundImage = `url(${svgDataUrl})`;
-        })
-        .catch(error => console.error('Error loading or modifying the SVG:', error));
-}
-
-// Set the background SVG with the desired color
-setBackgroundSVGColor('../img/logo.svg', '#333333'); // Dark gray color
-
-// Initially list files and add the "+" tab
-listFilesInSidebar();
 updateSaveButton(); // Ensure the Save button starts disabled
 
 document.getElementById('filesIcon').onclick = () => toggleSidebar('filesIcon');

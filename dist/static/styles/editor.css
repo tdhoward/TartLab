@@ -3,9 +3,19 @@
     overflow: auto; /* Ensures the editor has its own scroll bars */
     display: flex;
     flex-direction: column; /* Ensure child elements can fill the height */
-    background-repeat: no-repeat;
-    background-position: center center;
+    position: relative; /* Add this to allow absolute positioning of the background div */
+}
+
+#editor-background {
+    position: absolute; /* Absolute positioning to keep it in the background */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background: url("../img/logo.svg") no-repeat center center;
     background-size: 256px 256px;
+    filter: brightness(0) saturate(0%) invert(25%);
 }
 
 .editor-instance {
