@@ -8,15 +8,6 @@ function createNewFileTab() {
     createTab(filename, '');
 }
 
-function updatePlusTab() {
-    const tabsDiv = document.getElementById('tabs');
-    const plusTab = document.createElement('div');
-    plusTab.className = 'tab plus';
-    plusTab.innerHTML = '+';
-    plusTab.onclick = createNewFileTab;
-    tabsDiv.appendChild(plusTab);
-}
-
 function updateSaveButton() {
     const saveButton = document.querySelector('#controls button:nth-child(2)');
     if (!activeEditor || activeEditor.editor.getValue() === '' || !activeEditor.editor.isDirty) {
@@ -26,4 +17,4 @@ function updateSaveButton() {
     }
 }
 
-export { createNewFileTab, updatePlusTab, updateSaveButton };
+export { createNewFileTab, updateSaveButton };

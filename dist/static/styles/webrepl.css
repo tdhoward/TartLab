@@ -1,7 +1,6 @@
 #webrepl-panel {
     background-color: #252526;
     color: #d4d4d4;
-    border-top: 1px solid #333;
     display: flex;
     flex-direction: column;
     transition: max-height 0.3s ease;
@@ -10,7 +9,7 @@
 }
 
 #webrepl-header {
-    padding: 10px; /* Adjust padding to ensure total height is 50px */
+    padding: 14px; /* Adjust padding to ensure total height is 50px */
     cursor: pointer;
     background-color: #333;
     border-bottom: 1px solid #444;
@@ -18,6 +17,7 @@
     align-items: center; /* Center content vertically */
     height: 50px; /* Fixed height for the header */
     box-sizing: border-box; /* Include padding in height calculation */
+    font-size: 1.0em;
 }
 
 #webrepl-content {
@@ -34,6 +34,7 @@
     border: none;
     padding: 10px;
     font-family: monospace;
+    font-size: 1.0em;
     resize: none;
     height: 200px;
 }
@@ -44,5 +45,6 @@
     border: none;
     padding: 10px;
     font-family: monospace;
+    font-size: 1.0em;
     margin-top: 10px;
 }

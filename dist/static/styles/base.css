@@ -8,6 +8,15 @@ body {
     font-size: 18px;
 }
 
+#main {
+    flex-grow: 1;  /* grow horizontally */
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin-left: 56px; /* Ensure main content starts after the icon bar */
+    transition: margin-left 0.3s; /* Smooth transition for resizing */
+}
+
 #loading-overlay {
     position: fixed;
     top: 0;
@@ -29,14 +38,6 @@ body {
     width: 256px;
     height: 256px;
     margin-bottom: 0px; /* Space between logo and text */
-}
-
-#main {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    margin-left: 56px; /* Ensure main content starts after the icon bar */
-    transition: margin-left 0.3s; /* Smooth transition for resizing */
 }
 
 button {

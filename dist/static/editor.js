@@ -31,8 +31,8 @@ function createTab(filename, content) {
     });
 
     editor.on('change', () => {
-        updateSaveButton();
-        editor.isDirty = true; // Mark editor as having unsaved changes
+      editor.isDirty = true; // Mark editor as having unsaved changes
+      updateSaveButton();
     });
 
     editor.isDirty = false; // Initial state is not dirty
