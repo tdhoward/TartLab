@@ -10,7 +10,7 @@ Additionally, it would be great if a community of embedded Python developers wou
 
 ## Requirements
  * Embedded module: Must be able to run MicroPython and have WiFi  (See below for more details.)
- * Embedded storage: 2MB minimum, 4MB recommended
+ * Embedded storage: 4MB recommended
  * Client device (for development): Any device with a relatively modern browser
 
 ## Installation
