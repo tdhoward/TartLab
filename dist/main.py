@@ -19,22 +19,6 @@ ap_if = network.WLAN(network.AP_IF) #  create access-point interface
 
 
 '''
-import network
-ssid="TnJHoward2_slow"
-ssid2="TnJHoward2"
-key="ChristDiedForUs"
-sta_if = network.WLAN(network.STA_IF)
-ap_if = network.WLAN(network.AP_IF)
-ap_if.disconnect()
-ap_if.active(False)
-sta_if.disconnect()
-sta_if.active(False)
-
-sta_if.isconnected()
-sta_if.active(True)
-sta_if.scan()
-sta_if.connect(ssid, key)
-sta_if.ifconfig()
 sta_if.status()
 
 network.STAT_IDLE               1000
@@ -62,15 +46,19 @@ def connect_to_wifi(ssid: str, key: str):
     utime.sleep(1)
     sta_if.active(True)
     network_names = []
-    while ssid not in network_names:
+    scan_retries = 3
+    while ssid not in network_names and scan_retries > 0:
         print("Scanning for WiFi networks...")
         networks = sta_if.scan()
         network_names = [i[0].decode("utf-8") for i in networks]
+        scan_retries -= 1
+    if ssid not in network_names:
+        print(f'Could not find {ssid} network in scan!')
+        return "0.0.0.0"
     print(f'Found {ssid} network in scan.')
     if not sta_if.isconnected():
         print(f'Connecting to {ssid} network...')
         sta_if.active(True)
-        #sta_if.ifconfig((config.WiFi_device, '255.255.255.0', config.gateway, '8.8.8.8'))
         sta_if.connect(ssid, key)
 
         # TODO: instead of just blindly waiting for a timeout, check for sta_if.status() and react accordingly.
@@ -102,6 +90,22 @@ def generate_ap_name():
     return f"Py{adjective}{animal}{number}"
 
 
+def create_soft_ap(ap_name):
+    # Initialize the soft AP with the AP name from settings
+    print(f'Creating WiFi hotspot named {ap_name}...')
+    try:
+        ap_if.disconnect()
+        sta_if.disconnect()
+    except:
+        pass
+    ap_if.active(False) #  de-activate the interfaces
+    sta_if.active(False)
+    utime.sleep(1)
+    ap_if.active(True)
+    ap_if.config(essid=ap_name)
+    return "0.0.0.0"
+
+
 def initialize():
     global settings
     try:
@@ -125,8 +129,11 @@ def initialize():
 
 initialize()
 ip_address = connect_to_wifi(settings['wifi_ssid'], settings['wifi_password'])
-# TODO: check if ip_address is "0.0.0.0", and set up soft AP instead.
+if ip_address == "0.0.0.0":
+    ip_address = create_soft_ap(settings["ap_name"])
 app = HTTPServer(ip_address, 80)
+
+# TODO: figure out WebREPL
 #webrepl.start()
 
 def unquote(s):
@@ -152,7 +159,7 @@ def list_files(folder):
 async def static_files(reader, writer, request):
     local_path = "/static/"
     url_path = "/"
-    subpath = request.path[len(url_path):]
+    subpath = unquote(request.path[len(url_path):])
     if subpath == '':
         subpath = 'index.html'
     full_path = local_path + subpath
@@ -163,7 +170,7 @@ async def static_files(reader, writer, request):
 async def user_files(reader, writer, request):
     local_path = "/files/user/"
     url_path = "/files/user/"
-    subpath = request.path[len(url_path):]
+    subpath = unquote(request.path[len(url_path):])
     full_path = local_path + subpath
     await serve_file(reader, writer, request, full_path, False)
 
@@ -172,10 +179,11 @@ async def user_files(reader, writer, request):
 async def help_files(reader, writer, request):
     local_path = "/files/help/"
     url_path = "/files/help/"
-    subpath = request.path[len(url_path):]
+    subpath = unquote(request.path[len(url_path):])
     full_path = local_path + subpath
     await serve_file(reader, writer, request, full_path, True)
 
+# retrieve list of files
 @app.route("GET", "/api/files/*")
 async def handle_api(reader, writer, request):
     response = HTTPResponse(200, "application/json", close=True)
@@ -185,6 +193,7 @@ async def handle_api(reader, writer, request):
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
 
+# get the disk usage
 @app.route("GET", "/api/space")
 async def handle_api(reader, writer, request):
     response = HTTPResponse(200, "application/json", close=True)
