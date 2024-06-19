@@ -32,6 +32,16 @@
     background-color: #1e1e1e;
 }
 
+.tab.active::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background-color: #41b3ff; /* Color of the highlighted line */
+}
+
 .tab button.close-tab {
     margin-right: 8px;
     background-color: transparent;
