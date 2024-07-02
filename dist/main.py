@@ -7,12 +7,54 @@ import utime
 import random
 import uasyncio as asyncio
 import machine
+import io
 
 from ahttpserver import HTTPResponse, HTTPServer
 from ahttpserver.sse import EventSource
 from ahttpserver.servefile import serve_file
 
-#import webrepl
+
+class CaptureOutput(io.IOBase):
+    def __init__(self):
+        self.buffer = []
+
+    def write(self, data):
+        self.buffer.append(data.decode("utf-8"))
+        return len(data)
+    
+    def get_output(self):
+        return ''.join(self.buffer)
+
+    def clear(self):
+        self.buffer = []
+
+
+# This isn't meant to be fast, just usable
+replGlobals = {}
+def pseudoREPL(source):
+    global replGlobals
+    try:
+        # Capture the output
+        capture = CaptureOutput()
+        os.dupterm(capture)
+        try:
+            # Try to evaluate the input as an expression
+            result = eval(source, replGlobals)
+            if result is not None:
+                print(result)
+        except (SyntaxError, NameError):
+            # If eval fails, fall back to exec
+            try:
+                exec(source, replGlobals)
+            except Exception as e:
+                print(f"Error: {e}")
+        # Stop capturing
+        os.dupterm(None)
+        cap = capture.get_output()
+        capture.clear()
+        return cap
+    except Exception as ex:
+        return "ERR:" + ex
 
 sta_if = network.WLAN(network.STA_IF) # create station interface
 ap_if = network.WLAN(network.AP_IF) #  create access-point interface
@@ -133,8 +175,6 @@ if ip_address == "0.0.0.0":
     ip_address = create_soft_ap(settings["ap_name"])
 app = HTTPServer(ip_address, 80)
 
-# TODO: figure out WebREPL
-#webrepl.start()
 
 def unquote(s):
     res = s.split('%')
@@ -240,6 +280,19 @@ async def handle_api(reader, writer, request):
     writer.write(ujson.dumps({'response': 'success'}))
     await writer.drain()
     print(f"API request: DELETE {path} with response code 200")
+
+
+# pseudo-REPL
+@app.route("POST", "/api/repl")
+async def handle_api(reader, writer, request):
+    data = ujson.loads(request.body.decode("utf-8"))
+    results = pseudoREPL(data['cmd'])
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    writer.write(ujson.dumps({'res': results}))
+    await writer.drain()
+    print(f"API request: {request.path} with response code 200")
 
 
 async def say_hello_task():
