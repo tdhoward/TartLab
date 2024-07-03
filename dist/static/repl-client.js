@@ -66,6 +66,8 @@ function sendReplCommand(commandArray) {
 
 // Function to update the REPL console
 function updateReplConsole(message) {
+  if (message.length > 0 && !message.endsWith('\n'))
+    message += '\n';
   replConsole.value += "\n" + message;
   setPrompt(normalPrompt);
 }
@@ -122,6 +124,10 @@ replConsole.addEventListener("keydown", (event) => {
   } else if (event.key === "Backspace") {
     const currentLine = replConsole.value.split("\n").pop();
     const cursorPosition = replConsole.selectionStart;
+    if (cursorPosition < (replConsole.value.length - currentLine.length + 5)) {
+      event.preventDefault();  // don't allow deleting the prompt
+      return;
+    }
     const beforeCursor = currentLine.slice(0, cursorPosition);
     if (beforeCursor.endsWith('\t'))
       currentIndent -= 1;

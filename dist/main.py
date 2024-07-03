@@ -53,8 +53,8 @@ def pseudoREPL(source):
         cap = capture.get_output()
         capture.clear()
         return cap
-    except Exception as ex:
-        return "ERR:" + ex
+    except Exception as e:
+        return f"Error: {e}"
 
 sta_if = network.WLAN(network.STA_IF) # create station interface
 ap_if = network.WLAN(network.AP_IF) #  create access-point interface
