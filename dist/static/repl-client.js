@@ -94,43 +94,46 @@ replConsole.addEventListener("keydown", (event) => {
       currentIndent += 1;
       needsAnotherLine = true;
     }
-    if (currentPrompt === waitingPrompt)
-      needsAnotherLine = true;
-    if (inputCommand.trim() == "")
-      needsAnotherLine = false;
+    if (currentPrompt === waitingPrompt) needsAnotherLine = true;
+    if (inputCommand.trim() == "") needsAnotherLine = false;
     if (event.shiftKey || needsAnotherLine) {
       // Add current input to command buffer for multi-line command
       commandBuffer.push(inputCommand);
       replConsole.value += "\n";
       setPrompt(waitingPrompt);
-      if (currentIndent > 0)
-        replConsole.value += "\t".repeat(currentIndent);
+      if (currentIndent > 0) replConsole.value += "\t".repeat(currentIndent);
     } else {
       // Handle single or multi-line command execution
       commandBuffer.push(inputCommand);
       sendReplCommand(commandBuffer);
       commandBuffer = [];
     }
+  } else if (event.key === "Tab") {
+    replConsole.value += "\t";
+    currentIndent += 1;
+    event.preventDefault();
   } else if (event.key === "ArrowUp") {
     navigateHistory(-1);
     event.preventDefault();
   } else if (event.key === "ArrowDown") {
     navigateHistory(1);
     event.preventDefault();
-  } else if (event.key === "Tab") {
-    replConsole.value += "\t";
-    currentIndent += 1;
-    event.preventDefault();
+  } else if (event.key === "ArrowLeft") {
+    const currentLine = replConsole.value.split("\n").pop();
+    const cursorPosition = replConsole.selectionStart;
+    if (cursorPosition < replConsole.value.length - currentLine.length + 5) {
+      event.preventDefault(); // don't allow going into the prompt
+      return;
+    }
   } else if (event.key === "Backspace") {
     const currentLine = replConsole.value.split("\n").pop();
     const cursorPosition = replConsole.selectionStart;
-    if (cursorPosition < (replConsole.value.length - currentLine.length + 5)) {
-      event.preventDefault();  // don't allow deleting the prompt
+    if (cursorPosition < replConsole.value.length - currentLine.length + 5) {
+      event.preventDefault(); // don't allow deleting the prompt
       return;
     }
     const beforeCursor = currentLine.slice(0, cursorPosition);
-    if (beforeCursor.endsWith('\t'))
-      currentIndent -= 1;
+    if (beforeCursor.endsWith("\t")) currentIndent -= 1;
   }
 });
 
