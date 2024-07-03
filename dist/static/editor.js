@@ -1,10 +1,12 @@
 import { updateSaveButton } from './tabs.js';
 
+const tabsDiv = document.getElementById("tabs");
+const editorContainerDiv = document.getElementById("editor");
+
 const editors = {};
 let activeEditor = null;
 
 function createTab(filename, content) {
-    const tabsDiv = document.getElementById('tabs');
     const tab = document.createElement('div');
     tab.className = 'tab';
     tab.dataset.filename = filename;
@@ -15,7 +17,7 @@ function createTab(filename, content) {
 
     const editorDiv = document.createElement('div');
     editorDiv.className = 'editor-instance';
-    document.getElementById('editor').appendChild(editorDiv);
+    editorContainerDiv.appendChild(editorDiv);
 
     const editor = CodeMirror(editorDiv, {
         value: content,

@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="styles/sidebar.css">
     <link rel="stylesheet" href="styles/tabs.css">
     <link rel="stylesheet" href="styles/editor.css">
-    <link rel="stylesheet" href="styles/webrepl.css">
+    <link rel="stylesheet" href="styles/repl.css">
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
 </head>
 <body>
@@ -47,19 +47,18 @@
                 <!-- Tabs will be dynamically added here -->
             </div>
             <div id="controls">
-                <button onclick="createNewFileTab()">New</button>
-                <button onclick="saveFile()" disabled>Save</button>
+                <button id="newFileBt">New</button>
+                <button id="saveFileBt" disabled>Save</button>
             </div>
         </div>
         <div id="editor">
             <div id="editor-background"></div>
             <!-- Editor instances will be dynamically added here -->
         </div>
-        <div id="webrepl-panel">
-            <div id="webrepl-header" onclick="toggleWebReplPanel()">WebREPL (click to toggle)</div>
-            <div id="webrepl-content">
-                <textarea id="webrepl-console" readonly></textarea>
-                <input type="text" id="webrepl-input" placeholder="Type commands here...">
+        <div id="repl-panel">
+            <div id="repl-header">REPL console (click to toggle)</div>
+            <div id="repl-content">
+                <textarea id="repl-console" placeholder="Type commands here...">>>> </textarea>
             </div>
         </div>
     </div>
@@ -71,6 +70,5 @@
     <script src="libs/autorefresh.min.js"></script>
     <script src="libs/active-line.min.js"></script>
     <script src="libs/lint.min.js"></script>
-    <script src="webrepl-client.js"></script>
 </body>
 </html>

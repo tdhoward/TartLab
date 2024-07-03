@@ -1,6 +1,11 @@
 import { listFilesInSidebar, toggleSidebar } from './sidebar.js';
 import { createTab, switchToTab, closeTab, editors, activeEditor } from './editor.js';
 import { updateSaveButton } from './tabs.js';
+import './repl-client.js';
+
+const saveButton = document.getElementById("saveFileBt");
+const newButton = document.getElementById("newFileBt");
+const toastContainer = document.getElementById("toast-container");
 
 const hostname = window.location.hostname;
 const apiBaseUrl = `http://${hostname}/api`;
@@ -11,8 +16,6 @@ function createNewFileTab() {
     const filename = `New file ${newFileCounter++}`;
     createTab(filename, '');
 }
-
-const saveButton = document.querySelector('#controls button:nth-child(2)');
 
 function saveFile() {
     if (!activeEditor) {
@@ -37,11 +40,9 @@ function saveFile() {
 }
 
 function showToast(message, type = 'info') {
-    const toastContainer = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.innerText = message;
-
     toastContainer.appendChild(toast);
 
     setTimeout(() => {
@@ -49,16 +50,16 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
-updateSaveButton(); // Ensure the Save button starts disabled
+updateSaveButton();
 
 document.getElementById('filesIcon').onclick = () => toggleSidebar('filesIcon');
 document.getElementById('helpIcon').onclick = () => toggleSidebar('helpIcon');
-document.querySelector('#controls button:nth-child(2)').onclick = saveFile;
-document.querySelector('#controls button:nth-child(1)').onclick = createNewFileTab;
+saveButton.onclick = saveFile;
+newButton.onclick = createNewFileTab;
 
 // Hide the loading overlay once the content is fully loaded
 window.addEventListener('load', () => {
     document.getElementById('loading-overlay').style.display = 'none';
 });
 
-export { saveButton };
+export { apiBaseUrl, saveButton };

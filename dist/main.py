@@ -292,7 +292,7 @@ async def handle_api(reader, writer, request):
     await writer.drain()
     writer.write(ujson.dumps({'res': results}))
     await writer.drain()
-    print(f"API request: {request.path} with response code 200")
+    print(f"REPL command: '{data['cmd']}'")
 
 
 async def say_hello_task():

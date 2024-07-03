@@ -1,4 +1,4 @@
-#webrepl-panel {
+#repl-panel {
     background-color: #252526;
     color: #d4d4d4;
     display: flex;
@@ -8,7 +8,7 @@
     overflow: hidden;
 }
 
-#webrepl-header {
+#repl-header {
     padding: 14px; /* Adjust padding to ensure total height is 50px */
     cursor: pointer;
     background-color: #333;
@@ -20,31 +20,22 @@
     font-size: 1.0em;
 }
 
-#webrepl-content {
+#repl-content {
     display: flex;
     flex-direction: column;
     padding: 10px;
     flex-grow: 1;
 }
 
-#webrepl-console {
+#repl-console {
     flex-grow: 1;
     background-color: #1e1e1e;
     color: #d4d4d4;
     border: none;
     padding: 10px;
     font-family: monospace;
-    font-size: 1.0em;
+    font-size: 18px;
     resize: none;
-    height: 200px;
+    height: 10em;
 }
 
-#webrepl-input {
-    background-color: #1e1e1e;
-    color: #d4d4d4;
-    border: none;
-    padding: 10px;
-    font-family: monospace;
-    font-size: 1.0em;
-    margin-top: 10px;
-}

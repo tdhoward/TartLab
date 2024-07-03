@@ -1,19 +1,19 @@
 import { createTab, switchToTab, editors } from './editor.js';
+import { apiBaseUrl } from "./main.js";
 
-const hostname = window.location.hostname;
-const apiBaseUrl = `http://${hostname}/api`;
+const panelDiv = document.getElementById('panel');
+const fileListDiv = document.getElementById('fileList');
+const helpContentDiv = document.getElementById('helpContent');
+const mainDiv = document.getElementById('main');
+const spaceUsageContainerDiv = document.getElementById('space-usage-container');
+const iconDivs = document.querySelectorAll(".icon");
+const spaceUsageTextDiv = document.getElementById("space-usage-text");
+const usedSpaceDiv = document.getElementById("used-space");
 
 function toggleSidebar(iconId) {
-    const panel = document.getElementById('panel');
-    const fileList = document.getElementById('fileList');
-    const helpContent = document.getElementById('helpContent');
-    const main = document.getElementById('main');
-    const spaceUsageContainer = document.getElementById('space-usage-container');
-
-    const icons = document.querySelectorAll('.icon');
     let alreadyActive = false;
 
-    icons.forEach(icon => {
+    iconDivs.forEach(icon => {
         if (icon.id === iconId) {
             if (icon.classList.contains('active')) {
                 alreadyActive = true;
@@ -27,21 +27,21 @@ function toggleSidebar(iconId) {
     });
 
     if (alreadyActive) {
-        panel.classList.add('collapsed');
-        main.style.marginLeft = '56px';
-        spaceUsageContainer.style.display = 'none'; // Hide space usage bar when panel is collapsed
+        panelDiv.classList.add('collapsed');
+        mainDiv.style.marginLeft = '56px';
+        spaceUsageContainerDiv.style.display = 'none'; // Hide space usage bar when panel is collapsed
     } else {
-        panel.classList.remove('collapsed');
-        main.style.marginLeft = '306px';
+        panelDiv.classList.remove('collapsed');
+        mainDiv.style.marginLeft = '306px';
         if (iconId === 'filesIcon') {
             listFilesInSidebar();
-            fileList.style.display = 'block';
-            helpContent.style.display = 'none';
-            spaceUsageContainer.style.display = 'block'; // Show space usage bar when files panel is open
+            fileListDiv.style.display = 'block';
+            helpContentDiv.style.display = 'none';
+            spaceUsageContainerDiv.style.display = 'block'; // Show space usage bar when files panel is open
         } else if (iconId === 'helpIcon') {
-            fileList.style.display = 'none';
-            helpContent.style.display = 'block';
-            spaceUsageContainer.style.display = 'none'; // Hide space usage bar when help panel is open
+            fileListDiv.style.display = 'none';
+            helpContentDiv.style.display = 'block';
+            spaceUsageContainerDiv.style.display = 'none'; // Hide space usage bar when help panel is open
         }
     }
 }
@@ -55,8 +55,7 @@ function listFilesInSidebar() {
             return response.json();
         })
         .then(data => {
-            const fileListDiv = document.getElementById('fileList');
-            fileListDiv.innerHTML = '';
+            fileListDiv.innerHTML = "";
             data.files.forEach(file => {
                 const fileItem = document.createElement('div');
                 fileItem.textContent = file;
@@ -66,7 +65,6 @@ function listFilesInSidebar() {
             });
         })
         .catch(error => {
-            const fileListDiv = document.getElementById('fileList');
             fileListDiv.innerHTML = '<div class="error">Can\'t connect.</div>';
         });
 
@@ -108,25 +106,20 @@ function fetchSpaceUsage() {
             const totalMB = (totalBytes / (1024 * 1024)).toFixed(2);
             const usedPercentage = (usedBytes / totalBytes) * 100;
 
-            const spaceUsageText = document.getElementById('space-usage-text');
-            const usedSpace = document.getElementById('used-space');
+            spaceUsageTextDiv.innerHTML = `Used: ${usedMB} MB / ${totalMB} MB`;
 
-            spaceUsageText.innerHTML = `Used: ${usedMB} MB / ${totalMB} MB`;
-
-            usedSpace.style.width = `${usedPercentage}%`;
+            usedSpaceDiv.style.width = `${usedPercentage}%`;
             if (usedPercentage < 60) {
-                usedSpace.style.backgroundColor = 'green';
+                usedSpaceDiv.style.backgroundColor = 'green';
             } else if (usedPercentage < 80) {
-                usedSpace.style.backgroundColor = 'yellow';
+                usedSpaceDiv.style.backgroundColor = 'yellow';
             } else {
-                usedSpace.style.backgroundColor = 'red';
+                usedSpaceDiv.style.backgroundColor = 'red';
             }
         })
         .catch(error => {
-            const spaceUsageText = document.getElementById('space-usage-text');
-            const usedSpace = document.getElementById('used-space');
-            spaceUsageText.innerHTML = '<div class="error">Can\'t connect.</div>';
-            usedSpace.style.width = '0%';
+            spaceUsageTextDiv.innerHTML = '<div class="error">Can\'t connect.</div>';
+            usedSpaceDiv.style.width = '0%';
         });
 }
 
