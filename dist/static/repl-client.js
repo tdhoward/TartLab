@@ -73,13 +73,22 @@ function updateReplConsole(message) {
 }
 
 function moveCursorToCurrentLine() {
+  if (getCursorPositionInLine() < 4)
+    setCursorPositionInLine(4);
+}
+
+function getCursorPositionInLine() {
   const currentLine = replConsole.value.split("\n").pop();
   const cursorPosition = replConsole.selectionStart;
-  if (cursorPosition > (replConsole.value.length - currentLine.length)) {  // already on current line
-    return;
-  }
-  replConsole.selectionStart = replConsole.value.length;
+  return cursorPosition - (replConsole.value.length - currentLine.length);
 }
+
+function setCursorPositionInLine(pos, selection = false) {
+  const currentLine = replConsole.value.split("\n").pop();
+  replConsole.selectionStart = (replConsole.value.length - currentLine.length) + pos;
+  if (!selection) replConsole.selectionEnd = replConsole.selectionStart;
+}
+
 
 replConsole.addEventListener("keydown", (event) => {
   if (!event.ctrlKey && !event.altKey && !event.metaKey) {
@@ -119,37 +128,41 @@ replConsole.addEventListener("keydown", (event) => {
     navigateHistory(1);
     event.preventDefault();
   } else if (event.key === "ArrowLeft") {
-    const currentLine = replConsole.value.split("\n").pop();
-    const cursorPosition = replConsole.selectionStart;
-    if (cursorPosition < replConsole.value.length - currentLine.length + 5) {
+    if (getCursorPositionInLine() < 5) {
       event.preventDefault(); // don't allow going into the prompt
       return;
     }
   } else if (event.key === "Backspace") {
     const currentLine = replConsole.value.split("\n").pop();
-    const cursorPosition = replConsole.selectionStart;
-    if (cursorPosition < replConsole.value.length - currentLine.length + 5) {
+    let cursorPosition = getCursorPositionInLine();
+    if (cursorPosition < 5) {
       event.preventDefault(); // don't allow deleting the prompt
       return;
     }
     const beforeCursor = currentLine.slice(0, cursorPosition);
     if (beforeCursor.endsWith("\t")) currentIndent -= 1;
+  } else if (event.key === "Home") {
+    let sel = false;
+    if (event.shiftKey)
+      sel = true;
+    setCursorPositionInLine(4, sel);
+    event.preventDefault(); // don't allow going into the prompt
   }
 });
 
 replConsole.addEventListener("paste", (event) => {
+  const pasteText = event.clipboardData.getData("text");
+  if (pasteText == "") return;
+  moveCursorToCurrentLine();
   const currentLine = replConsole.value.split("\n").pop();
   const preexistingText = currentLine.slice(4);
   let petLen = preexistingText.length;
   if (petLen > 0)
-    replConsole.value = replConsole.value.slice(0, petLen);  // temporarily delete existing text
-  const pasteText = preexistingText + event.clipboardData.getData("text");
-  let pasteLines = pasteText.split("\n");
-  pasteLines.forEach(line => {
-    commandBuffer.push(line);
-    replConsole.value += line + "\n";
-    setPrompt(waitingPrompt);
-  });
+    replConsole.value = replConsole.value.slice(0, -petLen);  // temporarily delete existing command text
+  let addText = preexistingText + pasteText;
+  addText = addText.replace(/\r\n/g,"\n");
+  let addLines = addText.split("\n");
+  addCommandLines(addLines);  
   event.preventDefault();
 });
 
@@ -163,6 +176,26 @@ function countLeadingTabs(str) {
     }
   }
   return count;
+}
+
+// Adds one or more command lines to the console
+function addCommandLines(cmd) {
+  while (cmd.length > 0 && cmd[cmd.length - 1].trim() == "")
+    cmd.pop(); // take off empty lines at the end
+  let currentCmdLine = cmd.pop(); // remove and grab the last line of the command so we can edit it
+  if (cmd.length > 0) {
+    currentPrompt = waitingPrompt;
+    // step through cmd
+    cmd.forEach((line) => {
+      commandBuffer.push(line);
+      replConsole.value += line + "\n";
+      setPrompt(waitingPrompt);
+    });
+  }
+  setPrompt(currentPrompt);
+  replConsole.value += currentCmdLine;
+  currentIndent = countLeadingTabs(currentCmdLine); // set indent based on number of tabs at front of currentLine
+  replConsole.scrollTop = replConsole.scrollHeight;
 }
 
 function navigateHistory(direction) {
@@ -188,20 +221,7 @@ function navigateHistory(direction) {
   commandBuffer = []; // start fresh
   currentPrompt = normalPrompt;
   replConsole.value = lines.join("\n") + "\n" + currentPrompt;
-  let currentCmdLine = cmd.pop(); // remove and grab the last line of the command
-  if (cmd.length > 0) {
-    currentPrompt = waitingPrompt;
-    // step through cmd
-    cmd.forEach((line) => {
-      commandBuffer.push(line);
-      replConsole.value += line + "\n";
-      setPrompt(waitingPrompt);
-    });
-  }
-  setPrompt(currentPrompt);
-  replConsole.value += currentCmdLine;
-  currentIndent = countLeadingTabs(currentCmdLine); // set indent based on number of tabs at front of currentLine
-  replConsole.scrollTop = replConsole.scrollHeight;
+  addCommandLines(cmd);
 }
 
 // Initialize the prompt
