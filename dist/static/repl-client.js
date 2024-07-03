@@ -13,6 +13,7 @@ let historyIndex = -1;
 const normalPrompt = ">>> ";
 const waitingPrompt = "... ";
 let currentPrompt = normalPrompt;
+let currentIndent = 0;  // how many tabs
 
 function setPrompt(prompt) {
   currentPrompt = prompt;
@@ -43,6 +44,7 @@ function sendReplCommand(command) {
   commandHistory.push(command);
   historyIndex = commandHistory.length; // Reset history index
 
+  // TODO: give some indication that we are waiting on a response from the device.
   fetch(`${apiBaseUrl}/repl`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -76,6 +78,8 @@ replConsole.addEventListener("keydown", (event) => {
       commandBuffer.push(inputCommand);
       replConsole.value += "\n";
       setPrompt(waitingPrompt);
+      if (currentIndent > 0)
+        replConsole.value += "\t".repeat(currentIndent);
     } else {
       // Handle single or multi-line command execution
       commandBuffer.push(inputCommand);
@@ -89,6 +93,16 @@ replConsole.addEventListener("keydown", (event) => {
   } else if (event.key === "ArrowDown") {
     navigateHistory(1);
     event.preventDefault();
+  } else if (event.key === "Tab") {
+    replConsole.value += "\t";
+    currentIndent += 1;
+    event.preventDefault();
+  } else if (event.key === "Backspace") {
+    const currentLine = replConsole.value.split("\n").pop();
+    const cursorPosition = replConsole.selectionStart;
+    const beforeCursor = currentLine.slice(0, cursorPosition);
+    if (beforeCursor.endsWith('\t'))
+      currentIndent -= 1;
   }
 });
 
