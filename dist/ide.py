@@ -75,7 +75,23 @@ Maybe eventually change this to poll for RSSI. Warn users when Wifi is weak.
 
 '''
 
-def connect_to_wifi(ssid: str, key: str):
+def scan_for_wifi(ssids: list[str], keys: list[str]):
+    print("Scanning for WiFi networks...")
+    networks = sta_if.scan()  # returns list of (ssid, bssid, channel, RSSI, security, hidden)
+    networks.sort(key=lambda n:n[3], reverse=True)  # sort networks by RSSI
+    for nwork in networks:
+        network_name = nwork[0].decode('utf-8')
+        for idx, s in enumerate(ssids):
+            if s == network_name:
+                ssid = s
+                key = keys[idx]
+                return True, ssid, key
+    return False, "", ""
+
+
+def connect_to_wifi(ssids: list[str], keys: list[str]):
+    if len(ssids) == 0:
+        return "0.0.0.0"
     retries = 20
     try:
         ap_if.disconnect()
@@ -86,15 +102,15 @@ def connect_to_wifi(ssid: str, key: str):
     sta_if.active(False)
     utime.sleep(1)
     sta_if.active(True)
-    network_names = []
     scan_retries = 3
-    while ssid not in network_names and scan_retries > 0:
-        print("Scanning for WiFi networks...")
-        networks = sta_if.scan()
-        network_names = [i[0].decode("utf-8") for i in networks]
+    foundSsid = False
+    ssid = ""
+    key = ""
+    while not foundSsid and scan_retries > 0:
+        foundSsid, ssid, key = scan_for_wifi(ssids, keys)
         scan_retries -= 1
-    if ssid not in network_names:
-        print(f'Could not find {ssid} network in scan!')
+    if not foundSsid:
+        print(f'Could not find an accessible WiFi network in scan!')
         return "0.0.0.0"
     print(f'Found {ssid} network in scan.')
     if not sta_if.isconnected():
@@ -162,14 +178,14 @@ def initialize():
     except OSError:
         settings = {
             'ap_name': generate_ap_name(),
-            'wifi_ssid': 'your_wifi_ssid',
-            'wifi_password': 'your_wifi_password'
+            'wifi_ssids': [],
+            'wifi_passwords': []
         }
         with open('settings.json', 'w') as f:
             ujson.dump(settings, f)
 
 initialize()
-ip_address = connect_to_wifi(settings['wifi_ssid'], settings['wifi_password'])
+ip_address = connect_to_wifi(settings['wifi_ssids'], settings['wifi_passwords'])
 if ip_address == "0.0.0.0":
     ip_address = create_soft_ap(settings["ap_name"])
 app = HTTPServer(ip_address, 80)
