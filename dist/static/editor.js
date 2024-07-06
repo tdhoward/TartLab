@@ -6,7 +6,7 @@ const editorContainerDiv = document.getElementById("editor");
 const editors = {};
 let activeEditor = null;
 
-function createTab(filename, content) {
+function createTab(filename, content, isNamed) {
     const tab = document.createElement('div');
     tab.className = 'tab';
     tab.dataset.filename = filename;
@@ -38,7 +38,7 @@ function createTab(filename, content) {
     });
 
     editor.isDirty = false; // Initial state is not dirty
-    editors[filename] = { editor, tab, editorDiv, filename };
+    editors[filename] = { editor, tab, editorDiv, filename, isNamed };
 
     // Stop propagation when the close button is clicked
     tab.querySelector('.close-tab').onclick = (event) => {

@@ -83,7 +83,7 @@ function openFile(filename) {
                 return response.text();
             })
             .then(content => {
-                createTab(filename, content);
+                createTab(filename, content, true);
             })
             .catch(error => {
                 alert('Error opening file: ' + error);

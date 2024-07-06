@@ -1,6 +1,6 @@
-import { listFilesInSidebar, toggleSidebar } from './sidebar.js';
-import { createTab, switchToTab, closeTab, editors, activeEditor } from './editor.js';
-import { updateSaveButton } from './tabs.js';
+import { toggleSidebar } from './sidebar.js';
+import { activeEditor } from './editor.js';
+import { createNewFileTab, updateSaveButton } from "./tabs.js";
 import './repl-client.js';
 
 const saveButton = document.getElementById("saveFileBt");
@@ -12,15 +12,23 @@ const apiBaseUrl = `http://${hostname}/api`;
 
 let newFileCounter = 1;
 
-function createNewFileTab() {
-    const filename = `New file ${newFileCounter++}`;
-    createTab(filename, '');
-}
-
 function saveFile() {
     if (!activeEditor) {
         showToast('No file is currently open.', 'warning');
         return;
+    }
+
+    if (!activeEditor.isNamed) {
+      const newFilename = prompt("Enter a name for the new file:");
+      if (newFilename) {
+        activeEditor.filename = newFilename;
+        activeEditor.isNamed = true;
+        activeEditor.tab.dataset.filename = newFilename;
+        activeEditor.tab.innerHTML = `${newFilename} <button class="close-tab" data-filename="${newFilename}">X</button>`;
+      } else {
+        showToast("File name is required to save.", "warning");
+        return;
+      }
     }
 
     const filename = encodeURIComponent(activeEditor.filename); // URI encode the filename

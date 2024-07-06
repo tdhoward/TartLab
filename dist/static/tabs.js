@@ -5,7 +5,7 @@ let newFileCounter = 1;
 
 function createNewFileTab() {
     const filename = `New file ${newFileCounter++}`;
-    createTab(filename, '');
+    createTab(filename, '', false);
 }
 
 function updateSaveButton() {
