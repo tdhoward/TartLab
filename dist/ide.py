@@ -177,6 +177,7 @@ def initialize():
             settings = ujson.load(f)
     except OSError:
         settings = {
+            'IDE_BUTTON_PIN': 14,
             'ap_name': generate_ap_name(),
             'wifi_ssids': [],
             'wifi_passwords': []
