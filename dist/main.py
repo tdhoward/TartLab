@@ -6,7 +6,8 @@ try:
     with open('settings.json', 'r') as f:
         settings = ujson.load(f)
 except OSError:  # doesn't exist
-    setting = {}
+    print('No settings found.')
+    settings = {}
 if 'IDE_BUTTON_PIN' not in settings:
     settings['IDE_BUTTON_PIN'] = 14  # default button pin
 
