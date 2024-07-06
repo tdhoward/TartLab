@@ -170,6 +170,11 @@ def initialize():
     except OSError as e:
         if e.args[0] != 17:  # 17: EEXIST, directory already exists
             raise
+    try:
+        os.mkdir('/files/user')  # make sure folder exists
+    except OSError as e:
+        if e.args[0] != 17:  # 17: EEXIST, directory already exists
+            raise
     # get settings or set defaults
     settings = {}
     try:
@@ -264,13 +269,18 @@ async def handle_api(reader, writer, request):
 
 
 # Handle API POST requests for files
-@app.route("POST", "/api/files/*")
+@app.route("POST", "/api/files/user/*")
 async def handle_api(reader, writer, request):
     path = request.path
-    filename = unquote(path[len('/api/files/'):])  # URL decoding the filename
+    filename = unquote(path[len('/api/files/user/'):])  # URL decoding the filename
     data = ujson.loads(request.body.decode("utf-8"))
-    with open('/files/' + filename, 'w') as file:
-        file.write(data['content'])
+    try:
+        with open('/files/user/' + filename, 'w') as file:
+            file.write(data['content'])
+    except Exception as ex:  # don't stop the server
+        print(f'Filename was: {filename}')
+        print(data)
+        print(ex)
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
