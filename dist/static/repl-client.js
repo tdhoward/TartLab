@@ -4,8 +4,6 @@ const replPanel = document.getElementById("repl-panel");
 const replHeader = document.getElementById("repl-header");
 const replConsole = document.getElementById("repl-console");
 
-let isPanelExpanded = false; // Track the state of the panel
-
 let commandBuffer = [];
 let commandHistory = [];
 let historyIndex = -1;
@@ -27,12 +25,7 @@ function setPrompt(prompt) {
 }
 
 function toggleReplPanel() {
-  if (isPanelExpanded) {
-    replPanel.style.maxHeight = "50px";
-  } else {
-    replPanel.style.maxHeight = "450px";
-  }
-  isPanelExpanded = !isPanelExpanded; // Toggle the state
+  replPanel.classList.toggle('repl-panel-collapsed');
 }
 
 // Function to send REPL command

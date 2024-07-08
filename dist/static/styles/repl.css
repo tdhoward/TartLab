@@ -4,8 +4,12 @@
     display: flex;
     flex-direction: column;
     transition: max-height 0.3s ease;
-    max-height: 50px; /* Initially only show the header */
+    max-height: 450px;
     overflow: hidden;
+}
+
+.repl-panel-collapsed {
+    max-height: 50px !important; /* only show the header */
 }
 
 #repl-header {
