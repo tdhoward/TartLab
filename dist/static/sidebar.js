@@ -28,11 +28,11 @@ function toggleSidebar(iconId) {
 
     if (alreadyActive) {
         panelDiv.classList.add('collapsed');
-        mainDiv.style.marginLeft = '56px';
+        mainDiv.classList.remove('main-with-side-panel')
         spaceUsageContainerDiv.style.display = 'none'; // Hide space usage bar when panel is collapsed
     } else {
         panelDiv.classList.remove('collapsed');
-        mainDiv.style.marginLeft = '306px';
+        mainDiv.classList.add('main-with-side-panel')
         if (iconId === 'filesIcon') {
             listFilesInSidebar();
             fileListDiv.style.display = 'block';

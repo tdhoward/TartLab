@@ -17,6 +17,10 @@ body {
     transition: margin-left 0.3s; /* Smooth transition for resizing */
 }
 
+.main-with-side-panel {
+    margin-left: 306px !important;
+}
+
 #loading-overlay {
     position: fixed;
     top: 0;
