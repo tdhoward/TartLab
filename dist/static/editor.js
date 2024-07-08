@@ -49,6 +49,14 @@ function createTab(filename, content, isNamed) {
     switchToTab(filename);
 }
 
+function renameTab(fromFilename, toFilename) {
+    editors[toFilename] = editors[fromFilename];
+    editors[toFilename].filename = toFilename;
+    editors[toFilename].tab.dataset.filename = toFilename;
+    editors[toFilename].tab.innerHTML = `${toFilename} <button class="close-tab" data-filename="${toFilename}">X</button>`;
+    delete editors[fromFilename];
+}
+
 function switchToTab(filename) {
     if (activeEditor) {
         activeEditor.editorDiv.style.display = 'none';
@@ -99,4 +107,4 @@ document.addEventListener('click', function (event) {
     }
 });
 
-export { createTab, switchToTab, closeTab, editors, activeEditor };
+export { createTab, renameTab, switchToTab, closeTab, editors, activeEditor };

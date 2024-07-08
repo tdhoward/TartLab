@@ -1,5 +1,5 @@
 import { toggleSidebar } from './sidebar.js';
-import { activeEditor } from './editor.js';
+import { renameTab, activeEditor } from './editor.js';
 import { createNewFileTab, updateSaveButton } from "./tabs.js";
 import './repl-client.js';
 
@@ -21,10 +21,8 @@ function saveFile() {
     if (!activeEditor.isNamed) {
       const newFilename = prompt("Enter a name for the new file:");
       if (newFilename) {
-        activeEditor.filename = newFilename;
+        renameTab(activeEditor.filename, newFilename);
         activeEditor.isNamed = true;
-        activeEditor.tab.dataset.filename = newFilename;
-        activeEditor.tab.innerHTML = `${newFilename} <button class="close-tab" data-filename="${newFilename}">X</button>`;
       } else {
         showToast("File name is required to save.", "warning");
         return;
