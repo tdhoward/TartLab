@@ -1,5 +1,10 @@
 import ujson
 from machine import Pin
+import sys
+
+# add /pylibs and /files/user
+sys.path.insert(1, '/pylibs')
+sys.path.insert(1, '/files/user')
 
 # read the settings file to determine buttons
 try:
