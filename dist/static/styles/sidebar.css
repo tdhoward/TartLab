@@ -49,7 +49,7 @@
 }
 
 #panel {
-    width: 250px;
+    width: var(--side-panel-width);
     border-left: 1px solid #333;
     background-color: #141829;
     transition: transform 0.3s, opacity 0.3s;
@@ -62,7 +62,7 @@
 }
 
 #panel.collapsed {
-    transform: translateX(-250px);
+    transform: translateX(calc(0px - var(--side-panel-width)));
     opacity: 0;
 }
 
@@ -80,7 +80,7 @@
 #panel.collapsed #panel-content {
     visibility: visible;
     opacity: 0;
-    transform: translateX(-250px);
+    transform: translateX(calc(0px - var(--side-panel-width)));
 }
 
 #fileList {
@@ -90,7 +90,7 @@
 
 .file-item {
     cursor: pointer;
-    padding: 5px;
+    padding: 8px;
     border-bottom: 1px solid #333;
 }
 

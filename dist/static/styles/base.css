@@ -1,10 +1,12 @@
 /* Define all the global variables here */
 :root {
     --font-size: 18px;
+    --large-font-size: 28px;
     --iconbar-width: 56px;
     --icon-size: 32px;
-    --side-panel-width: 306px;
+    --side-panel-width: 250px;
     --large-logo-size: 256px;
+    --tab-container-height: 41px;
     --repl-panel-height: 450px;
     --repl-header-height: 50px;
 }
@@ -29,7 +31,7 @@ body {
 }
 
 .main-with-side-panel {
-    margin-left: var(--side-panel-width) !important;
+    margin-left: calc(var(--iconbar-width) + var(--side-panel-width)) !important;
 }
 
 #loading-overlay {
@@ -44,7 +46,7 @@ body {
     flex-direction: column; /* Arrange logo and text vertically */
     justify-content: center;
     align-items: center;
-    font-size: 28px;
+    font-size: var(--large-font-size);
     z-index: 9999;
     padding-bottom: 50px; /* Adjust this value to move the content upwards */
 }
@@ -52,7 +54,7 @@ body {
 #loading-logo {
     width: var(--large-logo-size);
     height: var(--large-logo-size);
-    margin-bottom: 0px; /* Space between logo and text */
+    margin-bottom: 0px; /* the space between logo and text */
 }
 
 button {
@@ -86,7 +88,7 @@ button:disabled {
     margin-bottom: 10px;
     border-radius: 4px;
     color: #fff;
-    font-size: 18px;
+    font-size: var(--font-size);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     animation: fadeInOut 4s ease-in-out;
 }

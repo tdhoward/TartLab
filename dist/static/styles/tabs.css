@@ -1,30 +1,30 @@
 #tab-controls-container {
-    height: 41px;
-    display: flex; /* Use flex layout */
+    height: var(--tab-container-height);
+    display: flex;
     align-items: center; /* Align items in the center vertically */
     border-bottom: 1px solid #333;
     background-color: #252526;
-    flex-wrap: nowrap; /* Prevent items from wrapping */
+    flex-wrap: nowrap;
 }
 
 #tabs {
-    display: flex; /* Use flex layout */
-    flex-grow: 1; /* Allow the tabs div to grow */
+    display: flex;
+    flex-grow: 1;
     overflow-x: auto; /* Allows tabs to scroll horizontally if needed */
     background-color: #252526;
-    white-space: nowrap; /* Prevent tabs from wrapping */
+    white-space: nowrap;
 }
 
 .tab {
+    display: flex;
     padding: 10px 48px 10px 10px; /* Increase padding to the right to account for the close button */
     cursor: pointer;
     border-right: 1px solid #333;
     background-color: #252526;
     color: #d4d4d4;
-    font-size: 18px; /* Increase text size */
-    display: flex;
+    font-size: var(--font-size);
     align-items: center;
-    position: relative; /* Ensure positioning of the close button */
+    position: relative; /* For positioning of the close button */
     flex-shrink: 0; /* Prevent tabs from shrinking */
 }
 
@@ -48,7 +48,7 @@
     border: none;
     color: #d4d4d4;
     cursor: pointer;
-    font-size: 14px; /* Make the close button smaller */
+    font-size: 14px; /* Close button font is smaller */
     position: absolute;
     right: 0px;
     top: 50%;
