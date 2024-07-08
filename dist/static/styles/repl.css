@@ -4,12 +4,12 @@
     display: flex;
     flex-direction: column;
     transition: max-height 0.3s ease;
-    max-height: 450px;
+    max-height: var(--repl-panel-height);
     overflow: hidden;
 }
 
 .repl-panel-collapsed {
-    max-height: 50px !important; /* only show the header */
+    max-height: var(--repl-header-height) !important; /* only show the header */
 }
 
 #repl-header {
@@ -19,7 +19,7 @@
     border-bottom: 1px solid #444;
     display: flex;
     align-items: center; /* Center content vertically */
-    height: 50px; /* Fixed height for the header */
+    height: var(--repl-header-height);
     box-sizing: border-box; /* Include padding in height calculation */
     font-size: 1.0em;
 }
@@ -38,7 +38,7 @@
     border: none;
     padding: 10px;
     font-family: monospace;
-    font-size: 18px;
+    font-size: var(--font-size);
     resize: none;
     height: 10em;
     tab-size: 4;

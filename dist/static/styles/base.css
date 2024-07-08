@@ -1,3 +1,14 @@
+/* Define all the global variables here */
+:root {
+    --font-size: 18px;
+    --iconbar-width: 56px;
+    --icon-size: 32px;
+    --side-panel-width: 306px;
+    --large-logo-size: 256px;
+    --repl-panel-height: 450px;
+    --repl-header-height: 50px;
+}
+
 body {
     font-family: Arial, sans-serif;
     display: flex;
@@ -5,7 +16,7 @@ body {
     margin: 0;
     background-color: #1e1e1e;
     color: #d4d4d4;
-    font-size: 18px;
+    font-size: var(--font-size);
 }
 
 #main {
@@ -13,12 +24,12 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    margin-left: 56px; /* Ensure main content starts after the icon bar */
+    margin-left: var(--iconbar-width); /* Ensure main content starts after the icon bar */
     transition: margin-left 0.3s; /* Smooth transition for resizing */
 }
 
 .main-with-side-panel {
-    margin-left: 306px !important;
+    margin-left: var(--side-panel-width) !important;
 }
 
 #loading-overlay {
@@ -39,8 +50,8 @@ body {
 }
 
 #loading-logo {
-    width: 256px;
-    height: 256px;
+    width: var(--large-logo-size);
+    height: var(--large-logo-size);
     margin-bottom: 0px; /* Space between logo and text */
 }
 
@@ -49,9 +60,9 @@ button {
     background-color: #007acc;
     color: #fff;
     border: none;
-    padding: 8px 15px; /* Increase padding for better readability */
+    padding: 8px 15px;
     cursor: pointer;
-    font-size: 18px; /* Increase text size */
+    font-size: var(--font-size);
 }
 
 button:disabled {

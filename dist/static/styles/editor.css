@@ -14,7 +14,7 @@
     height: 100%;
     z-index: -1;
     background: url("../img/logo.svg") no-repeat center center;
-    background-size: 256px 256px;
+    background-size: var(--large-logo-size);
     filter: brightness(0) saturate(0%) invert(25%);
 }
 
@@ -44,10 +44,4 @@
 
 .CodeMirror-activeline .CodeMirror-linenumber {
     color: #d4d4d4 !important; /* Brighter color for active line number */
-}
-
-@media (max-width: 768px) {
-    #panel {
-        width: 0;
-    }
 }
