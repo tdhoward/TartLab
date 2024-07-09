@@ -12,6 +12,7 @@ from ahttpserver import HTTPResponse, HTTPServer
 from ahttpserver.sse import EventSource
 from ahttpserver.servefile import serve_file
 
+network.hostname('tartlab')  # sets up tartlab.local on mDNS
 
 class CaptureOutput(io.IOBase):
     def __init__(self):
