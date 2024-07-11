@@ -17,7 +17,7 @@
 
 .tab {
     display: flex;
-    padding: 10px 48px 10px 10px; /* Increase padding to the right to account for the close button */
+    padding: 0.75rem 3rem 0.75rem 0.75rem; /* Increase padding to the right to account for the close button */
     cursor: pointer;
     border-right: 1px solid #333;
     background-color: #252526;
@@ -43,16 +43,16 @@
 }
 
 .tab button.close-tab {
-    margin-right: 8px;
+    margin-right: 0.5rem;
     background-color: transparent;
     border: none;
     color: #d4d4d4;
     cursor: pointer;
-    font-size: 14px; /* Close button font is smaller */
+    font-size: calc(var(--font-size) - 2px); /* Close button font is smaller */
     position: absolute;
     right: 0px;
     top: 50%;
-    padding: 8px 11px; /* Add padding for better click area */
+    padding: 0.5rem 0.75rem; /* Add padding for better click area */
     transform: translateY(-50%); /* Center the button vertically */
     transition: background-color 0.3s;
 }

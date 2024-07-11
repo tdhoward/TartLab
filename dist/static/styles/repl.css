@@ -31,7 +31,7 @@
     border: none;
     padding: 0.8rem;
     font-family: monospace;
-    font-size: var(--font-size);
+    font-size: var(--console-font-size);
     resize: none;
     tab-size: 4;
     transition: height 0.4s, padding 0.4s;

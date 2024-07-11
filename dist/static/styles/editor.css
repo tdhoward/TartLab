@@ -39,7 +39,7 @@
 
 .CodeMirror-linenumber {
     color: #4d4d4d !important; /* Darker gray for line numbers with higher specificity */
-    padding-right: 15px; /* Add padding to the right of line numbers */
+    padding-right: 1rem; /* Add padding to the right of line numbers */
 }
 
 .CodeMirror-activeline .CodeMirror-linenumber {
