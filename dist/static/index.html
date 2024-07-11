@@ -18,7 +18,7 @@
         <img src="img/logo.svg" alt="Logo" id="loading-logo">
         Loading, please wait...
     </div>
-    <div id="sidebar">
+    <div id="app-container">
         <div id="iconBar">
             <div class="icon" id="filesIcon">
                 <img src="img/files.svg" alt="Files icon">
@@ -40,24 +40,22 @@
                 </div>
             </div>
         </div>
-    </div>
-    <div id="main">
-        <div id="tab-controls-container">
-            <div id="tabs">
-                <!-- Tabs will be dynamically added here -->
+        <div id="main">
+            <div id="tab-controls-container">
+                <div id="tabs">
+                    <!-- Tabs will be dynamically added here -->
+                </div>
+                <div id="controls">
+                    <button id="newFileBt">New</button>
+                    <button id="saveFileBt" disabled>Save</button>
+                </div>
             </div>
-            <div id="controls">
-                <button id="newFileBt">New</button>
-                <button id="saveFileBt" disabled>Save</button>
+            <div id="editor">
+                <div id="editor-background"></div>
+                <!-- Editor instances will be dynamically added here -->
             </div>
-        </div>
-        <div id="editor">
-            <div id="editor-background"></div>
-            <!-- Editor instances will be dynamically added here -->
-        </div>
-        <div id="repl-panel" class="repl-panel-collapsed">
             <div id="repl-header">Console (click to toggle)</div>
-            <div id="repl-content">
+            <div id="repl-content" class="collapsed">
                 <textarea id="repl-console" spellcheck="false">>>> </textarea>
             </div>
         </div>

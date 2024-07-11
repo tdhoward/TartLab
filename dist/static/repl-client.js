@@ -1,6 +1,6 @@
 import { apiBaseUrl } from "./main.js";
 
-const replPanel = document.getElementById("repl-panel");
+const replContent = document.getElementById("repl-content");
 const replHeader = document.getElementById("repl-header");
 const replConsole = document.getElementById("repl-console");
 
@@ -25,7 +25,7 @@ function setPrompt(prompt) {
 }
 
 function toggleReplPanel() {
-  replPanel.classList.toggle('repl-panel-collapsed');
+  replContent.classList.toggle('collapsed');
 }
 
 // Function to send REPL command

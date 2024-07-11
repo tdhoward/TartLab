@@ -1,10 +1,12 @@
+/*
 #sidebar {
     display: flex;
-    height: 100vh;
+    height: 100%;
     background-color: #252526;
     border-right: 1px solid #333;
     position: relative;
 }
+*/
 
 #iconBar {
     width: var(--iconbar-width);
@@ -50,7 +52,7 @@
 
 #panel {
     width: var(--side-panel-width);
-    border-left: 1px solid #333;
+    border-right: 1px solid #444;
     background-color: #141829;
     transition: transform 0.3s, opacity 0.3s;
     position: absolute;

@@ -7,25 +7,41 @@
     --side-panel-width: 250px;
     --large-logo-size: 256px;
     --tab-container-height: 41px;
-    --repl-panel-height: 450px;
-    --repl-header-height: 50px;
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
 }
 
 body {
     font-family: Arial, sans-serif;
     display: flex;
-    height: 100vh;
-    margin: 0;
+    flex-direction: column;
     background-color: #1e1e1e;
     color: #d4d4d4;
     font-size: var(--font-size);
 }
 
+/* Contains three elements: iconBar, panel, and main */
+#app-container {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
 #main {
-    flex-grow: 1;  /* grow horizontally */
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100%;
     margin-left: var(--iconbar-width); /* Ensure main content starts after the icon bar */
     transition: margin-left 0.3s; /* Smooth transition for resizing */
 }
