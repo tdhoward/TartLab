@@ -9,6 +9,13 @@ const spaceUsageContainerDiv = document.getElementById('space-usage-container');
 const iconDivs = document.querySelectorAll(".icon");
 const spaceUsageTextDiv = document.getElementById("space-usage-text");
 const usedSpaceDiv = document.getElementById("used-space");
+const hamburgerMenuButton = document.getElementById("hamburger-menu-bt");
+const iconBar = document.getElementById("iconBar");
+
+hamburgerMenuButton.addEventListener("click", () => {
+  iconBar.classList.toggle("open");
+  main.classList.toggle("iconBarOpen");
+});
 
 function toggleSidebar(iconId) {
     let alreadyActive = false;
@@ -26,13 +33,15 @@ function toggleSidebar(iconId) {
         }
     });
 
-    if (alreadyActive) {
+    if (alreadyActive) {  // close the panel
         panelDiv.classList.add('collapsed');
         mainDiv.classList.remove('main-with-side-panel')
+        hamburgerMenuButton.classList.remove("hidden");
         spaceUsageContainerDiv.style.display = 'none'; // Hide space usage bar when panel is collapsed
-    } else {
+    } else {             // open the panel
         panelDiv.classList.remove('collapsed');
-        mainDiv.classList.add('main-with-side-panel')
+        mainDiv.classList.add('main-with-side-panel');
+        hamburgerMenuButton.classList.add('hidden');
         if (iconId === 'filesIcon') {
             listFilesInSidebar();
             fileListDiv.style.display = 'block';

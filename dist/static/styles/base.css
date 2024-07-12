@@ -10,6 +10,28 @@
     --tab-container-height: 41px;
 }
 
+#hamburger-menu-bt {
+    background: none;
+    border: none;
+    color: #155884;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: none; /* Hidden by default */
+}
+
+#main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    margin-left: var(--iconbar-width); /* Ensure main content starts after the icon bar */
+    transition: margin-left 0.3s; /* Smooth transition for resizing */
+}
+
+.main-with-side-panel {
+    margin-left: calc(var(--iconbar-width) + var(--side-panel-width)) !important;
+}
+
 /* Small devices like iPhone SE, Pixel 7, Samsung Galaxy S20 Ultra */
 @media only screen and (width <= 576px) {
     :root {
@@ -22,6 +44,31 @@
         --large-logo-size: 200px;
         --tab-container-height: 36px;
     }
+
+    #hamburger-menu-bt {
+        display: block;
+    }
+    
+    #hamburger-menu-bt.hidden {
+        display: none;
+    }
+
+    #iconBar {
+        transform: translateX(-100%); /* Hide the icon bar by default */
+        transition: transform 0.3s ease;
+    }
+    #iconBar.open {
+        transform: translateX(0); /* Show the icon bar when open */
+    }
+
+    #main {
+        margin-left: 0; /* default to no iconBar */
+        transition: margin-left 0.3s; /* Smooth transition for resizing */
+    }
+    #main.iconBarOpen {
+        margin-left: var(--iconbar-width); /* Ensure main content starts after the icon bar */
+    }
+
 }
 
 
@@ -51,19 +98,6 @@ body {
     margin: 0;
     padding: 0;
     overflow: hidden;
-}
-
-#main {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    margin-left: var(--iconbar-width); /* Ensure main content starts after the icon bar */
-    transition: margin-left 0.3s; /* Smooth transition for resizing */
-}
-
-.main-with-side-panel {
-    margin-left: calc(var(--iconbar-width) + var(--side-panel-width)) !important;
 }
 
 #loading-overlay {
