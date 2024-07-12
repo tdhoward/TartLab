@@ -2,3 +2,4 @@ settings.json
 sync_files.bat
 mpsync.py
 TartLab.code-workspace
+/CodeMirror6/node_modules
