@@ -64,8 +64,7 @@
 }
 
 #panel.collapsed {
-    /*transform: translateX(calc(0px - var(--side-panel-width)));*/
-    transform: translateX(-100%);
+    transform: translateX(calc(0px - calc(var(--side-panel-width) + var(--iconbar-width))));
     opacity: 0;
 }
 
@@ -83,8 +82,7 @@
 #panel.collapsed #panel-content {
     visibility: visible;
     opacity: 0;
-    /*transform: translateX(calc(0px - var(--side-panel-width)));*/
-    transform: translateX(-100%);
+    transform: translateX(calc(0px - calc(var(--side-panel-width) + var(--iconbar-width))));
 }
 
 #fileList {
