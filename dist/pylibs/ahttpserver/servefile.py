@@ -29,12 +29,23 @@ FILE_TYPES = {
 }
 
 
+def file_or_dir_exists(path):
+    try:
+        os.stat(path)
+        return True
+    except OSError:
+        return False
+
+
 # Serve static files with client-side caching
 async def serve_file(reader, writer, request, file_path, use_caching = True):
     extension = file_path.split('.')[-1]
     content_type = FILE_TYPES.get(extension, 'application/octet-stream')
     extra_headers = dict()
     try:
+        if file_or_dir_exists(file_path + '.gz'):  # send gzipped version, if it exists
+            file_path += '.gz'
+            extra_headers['Content-Encoding'] = "gzip"
         # Set up headers for caching
         file_stat = os.stat(file_path)
         if use_caching:
