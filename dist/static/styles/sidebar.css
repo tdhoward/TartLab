@@ -126,6 +126,13 @@
     padding: 0.5rem;
 }
 
+#file-context-menu-title {
+    padding: 0.5rem;
+    border-bottom: 2px solid #000;
+    font-weight: bold;
+    color:#000;
+}
+
 #file-context-menu ul {
     list-style: none;
     padding: 0;
@@ -136,6 +143,11 @@
     padding: 1rem 1.5rem;
     cursor: pointer;
     color: #fff;
+    border-bottom: 1px solid #444;
+}
+
+#file-context-menu li:last-child {
+    border-bottom: none;
 }
 
 #file-context-menu li:hover {

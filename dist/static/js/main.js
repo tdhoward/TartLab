@@ -7,24 +7,22 @@ const saveButton = document.getElementById("saveFileBt");
 const newButton = document.getElementById("newFileBt");
 const toastContainer = document.getElementById("toast-container");
 const fileContextMenu = document.getElementById("file-context-menu");
+const fileContextMenuTitle = document.getElementById("file-context-menu-title");
 const darkOverlay = document.getElementById("dark-overlay");
 
 const hostname = window.location.hostname;
 const apiBaseUrl = `http://${hostname}/api`;
 
 function openContextMenu(filename) {
-  fileContextMenu.classList.remove("hidden");
-  darkOverlay.classList.remove("hidden");
+    fileContextMenuTitle.textContent = filename;
+    fileContextMenu.classList.remove("hidden");
+    darkOverlay.classList.remove("hidden");
 
-  // Attach event handlers for menu items
-  document.getElementById("set-as-app").onclick = () =>
-    handleMenuAction("setAsApp", filename);
-  document.getElementById("rename").onclick = () =>
-    handleMenuAction("rename", filename);
-  document.getElementById("move").onclick = () =>
-    handleMenuAction("move", filename);
-  document.getElementById("delete").onclick = () =>
-    handleMenuAction("delete", filename);
+    // Attach event handlers for menu items
+    document.getElementById("set-as-app").onclick = () => handleMenuAction("setAsApp", filename);
+    document.getElementById("rename").onclick = () => handleMenuAction("rename", filename);
+    document.getElementById("move").onclick = () => handleMenuAction("move", filename);
+    document.getElementById("delete").onclick = () => handleMenuAction("delete", filename);
 }
 
 function closeContextMenu() {
