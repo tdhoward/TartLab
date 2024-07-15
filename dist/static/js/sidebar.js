@@ -1,5 +1,5 @@
 import { createTab, switchToTab, editors } from './editor.js';
-import { apiBaseUrl } from "./main.js";
+import { apiBaseUrl, openContextMenu } from "./main.js";
 
 const panelDiv = document.getElementById('panel');
 const fileListDiv = document.getElementById('fileList');
@@ -66,10 +66,23 @@ function listFilesInSidebar() {
         .then(data => {
             fileListDiv.innerHTML = "";
             data.files.forEach(file => {
-                const fileItem = document.createElement('div');
-                fileItem.textContent = file;
-                fileItem.className = 'file-item';
+                const fileItem = document.createElement("div");
+                fileItem.className = "file-item";
                 fileItem.onclick = () => openFile(file);
+
+                const fileName = document.createElement("span");
+                fileName.textContent = file;
+
+                const menuButton = document.createElement("button");
+                menuButton.textContent = "☰";
+                menuButton.className = "menu-button";
+                menuButton.onclick = (event) => {
+                  event.stopPropagation();
+                  openContextMenu(file);
+                };
+
+                fileItem.appendChild(fileName);
+                fileItem.appendChild(menuButton);
                 fileListDiv.appendChild(fileItem);
             });
         })

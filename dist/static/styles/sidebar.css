@@ -91,13 +91,70 @@
 }
 
 .file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     cursor: pointer;
-    padding: 0.75rem;
+    padding: 0.5rem;
     border-bottom: 1px solid #333;
 }
 
 .file-item:hover {
     background-color: #333;
+}
+
+.menu-button {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.5rem;
+    margin: 0;
+}
+
+#file-context-menu {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #666;
+    color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    padding: 0.5rem;
+}
+
+#file-context-menu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#file-context-menu li {
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    color: #fff;
+}
+
+#file-context-menu li:hover {
+    background-color: #007acc;
+}
+
+.hidden {
+    display: none;
+}
+
+/* Darken background for file dialog */
+#dark-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
 }
 
 #helpContent {

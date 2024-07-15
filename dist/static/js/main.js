@@ -6,11 +6,52 @@ import './repl-client.js';
 const saveButton = document.getElementById("saveFileBt");
 const newButton = document.getElementById("newFileBt");
 const toastContainer = document.getElementById("toast-container");
+const fileContextMenu = document.getElementById("file-context-menu");
+const darkOverlay = document.getElementById("dark-overlay");
 
 const hostname = window.location.hostname;
 const apiBaseUrl = `http://${hostname}/api`;
 
-let newFileCounter = 1;
+function openContextMenu(filename) {
+  fileContextMenu.classList.remove("hidden");
+  darkOverlay.classList.remove("hidden");
+
+  // Attach event handlers for menu items
+  document.getElementById("set-as-app").onclick = () =>
+    handleMenuAction("setAsApp", filename);
+  document.getElementById("rename").onclick = () =>
+    handleMenuAction("rename", filename);
+  document.getElementById("move").onclick = () =>
+    handleMenuAction("move", filename);
+  document.getElementById("delete").onclick = () =>
+    handleMenuAction("delete", filename);
+}
+
+function closeContextMenu() {
+  fileContextMenu.classList.add("hidden");
+  darkOverlay.classList.add("hidden");
+}
+
+function handleMenuAction(action, filename) {
+  closeContextMenu();
+  switch (action) {
+    case "setAsApp":
+      // Call your setAsApp function
+      break;
+    case "rename":
+      // Call your rename function
+      break;
+    case "move":
+      // Call your move function
+      break;
+    case "delete":
+      // Call your delete function
+      break;
+  }
+}
+
+// Close the context menu when clicking outside of it
+darkOverlay.onclick = closeContextMenu;
 
 function saveFile() {
     if (!activeEditor) {
@@ -68,4 +109,4 @@ window.addEventListener('load', () => {
     document.getElementById('loading-overlay').style.display = 'none';
 });
 
-export { apiBaseUrl, saveButton };
+export { apiBaseUrl, saveButton, openContextMenu };
