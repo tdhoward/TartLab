@@ -169,6 +169,7 @@ button:disabled {
 
 .toast.error {
     background-color: #ff5c5c;
+    color: #fff;
 }
 
 @keyframes fadeInOut {
