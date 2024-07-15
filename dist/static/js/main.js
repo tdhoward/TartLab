@@ -1,5 +1,5 @@
-import { toggleSidebar } from './sidebar.js';
-import { renameTab, activeEditor } from './editor.js';
+import { toggleSidebar, listFilesInSidebar } from "./sidebar.js";
+import { renameTab, activeEditor, editors } from './editor.js';
 import { createNewFileTab, updateSaveButton } from "./tabs.js";
 import './repl-client.js';
 
@@ -45,7 +45,7 @@ function handleMenuAction(action, filename) {
       // Call your move function
       break;
     case "delete":
-      // Call your delete function
+      deleteFile(filename);
       break;
   }
 }
@@ -81,9 +81,29 @@ function saveFile() {
     .then(data => {
         showToast('File saved successfully!', 'info');
         activeEditor.editor.isDirty = false; // Mark editor as not dirty after saving
-        updateSaveButton(); // Update the Save button state
+        updateSaveButton();
+        listFilesInSidebar();  // update file list
     })
     .catch(error => showToast('Error saving file: ' + error, 'error'));
+}
+
+function deleteFile(filename) {
+    const fname = encodeURIComponent(filename); // URI encode the filename
+    fetch(`${apiBaseUrl}/files/user/${fname}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        showToast("File deleted.", "info");
+        // If we just deleted a file that is still open, mark that as dirty
+        if (filename in editors) {
+          editors[filename].editor.isDirty = true;
+          updateSaveButton(); // Update the Save button state
+        }
+        listFilesInSidebar(); // update file list
+      })
+      .catch((error) => showToast("Error deleting file: " + error, "error"));
 }
 
 function showToast(message, type = 'info') {

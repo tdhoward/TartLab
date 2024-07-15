@@ -290,13 +290,13 @@ async def handle_api(reader, writer, request):
     print(f"API request: POST {path} with response code 200")
 
 
-# Handle API DELETE requests for files
-@app.route("DELETE", "/api/files/*")
+# Handle API DELETE requests for user files
+@app.route("DELETE", "/api/files/user/*")
 async def handle_api(reader, writer, request):
     path = request.path
-    filename = unquote(path[len('/api/files/'):])  # URL decoding the filename
+    filename = unquote(path[len('/api/files/user/'):])  # URL decoding the filename
     try:
-        os.remove('/files/' + filename)
+        os.remove('/files/user/' + filename)
     except:
         response = HTTPResponse(404)
         await response.send(writer)
