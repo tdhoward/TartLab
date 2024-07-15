@@ -88,22 +88,24 @@ function saveFile() {
 }
 
 function deleteFile(filename) {
+    if (!confirm("Are you sure you want to delete this file?"))
+        return;
     const fname = encodeURIComponent(filename); // URI encode the filename
     fetch(`${apiBaseUrl}/files/user/${fname}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
     })
-      .then((response) => response.json())
-      .then((data) => {
+    .then((response) => response.json())
+    .then((data) => {
         showToast("File deleted.", "info");
         // If we just deleted a file that is still open, mark that as dirty
         if (filename in editors) {
-          editors[filename].editor.isDirty = true;
-          updateSaveButton(); // Update the Save button state
+            editors[filename].editor.isDirty = true;
+            updateSaveButton(); // Update the Save button state
         }
         listFilesInSidebar(); // update file list
-      })
-      .catch((error) => showToast("Error deleting file: " + error, "error"));
+    })
+    .catch((error) => showToast("Error deleting file: " + error, "error"));
 }
 
 function showToast(message, type = 'info') {
