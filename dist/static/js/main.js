@@ -13,6 +13,7 @@ const darkOverlay = document.getElementById("dark-overlay");
 const hostname = window.location.hostname;
 const baseUrl = `http://${hostname}`;
 const apiBaseUrl = `${baseUrl}/api`;
+const userFilesLocation = baseUrl + "/files/user";
 
 function openContextMenu(filename) {
     fileContextMenuTitle.textContent = filename;
@@ -20,33 +21,17 @@ function openContextMenu(filename) {
     darkOverlay.classList.remove("hidden");
 
     // Attach event handlers for menu items
-    document.getElementById("set-as-app").onclick = () => handleMenuAction("setAsApp", filename);
-    document.getElementById("rename").onclick = () => handleMenuAction("rename", filename);
-    document.getElementById("move").onclick = () => handleMenuAction("move", filename);
-    document.getElementById("delete").onclick = () => handleMenuAction("delete", filename);
+    document.getElementById("set-as-app").onclick = () => setAsApp(filename);
+    // filename already includes subfolders in the user space
+    document.getElementById("download-link").href = userFilesLocation + "/" + filename;
+    document.getElementById("rename").onclick = () => renameFile(filename);
+    document.getElementById("move").onclick = () => moveFile(filename);
+    document.getElementById("delete").onclick = () => deleteFile(filename);
 }
 
 function closeContextMenu() {
   fileContextMenu.classList.add("hidden");
   darkOverlay.classList.add("hidden");
-}
-
-function handleMenuAction(action, filename) {
-  closeContextMenu();
-  switch (action) {
-    case "setAsApp":
-      // Call your setAsApp function
-      break;
-    case "rename":
-      renameFile(filename);
-      break;
-    case "move":
-      moveFile(filename);
-      break;
-    case "delete":
-      deleteFile(filename);
-      break;
-  }
 }
 
 // Close the context menu when clicking outside of it
@@ -91,6 +76,10 @@ function saveFile() {
         listFilesInSidebar();  // update file list
     })
     .catch(error => showToast(error, 'error'));
+}
+
+function setAsApp(filename) {
+    // TODO
 }
 
 function renameFile(filename) {
