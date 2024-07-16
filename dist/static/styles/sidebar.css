@@ -127,7 +127,7 @@
 }
 
 #file-context-menu-title {
-    padding: 0.5rem;
+    padding: 0.5rem 0.75rem;
     border-bottom: 2px solid #000;
     font-weight: bold;
     color:#000;
@@ -140,7 +140,7 @@
 }
 
 #file-context-menu li {
-    padding: 1rem 1.5rem;
+    padding: 1rem 1.5rem 1rem 0.75rem;
     cursor: pointer;
     color: #fff;
     border-bottom: 1px solid #444;
