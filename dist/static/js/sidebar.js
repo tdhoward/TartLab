@@ -12,6 +12,8 @@ const usedSpaceDiv = document.getElementById("used-space");
 const hamburgerMenuButton = document.getElementById("hamburger-menu-bt");
 const iconBar = document.getElementById("iconBar");
 
+var currentFolder = '/';
+
 hamburgerMenuButton.addEventListener("click", () => {
   iconBar.classList.toggle("open");
   main.classList.toggle("iconBarOpen");
@@ -56,7 +58,10 @@ function toggleSidebar(iconId) {
 }
 
 function listFilesInSidebar() {
-    fetch(`${apiBaseUrl}/files/user`)
+    let reqPath = "/files/user";
+    if (currentFolder != '/')
+        reqPath = reqPath + currentFolder;
+    fetch(`${apiBaseUrl}${reqPath}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -66,6 +71,9 @@ function listFilesInSidebar() {
         .then(data => {
             fileListDiv.innerHTML = "";
             data.files.forEach(file => {
+                let fullPath = currentFolder + "/" + file;
+                fullPath = fullPath.replace(/^\/*/, "");
+
                 const fileItem = document.createElement("div");
                 fileItem.className = "file-item";
                 fileItem.onclick = () => openFile(file);
@@ -145,4 +153,4 @@ function fetchSpaceUsage() {
         });
 }
 
-export { listFilesInSidebar, toggleSidebar };
+export { currentFolder, listFilesInSidebar, toggleSidebar };

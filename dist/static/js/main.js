@@ -1,4 +1,4 @@
-import { toggleSidebar, listFilesInSidebar } from "./sidebar.js";
+import { currentFolder, toggleSidebar, listFilesInSidebar } from "./sidebar.js";
 import { renameTab, activeEditor, editors } from './editor.js';
 import { createNewFileTab, updateSaveButton } from "./tabs.js";
 import './repl-client.js';
@@ -11,7 +11,8 @@ const fileContextMenuTitle = document.getElementById("file-context-menu-title");
 const darkOverlay = document.getElementById("dark-overlay");
 
 const hostname = window.location.hostname;
-const apiBaseUrl = `http://${hostname}/api`;
+const baseUrl = `http://${hostname}`;
+const apiBaseUrl = `${baseUrl}/api`;
 
 function openContextMenu(filename) {
     fileContextMenuTitle.textContent = filename;
@@ -37,10 +38,10 @@ function handleMenuAction(action, filename) {
       // Call your setAsApp function
       break;
     case "rename":
-      // Call your rename function
+      renameFile(filename);
       break;
     case "move":
-      // Call your move function
+      moveFile(filename);
       break;
     case "delete":
       deleteFile(filename);
@@ -70,30 +71,88 @@ function saveFile() {
 
     const filename = encodeURIComponent(activeEditor.filename); // URI encode the filename
     const content = activeEditor.editor.getValue();
-    fetch(`${apiBaseUrl}/files/user/${filename}`, {
+    fetch(`${baseUrl}/files/user/${filename}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content })
     })
-    .then(response => response.json())
+    .then((response) => {
+        if (!response.ok) {
+            return response.json().then((data) => {
+                throw new Error(data.error || 'An error occurred');
+            });
+        }
+        return response.json();
+    })
     .then(data => {
         showToast('File saved successfully!', 'info');
         activeEditor.editor.isDirty = false; // Mark editor as not dirty after saving
         updateSaveButton();
         listFilesInSidebar();  // update file list
     })
-    .catch(error => showToast('Error saving file: ' + error, 'error'));
+    .catch(error => showToast(error, 'error'));
+}
+
+function renameFile(filename) {
+    const newFilename = prompt("Enter a new name for the file:", filename);
+    if (newFilename) {
+        renameOrMoveFile(filename, newFilename);
+    }
+}
+
+function moveFile(filename) {
+    let newPath = prompt("Enter a new location for the file:").replace(/\\/g,"/");
+    if (newPath) {
+        if (!newPath.startsWith('/')) {
+            newPath = currentFolder + newPath;
+        }
+        renameOrMoveFile(filename, newPath + '/' + filename);
+    }
+}
+
+function renameOrMoveFile(srcFile, destFile) {
+    let src = srcFile;
+    let dest = destFile;
+    fetch(`${apiBaseUrl}/files/move`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ src, dest }),
+    })
+    .then((response) => {
+        if (!response.ok) {
+            return response.json().then((data) => {
+                throw new Error(data.error || 'An error occurred');
+            });
+        }
+        return response.json();
+    })
+    .then((data) => {
+        showToast("Success.", "info");
+        // If we just moved/renamed a file that is still open, rename that tab
+        if (srcFile in editors) {
+            renameTab(srcFile, destFile);
+        }
+        listFilesInSidebar(); // update file list
+    })
+    .catch((error) => showToast(error, "error"));
 }
 
 function deleteFile(filename) {
     if (!confirm("Are you sure you want to delete this file?"))
         return;
     const fname = encodeURIComponent(filename); // URI encode the filename
-    fetch(`${apiBaseUrl}/files/user/${fname}`, {
+    fetch(`${baseUrl}/files/user/${fname}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
     })
-    .then((response) => response.json())
+    .then((response) => {
+        if (!response.ok) {
+            return response.json().then((data) => {
+                throw new Error(data.error || 'An error occurred');
+            });
+        }
+        return response.json();
+    })
     .then((data) => {
         showToast("File deleted.", "info");
         // If we just deleted a file that is still open, mark that as dirty
@@ -103,7 +162,7 @@ function deleteFile(filename) {
         }
         listFilesInSidebar(); // update file list
     })
-    .catch((error) => showToast("Error deleting file: " + error, "error"));
+    .catch((error) => showToast(error, "error"));
 }
 
 function showToast(message, type = 'info') {
@@ -129,4 +188,4 @@ window.addEventListener('load', () => {
     document.getElementById('loading-overlay').style.display = 'none';
 });
 
-export { apiBaseUrl, saveButton, openContextMenu };
+export { baseUrl, apiBaseUrl, saveButton, openContextMenu };

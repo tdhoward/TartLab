@@ -14,6 +14,8 @@ from ahttpserver.servefile import serve_file
 
 network.hostname('tartlab')  # sets up tartlab.local on mDNS
 
+USER_BASE_DIR = '/files/user'
+
 class CaptureOutput(io.IOBase):
     def __init__(self):
         self.buffer = []
@@ -166,6 +168,7 @@ def create_soft_ap(ap_name):
 
 def initialize():
     global settings
+    # You have to do this one-at-a-time...
     try:
         os.mkdir('/files')  # make sure folder exists
     except OSError as e:
@@ -215,8 +218,29 @@ def list_files(folder):
     except OSError:
         return []
 
+# For making sure user input paths don't mess with other folders
+def sanitize_path(path, base_path = USER_BASE_DIR):
+    path = path.replace('\\','/').replace('//','/')
+    combined_path = base_path + '/' + path
+    # Split and normalize the path components
+    parts = []
+    for part in combined_path.split('/'):
+        if part == '..':
+            if parts:
+                parts.pop()
+        elif part and part != '.':
+            parts.append(part)
+    
+    # Join the normalized parts back into a single path
+    normalized_path = '/' + '/'.join(parts)
+    
+    # Ensure the path stays within the base_path
+    if not normalized_path.startswith(base_path):
+        raise ValueError("Invalid path")
+    
+    return normalized_path
 
-# GET requests
+# General GET requests
 @app.route("GET", "/*")
 async def static_files(reader, writer, request):
     local_path = "/static/"
@@ -224,30 +248,158 @@ async def static_files(reader, writer, request):
     subpath = unquote(request.path[len(url_path):])
     if subpath == '':
         subpath = 'index.html'
-    full_path = local_path + subpath
+    try:
+        full_path = sanitize_path(subpath, local_path)
+    except:
+        print('400: ' + full_path)
+        response = HTTPResponse(400)
+        await response.send(writer)
+        await writer.drain()
+        writer.write(ujson.dumps({'error': 'Invalid path!'}))
+        await writer.drain()
+        return
     await serve_file(reader, writer, request, full_path, True)
 
+# -----  User file operations  -----
 # Serve user files with no caching
-@app.route("GET", "/files/user/*")
-async def user_files(reader, writer, request):
-    local_path = "/files/user/"
-    url_path = "/files/user/"
-    subpath = unquote(request.path[len(url_path):])
-    full_path = local_path + subpath
+@app.route("GET", f'{USER_BASE_DIR}/*')
+async def get_user_file(reader, writer, request):
+    subpath = unquote(request.path[len(USER_BASE_DIR):])
+    try:
+        full_path = sanitize_path(subpath)
+    except:
+        response = HTTPResponse(400)
+        await response.send(writer)
+        await writer.drain()
+        writer.write(ujson.dumps({'error': 'Invalid path!'}))
+        await writer.drain()
+        return
     await serve_file(reader, writer, request, full_path, False)
+
+# Handle POST requests for files
+@app.route("POST", f'{USER_BASE_DIR}/*')
+async def store_user_file(reader, writer, request):
+    path = request.path
+    filename = unquote(path[len(USER_BASE_DIR):])  # URL decoding the filename
+    try:
+        filename = sanitize_path(filename)
+    except:
+        response = HTTPResponse(400)
+        await response.send(writer)
+        await writer.drain()
+        writer.write(ujson.dumps({'error': 'Invalid path!'}))
+        await writer.drain()
+        return
+
+    data = ujson.loads(request.body.decode("utf-8"))
+    try:
+        with open(filename, 'w') as file:
+            file.write(data['content'])
+    except Exception as ex:  # don't stop the server
+        print(f'Filename was: {filename}')
+        print(data)
+        print(ex)
+        response = HTTPResponse(500)
+        await response.send(writer)
+        await writer.drain()
+        writer.write(ujson.dumps({'error': 'Error writing file!'}))
+        await writer.drain()
+        return
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    writer.write(ujson.dumps({'response': 'success'}))
+    await writer.drain()
+    print(f"POST {path} with response code 200")
+
+# Handle DELETE requests for user files
+@app.route("DELETE", f'{USER_BASE_DIR}/*')
+async def delete_user_file(reader, writer, request):
+    path = request.path
+    filename = unquote(path[len(USER_BASE_DIR):])  # URL decoding the filename
+    try:
+        filename = sanitize_path(filename)
+    except:
+        response = HTTPResponse(400)
+        await response.send(writer)
+        await writer.drain()
+        writer.write(ujson.dumps({'error': 'Invalid path!'}))
+        await writer.drain()
+        return
+    try:
+        os.remove(filename)
+    except:
+        response = HTTPResponse(404)
+        await response.send(writer)
+        return
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    writer.write(ujson.dumps({'response': 'success'}))
+    await writer.drain()
+    print(f"DELETE {path} with response code 200")
+
 
 # Serve help files with caching
 @app.route("GET", "/files/help/*")
 async def help_files(reader, writer, request):
-    local_path = "/files/help/"
-    url_path = "/files/help/"
-    subpath = unquote(request.path[len(url_path):])
-    full_path = local_path + subpath
+    try:
+        full_path = sanitize_path(unquote(request.path[len('/files/help'):]), '/files/help')
+    except:
+        response = HTTPResponse(400)
+        await response.send(writer)
+        await writer.drain()
+        writer.write(ujson.dumps({'error': 'Invalid path!'}))
+        await writer.drain()
+        return
     await serve_file(reader, writer, request, full_path, True)
 
+
+# -----  API endpoints  -----
 # retrieve list of files
 @app.route("GET", "/api/files/*")
-async def handle_api(reader, writer, request):
+async def api_list_files(reader, writer, request):
+    try:
+        folder = sanitize_path(request.path[len('/api/files'):], '/files')
+    except:
+        response = HTTPResponse(400)
+        await response.send(writer)
+        await writer.drain()
+        writer.write(ujson.dumps({'error': 'Invalid path!'}))
+        await writer.drain()
+        return
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    writer.write(ujson.dumps({'files': list_files(folder)}))
+    await writer.drain()
+    print(f"API request: {request.path} with response code 200")
+
+# move a user file
+@app.route("POST", "/api/files/move")
+async def api_list_files(reader, writer, request):
+    data = ujson.loads(request.body.decode("utf-8"))
+    try:
+        src = sanitize_path(data["src"])
+        dest = sanitize_path(data["dest"])
+        if src == dest:
+            response = HTTPResponse(400)
+            await response.send(writer)
+            await writer.drain()
+            writer.write(ujson.dumps({'error': 'File is already there.'}))
+            await writer.drain()
+            return
+        os.rename(src, dest)
+    except Exception as ex:
+        print(f"API request: {request.path} with response code 400")
+        print(data)
+        print(ex)
+        response = HTTPResponse(400)
+        await response.send(writer)
+        await writer.drain()
+        writer.write(ujson.dumps({'error': 'Invalid path!'}))
+        await writer.drain()
+        return
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
@@ -255,9 +407,10 @@ async def handle_api(reader, writer, request):
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
 
+
 # get the disk usage
 @app.route("GET", "/api/space")
-async def handle_api(reader, writer, request):
+async def api_get_space(reader, writer, request):
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
@@ -268,50 +421,9 @@ async def handle_api(reader, writer, request):
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
 
-
-# Handle API POST requests for files
-@app.route("POST", "/api/files/user/*")
-async def handle_api(reader, writer, request):
-    path = request.path
-    filename = unquote(path[len('/api/files/user/'):])  # URL decoding the filename
-    data = ujson.loads(request.body.decode("utf-8"))
-    try:
-        with open('/files/user/' + filename, 'w') as file:
-            file.write(data['content'])
-    except Exception as ex:  # don't stop the server
-        print(f'Filename was: {filename}')
-        print(data)
-        print(ex)
-    response = HTTPResponse(200, "application/json", close=True)
-    await response.send(writer)
-    await writer.drain()
-    writer.write(ujson.dumps({'response': 'success'}))
-    await writer.drain()
-    print(f"API request: POST {path} with response code 200")
-
-
-# Handle API DELETE requests for user files
-@app.route("DELETE", "/api/files/user/*")
-async def handle_api(reader, writer, request):
-    path = request.path
-    filename = unquote(path[len('/api/files/user/'):])  # URL decoding the filename
-    try:
-        os.remove('/files/user/' + filename)
-    except:
-        response = HTTPResponse(404)
-        await response.send(writer)
-        return
-    response = HTTPResponse(200, "application/json", close=True)
-    await response.send(writer)
-    await writer.drain()
-    writer.write(ujson.dumps({'response': 'success'}))
-    await writer.drain()
-    print(f"API request: DELETE {path} with response code 200")
-
-
 # pseudo-REPL
 @app.route("POST", "/api/repl")
-async def handle_api(reader, writer, request):
+async def api_repl(reader, writer, request):
     data = ujson.loads(request.body.decode("utf-8"))
     results = pseudoREPL(data['cmd'])
     response = HTTPResponse(200, "application/json", close=True)
