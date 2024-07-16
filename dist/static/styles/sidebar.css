@@ -146,14 +146,6 @@
     border-bottom: 1px solid #444;
 }
 
-/* For download link */
-#file-context-menu li a {
-    text-decoration: none;
-    color: inherit; /* Ensure the link inherits the color of the list item */
-    display: block; /* Make the link behave like a block element to fill the list item */
-    width: 100%; /* Ensure the link spans the full width of the list item */
-}
-
 #file-context-menu li:last-child {
     border-bottom: none;
 }

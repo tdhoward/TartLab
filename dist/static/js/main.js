@@ -23,7 +23,10 @@ function openContextMenu(filename) {
     // Attach event handlers for menu items
     document.getElementById("set-as-app").onclick = () => setAsApp(filename);
     // filename already includes subfolders in the user space
-    document.getElementById("download-link").href = userFilesLocation + "/" + filename;
+    let downloadLink = document.getElementById("download-link");
+    downloadLink.href = userFilesLocation + "/" + filename;
+    downloadLink.onclick = closeContextMenu;
+    document.getElementById("download").onclick = () => downloadLink.click();
     document.getElementById("rename").onclick = () => renameFile(filename);
     document.getElementById("move").onclick = () => moveFile(filename);
     document.getElementById("delete").onclick = () => deleteFile(filename);
