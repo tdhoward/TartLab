@@ -82,10 +82,29 @@ function saveFile() {
 }
 
 function setAsApp(filename) {
-    // TODO
+    closeContextMenu();
+    fetch(`${apiBaseUrl}/setasapp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename })
+    })
+    .then((response) => {
+        if (!response.ok) {
+            return response.json().then((data) => {
+                throw new Error(data.error || 'An error occurred');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        showToast('Success!', 'info');
+        listFilesInSidebar();  // update file list
+    })
+    .catch(error => showToast(error, 'error'));
 }
 
 function renameFile(filename) {
+    closeContextMenu();
     const newFilename = prompt("Enter a new name for the file:", filename);
     if (newFilename) {
         renameOrMoveFile(filename, newFilename);
@@ -93,6 +112,7 @@ function renameFile(filename) {
 }
 
 function moveFile(filename) {
+    closeContextMenu();
     let newPath = prompt("Enter a new location for the file:").replace(/\\/g,"/");
     if (newPath) {
         if (!newPath.startsWith('/')) {
@@ -132,6 +152,7 @@ function renameOrMoveFile(srcFile, destFile) {
 function deleteFile(filename) {
     if (!confirm("Are you sure you want to delete this file?"))
         return;
+    closeContextMenu();
     const fname = encodeURIComponent(filename); // URI encode the filename
     fetch(`${baseUrl}/files/user/${fname}`, {
       method: "DELETE",

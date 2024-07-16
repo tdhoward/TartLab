@@ -76,7 +76,7 @@ function listFilesInSidebar() {
 
                 const fileItem = document.createElement("div");
                 fileItem.className = "file-item";
-                fileItem.onclick = () => openFile(file);
+                fileItem.onclick = () => openFile(fullPath);
 
                 const fileName = document.createElement("span");
                 fileName.textContent = file;
@@ -86,7 +86,7 @@ function listFilesInSidebar() {
                 menuButton.className = "menu-button";
                 menuButton.onclick = (event) => {
                   event.stopPropagation();
-                  openContextMenu(file);
+                  openContextMenu(fullPath);
                 };
 
                 fileItem.appendChild(fileName);
