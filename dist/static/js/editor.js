@@ -29,7 +29,15 @@ function createTab(filename, content, isNamed) {
         gutters: ["CodeMirror-linenumbers"],
         indentWithTabs: true,  // Use tabs for indentation
         tabSize: 4,            // Tab size set to 4
-        indentUnit: 4          // Indent unit set to 4
+        indentUnit: 4,          // Indent unit set to 4
+        extraKeys: {
+            "F11": function(cm) {
+                cm.setOption("fullScreen", !cm.getOption("fullScreen"));
+            },
+            "Esc": function(cm) {
+                if (cm.getOption("fullScreen")) cm.setOption("fullScreen", false);
+            }
+        }
     });
 
     editor.on('change', () => {
