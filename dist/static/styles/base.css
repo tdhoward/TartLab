@@ -106,7 +106,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(30, 30, 30, 0.9);
+    background-color: rgb(30, 30, 30);
     color: #fff;
     display: flex;
     flex-direction: column; /* Arrange logo and text vertically */

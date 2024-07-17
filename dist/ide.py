@@ -223,6 +223,8 @@ def list_files_and_folders(folder):
     try:
         files = []
         folders = []
+        if folder != USER_BASE_DIR:
+            folders.append('..')
         for f in os.listdir(folder):
             if file_exists(folder + '/' + f):
                 files.append(f)

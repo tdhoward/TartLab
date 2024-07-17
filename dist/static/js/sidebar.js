@@ -1,5 +1,5 @@
 import { createTab, switchToTab, editors } from './editor.js';
-import { apiBaseUrl, openContextMenu } from "./main.js";
+import { apiBaseUrl, openContextMenu, showToast } from "./main.js";
 
 const panelDiv = document.getElementById('panel');
 const fileListDiv = document.getElementById('fileList');
@@ -57,6 +57,22 @@ function toggleSidebar(iconId) {
     }
 }
 
+function getParentFolder(folderPath) {
+    // Remove any trailing slash if it exists
+    if (folderPath.endsWith("/"))
+        folderPath = folderPath.slice(0, -1);
+
+    // Find the last slash
+    const lastSlashIndex = folderPath.lastIndexOf("/");
+
+    // If there's no slash, return an empty string (no parent folder)
+    if (lastSlashIndex === -1)
+        return "";
+
+    // Return the substring up to the last slash
+    return folderPath.substring(0, lastSlashIndex);
+}
+
 function listFilesInSidebar() {
     let reqPath = "/files/user";
     if (currentFolder != '/')
@@ -70,9 +86,47 @@ function listFilesInSidebar() {
         })
         .then(data => {
             fileListDiv.innerHTML = "";
+            data.folders.forEach(folder => {
+                let fullPath;
+                if (currentFolder != '/') {
+                    fullPath = currentFolder + "/" + folder;
+                } else {
+                    fullPath = currentFolder + folder;
+                }
+                if (folder == '..') {
+                    fullPath = getParentFolder(currentFolder);
+                }
+
+                const folderItem = document.createElement("div");
+                folderItem.className = "folder-item";
+                folderItem.onclick = () => changeFolder(fullPath);
+
+                // TODO: insert a folder icon here instead of "F: "
+
+                const folderName = document.createElement("span");
+                if (folder == '..')
+                    folderName.textContent = "F: " + folder + " (parent folder)";
+                else
+                    folderName.textContent = "F: " + folder;
+                folderItem.appendChild(folderName);
+
+                // add a context menu button, unless this is the link to the parent folder
+                if (folder != '..') {
+                    const menuButton = document.createElement("button");
+                    menuButton.textContent = "☰";
+                    menuButton.className = "menu-button";
+                    menuButton.onclick = (event) => {
+                      event.stopPropagation();
+                      openContextMenu(fullPath, "folder");
+                    };
+                    folderItem.appendChild(menuButton);
+                }
+
+                fileListDiv.appendChild(folderItem);
+            });
             data.files.forEach(file => {
                 let fullPath = currentFolder + "/" + file;
-                fullPath = fullPath.replace(/^\/*/, "");
+                fullPath = fullPath.replace(/^\/*/, "");  // get rid of leading slash
 
                 const fileItem = document.createElement("div");
                 fileItem.className = "file-item";
@@ -86,7 +140,7 @@ function listFilesInSidebar() {
                 menuButton.className = "menu-button";
                 menuButton.onclick = (event) => {
                   event.stopPropagation();
-                  openContextMenu(fullPath);
+                  openContextMenu(fullPath, "file");
                 };
 
                 fileItem.appendChild(fileName);
@@ -96,9 +150,15 @@ function listFilesInSidebar() {
         })
         .catch(error => {
             fileListDiv.innerHTML = '<div class="error">Can\'t connect.</div>';
+            showToast(error, "error");
         });
 
     fetchSpaceUsage(); // Fetch space usage data
+}
+
+function changeFolder(path) {
+    currentFolder = path;
+    listFilesInSidebar(); // refresh everything
 }
 
 function openFile(filename) {
@@ -116,7 +176,7 @@ function openFile(filename) {
                 createTab(filename, content, true);
             })
             .catch(error => {
-                alert('Error opening file: ' + error);
+                showToast(error, "error");
             });
     }
 }
@@ -150,6 +210,7 @@ function fetchSpaceUsage() {
         .catch(error => {
             spaceUsageTextDiv.innerHTML = '<div class="error">Can\'t connect.</div>';
             usedSpaceDiv.style.width = '0%';
+            showToast(error, "error");
         });
 }
 

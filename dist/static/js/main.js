@@ -6,8 +6,14 @@ import './repl-client.js';
 const saveButton = document.getElementById("saveFileBt");
 const newButton = document.getElementById("newFileBt");
 const toastContainer = document.getElementById("toast-container");
-const fileContextMenu = document.getElementById("file-context-menu");
-const fileContextMenuTitle = document.getElementById("file-context-menu-title");
+const contextMenu = document.getElementById("context-menu");
+const contextMenuTitle = document.getElementById("context-menu-title");
+const contextSetAsApp = document.getElementById("context-set-as-app");
+const contextDownload = document.getElementById("context-download");
+const contextDownloadLink = document.getElementById("context-download-link");
+const contextRename = document.getElementById("context-rename");
+const contextMove = document.getElementById("context-move");
+const contextDelete = document.getElementById("context-delete");
 const darkOverlay = document.getElementById("dark-overlay");
 
 const hostname = window.location.hostname;
@@ -15,32 +21,42 @@ const baseUrl = `http://${hostname}`;
 const apiBaseUrl = `${baseUrl}/api`;
 const userFilesLocation = baseUrl + "/files/user";
 
-function openContextMenu(filename) {
-    fileContextMenuTitle.textContent = filename;
-    fileContextMenu.classList.remove("hidden");
+function openContextMenu(name, type) {
+    contextMenuTitle.textContent = name;
+    contextMenu.classList.remove("hidden");
     darkOverlay.classList.remove("hidden");
+    if (type == "file") {
+        let filename = name
+        // don't allow "set as app" for non-python files
+        if (filename.endsWith(".py")) {
+            contextSetAsApp.onclick = () => setAsApp(filename);
+            contextSetAsApp.classList.remove("hidden");
+        } else {
+            contextSetAsApp.classList.add("hidden");
+        }
+        
+        // filename already includes subfolders in the user space
+        contextDownloadLink.href = userFilesLocation + "/" + filename;
+        contextDownloadLink.onclick = closeContextMenu;
+        contextDownload.onclick = () => contextDownloadLink.click();
+        contextRename.onclick = () => renameFile(filename);
+        contextMove.onclick = () => moveFile(filename);
+        contextDelete.onclick = () => deleteFile(filename);
 
-    // don't allow "set as app" for non-python files
-    let setAsAppDiv = document.getElementById("set-as-app")
-    if (filename.endsWith(".py")) {
-        setAsAppDiv.onclick = () => setAsApp(filename);
-        setAsAppDiv.classList.remove("hidden");
-    } else {
-        setAsAppDiv.classList.add("hidden");
+        contextDownload.classList.remove("hidden");
+        contextMove.classList.remove("hidden");
     }
-    
-    // filename already includes subfolders in the user space
-    let downloadLink = document.getElementById("download-link");
-    downloadLink.href = userFilesLocation + "/" + filename;
-    downloadLink.onclick = closeContextMenu;
-    document.getElementById("download").onclick = () => downloadLink.click();
-    document.getElementById("rename").onclick = () => renameFile(filename);
-    document.getElementById("move").onclick = () => moveFile(filename);
-    document.getElementById("delete").onclick = () => deleteFile(filename);
+    else if (type == "folder") {
+        contextSetAsApp.classList.add("hidden");
+        contextDownload.classList.add("hidden");
+        contextMove.classList.add("hidden");  // should we allow moving whole folders? Maybe.
+
+        // TODO: add functions to rename and delete folders
+    }
 }
 
 function closeContextMenu() {
-  fileContextMenu.classList.add("hidden");
+  contextMenu.classList.add("hidden");
   darkOverlay.classList.add("hidden");
 }
 
@@ -208,4 +224,4 @@ window.addEventListener('load', () => {
     document.getElementById('loading-overlay').style.display = 'none';
 });
 
-export { baseUrl, apiBaseUrl, saveButton, openContextMenu };
+export { baseUrl, apiBaseUrl, saveButton, openContextMenu, showToast };
