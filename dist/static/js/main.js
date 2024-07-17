@@ -20,8 +20,15 @@ function openContextMenu(filename) {
     fileContextMenu.classList.remove("hidden");
     darkOverlay.classList.remove("hidden");
 
-    // Attach event handlers for menu items
-    document.getElementById("set-as-app").onclick = () => setAsApp(filename);
+    // don't allow "set as app" for non-python files
+    let setAsAppDiv = document.getElementById("set-as-app")
+    if (filename.endsWith(".py")) {
+        setAsAppDiv.onclick = () => setAsApp(filename);
+        setAsAppDiv.classList.remove("hidden");
+    } else {
+        setAsAppDiv.classList.add("hidden");
+    }
+    
     // filename already includes subfolders in the user space
     let downloadLink = document.getElementById("download-link");
     downloadLink.href = userFilesLocation + "/" + filename;
