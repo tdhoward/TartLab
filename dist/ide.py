@@ -218,12 +218,20 @@ def unquote(s):
             res[i] = '%' + item
     return "".join(res)
     
-# Function to list files in the specified directory
-def list_files(folder):
+# list folder contents, returns tuple (files, folders)
+def list_files_and_folders(folder):
     try:
-        return [f for f in os.listdir(folder)]
+        files = []
+        folders = []
+        for f in os.listdir(folder):
+            if file_exists(folder + '/' + f):
+                files.append(f)
+            else:
+                folders.append(f)
+        return files, folders
     except OSError:
-        return []
+        return [], []
+
 
 # For making sure user input paths don't mess with other folders
 def sanitize_path(path, base_path = USER_BASE_DIR):
@@ -363,7 +371,7 @@ async def help_files(reader, writer, request):
 
 
 # -----  API endpoints  -----
-# retrieve list of files
+# retrieve list of files and folders
 @app.route("GET", "/api/files/*")
 async def api_list_files(reader, writer, request):
     try:
@@ -378,13 +386,14 @@ async def api_list_files(reader, writer, request):
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
-    writer.write(ujson.dumps({'files': list_files(folder)}))
+    files, folders = list_files_and_folders(folder)
+    writer.write(ujson.dumps({'files': files, 'folders': folders}))
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
 
 # move a user file
 @app.route("POST", "/api/files/move")
-async def api_list_files(reader, writer, request):
+async def api_move_file(reader, writer, request):
     data = ujson.loads(request.body.decode("utf-8"))
     try:
         src = sanitize_path(data["src"])
