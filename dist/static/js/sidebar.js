@@ -2,6 +2,7 @@ import { createTab, switchToTab, editors } from './editor.js';
 import { apiBaseUrl, openContextMenu, showToast } from "./main.js";
 
 const panelDiv = document.getElementById('panel');
+const panelCurrentFolderDiv = document.getElementById("panel-current-folder");
 const fileListDiv = document.getElementById('fileList');
 const helpContentDiv = document.getElementById('helpContent');
 const mainDiv = document.getElementById('main');
@@ -74,6 +75,13 @@ function getParentFolder(folderPath) {
 }
 
 function listFilesInSidebar() {
+    // show the current folder
+    panelCurrentFolderDiv.innerHTML = "";
+    const currentFolderSpan = document.createElement("span");
+    currentFolderSpan.style.padding = "0.5rem";
+    currentFolderSpan.textContent = "Path: " + currentFolder;
+    panelCurrentFolderDiv.appendChild(currentFolderSpan);
+
     let reqPath = "/files/user";
     if (currentFolder != '/')
         reqPath = reqPath + currentFolder;
