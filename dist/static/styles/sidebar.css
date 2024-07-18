@@ -84,6 +84,10 @@
     transform: translateX(calc(0px - calc(var(--side-panel-width) + var(--iconbar-width))));
 }
 
+#panel.collapsed #panel-content div {
+    display: none;
+}
+
 .panel-content-page {
     display: flex;
     flex-direction: column;
@@ -96,7 +100,21 @@
 }
 
 #panel-toolbar {
-    padding: 0.3rem 0.3rem;
+    display: flex;
+    justify-content: center;
+}
+
+.toolbar-icon {
+    padding: 0.75rem;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.toolbar-icon img {
+    width: 1.5rem;
+    height: 1.5rem;
 }
 
 #panel-current-folder {
