@@ -116,6 +116,11 @@
     background-color: #333;
 }
 
+.icon-text-wrapper {
+    display: flex;
+    align-items: center;
+}
+
 .menu-button {
     background: none;
     border: none;

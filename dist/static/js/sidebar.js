@@ -101,14 +101,21 @@ function listFilesInSidebar() {
                 folderItem.className = "folder-item";
                 folderItem.onclick = () => changeFolder(fullPath);
 
-                // TODO: insert a folder icon here instead of "F: "
+                const iconTextWrapper = document.createElement("div");
+                iconTextWrapper.className = "icon-text-wrapper";
+                const folderIcon = document.createElement("img");
+                folderIcon.src = "img/folder.svg";
+                folderIcon.style.width = "1.2em";
+                folderIcon.style.height = "1.2em";
+                iconTextWrapper.appendChild(folderIcon);
 
                 const folderName = document.createElement("span");
+                folderName.style.paddingLeft = '0.5em';
+                folderName.textContent = folder;
                 if (folder == '..')
-                    folderName.textContent = "F: " + folder + " (parent folder)";
-                else
-                    folderName.textContent = "F: " + folder;
-                folderItem.appendChild(folderName);
+                    folderName.textContent += " (parent folder)";
+                iconTextWrapper.appendChild(folderName);
+                folderItem.appendChild(iconTextWrapper);
 
                 // add a context menu button, unless this is the link to the parent folder
                 if (folder != '..') {
