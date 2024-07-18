@@ -1,4 +1,4 @@
-import { currentFolder, toggleSidebar, listFilesInSidebar } from "./sidebar.js";
+import { currentFolder, toggleSidebar, buildFilesPanelContent } from "./sidebar.js";
 import { renameTab, activeEditor, editors } from './editor.js';
 import { createNewFileTab, updateSaveButton } from "./tabs.js";
 import './repl-client.js';
@@ -99,7 +99,7 @@ function saveFile() {
         showToast('File saved successfully!', 'info');
         activeEditor.editor.isDirty = false; // Mark editor as not dirty after saving
         updateSaveButton();
-        listFilesInSidebar();  // update file list
+        buildFilesPanelContent();  // update file list
     })
     .catch(error => showToast(error, 'error'));
 }
@@ -121,7 +121,7 @@ function setAsApp(filename) {
     })
     .then(data => {
         showToast('Success!', 'info');
-        listFilesInSidebar();  // update file list
+        buildFilesPanelContent();  // update file list
     })
     .catch(error => showToast(error, 'error'));
 }
@@ -167,7 +167,7 @@ function renameOrMoveFile(srcFile, destFile) {
         if (srcFile in editors) {
             renameTab(srcFile, destFile);
         }
-        listFilesInSidebar(); // update file list
+        buildFilesPanelContent(); // update file list
     })
     .catch((error) => showToast(error, "error"));
 }
@@ -196,7 +196,7 @@ function deleteFile(filename) {
             editors[filename].editor.isDirty = true;
             updateSaveButton(); // Update the Save button state
         }
-        listFilesInSidebar(); // update file list
+        buildFilesPanelContent(); // update file list
     })
     .catch((error) => showToast(error, "error"));
 }

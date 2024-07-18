@@ -80,14 +80,23 @@
 }
 
 #panel.collapsed #panel-content {
-    visibility: visible;
     opacity: 0;
     transform: translateX(calc(0px - calc(var(--side-panel-width) + var(--iconbar-width))));
+}
+
+.panel-content-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
 
 #fileList {
     flex-grow: 1;
     overflow-y: auto;
+}
+
+#panel-toolbar {
+    padding: 0.3rem 0.3rem;
 }
 
 #panel-current-folder {

@@ -1,17 +1,23 @@
 import { createTab, switchToTab, editors } from './editor.js';
 import { apiBaseUrl, openContextMenu, showToast } from "./main.js";
 
+const iconBar = document.getElementById("iconBar");
+const iconDivs = document.querySelectorAll(".icon");
+
 const panelDiv = document.getElementById('panel');
+
+const panelHelpContent = document.getElementById("panel-content-help");
+const helpContentDiv = document.getElementById("helpContent");
+
+const panelFilesContent = document.getElementById("panel-content-files");
+const panelToolbarDiv = document.getElementById("panel-toolbar");
 const panelCurrentFolderDiv = document.getElementById("panel-current-folder");
 const fileListDiv = document.getElementById('fileList');
-const helpContentDiv = document.getElementById('helpContent');
-const mainDiv = document.getElementById('main');
-const spaceUsageContainerDiv = document.getElementById('space-usage-container');
-const iconDivs = document.querySelectorAll(".icon");
 const spaceUsageTextDiv = document.getElementById("space-usage-text");
 const usedSpaceDiv = document.getElementById("used-space");
+
+const mainDiv = document.getElementById("main");
 const hamburgerMenuButton = document.getElementById("hamburger-menu-bt");
-const iconBar = document.getElementById("iconBar");
 
 var currentFolder = '/';
 
@@ -40,41 +46,31 @@ function toggleSidebar(iconId) {
         panelDiv.classList.add('collapsed');
         mainDiv.classList.remove('main-with-side-panel')
         hamburgerMenuButton.classList.remove("hidden");
-        spaceUsageContainerDiv.style.display = 'none'; // Hide space usage bar when panel is collapsed
     } else {             // open the panel
         panelDiv.classList.remove('collapsed');
         mainDiv.classList.add('main-with-side-panel');
         hamburgerMenuButton.classList.add('hidden');
         if (iconId === 'filesIcon') {
-            listFilesInSidebar();
-            fileListDiv.style.display = 'block';
-            helpContentDiv.style.display = 'none';
-            spaceUsageContainerDiv.style.display = 'block'; // Show space usage bar when files panel is open
+            buildFilesPanelContent();
+            panelFilesContent.style.display = "flex";
+            panelHelpContent.style.display = "none";
         } else if (iconId === 'helpIcon') {
-            fileListDiv.style.display = 'none';
-            helpContentDiv.style.display = 'block';
-            spaceUsageContainerDiv.style.display = 'none'; // Hide space usage bar when help panel is open
+            panelFilesContent.style.display = "none";
+            panelHelpContent.style.display = "flex";
         }
     }
 }
 
 function getParentFolder(folderPath) {
-    // Remove any trailing slash if it exists
     if (folderPath.endsWith("/"))
-        folderPath = folderPath.slice(0, -1);
-
-    // Find the last slash
-    const lastSlashIndex = folderPath.lastIndexOf("/");
-
-    // If there's no slash, return an empty string (no parent folder)
-    if (lastSlashIndex === -1)
-        return "";
-
-    // Return the substring up to the last slash
-    return folderPath.substring(0, lastSlashIndex);
+        folderPath = folderPath.slice(0, -1);  // Remove trailing slash
+    const lastSlashIndex = folderPath.lastIndexOf("/"); // Find last slash
+    if (lastSlashIndex < 1) // If there's no slash, return the root
+        return "/";
+    return folderPath.substring(0, lastSlashIndex); // Return the substring up to the last slash
 }
 
-function listFilesInSidebar() {
+function buildFilesPanelContent() {
     // show the current folder
     panelCurrentFolderDiv.innerHTML = "";
     const currentFolderSpan = document.createElement("span");
@@ -172,7 +168,7 @@ function listFilesInSidebar() {
 
 function changeFolder(path) {
     currentFolder = path;
-    listFilesInSidebar(); // refresh everything
+    buildFilesPanelContent(); // refresh everything
 }
 
 function openFile(filename) {
@@ -228,4 +224,4 @@ function fetchSpaceUsage() {
         });
 }
 
-export { currentFolder, listFilesInSidebar, toggleSidebar };
+export { currentFolder, buildFilesPanelContent, toggleSidebar };
