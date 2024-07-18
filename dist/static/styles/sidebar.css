@@ -90,6 +90,14 @@
     overflow-y: auto;
 }
 
+#panel-current-folder {
+    padding: 0.3rem 0.3rem;
+    background-color: #222;
+    border:#000 1px solid;
+    border-radius: 0.4rem;
+    color: #888;
+}
+
 .file-item {
     display: flex;
     justify-content: space-between;

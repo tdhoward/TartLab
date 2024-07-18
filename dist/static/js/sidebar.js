@@ -78,7 +78,6 @@ function listFilesInSidebar() {
     // show the current folder
     panelCurrentFolderDiv.innerHTML = "";
     const currentFolderSpan = document.createElement("span");
-    currentFolderSpan.style.padding = "0.5rem";
     currentFolderSpan.textContent = "Path: " + currentFolder;
     panelCurrentFolderDiv.appendChild(currentFolderSpan);
 
