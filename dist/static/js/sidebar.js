@@ -105,12 +105,12 @@ function listFilesInSidebar() {
                 iconTextWrapper.className = "icon-text-wrapper";
                 const folderIcon = document.createElement("img");
                 folderIcon.src = "img/folder.svg";
-                folderIcon.style.width = "1.2em";
-                folderIcon.style.height = "1.2em";
+                folderIcon.style.width = "1.2rem";
+                folderIcon.style.height = "1.2rem";
                 iconTextWrapper.appendChild(folderIcon);
 
                 const folderName = document.createElement("span");
-                folderName.style.paddingLeft = '0.5em';
+                folderName.style.padding = '0.5rem';
                 folderName.textContent = folder;
                 if (folder == '..')
                     folderName.textContent += " (parent folder)";
