@@ -14,7 +14,7 @@ Additionally, it would be great if a community of embedded Python developers wou
  * Client device (for development): Any device with a relatively modern browser
 
 ## Installation
- 1. Install [MicroPython](https://micropython.org/) on the embedded device.  Sometimes there are special builds of MicroPython that are specific to your device, such as the [build for LilyGo T-Display-S3](https://github.com/russhughes/s3lcd).
+ 1. Install a bin file from [MicroPython](https://micropython.org/) on the embedded device.  Sometimes there are special builds of MicroPython that are specific to your device, in which case you should use those.  For those devices without a special build, find the closest thing.  For example, the T-Display-S3 would use the "Support for Octal-SPIRAM" version of the [ESP32_GENERIC_S3 port.](https://www.micropython.org/download/ESP32_GENERIC_S3/)
  2. Use [mpsync](https://github.com/tdhoward/mpsync) to load the TartLab "dist" files onto the device.
  3. Enjoy!
 
