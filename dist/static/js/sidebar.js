@@ -89,6 +89,7 @@ function buildFilesPanelContent() {
         })
         .then(data => {
             fileListDiv.innerHTML = "";
+            let appIndex = data.app ?? -1;
             data.folders.forEach(folder => {
                 let fullPath;
                 if (currentFolder != '/') {
@@ -108,8 +109,6 @@ function buildFilesPanelContent() {
                 iconTextWrapper.className = "icon-text-wrapper";
                 const folderIcon = document.createElement("img");
                 folderIcon.src = "img/folder.svg";
-                folderIcon.style.width = "1.2rem";
-                folderIcon.style.height = "1.2rem";
                 iconTextWrapper.appendChild(folderIcon);
 
                 const folderName = document.createElement("span");
@@ -134,7 +133,7 @@ function buildFilesPanelContent() {
 
                 fileListDiv.appendChild(folderItem);
             });
-            data.files.forEach(file => {
+            data.files.forEach((file, idx) => {
                 let fullPath = currentFolder + "/" + file;
                 fullPath = fullPath.replace(/^\/*/, "");  // get rid of leading slash
 
@@ -142,8 +141,18 @@ function buildFilesPanelContent() {
                 fileItem.className = "file-item";
                 fileItem.onclick = () => openFile(fullPath);
 
+                const fileNameContainer = document.createElement("div");
+                fileNameContainer.className = "file-name-container";
                 const fileName = document.createElement("span");
                 fileName.textContent = file;
+                fileNameContainer.appendChild(fileName);
+
+                if (idx == appIndex) {
+                  const appStar = document.createElement("img");
+                  appStar.src = "../img/star.svg";
+                  appStar.className = "app-star";
+                  fileNameContainer.appendChild(appStar);
+                }
 
                 const menuButton = document.createElement("button");
                 menuButton.textContent = "☰";
@@ -153,7 +162,7 @@ function buildFilesPanelContent() {
                   openContextMenu(fullPath, "file");
                 };
 
-                fileItem.appendChild(fileName);
+                fileItem.appendChild(fileNameContainer);
                 fileItem.appendChild(menuButton);
                 fileListDiv.appendChild(fileItem);
             });

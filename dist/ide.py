@@ -258,6 +258,21 @@ def sanitize_path(path, base_path = USER_BASE_DIR):
     return normalized_path
 
 
+# get the Python file currently set as the primary app
+# returns a tuple of (localized_filename, error)
+def get_app():
+    localized_filename = ""
+    try:
+        with open('app.py', 'r') as f:
+            lines = f.readlines()
+            if len(lines) < 3:
+                return "",'Invalid app.py!'
+            localized_filename = lines[1][2:].strip()
+    except:
+        return "",'Invalid app.py!'
+    return localized_filename,''
+
+
 async def sendHTTPResponse(writer, HTTPstatus, msg):
     response = HTTPResponse(HTTPstatus, "application/json", close=True)
     await response.send(writer)
@@ -343,7 +358,7 @@ async def help_files(reader, writer, request):
 
 
 # -----  API endpoints  -----
-# retrieve list of files and folders
+# retrieve list of files and folders, as well as an indication of which file is the current app
 @app.route("GET", "/api/files/*")
 async def api_list_files(reader, writer, request):
     try:
@@ -354,7 +369,18 @@ async def api_list_files(reader, writer, request):
     await response.send(writer)
     await writer.drain()
     files, folders = list_files_and_folders(folder)
-    writer.write(ujson.dumps({'files': files, 'folders': folders}))
+    app_filename, error = get_app()
+    if app_filename == '':
+        return await sendHTTPResponse(writer, 400, error)
+    app_filename = USER_BASE_DIR + '/' + app_filename
+    app = -1
+    # figure out whether the app file is supposedly in this folder
+    if app_filename.startswith(folder):
+        localized_app_filename = app_filename[len(folder) + 1:]
+        # figure out whether the app file is one of the listed files (and which one)
+        if localized_app_filename in files:
+            app = files.index(localized_app_filename)
+    writer.write(ujson.dumps({'files': files, 'folders': folders, 'app': app}))
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
 
