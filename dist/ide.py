@@ -257,6 +257,18 @@ def sanitize_path(path, base_path = USER_BASE_DIR):
     
     return normalized_path
 
+
+async def sendHTTPResponse(writer, HTTPstatus, msg):
+    response = HTTPResponse(HTTPstatus, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    if HTTPstatus >= 400:
+        writer.write(ujson.dumps({'error': msg}))
+    else:
+        writer.write(ujson.dumps({'response': msg}))
+    await writer.drain()
+
+
 # General GET requests
 @app.route("GET", "/*")
 async def static_files(reader, writer, request):
@@ -269,12 +281,7 @@ async def static_files(reader, writer, request):
         full_path = sanitize_path(subpath, local_path)
     except:
         print('400: ' + full_path)
-        response = HTTPResponse(400)
-        await response.send(writer)
-        await writer.drain()
-        writer.write(ujson.dumps({'error': 'Invalid path!'}))
-        await writer.drain()
-        return
+        return await sendHTTPResponse(writer, 400, 'Invalid path!')
     await serve_file(reader, writer, request, full_path, True)
 
 # -----  User file operations  -----
@@ -285,12 +292,7 @@ async def get_user_file(reader, writer, request):
     try:
         full_path = sanitize_path(subpath)
     except:
-        response = HTTPResponse(400)
-        await response.send(writer)
-        await writer.drain()
-        writer.write(ujson.dumps({'error': 'Invalid path!'}))
-        await writer.drain()
-        return
+        return await sendHTTPResponse(writer, 400, 'Invalid path!')
     await serve_file(reader, writer, request, full_path, False)
 
 # Handle POST requests for files
@@ -301,32 +303,16 @@ async def store_user_file(reader, writer, request):
     try:
         filename = sanitize_path(filename)
     except:
-        response = HTTPResponse(400)
-        await response.send(writer)
-        await writer.drain()
-        writer.write(ujson.dumps({'error': 'Invalid path!'}))
-        await writer.drain()
-        return
-
+        return await sendHTTPResponse(writer, 400, 'Invalid path!')
     data = ujson.loads(request.body.decode("utf-8"))
     try:
         with open(filename, 'w') as file:
             file.write(data['content'])
     except Exception as ex:  # don't stop the server
         print(f'Filename was: {filename}')
-        print(data)
         print(ex)
-        response = HTTPResponse(500)
-        await response.send(writer)
-        await writer.drain()
-        writer.write(ujson.dumps({'error': 'Error writing file!'}))
-        await writer.drain()
-        return
-    response = HTTPResponse(200, "application/json", close=True)
-    await response.send(writer)
-    await writer.drain()
-    writer.write(ujson.dumps({'response': 'success'}))
-    await writer.drain()
+        return await sendHTTPResponse(writer, 500, 'Error writing file!')
+    await sendHTTPResponse(writer, 200, 'success')
     print(f"POST {path} with response code 200")
 
 # Handle DELETE requests for user files
@@ -337,23 +323,12 @@ async def delete_user_file(reader, writer, request):
     try:
         filename = sanitize_path(filename)
     except:
-        response = HTTPResponse(400)
-        await response.send(writer)
-        await writer.drain()
-        writer.write(ujson.dumps({'error': 'Invalid path!'}))
-        await writer.drain()
-        return
+        return await sendHTTPResponse(writer, 400, 'Invalid path!')
     try:
         os.remove(filename)
     except:
-        response = HTTPResponse(404)
-        await response.send(writer)
-        return
-    response = HTTPResponse(200, "application/json", close=True)
-    await response.send(writer)
-    await writer.drain()
-    writer.write(ujson.dumps({'response': 'success'}))
-    await writer.drain()
+        return await sendHTTPResponse(writer, 404, 'Could not remove file!')
+    await sendHTTPResponse(writer, 200, 'success')
     print(f"DELETE {path} with response code 200")
 
 
@@ -363,12 +338,7 @@ async def help_files(reader, writer, request):
     try:
         full_path = sanitize_path(unquote(request.path[len('/files/help'):]), '/files/help')
     except:
-        response = HTTPResponse(400)
-        await response.send(writer)
-        await writer.drain()
-        writer.write(ujson.dumps({'error': 'Invalid path!'}))
-        await writer.drain()
-        return
+        return await sendHTTPResponse(writer, 400, 'Invalid path!')
     await serve_file(reader, writer, request, full_path, True)
 
 
@@ -379,12 +349,7 @@ async def api_list_files(reader, writer, request):
     try:
         folder = sanitize_path(request.path[len('/api/files'):], '/files')
     except:
-        response = HTTPResponse(400)
-        await response.send(writer)
-        await writer.drain()
-        writer.write(ujson.dumps({'error': 'Invalid path!'}))
-        await writer.drain()
-        return
+        return await sendHTTPResponse(writer, 400, 'Invalid path!')
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
@@ -401,23 +366,12 @@ async def api_move_file(reader, writer, request):
         src = sanitize_path(data["src"])
         dest = sanitize_path(data["dest"])
         if src == dest:
-            response = HTTPResponse(400)
-            await response.send(writer)
-            await writer.drain()
-            writer.write(ujson.dumps({'error': 'File is already there.'}))
-            await writer.drain()
-            return
+            return await sendHTTPResponse(writer, 400, 'File is already there.')
         os.rename(src, dest)
     except Exception as ex:
         print(f"API request: {request.path} with response code 400")
-        print(data)
         print(ex)
-        response = HTTPResponse(400)
-        await response.send(writer)
-        await writer.drain()
-        writer.write(ujson.dumps({'error': 'Invalid path!'}))
-        await writer.drain()
-        return
+        return await sendHTTPResponse(writer, 400, 'Invalid path!')
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
@@ -458,12 +412,7 @@ async def api_setasapp(reader, writer, request):
     localized_filename = data['filename']   # /tmp/test/hello.py
     filename = USER_BASE_DIR + '/' + localized_filename  # /files/user/tmp/test/hello.py
     if not file_exists(filename) or filename[-3:] != '.py':
-        response = HTTPResponse(400)
-        await response.send(writer)
-        await writer.drain()
-        writer.write(ujson.dumps({'error': 'Unable to set this file as app!'}))
-        await writer.drain()
-        return
+        return await sendHTTPResponse(writer, 400, 'Unable to set this file as app!')
     # create and overwrite app.py
     imp_pkg = localized_filename.rsplit('.', 1)[0]  # /tmp/test/hello
     imp_pkg = imp_pkg.replace('/', '.').lstrip('.')  # tmp.test.hello
@@ -478,19 +427,9 @@ async def api_setasapp(reader, writer, request):
             f.write(content)
     except Exception as ex:
         print(f"API request: {request.path} with response code 400")
-        print(data)
         print(ex)
-        response = HTTPResponse(400)
-        await response.send(writer)
-        await writer.drain()
-        writer.write(ujson.dumps({'error': 'Error writing app.py!'}))
-        await writer.drain()
-        return
-    response = HTTPResponse(200, "application/json", close=True)
-    await response.send(writer)
-    await writer.drain()
-    writer.write(ujson.dumps({'response': 'success'}))
-    await writer.drain()
+        return await sendHTTPResponse(writer, 400, 'Error writing app.py!')
+    await sendHTTPResponse(writer, 200, 'success')
     print(f"SET AS APP {localized_filename} with response code 200")
 
 
