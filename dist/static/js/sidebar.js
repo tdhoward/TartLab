@@ -11,6 +11,7 @@ const helpContentDiv = document.getElementById("helpContent");
 
 const panelFilesContent = document.getElementById("panel-content-files");
 const panelToolbarDiv = document.getElementById("panel-toolbar");
+const newFolderDiv = document.getElementById("newFolderIcon");
 const panelCurrentFolderDiv = document.getElementById("panel-current-folder");
 const fileListDiv = document.getElementById('fileList');
 const spaceUsageTextDiv = document.getElementById("space-usage-text");
@@ -232,5 +233,34 @@ function fetchSpaceUsage() {
             showToast(error, "error");
         });
 }
+
+
+function createNewFolder() {
+    const newFolderName = prompt("Enter a name for the new folder:");
+    if (!newFolderName) {
+        return;
+    }
+    const fname = encodeURIComponent(newFolderName); // URI encode the folder name
+    fetch(`${apiBaseUrl}/folder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newFolderName })
+    })
+    .then((response) => {
+        if (!response.ok) {
+            return response.json().then((data) => {
+                throw new Error(data.error || 'An error occurred');
+            });
+        }
+        return response.json();
+    })
+    .then((data) => {
+        showToast("Folder created.", "info");
+        buildFilesPanelContent(); // update file/folder list
+    })
+    .catch((error) => showToast(error, "error"));
+}
+
+newFolderDiv.onclick = createNewFolder;
 
 export { currentFolder, buildFilesPanelContent, toggleSidebar };

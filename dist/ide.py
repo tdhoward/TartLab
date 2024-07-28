@@ -406,6 +406,24 @@ async def api_move_file(reader, writer, request):
     print(f"API request: {request.path} with response code 200")
 
 
+# Create new folder
+@app.route("POST", "/api/folder")
+async def create_new_folder(reader, writer, request):
+    data = ujson.loads(request.body.decode("utf-8"))
+    try:
+        foldername = data['newFolderName']
+        foldername = sanitize_path(foldername)
+        print(foldername)
+    except:
+        return await sendHTTPResponse(writer, 400, 'Invalid path!')
+    try:
+        os.mkdir(foldername)
+    except:
+        return await sendHTTPResponse(writer, 404, 'Could not create folder!')
+    await sendHTTPResponse(writer, 200, 'success')
+    print(f"POST {request.path} with response code 200")
+
+
 # get the disk usage
 @app.route("GET", "/api/space")
 async def api_get_space(reader, writer, request):
