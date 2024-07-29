@@ -276,24 +276,15 @@ def get_app():
     return localized_filename,''
 
 
-# delete the folder and all its subfolders and files
-def deleteFolder(path):
-    stack = [path]
-    while stack:
-        current_path = stack.pop()
-        # List all items in the current directory
-        for item in os.listdir(current_path):
-            item_path = current_path + '/' + item
-            if file_exists(item_path) == 2:  # it's a folder
-                stack.append(item_path)
-            else:
-                os.remove(item_path)
-        # After removing all files in the directory, add the directory to be removed
-        stack.append(current_path)
-        while stack and not os.listdir(current_path):
-            current_path = stack.pop()
-            os.rmdir(current_path)
-
+# recursively delete dir tree
+def rmvdir(d):  # Remove file or tree
+    if os.stat(d)[0] & 0x4000:  # Dir
+        for f in os.ilistdir(d):
+            if f[0] not in ('.', '..'):
+                rmvdir("/".join((d, f[0])))  # File or Dir
+        os.rmdir(d)
+    else:  # File
+        os.remove(d)
 
 async def sendHTTPResponse(writer, HTTPstatus, msg):
     response = HTTPResponse(HTTPstatus, "application/json", close=True)
@@ -480,7 +471,7 @@ async def delete_folder(reader, writer, request):
     try:
         if file_exists(foldername) != 2:  # not a folder, or doesn't exist
             return await sendHTTPResponse(writer, 400, 'Invalid folder path!')
-        deleteFolder(foldername)
+        rmvdir(foldername)
     except:
         return await sendHTTPResponse(writer, 404, 'Could not delete folder!')
     await sendHTTPResponse(writer, 200, 'success')
