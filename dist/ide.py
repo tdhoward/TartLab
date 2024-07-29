@@ -19,9 +19,11 @@ USER_BASE_DIR = '/files/user'
 def file_exists(filepath):
     try:
         stat = os.stat(filepath)
-        return stat[0] & 0x8000 == 0x8000  # Check if it's a regular file
+        if stat[0] & 0x8000 == 0x8000:
+            return 1  # regular file
+        return 2   # folder
     except OSError:
-        return False
+        return 0   # doesn't exist
 
 class CaptureOutput(io.IOBase):
     def __init__(self):
@@ -226,9 +228,10 @@ def list_files_and_folders(folder):
         if folder != USER_BASE_DIR:
             folders.append('..')
         for f in os.listdir(folder):
-            if file_exists(folder + '/' + f):
+            ex = file_exists(folder + '/' + f)
+            if ex == 1:
                 files.append(f)
-            else:
+            elif ex == 2:
                 folders.append(f)
         return files, folders
     except OSError:
@@ -271,6 +274,25 @@ def get_app():
     except:
         return "",'Invalid app.py!'
     return localized_filename,''
+
+
+# delete the folder and all its subfolders and files
+def deleteFolder(path):
+    stack = [path]
+    while stack:
+        current_path = stack.pop()
+        # List all items in the current directory
+        for item in os.listdir(current_path):
+            item_path = current_path + '/' + item
+            if file_exists(item_path) == 2:  # it's a folder
+                stack.append(item_path)
+            else:
+                os.remove(item_path)
+        # After removing all files in the directory, add the directory to be removed
+        stack.append(current_path)
+        while stack and not os.listdir(current_path):
+            current_path = stack.pop()
+            os.rmdir(current_path)
 
 
 async def sendHTTPResponse(writer, HTTPstatus, msg):
@@ -407,13 +429,12 @@ async def api_move_file(reader, writer, request):
 
 
 # Create new folder
-@app.route("POST", "/api/folder")
+@app.route("POST", "/api/folder/create")
 async def create_new_folder(reader, writer, request):
     data = ujson.loads(request.body.decode("utf-8"))
     try:
         foldername = data['newFolderName']
         foldername = sanitize_path(foldername)
-        print(foldername)
     except:
         return await sendHTTPResponse(writer, 400, 'Invalid path!')
     try:
@@ -422,6 +443,48 @@ async def create_new_folder(reader, writer, request):
         return await sendHTTPResponse(writer, 404, 'Could not create folder!')
     await sendHTTPResponse(writer, 200, 'success')
     print(f"POST {request.path} with response code 200")
+
+
+# Rename folder
+@app.route("POST", "/api/folder/rename")
+async def rename_folder(reader, writer, request):
+    data = ujson.loads(request.body.decode("utf-8"))
+    try:
+        src = data['src']
+        dest = data['dest']
+        srcfolder = sanitize_path(src)
+        destfolder = sanitize_path(dest)
+        if file_exists(srcfolder) != 2:  # make sure srcfolder is a real folder
+            return await sendHTTPResponse(writer, 400, 'Invalid source path!')
+        if file_exists(destfolder) != 0:  # make sure destfolder doesn't exist
+            return await sendHTTPResponse(writer, 400, 'Destination path already exists!')
+    except:
+        return await sendHTTPResponse(writer, 400, 'Invalid path!')
+    try:
+        os.rename(srcfolder, destfolder)
+    except:
+        return await sendHTTPResponse(writer, 404, 'Could not rename folder!')
+    await sendHTTPResponse(writer, 200, 'success')
+    print(f"POST {request.path} with response code 200")
+
+
+# Delete user folder and all subfolders and files
+@app.route("POST", "/api/folder/delete")
+async def delete_folder(reader, writer, request):
+    data = ujson.loads(request.body.decode("utf-8"))
+    try:
+        foldername = data['folderName']
+        foldername = sanitize_path(foldername)
+    except:
+        return await sendHTTPResponse(writer, 400, 'Invalid path!')
+    try:
+        if file_exists(foldername) != 2:  # not a folder, or doesn't exist
+            return await sendHTTPResponse(writer, 400, 'Invalid folder path!')
+        deleteFolder(foldername)
+    except:
+        return await sendHTTPResponse(writer, 404, 'Could not delete folder!')
+    await sendHTTPResponse(writer, 200, 'success')
+    print(f"DELETE {request.path} with response code 200")
 
 
 # get the disk usage
@@ -455,7 +518,7 @@ async def api_setasapp(reader, writer, request):
     data = ujson.loads(request.body.decode("utf-8"))
     localized_filename = data['filename']   # /tmp/test/hello.py
     filename = USER_BASE_DIR + '/' + localized_filename  # /files/user/tmp/test/hello.py
-    if not file_exists(filename) or filename[-3:] != '.py':
+    if file_exists(filename) != 1 or filename[-3:] != '.py':
         return await sendHTTPResponse(writer, 400, 'Unable to set this file as app!')
     # create and overwrite app.py
     imp_pkg = localized_filename.rsplit('.', 1)[0]  # /tmp/test/hello

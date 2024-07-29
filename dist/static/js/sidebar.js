@@ -1,5 +1,10 @@
 import { createTab, switchToTab, editors } from './editor.js';
-import { apiBaseUrl, openContextMenu, showToast } from "./main.js";
+import {
+  apiBaseUrl,
+  openContextMenu,
+  createFolder,
+  showToast,
+} from "./main.js";
 
 const iconBar = document.getElementById("iconBar");
 const iconDivs = document.querySelectorAll(".icon");
@@ -203,64 +208,37 @@ function openFile(filename) {
 
 function fetchSpaceUsage() {
     fetch(`${apiBaseUrl}/space`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            const usedBytes = data.total_bytes - data.free_bytes;
-            const totalBytes = data.total_bytes;
-            const usedMB = (usedBytes / (1024 * 1024)).toFixed(2);
-            const totalMB = (totalBytes / (1024 * 1024)).toFixed(2);
-            const usedPercentage = (usedBytes / totalBytes) * 100;
-
-            spaceUsageTextDiv.innerHTML = `Used: ${usedMB} MB / ${totalMB} MB`;
-
-            usedSpaceDiv.style.width = `${usedPercentage}%`;
-            if (usedPercentage < 60) {
-                usedSpaceDiv.style.backgroundColor = 'green';
-            } else if (usedPercentage < 80) {
-                usedSpaceDiv.style.backgroundColor = 'yellow';
-            } else {
-                usedSpaceDiv.style.backgroundColor = 'red';
-            }
-        })
-        .catch(error => {
-            spaceUsageTextDiv.innerHTML = '<div class="error">Can\'t connect.</div>';
-            usedSpaceDiv.style.width = '0%';
-            showToast(error, "error");
-        });
-}
-
-
-function createNewFolder() {
-    const newFolderName = prompt("Enter a name for the new folder:");
-    if (!newFolderName) {
-        return;
-    }
-    const fname = encodeURIComponent(newFolderName); // URI encode the folder name
-    fetch(`${apiBaseUrl}/folder`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newFolderName })
-    })
-    .then((response) => {
+    .then(response => {
         if (!response.ok) {
-            return response.json().then((data) => {
-                throw new Error(data.error || 'An error occurred');
-            });
+            throw new Error('Network response was not ok');
         }
         return response.json();
     })
-    .then((data) => {
-        showToast("Folder created.", "info");
-        buildFilesPanelContent(); // update file/folder list
+    .then(data => {
+        const usedBytes = data.total_bytes - data.free_bytes;
+        const totalBytes = data.total_bytes;
+        const usedMB = (usedBytes / (1024 * 1024)).toFixed(2);
+        const totalMB = (totalBytes / (1024 * 1024)).toFixed(2);
+        const usedPercentage = (usedBytes / totalBytes) * 100;
+
+        spaceUsageTextDiv.innerHTML = `Used: ${usedMB} MB / ${totalMB} MB`;
+
+        usedSpaceDiv.style.width = `${usedPercentage}%`;
+        if (usedPercentage < 60) {
+            usedSpaceDiv.style.backgroundColor = 'green';
+        } else if (usedPercentage < 80) {
+            usedSpaceDiv.style.backgroundColor = 'yellow';
+        } else {
+            usedSpaceDiv.style.backgroundColor = 'red';
+        }
     })
-    .catch((error) => showToast(error, "error"));
+    .catch(error => {
+        spaceUsageTextDiv.innerHTML = '<div class="error">Can\'t connect.</div>';
+        usedSpaceDiv.style.width = '0%';
+        showToast(error, "error");
+    });
 }
 
-newFolderDiv.onclick = createNewFolder;
+newFolderDiv.onclick = createFolder;
 
 export { currentFolder, buildFilesPanelContent, toggleSidebar };

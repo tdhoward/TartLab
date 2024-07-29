@@ -21,12 +21,16 @@ const baseUrl = `http://${hostname}`;
 const apiBaseUrl = `${baseUrl}/api`;
 const userFilesLocation = baseUrl + "/files/user";
 
+function stripLeadingSlashes(path) {
+    return path.replace(/^\/+/, "");
+}
+
 function openContextMenu(name, type) {
-    contextMenuTitle.textContent = name;
     contextMenu.classList.remove("hidden");
     darkOverlay.classList.remove("hidden");
     if (type == "file") {
         let filename = name
+        contextMenuTitle.textContent = filename;
         // don't allow "set as app" for non-python files
         if (filename.endsWith(".py")) {
             contextSetAsApp.onclick = () => setAsApp(filename);
@@ -47,11 +51,13 @@ function openContextMenu(name, type) {
         contextMove.classList.remove("hidden");
     }
     else if (type == "folder") {
+        let foldername = name;
+        contextMenuTitle.textContent = stripLeadingSlashes(foldername);
         contextSetAsApp.classList.add("hidden");
         contextDownload.classList.add("hidden");
+        contextRename.onclick = () => renameFolder(foldername);
         contextMove.classList.add("hidden");  // should we allow moving whole folders? Maybe.
-
-        // TODO: add functions to rename and delete folders
+        contextDelete.onclick = () => deleteFolder(foldername);
     }
 }
 
@@ -70,8 +76,9 @@ function saveFile() {
     }
 
     if (!activeEditor.isNamed) {
-      const newFilename = prompt("Enter a name for the new file:");
+      let newFilename = prompt("Enter a name for the new file:");
       if (newFilename) {
+        newFilename = stripLeadingSlashes(currentFolder + '/' + newFilename);  // include the current folder
         renameTab(activeEditor.filename, newFilename);
         activeEditor.isNamed = true;
       } else {
@@ -201,6 +208,84 @@ function deleteFile(filename) {
     .catch((error) => showToast(error, "error"));
 }
 
+function createFolder() {
+  let newFolderName = prompt("Enter a name for the new folder:");
+  if (!newFolderName) {
+    return;
+  }
+  newFolderName = stripLeadingSlashes(currentFolder + '/' + newFolderName);
+  fetch(`${apiBaseUrl}/folder/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ newFolderName }),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        return response.json().then((data) => {
+          throw new Error(data.error || "An error occurred");
+        });
+      }
+      return response.json();
+    })
+    .then((data) => {
+      showToast("Folder created.", "info");
+      buildFilesPanelContent(); // update file/folder list
+    })
+    .catch((error) => showToast(error, "error"));
+}
+
+function deleteFolder(folderName) {
+    closeContextMenu();
+    if (!confirm("Are you sure you want to delete this folder and all its contents?"))
+        return;
+    fetch(`${apiBaseUrl}/folder/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderName }),
+    })
+    .then((response) => {
+      if (!response.ok) {
+        return response.json().then((data) => {
+          throw new Error(data.error || "An error occurred");
+        });
+      }
+      return response.json();
+    })
+    .then((data) => {
+      showToast("Folder deleted.", "info");
+      buildFilesPanelContent(); // update file/folder list
+    })
+    .catch((error) => showToast(error, "error"));
+}
+
+function renameFolder(foldername) {
+    closeContextMenu();
+    foldername = stripLeadingSlashes(foldername);
+    const newFoldername = prompt("Enter a new name for the folder:", foldername);
+    if (newFoldername) {
+        let src = foldername;
+        let dest = newFoldername;
+        fetch(`${apiBaseUrl}/folder/rename`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ src, dest }),
+        })
+        .then((response) => {
+            if (!response.ok) {
+            return response.json().then((data) => {
+                throw new Error(data.error || "An error occurred");
+            });
+            }
+            return response.json();
+        })
+        .then((data) => {
+            showToast("Success.", "info");
+            buildFilesPanelContent(); // update file/folder list
+        })
+        .catch((error) => showToast(error, "error"));
+    }
+}
+
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -224,4 +309,12 @@ window.addEventListener('load', () => {
     document.getElementById('loading-overlay').style.display = 'none';
 });
 
-export { baseUrl, apiBaseUrl, saveButton, openContextMenu, showToast };
+export {
+  baseUrl,
+  apiBaseUrl,
+  saveButton,
+  openContextMenu,
+  createFolder,
+  deleteFolder,
+  showToast,
+};
