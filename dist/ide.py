@@ -433,31 +433,34 @@ async def api_move_file(reader, writer, request):
 # upload a file
 @app.route("POST", "/api/files/upload")
 async def api_upload_file(reader, writer, request):
-    body = request.body
-    if '' not in body:
-        return await sendHTTPResponse(writer, 404, 'Malformed upload!')
-    boundary, body = split_on_first(body)  # b'------WebKitFormBoundarylaNda3z1jQssrqsA'
-    content_disposition, body = split_on_first(body)  # b'Content-Disposition: form-data; name="file"; filename="desktop.ini"'
-    content_type, body = split_on_first(body)  # b'Content-Type: application/octet-stream'
-    empty, body = split_on_first(body)  # b''
-    body, empty = split_on_first(body, b'\r\n' + boundary)
-
     try:
-        src = sanitize_path(data["src"])
-        dest = sanitize_path(data["dest"])
-        if src == dest:
-            return await sendHTTPResponse(writer, 400, 'File is already there.')
-        os.rename(src, dest)
-    except Exception as ex:
-        print(f"API request: {request.path} with response code 400")
-        print(ex)
-        return await sendHTTPResponse(writer, 400, 'Invalid path!')
-    response = HTTPResponse(200, "application/json", close=True)
-    await response.send(writer)
-    await writer.drain()
-    writer.write(ujson.dumps({'files': list_files(request.path[len('/api'):])}))
-    await writer.drain()
-    print(f"API request: {request.path} with response code 200")
+        body = request.body
+        boundary, body = split_on_first(body)  # b'------WebKitFormBoundarylaNda3z1jQssrqsA'
+        boundary_str = boundary.decode("utf-8")
+        if 'WebKitFormBoundary' not in boundary_str:
+            print(boundary_str)
+            return await sendHTTPResponse(writer, 404, 'Malformed upload ERR2!')
+        content_disposition, body = split_on_first(body)  # b'Content-Disposition: form-data; name="file"; filename="desktop.ini"'
+        cds = content_disposition.decode('utf-8').split('; ')
+        if not cds[0].startswith('Content-Disposition: form-data'):
+            print(cds[0])
+            return await sendHTTPResponse(writer, 404, 'Malformed upload ERR3!')
+        if not cds[1].startswith('name='):
+            print(cds[1])
+            return await sendHTTPResponse(writer, 404, 'Malformed upload ERR4!')
+        if not cds[2].startswith('filename='):
+            print(cds[2])
+            return await sendHTTPResponse(writer, 404, 'Malformed upload ERR5!')
+        filename = USER_BASE_DIR + '/' + cds[2][len('filename="'):-1]
+        content_type, body = split_on_first(body)  # b'Content-Type: application/octet-stream'
+        empty, body = split_on_first(body)  # b''
+        data, empty = split_on_first(body, b'\r\n' + boundary)
+        with open(filename, 'wb') as f:
+            f.write(data)
+    except:
+        return await sendHTTPResponse(writer, 400, 'Unable to process upload!')
+    await sendHTTPResponse(writer, 200, 'success')
+    print(f"POST {request.path} with response code 200")
 
 
 # Create new folder
