@@ -286,6 +286,36 @@ function renameFolder(foldername) {
     }
 }
 
+function uploadFile() {
+    const fileInput = document.getElementById("fileUploadInput");
+    fileInput.click();
+    fileInput.onchange = () => {
+        const file = fileInput.files[0];
+        if (file) {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            fetch(`${apiBaseUrl}/files/upload`, {
+                method: "POST",
+                body: formData,
+            })
+            .then((response) => {
+                if (!response.ok) {
+                return response.json().then((data) => {
+                    throw new Error(data.error || "An error occurred");
+                });
+                }
+                return response.json();
+            })
+            .then((data) => {
+                showToast("Success.", "info");
+                buildFilesPanelContent(); // update file/folder list
+            })
+            .catch((error) => showToast(error, "error"));
+        }
+    };
+}
+
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -316,5 +346,6 @@ export {
   openContextMenu,
   createFolder,
   deleteFolder,
+  uploadFile,
   showToast,
 };

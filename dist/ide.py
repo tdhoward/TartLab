@@ -286,6 +286,17 @@ def rmvdir(d):  # Remove file or tree
     else:  # File
         os.remove(d)
 
+
+def split_on_first(data, token = b'\r\n'):
+    length = len(data)
+    tl = len(token)
+    for i in range(length - (tl - 1)):
+        if data[i:i+tl] == token:
+            return data[:i], data[i+tl:]
+    # If no token is found, return the original data and an empty byte string
+    return data, b''
+
+
 async def sendHTTPResponse(writer, HTTPstatus, msg):
     response = HTTPResponse(HTTPstatus, "application/json", close=True)
     await response.send(writer)
@@ -401,6 +412,36 @@ async def api_list_files(reader, writer, request):
 @app.route("POST", "/api/files/move")
 async def api_move_file(reader, writer, request):
     data = ujson.loads(request.body.decode("utf-8"))
+    try:
+        src = sanitize_path(data["src"])
+        dest = sanitize_path(data["dest"])
+        if src == dest:
+            return await sendHTTPResponse(writer, 400, 'File is already there.')
+        os.rename(src, dest)
+    except Exception as ex:
+        print(f"API request: {request.path} with response code 400")
+        print(ex)
+        return await sendHTTPResponse(writer, 400, 'Invalid path!')
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    writer.write(ujson.dumps({'files': list_files(request.path[len('/api'):])}))
+    await writer.drain()
+    print(f"API request: {request.path} with response code 200")
+
+
+# upload a file
+@app.route("POST", "/api/files/upload")
+async def api_upload_file(reader, writer, request):
+    body = request.body
+    if '' not in body:
+        return await sendHTTPResponse(writer, 404, 'Malformed upload!')
+    boundary, body = split_on_first(body)  # b'------WebKitFormBoundarylaNda3z1jQssrqsA'
+    content_disposition, body = split_on_first(body)  # b'Content-Disposition: form-data; name="file"; filename="desktop.ini"'
+    content_type, body = split_on_first(body)  # b'Content-Type: application/octet-stream'
+    empty, body = split_on_first(body)  # b''
+    body, empty = split_on_first(body, b'\r\n' + boundary)
+
     try:
         src = sanitize_path(data["src"])
         dest = sanitize_path(data["dest"])

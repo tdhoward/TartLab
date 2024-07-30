@@ -3,6 +3,7 @@ import {
   apiBaseUrl,
   openContextMenu,
   createFolder,
+  uploadFile,
   showToast,
 } from "./main.js";
 
@@ -17,6 +18,7 @@ const helpContentDiv = document.getElementById("helpContent");
 const panelFilesContent = document.getElementById("panel-content-files");
 const panelToolbarDiv = document.getElementById("panel-toolbar");
 const newFolderDiv = document.getElementById("newFolderIcon");
+const uploadFileDiv = document.getElementById("uploadFileIcon");
 const panelCurrentFolderDiv = document.getElementById("panel-current-folder");
 const fileListDiv = document.getElementById('fileList');
 const spaceUsageTextDiv = document.getElementById("space-usage-text");
@@ -240,5 +242,6 @@ function fetchSpaceUsage() {
 }
 
 newFolderDiv.onclick = createFolder;
+uploadFileDiv.onclick = uploadFile;
 
 export { currentFolder, buildFilesPanelContent, toggleSidebar };
