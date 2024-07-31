@@ -3,6 +3,7 @@ import { apiBaseUrl, showSpinner } from "./main.js";
 const replContent = document.getElementById("repl-content");
 const replHeader = document.getElementById("repl-header");
 const replConsole = document.getElementById("repl-console");
+const replToggleIcon = document.getElementById("repl-toggle-icon");
 
 let commandBuffer = [];
 let commandHistory = [];
@@ -25,7 +26,11 @@ function setPrompt(prompt) {
 }
 
 function toggleReplPanel() {
-  replContent.classList.toggle('collapsed');
+  replContent.classList.toggle("collapsed");
+  if (replContent.classList.contains("collapsed"))
+    replToggleIcon.innerHTML = "&#x25B2;";
+  else
+    replToggleIcon.innerHTML = "&#x25BC;";
 }
 
 // Function to send REPL command

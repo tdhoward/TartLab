@@ -9,7 +9,7 @@
     font-size: var(--font-size);
 }
 
-#repl-header span {
+#repl-header-text {
     width: 100%;
     text-align: right;
 }
@@ -85,4 +85,11 @@
     to {
         transform: rotate(360deg);
     }
+}
+
+#repl-toggle-icon {
+    margin-left: 0.75rem;
+    margin-right: 0.25rem;
+    transition: transform 0.3s ease;
+    color: #777;
 }
