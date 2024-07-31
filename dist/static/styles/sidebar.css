@@ -1,13 +1,3 @@
-/*
-#sidebar {
-    display: flex;
-    height: 100%;
-    background-color: #252526;
-    border-right: 1px solid #333;
-    position: relative;
-}
-*/
-
 #iconBar {
     width: var(--iconbar-width);
     background-color:  #155884;

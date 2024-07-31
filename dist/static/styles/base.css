@@ -69,6 +69,9 @@
         margin-left: var(--iconbar-width); /* Ensure main content starts after the icon bar */
     }
 
+    .main-with-side-panel {
+        margin-left: var(--iconbar-width) !important;
+    }
 }
 
 

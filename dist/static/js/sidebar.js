@@ -54,11 +54,9 @@ function toggleSidebar(iconId) {
     if (alreadyActive) {  // close the panel
         panelDiv.classList.add('collapsed');
         mainDiv.classList.remove('main-with-side-panel')
-        hamburgerMenuButton.classList.remove("hidden");
     } else {             // open the panel
         panelDiv.classList.remove('collapsed');
         mainDiv.classList.add('main-with-side-panel');
-        hamburgerMenuButton.classList.add('hidden');
         if (iconId === 'filesIcon') {
             buildFilesPanelContent();
             panelFilesContent.style.display = "flex";
