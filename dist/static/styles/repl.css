@@ -9,6 +9,11 @@
     font-size: var(--font-size);
 }
 
+#repl-header span {
+    width: 100%;
+    text-align: right;
+}
+
 #repl-content {
     display: flex;
     flex-direction: column;
@@ -42,4 +47,42 @@
     height: 0;
     padding: 0;
     opacity: 0;
+}
+
+.spinner {
+    position: relative;
+    display: inline-block;
+    height: 3.6rem;
+    width: 3.6rem;
+    min-height: 3.6rem;
+    min-width: 3.6rem;
+    animation: spin 1s linear infinite;
+    margin: 0;
+    padding: 0;
+    background: url('../img/spinner.svg');
+    text-indent: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.spinner.hidden {
+    display: none;
+}
+
+.spinner.spinner-sm {
+    height: 1.2rem;
+    width: 1.2rem;
+    min-height: 1.2rem;
+    min-width: 1.2rem;
+    max-width: 1.2rem;
+}
+
+/* keyframes for spin animation */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }

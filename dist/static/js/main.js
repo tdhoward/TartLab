@@ -15,6 +15,8 @@ const contextRename = document.getElementById("context-rename");
 const contextMove = document.getElementById("context-move");
 const contextDelete = document.getElementById("context-delete");
 const darkOverlay = document.getElementById("dark-overlay");
+const footerSpinner = document.getElementById("footer-spinner");
+
 
 const hostname = window.location.hostname;
 const baseUrl = `http://${hostname}`;
@@ -89,12 +91,14 @@ function saveFile() {
 
     const filename = encodeURIComponent(activeEditor.filename); // URI encode the filename
     const content = activeEditor.editor.getValue();
+    showSpinner(true);
     fetch(`${baseUrl}/files/user/${filename}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content })
     })
     .then((response) => {
+        showSpinner(false);
         if (!response.ok) {
             return response.json().then((data) => {
                 throw new Error(data.error || 'An error occurred');
@@ -113,12 +117,14 @@ function saveFile() {
 
 function setAsApp(filename) {
     closeContextMenu();
+    showSpinner(true);
     fetch(`${apiBaseUrl}/setasapp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename })
     })
     .then((response) => {
+        showSpinner(false);
         if (!response.ok) {
             return response.json().then((data) => {
                 throw new Error(data.error || 'An error occurred');
@@ -155,12 +161,14 @@ function moveFile(filename) {
 function renameOrMoveFile(srcFile, destFile) {
     let src = srcFile;
     let dest = destFile;
+    showSpinner(true);
     fetch(`${apiBaseUrl}/files/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ src, dest }),
     })
     .then((response) => {
+        showSpinner(false);
         if (!response.ok) {
             return response.json().then((data) => {
                 throw new Error(data.error || 'An error occurred');
@@ -184,11 +192,13 @@ function deleteFile(filename) {
         return;
     closeContextMenu();
     const fname = encodeURIComponent(filename); // URI encode the filename
+    showSpinner(true);
     fetch(`${baseUrl}/files/user/${fname}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
     })
     .then((response) => {
+        showSpinner(false);
         if (!response.ok) {
             return response.json().then((data) => {
                 throw new Error(data.error || 'An error occurred');
@@ -214,12 +224,14 @@ function createFolder() {
     return;
   }
   newFolderName = stripLeadingSlashes(currentFolder + '/' + newFolderName);
+  showSpinner(true);
   fetch(`${apiBaseUrl}/folder/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ newFolderName }),
   })
     .then((response) => {
+      showSpinner(false);
       if (!response.ok) {
         return response.json().then((data) => {
           throw new Error(data.error || "An error occurred");
@@ -238,12 +250,14 @@ function deleteFolder(folderName) {
     closeContextMenu();
     if (!confirm("Are you sure you want to delete this folder and all its contents?"))
         return;
+    showSpinner(true);
     fetch(`${apiBaseUrl}/folder/delete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ folderName }),
     })
     .then((response) => {
+      showSpinner(false);
       if (!response.ok) {
         return response.json().then((data) => {
           throw new Error(data.error || "An error occurred");
@@ -265,12 +279,14 @@ function renameFolder(foldername) {
     if (newFoldername) {
         let src = foldername;
         let dest = newFoldername;
+        showSpinner(true);
         fetch(`${apiBaseUrl}/folder/rename`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ src, dest }),
         })
         .then((response) => {
+            showSpinner(false);
             if (!response.ok) {
             return response.json().then((data) => {
                 throw new Error(data.error || "An error occurred");
@@ -292,15 +308,16 @@ function uploadFile() {
     fileInput.onchange = () => {
         let file = fileInput.files[0];
         if (file) {
+            showSpinner(true);
             const formData = new FormData();
             formData.append("file", file);
             fileInput.value = "";  // clear it for next time
-
             fetch(`${apiBaseUrl}/files/upload${currentFolder}`, {
                 method: "POST",
                 body: formData,
             })
             .then((response) => {
+                showSpinner(false);
                 if (!response.ok) {
                 return response.json().then((data) => {
                     throw new Error(data.error || "An error occurred");
@@ -328,6 +345,13 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
+function showSpinner(enabled) {
+    if (enabled)
+        footerSpinner.classList.remove("hidden");
+    else
+        footerSpinner.classList.add("hidden");
+}
+
 updateSaveButton();
 
 document.getElementById('filesIcon').onclick = () => toggleSidebar('filesIcon');
@@ -349,4 +373,5 @@ export {
   deleteFolder,
   uploadFile,
   showToast,
+  showSpinner,
 };

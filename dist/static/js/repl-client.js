@@ -1,4 +1,4 @@
-import { apiBaseUrl } from "./main.js";
+import { apiBaseUrl, showSpinner } from "./main.js";
 
 const replContent = document.getElementById("repl-content");
 const replHeader = document.getElementById("repl-header");
@@ -40,13 +40,21 @@ function sendReplCommand(commandArray) {
   historyIndex = commandHistory.length; // Reset history index
   currentIndent = 0;  // reset the indent
 
-  // TODO: give some indication that we are waiting on a response from the device.
+  showSpinner(true);
   fetch(`${apiBaseUrl}/repl`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ cmd: sendCommand }),
   })
-    .then((response) => response.json())
+    .then((response) => {
+      showSpinner(false);
+      if (!response.ok) {
+        return response.json().then((data) => {
+          throw new Error(data.error || "An error occurred");
+        });
+      }
+      return response.json();
+    })
     .then((data) => {
       if (data && "res" in data) {
         updateReplConsole(data.res);

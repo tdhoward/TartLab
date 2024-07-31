@@ -63,7 +63,10 @@
                 <div id="editor-background"></div>
                 <!-- Editor instances will be dynamically added here -->
             </div>
-            <div id="repl-header">Console (click to toggle)</div>
+            <div id="repl-header">
+                <span id="footer-spinner" class="spinner spinner-sm hidden"> Loading... </span>
+                <span>Console (click to toggle)</span>
+            </div>
             <div id="repl-content" class="collapsed">
                 <textarea id="repl-console" spellcheck="false">>>> </textarea>
             </div>
