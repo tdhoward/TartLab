@@ -100,8 +100,13 @@ class HTTPServer:
                         name, value = line.split(b':', 1)
                         request.header[name] = value.strip()
                         
-            # if this is a POST or PUT, grab the body
-            if request.method in ['POST', 'PUT']:
+            # check if multipart
+            request.isMultipart = False
+            if b'Content-Type' in request.header and request.header[b'Content-Type'].startswith(b'multipart'):
+                request.isMultipart = True
+
+            # if this is a POST or PUT, grab the body (unless it's multipart/form-data)
+            if request.method in ['POST', 'PUT'] and not request.isMultipart:
                 if b'Content-Length' in request.header:
                     length = int(request.header[b'Content-Length'].decode("utf-8"))
                     line = await asyncio.wait_for(reader.read(length), self.timeout)  # read content

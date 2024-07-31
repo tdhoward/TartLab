@@ -290,12 +290,13 @@ function uploadFile() {
     const fileInput = document.getElementById("fileUploadInput");
     fileInput.click();
     fileInput.onchange = () => {
-        const file = fileInput.files[0];
+        let file = fileInput.files[0];
         if (file) {
             const formData = new FormData();
             formData.append("file", file);
+            fileInput.value = "";  // clear it for next time
 
-            fetch(`${apiBaseUrl}/files/upload`, {
+            fetch(`${apiBaseUrl}/files/upload${currentFolder}`, {
                 method: "POST",
                 body: formData,
             })

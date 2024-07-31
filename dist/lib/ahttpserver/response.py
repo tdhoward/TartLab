@@ -6,6 +6,7 @@
 # Copyright 2022 (c) Erik de Lange
 # Released under MIT license
 
+import ujson
 
 reason = {
     200: "OK",
@@ -47,3 +48,17 @@ class HTTPResponse:
                 writer.write(f"{key}: {value}\n")
         writer.write("\n")
         await writer.drain()
+
+
+# Shortcut helper function
+async def sendHTTPResponse(writer, HTTPstatus, msg, msgkey=''):
+    response = HTTPResponse(HTTPstatus, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    if HTTPstatus >= 400:
+        key = msgkey or 'error'
+        writer.write(ujson.dumps({key: msg}))
+    else:
+        key = msgkey or 'response'
+        writer.write(ujson.dumps({key: msg}))
+    await writer.drain()

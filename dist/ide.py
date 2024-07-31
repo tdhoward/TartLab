@@ -11,6 +11,10 @@ import io
 from ahttpserver import HTTPResponse, HTTPServer
 from ahttpserver.sse import EventSource
 from ahttpserver.servefile import serve_file
+from ahttpserver.response import sendHTTPResponse
+from ahttpserver.multipart import handleMultipartUpload
+from ahttpserver.server import HTTPServerError
+
 
 network.hostname('tartlab')  # sets up tartlab.local on mDNS
 
@@ -297,17 +301,6 @@ def split_on_first(data, token = b'\r\n'):
     return data, b''
 
 
-async def sendHTTPResponse(writer, HTTPstatus, msg):
-    response = HTTPResponse(HTTPstatus, "application/json", close=True)
-    await response.send(writer)
-    await writer.drain()
-    if HTTPstatus >= 400:
-        writer.write(ujson.dumps({'error': msg}))
-    else:
-        writer.write(ujson.dumps({'response': msg}))
-    await writer.drain()
-
-
 # General GET requests
 @app.route("GET", "/*")
 async def static_files(reader, writer, request):
@@ -431,34 +424,13 @@ async def api_move_file(reader, writer, request):
 
 
 # upload a file
-@app.route("POST", "/api/files/upload")
+@app.route("POST", "/api/files/upload/*")
 async def api_upload_file(reader, writer, request):
     try:
-        body = request.body
-        boundary, body = split_on_first(body)  # b'------WebKitFormBoundarylaNda3z1jQssrqsA'
-        boundary_str = boundary.decode("utf-8")
-        if 'WebKitFormBoundary' not in boundary_str:
-            print(boundary_str)
-            return await sendHTTPResponse(writer, 404, 'Malformed upload ERR2!')
-        content_disposition, body = split_on_first(body)  # b'Content-Disposition: form-data; name="file"; filename="desktop.ini"'
-        cds = content_disposition.decode('utf-8').split('; ')
-        if not cds[0].startswith('Content-Disposition: form-data'):
-            print(cds[0])
-            return await sendHTTPResponse(writer, 404, 'Malformed upload ERR3!')
-        if not cds[1].startswith('name='):
-            print(cds[1])
-            return await sendHTTPResponse(writer, 404, 'Malformed upload ERR4!')
-        if not cds[2].startswith('filename='):
-            print(cds[2])
-            return await sendHTTPResponse(writer, 404, 'Malformed upload ERR5!')
-        filename = USER_BASE_DIR + '/' + cds[2][len('filename="'):-1]
-        content_type, body = split_on_first(body)  # b'Content-Type: application/octet-stream'
-        empty, body = split_on_first(body)  # b''
-        data, empty = split_on_first(body, b'\r\n' + boundary)
-        with open(filename, 'wb') as f:
-            f.write(data)
-    except:
-        return await sendHTTPResponse(writer, 400, 'Unable to process upload!')
+        folder = sanitize_path(request.path[len('/api/files/upload'):])
+        await handleMultipartUpload(reader, writer, request, folder)
+    except HTTPServerError as e:
+        return await sendHTTPResponse(writer, 404, str(e))
     await sendHTTPResponse(writer, 200, 'success')
     print(f"POST {request.path} with response code 200")
 
