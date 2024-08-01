@@ -21,11 +21,17 @@
             <div class="icon" id="helpIcon">
                 <img src="img/help.svg" alt="Help icon">
             </div>
+            <div class="icon bottom-icon" id="settingsIcon">
+                <img src="img/gear.svg" alt="Settings icon">
+            </div>
         </div>
         <div id="panel" class="collapsed">
             <div id="panel-content">
                 <div id="panel-content-help" class="panel-content-page">
-                    <div id="helpContent">Help content goes here...</div>
+                    <div id="helpContent" class="panel-content-inner">Help content goes here...</div>
+                </div>
+                <div id="panel-content-settings" class="panel-content-page">
+                    <div id="settingsContent" class="panel-content-inner">Settings content goes here...</div>
                 </div>
                 <div id="panel-content-files" class="panel-content-page">
                     <div id="panel-toolbar">
@@ -73,7 +79,7 @@
             </div>
         </div>
     </div>
-    <div id="dark-overlay" class = "hidden"></div>
+    <div id="dark-overlay" class="hidden"></div>
     <div id="context-menu" class="dialog hidden">
         <div id="context-menu-title" class="dialog-title"></div>
         <ul>

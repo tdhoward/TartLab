@@ -16,6 +16,9 @@ const panelDiv = document.getElementById('panel');
 const panelHelpContent = document.getElementById("panel-content-help");
 const helpContentDiv = document.getElementById("helpContent");
 
+const panelSettingsContent = document.getElementById("panel-content-settings");
+const settingsContentDiv = document.getElementById("settingsContent");
+
 const panelFilesContent = document.getElementById("panel-content-files");
 const panelToolbarDiv = document.getElementById("panel-toolbar");
 const newFolderDiv = document.getElementById("newFolderIcon");
@@ -61,9 +64,15 @@ function toggleSidebar(iconId) {
             buildFilesPanelContent();
             panelFilesContent.style.display = "flex";
             panelHelpContent.style.display = "none";
+            panelSettingsContent.style.display = "none";
         } else if (iconId === 'helpIcon') {
             panelFilesContent.style.display = "none";
             panelHelpContent.style.display = "flex";
+            panelSettingsContent.style.display = "none";
+        } else if (iconId === 'settingsIcon') {
+            panelFilesContent.style.display = "none";
+            panelHelpContent.style.display = "none";
+            panelSettingsContent.style.display = "flex";
         }
     }
 }
@@ -168,7 +177,7 @@ function buildFilesPanelContent() {
                 menuButton.className = "menu-button";
                 menuButton.onclick = (event) => {
                   event.stopPropagation();
-                  openContextMenu(fullPath, "file");
+                  openContextMenu(fullPath, "file", idx == appIndex);
                 };
 
                 fileItem.appendChild(fileNameContainer);

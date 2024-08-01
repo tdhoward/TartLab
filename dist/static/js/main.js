@@ -27,14 +27,15 @@ function stripLeadingSlashes(path) {
     return path.replace(/^\/+/, "");
 }
 
-function openContextMenu(name, type) {
+function openContextMenu(name, type, isApp = false) {
     contextMenu.classList.remove("hidden");
     darkOverlay.classList.remove("hidden");
+    darkOverlay.onclick = closeContextMenu;  // Close the context menu when clicking outside of it
     if (type == "file") {
         let filename = name
         contextMenuTitle.textContent = filename;
         // don't allow "set as app" for non-python files
-        if (filename.endsWith(".py")) {
+        if (filename.endsWith(".py") && !isApp) {
             contextSetAsApp.onclick = () => setAsApp(filename);
             contextSetAsApp.classList.remove("hidden");
         } else {
@@ -68,8 +69,6 @@ function closeContextMenu() {
   darkOverlay.classList.add("hidden");
 }
 
-// Close the context menu when clicking outside of it
-darkOverlay.onclick = closeContextMenu;
 
 function saveFile() {
     if (!activeEditor) {
@@ -356,6 +355,7 @@ updateSaveButton();
 
 document.getElementById('filesIcon').onclick = () => toggleSidebar('filesIcon');
 document.getElementById('helpIcon').onclick = () => toggleSidebar('helpIcon');
+document.getElementById("settingsIcon").onclick = () => toggleSidebar("settingsIcon");
 saveButton.onclick = saveFile;
 newButton.onclick = createNewFileTab;
 
@@ -368,6 +368,7 @@ export {
   baseUrl,
   apiBaseUrl,
   saveButton,
+  darkOverlay,
   openContextMenu,
   createFolder,
   deleteFolder,
