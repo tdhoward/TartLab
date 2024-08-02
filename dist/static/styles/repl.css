@@ -1,8 +1,8 @@
 #repl-header {
     padding: 1rem;
     cursor: pointer;
-    background-color: #333;
-    border-bottom: 1px solid #444;
+    background-color: var(--body-border-color);
+    border-bottom: 1px solid var(--body-border-highlight-color);
     display: flex;
     align-items: center; /* Center content vertically */
     box-sizing: border-box; /* Include padding in height calculation */
@@ -31,8 +31,8 @@
 
 #repl-console {
     flex-grow: 1;
-    background-color: #1e1e1e;
-    color: #d4d4d4;
+    background-color: var(--body-background-color);
+    color: var(--body-foreground-color);
     border: none;
     padding: 0.8rem;
     font-family: monospace;
@@ -91,5 +91,5 @@
     margin-left: 0.75rem;
     margin-right: 0.25rem;
     transition: transform 0.3s ease;
-    color: #777;
+    color: var(--body-weaker-fgnd-color);
 }

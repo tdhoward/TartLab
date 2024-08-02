@@ -21,17 +21,25 @@
             <div class="icon" id="helpIcon">
                 <img src="img/help.svg" alt="Help icon">
             </div>
-            <div class="icon bottom-icon" id="settingsIcon">
+            <div class="icon align-bottom" id="settingsIcon">
                 <img src="img/gear.svg" alt="Settings icon">
             </div>
         </div>
         <div id="panel" class="collapsed">
             <div id="panel-content">
                 <div id="panel-content-help" class="panel-content-page">
-                    <div id="helpContent" class="panel-content-inner">Help content goes here...</div>
+                    <div id="helpContent">Help content goes here...</div>
                 </div>
                 <div id="panel-content-settings" class="panel-content-page">
-                    <div id="settingsContent" class="panel-content-inner">Settings content goes here...</div>
+                    <div id="settingsContent">
+                        <div id="settingsHeader" class="section-title">TartLab Settings</div>
+                        <div class="ul-buttons-group">
+                            <ul>
+                                <li id="wifi-settings">WiFi settings</li>
+                                <li id="check-updates">Check for updates</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
                 <div id="panel-content-files" class="panel-content-page">
                     <div id="panel-toolbar">
@@ -80,7 +88,7 @@
         </div>
     </div>
     <div id="dark-overlay" class="hidden"></div>
-    <div id="context-menu" class="dialog hidden">
+    <div id="context-menu" class="dialog ul-buttons-group hidden">
         <div id="context-menu-title" class="dialog-title"></div>
         <ul>
             <li id="context-set-as-app">Set as app</li>

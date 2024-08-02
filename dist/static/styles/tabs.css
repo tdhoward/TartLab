@@ -2,8 +2,8 @@
     height: var(--tab-container-height);
     display: flex;
     align-items: center; /* Align items in the center vertically */
-    border-bottom: 1px solid #333;
-    background-color: #252526;
+    border-bottom: 1px solid var(--body-border-color);
+    background-color: var(--tabs-bkgnd-color);
     flex-wrap: nowrap;
 }
 
@@ -11,7 +11,7 @@
     display: flex;
     flex-grow: 1;
     overflow-x: auto; /* Allows tabs to scroll horizontally if needed */
-    background-color: #252526;
+    background-color: var(--tabs-bkgnd-color);
     white-space: nowrap;
 }
 
@@ -19,17 +19,17 @@
     display: flex;
     padding: 0.75rem 3rem 0.75rem 0.75rem; /* Increase padding to the right to account for the close button */
     cursor: pointer;
-    border-right: 1px solid #333;
-    background-color: #252526;
-    color: #d4d4d4;
+    border-right: 1px solid var(--body-border-color);
+    background-color: var(--tabs-bkgnd-color);
+    color: var(--body-foreground-color);
     font-size: var(--font-size);
     align-items: center;
     position: relative; /* For positioning of the close button */
-    flex-shrink: 0; /* Prevent tabs from shrinking */
+    flex-shrink: 0;
 }
 
 .tab.active {
-    background-color: #1e1e1e;
+    background-color: var(--body-background-color);
 }
 
 .tab.active::before {
@@ -39,14 +39,14 @@
     left: 0;
     right: 0;
     height: 3px;
-    background-color: #41b3ff; /* Color of the highlighted line */
+    background-color: var(--base-highlight-color);
 }
 
 .tab button.close-tab {
     margin-right: 0.5rem;
     background-color: transparent;
     border: none;
-    color: #d4d4d4;
+    color: var(--body-foreground-color);
     cursor: pointer;
     font-size: calc(var(--font-size) - 2px); /* Close button font is smaller */
     position: absolute;
@@ -58,13 +58,13 @@
 }
 
 .tab button.close-tab:hover {
-    background-color: #ff5c5c; /* Suitable shade of red */
-    color: #fff; /* Change text color to white for contrast */
+    background-color: var(--error-color);
+    color: var(--body-intense-fgnd-color);
 }
 
 #controls {
-    background-color: #333;
+    background-color: var(--body-border-color);
     display: flex;
     align-items: center;
-    flex-shrink: 0; /* Prevent controls from shrinking */
+    flex-shrink: 0;
 }
