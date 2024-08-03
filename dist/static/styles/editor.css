@@ -1,8 +1,6 @@
 #editor {
     flex-grow: 1;
     overflow: auto; /* Ensures the editor has its own scroll bars */
-    display: flex;
-    flex-direction: column; /* Ensure child elements can fill the height */
     position: relative; /* Add this to allow absolute positioning of the background div */
 }
 
@@ -19,8 +17,6 @@
 }
 
 .editor-instance {
-    flex-grow: 1;
-    display: flex;
     width: 100%;
 }
 
