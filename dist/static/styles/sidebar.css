@@ -88,6 +88,12 @@
     height: 100%;
 }
 
+.panel-content-page div h3 {
+    padding: 0.75rem 0.75rem;
+    margin: 0;
+    color:var(--body-weak-fgnd-color);
+}
+
 #helpContent {
     flex-grow: 1;
     overflow-y: auto;
@@ -198,19 +204,14 @@
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     z-index: 10000;
     padding: 0.5rem;
+    background-color: var(--dialog-button-bkgnd-color);
 }
 
-.dialog-title {
+.dialog h3 {
     padding: 0.5rem 0.75rem;
+    margin: 0;
     border-bottom: 2px solid var(--dialog-border-color);
-    font-weight: bold;
     color:var(--dialog-foreground-color);
-}
-
-.section-title {
-    padding: 0.5rem 0.75rem;
-    font-weight: bold;
-    color:var(--body-foreground-color);
 }
 
 .ul-buttons-group {
@@ -284,4 +285,24 @@
     color: red;
     text-align: center;
     margin-top: 0.75rem;
+}
+
+/* New stuff here */
+.ssid-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+
+.ssid-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+}
+
+.ssid-item button {
+    background: none;
+    border: none;
+    color: red;
+    cursor: pointer;
 }

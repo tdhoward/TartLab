@@ -32,11 +32,11 @@
                 </div>
                 <div id="panel-content-settings" class="panel-content-page">
                     <div id="settingsContent">
-                        <div id="settingsHeader" class="section-title">TartLab Settings</div>
+                        <h3 id="settingsHeader">TartLab Settings</h3>
                         <div class="ul-buttons-group">
                             <ul>
-                                <li id="wifi-settings">WiFi settings</li>
-                                <li id="check-updates">Check for updates</li>
+                                <li id="wifi-settings-btn">WiFi settings</li>
+                                <li id="check-updates-btn">Check for updates</li>
                             </ul>
                         </div>
                     </div>
@@ -89,7 +89,7 @@
     </div>
     <div id="dark-overlay" class="hidden"></div>
     <div id="context-menu" class="dialog ul-buttons-group hidden">
-        <div id="context-menu-title" class="dialog-title"></div>
+        <h3 id="context-menu-title"></h3>
         <ul>
             <li id="context-set-as-app">Set as app</li>
             <li id="context-download"><a id="context-download-link" class="hidden" href="#" download></a>Download</li>
@@ -97,6 +97,16 @@
             <li id="context-move">Move</li>
             <li id="context-delete">Delete</li>
         </ul>
+    </div>
+    <div id="wifi-dialog" class="dialog hidden">
+        <h3>WiFi Settings</h3>
+        <div id="storedSSIDs" class="ssid-list">(No stored SSIDs)</div>
+        <h3>Add new WiFi access point</h3>
+        <input type="text" id="newSSID" placeholder="WiFi SSID (name)">
+        <input type="password" id="newPassword" placeholder="Password"><br>
+        <button id="add-ssid-btn">Add</button>
+        <button id="scan-ssids-btn">Search</button>
+        <button id="close-wifi-dialog-btn">Close</button>
     </div>
     <div id="toast-container"></div>
 

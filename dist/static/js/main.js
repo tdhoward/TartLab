@@ -2,6 +2,7 @@ import { currentFolder, toggleSidebar, buildFilesPanelContent } from "./sidebar.
 import { renameTab, activeEditor, editors } from './editor.js';
 import { createNewFileTab, updateSaveButton } from "./tabs.js";
 import './repl-client.js';
+import './wifi.js';
 
 const saveButton = document.getElementById("saveFileBt");
 const newButton = document.getElementById("newFileBt");
@@ -332,6 +333,7 @@ function uploadFile() {
         }
     };
 }
+
 
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
