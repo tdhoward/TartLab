@@ -48,7 +48,7 @@
     border: none;
     color: var(--body-foreground-color);
     cursor: pointer;
-    font-size: calc(var(--font-size) - 2px); /* Close button font is smaller */
+    font-size: var(--font-size);
     position: absolute;
     right: 0px;
     top: 50%;

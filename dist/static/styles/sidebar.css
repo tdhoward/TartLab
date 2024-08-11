@@ -208,12 +208,49 @@
     min-width: 10rem;
 }
 
-.dialog h3 {
+h3.dialog-title {
     padding: 0.5rem 0.75rem;
     margin: 0;
     border-bottom: 2px solid var(--dialog-border-color);
     color:var(--dialog-foreground-color);
 }
+
+.dialog h4 {
+    padding: 0.5rem 0.75rem 0.25rem 0.75rem;
+    margin: 0;
+    color:var(--dialog-foreground-color);
+}
+
+.dialog input {
+    padding: 0.25rem;
+    margin: 0.5rem;
+    color:var(--dialog-foreground-color);
+}
+
+.dialog button {
+    margin: 0 0.5rem;
+}
+
+button.dialog-close-button {
+    margin-right: 0.5rem;
+    background-color: transparent;
+    border: none;
+    color: var(--body-foreground-color);
+    cursor: pointer;
+    font-size: var(--font-size);
+    position: absolute;
+    right: 0;
+    top: 1.5rem;
+    padding: 0.5rem 0.75rem; /* Add padding for better click area */
+    transform: translateY(-50%); /* Center the button vertically */
+    transition: background-color 0.3s;
+}
+
+button.dialog-close-button:hover {
+    background-color: var(--error-color);
+    color: var(--body-intense-fgnd-color);
+}
+
 
 .ul-buttons-group {
     background-color: var(--dialog-button-bkgnd-color);
@@ -290,9 +327,10 @@
 
 /* New stuff here */
 .ssid-list {
-    max-height: 200px;
+    max-height: 15rem;
     overflow-y: auto;
     margin-bottom: 10px;
+    padding: 0.5rem;
 }
 
 .ssid-item {

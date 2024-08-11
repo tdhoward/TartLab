@@ -89,7 +89,7 @@
     </div>
     <div id="dark-overlay" class="hidden"></div>
     <div id="context-menu" class="dialog ul-buttons-group hidden">
-        <h3 id="context-menu-title"></h3>
+        <h3 id="context-menu-title" class="dialog-title"></h3>
         <ul>
             <li id="context-set-as-app">Set as app</li>
             <li id="context-download"><a id="context-download-link" class="hidden" href="#" download></a>Download</li>
@@ -99,14 +99,16 @@
         </ul>
     </div>
     <div id="wifi-dialog" class="dialog hidden">
-        <h3>WiFi Settings</h3>
+        <div class="dialog-header">
+            <h3 class="dialog-title">WiFi Settings</h3>
+            <button id="close-wifi-dialog-btn" class="dialog-close-button">&times;</button>
+        </div>
         <div id="storedSSIDs" class="ssid-list">(No stored SSIDs)</div>
-        <h3>Add new WiFi access point</h3>
+        <h4>Add new WiFi access point</h4>
         <input type="text" id="newSSID" placeholder="WiFi SSID (name)">
         <input type="password" id="newPassword" placeholder="Password"><br>
         <button id="add-ssid-btn">Add</button>
         <button id="scan-ssids-btn">Search</button>
-        <button id="close-wifi-dialog-btn">Close</button>
     </div>
     <div id="toast-container"></div>
 

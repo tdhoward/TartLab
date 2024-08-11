@@ -10,7 +10,7 @@ function createTab(filename, content, isNamed) {
     const tab = document.createElement('div');
     tab.className = 'tab';
     tab.dataset.filename = filename;
-    tab.innerHTML = `${filename} <button class="close-tab" data-filename="${filename}">X</button>`;
+    tab.innerHTML = `${filename} <button class="close-tab" data-filename="${filename}">&times;</button>`;
     tab.onclick = () => switchToTab(filename);
 
     tabsDiv.appendChild(tab); // Append the new tab to the end of the tabs container
