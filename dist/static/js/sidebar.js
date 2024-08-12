@@ -5,7 +5,7 @@ import {
   createFolder,
   uploadFile,
   showToast,
-  showSpinner,
+  showSpinners,
 } from "./main.js";
 
 const iconBar = document.getElementById("iconBar");
@@ -96,10 +96,10 @@ function buildFilesPanelContent() {
     let reqPath = "/files/user";
     if (currentFolder != '/')
         reqPath = reqPath + currentFolder;
-    showSpinner(true);
+    showSpinners(true);
     fetch(`${apiBaseUrl}${reqPath}`)
         .then(response => {
-            showSpinner(false);
+            showSpinners(false);
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -202,10 +202,10 @@ function openFile(filename) {
     if (editors[filename]) {
         switchToTab(filename);
     } else {
-        showSpinner(true);
+        showSpinners(true);
         fetch(`/files/user/${encodeURIComponent(filename)}`)
             .then(response => {
-                showSpinner(false);
+                showSpinners(false);
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
@@ -221,10 +221,10 @@ function openFile(filename) {
 }
 
 function fetchSpaceUsage() {
-    showSpinner(true);
+    showSpinners(true);
     fetch(`${apiBaseUrl}/space`)
     .then(response => {
-        showSpinner(false);
+        showSpinners(false);
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }

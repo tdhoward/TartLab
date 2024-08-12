@@ -3,27 +3,32 @@ import {
   apiBaseUrl,
   darkOverlay,
   showToast,
-  showSpinner
+  showSpinners
 } from "./main.js";
 
 
 const wifiSettings = document.getElementById("wifi-settings-btn");
 const wifiSettingsDialog = document.getElementById("wifi-dialog");
 const addSsidBtn = document.getElementById("add-ssid-btn");
-const scanSsidsBtn = document.getElementById("scan-ssids-btn");
 const closeWifiDialogBtn = document.getElementById("close-wifi-dialog-btn");
+const storedSSIDsDiv = document.getElementById("storedSSIDs");
+const scannedSSIDsDiv = document.getElementById("scannedSSIDs");
+const newSsid = document.getElementById("newSSID");
+const newPassword = document.getElementById("newPassword");
 
 
 function openWifiDialog() {
   wifiSettingsDialog.classList.remove("hidden");
   darkOverlay.classList.remove("hidden");
   darkOverlay.onclick = closeWifiDialog;
+  loadSSIDs();
 }
 
-function loadStoredSSIDs() {
-  fetch(`${apiBaseUrl}/stored_ssids`)
+function loadSSIDs() {
+  showSpinners(true);
+  fetch(`${apiBaseUrl}/ssids`)
     .then((response) => {
-      showSpinner(false);
+      showSpinners(false);
       if (!response.ok) {
         return response.json().then((data) => {
           throw new Error(data.error || "An error occurred");
@@ -32,9 +37,8 @@ function loadStoredSSIDs() {
       return response.json();
     })
     .then((data) => {
-      const storedSSIDsDiv = document.getElementById("storedSSIDs");
       storedSSIDsDiv.innerHTML = "";
-      data.ssids.forEach((ssid) => {
+      data.stored.forEach((ssid) => {
         const ssidItem = document.createElement("div");
         ssidItem.classList.add("ssid-item");
         ssidItem.innerHTML = `
@@ -43,16 +47,28 @@ function loadStoredSSIDs() {
                 `;
         storedSSIDsDiv.appendChild(ssidItem);
       });
+      scannedSSIDsDiv.innerHTML = "";
+      data.scanned.forEach((ssid) => {
+        const ssidItem = document.createElement("div");
+        ssidItem.classList.add("ssid-item");
+        ssidItem.innerHTML = `<span onclick="populateSSID('${ssid}')">${ssid}</span>`;
+        scannedSSIDsDiv.appendChild(ssidItem);
+      });
     });
+}
+
+function populateSSID(ssid) {
+  newSsid.value = ssid;
 }
 
 function removeSSID(ssid) {
   if (confirm(`Are you sure you want to remove SSID: ${ssid}?`)) {
+    showSpinners(true);
     fetch(`${apiBaseUrl}/remove_ssid/${encodeURIComponent(ssid)}`, {
       method: "DELETE",
     })
       .then((response) => {
-        showSpinner(false);
+        showSpinners(false);
         if (!response.ok) {
           return response.json().then((data) => {
             throw new Error(data.error || "An error occurred");
@@ -61,24 +77,25 @@ function removeSSID(ssid) {
         return response.json();
       })
       .then(() => {
-        loadStoredSSIDs();
+        loadSSIDs();
       });
   }
 }
 
 function addNewSSID() {
-  const ssid = document.getElementById("newSSID").value;
-  const password = document.getElementById("newPassword").value;
+  const ssid = newSsid.value;
+  const password = newPassword.value;
   if (ssid && password) {
+    showSpinners(true);
     fetch(`${apiBaseUrl}/add_ssid`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ ssid, password }),
+      body: JSON.stringify({ ssid: ssid, password: password }),
     })
       .then((response) => {
-        showSpinner(false);
+        showSpinners(false);
         if (!response.ok) {
           return response.json().then((data) => {
             throw new Error(data.error || "An error occurred");
@@ -87,36 +104,13 @@ function addNewSSID() {
         return response.json();
       })
       .then(() => {
-        document.getElementById("newSSID").value = "";
-        document.getElementById("newPassword").value = "";
-        loadStoredSSIDs();
+        newSsid.value = "";
+        newPassword.value = "";
+        loadSSIDs();
       });
   } else {
     showToast("Please enter both SSID and password.", 'warning');
   }
-}
-
-function scanForSSIDs() {
-  fetch("/api/scan_ssids")
-    .then((response) => {
-      showSpinner(false);
-      if (!response.ok) {
-        return response.json().then((data) => {
-          throw new Error(data.error || "An error occurred");
-        });
-      }
-      return response.json();
-    })
-    .then((data) => {
-      const ssidList = data.ssids
-        .map((ssid) => `<option value="${ssid}">${ssid}</option>`)
-        .join("");
-      const ssidSelect = document.createElement("select");
-      ssidSelect.innerHTML = ssidList;
-      const ssidInput = document.getElementById("newSSID");
-      ssidInput.replaceWith(ssidSelect);
-      ssidSelect.id = "newSSID";
-    });
 }
 
 function closeWifiDialog() {
@@ -126,14 +120,13 @@ function closeWifiDialog() {
 
 wifiSettings.onclick = openWifiDialog;
 addSsidBtn.onclick = addNewSSID;
-scanSsidsBtn.onclick = scanForSSIDs;
 closeWifiDialogBtn.onclick = closeWifiDialog;
 
 export {
   openWifiDialog,
-  loadStoredSSIDs,
+  loadSSIDs,
   removeSSID,
   addNewSSID,
-  scanForSSIDs,
+  populateSSID,
   closeWifiDialog,
 };

@@ -91,12 +91,17 @@ Maybe eventually change this to poll for RSSI. Warn users when Wifi is weak.
 
 '''
 
+network_names = []  # stores the list of network names from when we scanned.
 def scan_for_wifi(ssids: list[str], keys: list[str]):
+    global network_names
     print("Scanning for WiFi networks...")
     networks = sta_if.scan()  # returns list of (ssid, bssid, channel, RSSI, security, hidden)
     networks.sort(key=lambda n:n[3], reverse=True)  # sort networks by RSSI
     for nwork in networks:
         network_name = nwork[0].decode('utf-8')
+        if network_name not in network_names:
+            network_names.append(network_name)
+    for network_name in network_names:
         for idx, s in enumerate(ssids):
             if s == network_name:
                 ssid = s
@@ -546,6 +551,15 @@ async def api_setasapp(reader, writer, request):
     await sendHTTPResponse(writer, 200, 'success')
     print(f"SET AS APP {localized_filename} with response code 200")
 
+# get the stored and scanned SSIDs
+@app.route("GET", "/api/ssids")
+async def api_get_ssids(reader, writer, request):
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    writer.write(ujson.dumps({'stored': settings['wifi_ssids'], 'scanned': network_names}))
+    await writer.drain()
+    print(f"API request: {request.path} with response code 200")
 
 async def say_hello_task():
     """ Show system is still alive """
