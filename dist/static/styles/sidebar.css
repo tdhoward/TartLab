@@ -327,7 +327,7 @@ button.dialog-close-button:hover {
 
 /* New stuff here */
 .ssid-list {
-    max-height: 15rem;
+    max-height: 5rem;
     overflow-y: auto;
     margin-bottom: 10px;
     padding: 0.25rem 0.75rem;
@@ -336,7 +336,13 @@ button.dialog-close-button:hover {
 .ssid-item {
     display: flex;
     justify-content: space-between;
-    padding: 5px 0;
+    padding: 0.25rem 0.75rem;
+    min-height: 2rem;
+}
+
+.ssid-item span {
+    align-content: center;
+    cursor: pointer;
 }
 
 .ssid-item button {
@@ -344,4 +350,6 @@ button.dialog-close-button:hover {
     border: none;
     color: red;
     cursor: pointer;
+    margin: 0;
+    padding: 0.25rem 0.5rem;
 }

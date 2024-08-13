@@ -41,17 +41,23 @@ function loadSSIDs() {
       data.stored.forEach((ssid) => {
         const ssidItem = document.createElement("div");
         ssidItem.classList.add("ssid-item");
-        ssidItem.innerHTML = `
-                    <span>${ssid}</span>
-                    <button onclick="removeSSID('${ssid}')">X</button>
-                `;
+        const ssidSpan = document.createElement("span");
+        ssidSpan.innerHTML = `${ssid}`;
+        ssidItem.appendChild(ssidSpan);
+        const removeSsidBtn = document.createElement("button");
+        removeSsidBtn.innerHTML = `&times;`;
+        removeSsidBtn.onclick = () => removeSSID(ssid);
+        ssidItem.appendChild(removeSsidBtn);
         storedSSIDsDiv.appendChild(ssidItem);
       });
       scannedSSIDsDiv.innerHTML = "";
       data.scanned.forEach((ssid) => {
         const ssidItem = document.createElement("div");
         ssidItem.classList.add("ssid-item");
-        ssidItem.innerHTML = `<span onclick="populateSSID('${ssid}')">${ssid}</span>`;
+        const ssidSpan = document.createElement("span");
+        ssidSpan.onclick = () => populateSSID(ssid);
+        ssidSpan.innerHTML = `${ssid}`;
+        ssidItem.appendChild(ssidSpan);
         scannedSSIDsDiv.appendChild(ssidItem);
       });
     });
