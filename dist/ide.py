@@ -183,6 +183,16 @@ def create_soft_ap(ap_name):
     ap_if.config(essid=ap_name)
     return "0.0.0.0"
 
+def load_settings():
+    global settings
+    settings = {}
+    with open('settings.json', 'r') as f:
+        settings = ujson.load(f)
+
+def save_settings():
+    global settings
+    with open('settings.json', 'w') as f:
+        ujson.dump(settings, f)
 
 def initialize():
     global settings
@@ -198,10 +208,8 @@ def initialize():
         if e.args[0] != 17:  # 17: EEXIST, directory already exists
             raise
     # get settings or set defaults
-    settings = {}
     try:
-        with open('settings.json', 'r') as f:
-            settings = ujson.load(f)
+        load_settings()
     except OSError:
         settings = {
             'IDE_BUTTON_PIN': 14,
@@ -209,8 +217,7 @@ def initialize():
             'wifi_ssids': [],
             'wifi_passwords': []
         }
-        with open('settings.json', 'w') as f:
-            ujson.dump(settings, f)
+        save_settings()
 
 initialize()
 ip_address = connect_to_wifi(settings['wifi_ssids'], settings['wifi_passwords'])
@@ -560,6 +567,23 @@ async def api_get_ssids(reader, writer, request):
     writer.write(ujson.dumps({'stored': settings['wifi_ssids'], 'scanned': network_names}))
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
+
+# get the stored and scanned SSIDs
+@app.route("POST", "/api/add_ssid")
+async def api_add_ssid(reader, writer, request):
+    global settings
+    data = ujson.loads(request.body.decode("utf-8"))
+    ssid = data['ssid']
+    password = data['password']
+    try:
+        settings['wifi_ssids'].append(ssid)
+        settings['wifi_passwords'].append(password)
+        save_settings()
+    except:
+        return await sendHTTPResponse(writer, 400, 'Unable to save SSID!')
+    await sendHTTPResponse(writer, 200, 'success')
+    print(f"ADD SSID {ssid} with response code 200")
+
 
 async def say_hello_task():
     """ Show system is still alive """
