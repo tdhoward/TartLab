@@ -99,7 +99,7 @@ def scan_for_wifi(ssids: list[str], keys: list[str]):
     networks.sort(key=lambda n:n[3], reverse=True)  # sort networks by RSSI
     for nwork in networks:
         network_name = nwork[0].decode('utf-8')
-        if network_name not in network_names:
+        if network_name != "" and network_name not in network_names:
             network_names.append(network_name)
     for network_name in network_names:
         for idx, s in enumerate(ssids):
@@ -568,13 +568,15 @@ async def api_get_ssids(reader, writer, request):
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
 
-# get the stored and scanned SSIDs
+# add new SSID
 @app.route("POST", "/api/add_ssid")
 async def api_add_ssid(reader, writer, request):
     global settings
     data = ujson.loads(request.body.decode("utf-8"))
     ssid = data['ssid']
     password = data['password']
+    if ssid in settings['wifi_ssids']:
+        return await sendHTTPResponse(writer, 400, 'SSID is already stored!')
     try:
         settings['wifi_ssids'].append(ssid)
         settings['wifi_passwords'].append(password)
@@ -583,6 +585,23 @@ async def api_add_ssid(reader, writer, request):
         return await sendHTTPResponse(writer, 400, 'Unable to save SSID!')
     await sendHTTPResponse(writer, 200, 'success')
     print(f"ADD SSID {ssid} with response code 200")
+
+# delete the SSID
+@app.route("DELETE", "/api/remove_ssid/*")
+async def api_add_ssid(reader, writer, request):
+    global settings
+    ssid = unquote(request.path[len('/api/remove_ssid/'):])
+    try:
+        for idx, s in enumerate(settings['wifi_ssids']):
+            if s == ssid:
+                del settings['wifi_ssids'][idx]  # remove ssid and password
+                del settings['wifi_passwords'][idx]
+                save_settings()
+                print(f"DELETE SSID {ssid} with response code 200")
+                return await sendHTTPResponse(writer, 200, 'success')
+    except:
+        return await sendHTTPResponse(writer, 400, 'Unable to remove SSID!')
+    return await sendHTTPResponse(writer, 404, 'SSID not found!')    
 
 
 async def say_hello_task():
