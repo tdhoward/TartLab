@@ -22,8 +22,10 @@ Additionally, it would be great if a community of embedded Python developers wou
 
 ## Usage
 There are two different modes of operation:
+
+**Note: at present, these modes are reversed, with development mode being the default.**
  * Normal operation:  If the user applies power or presses the hard-reset button, the device will begin to execute the user's Python code.
- * Development mode:  If the user holds down the development button while powering up or resetting, the device will begin serving the TartLab IDE.
+ * Development mode:  If the user holds down the development button while powering up or resetting, the device will begin serving the TartLab IDE.  If the device cannot connect to a WiFi access point (for example, the first time you start it) it will create its own "soft access point" that you can connect to for configuration.  The temporary WiFi access point will be named PyAdjectiveAnimalNumber, which is randomly generated and assigned on the first startup.  Once you connect via WiFi, navigate to http://tartlab.local from a browser.  From here, you can set up connections to other WiFi access points, etc.
 
 ## Recommended embedded devices
 Any device using an ESP32 or ESP8266 processor and providing WiFi support should work.  Devices with LCD screens are highly recommended, as that simplifies the connection process for the first time.
