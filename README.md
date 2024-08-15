@@ -1,6 +1,8 @@
 # TartLab
 Lite web-based MicroPython IDE for embedded devices.
 
+**Warning! This is currently in the alpha stage.  Nothing is guaranteed to work.**
+
 ## Goals
 The primary goal of this project is to enable embedded device programming in a classroom setting while allowing the students to bring their own laptops, tablets, etc.  Trying to install USB drivers and applications (such as the Arduino IDE) becomes impractical for larger class sizes, and introduces many unnecessary complications to what should otherwise be fairly simple.
 
