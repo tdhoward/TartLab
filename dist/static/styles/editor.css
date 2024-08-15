@@ -1,9 +1,10 @@
 #editor {
     flex-grow: 1;
-    overflow: auto; /* Ensures the editor has its own scroll bars */
+    overflow: hidden;
     display: flex;
     flex-direction: column; /* Ensure child elements can fill the height */
     position: relative; /* Add this to allow absolute positioning of the background div */
+    min-width: 0;
 }
 
 #editor-background {
@@ -23,10 +24,13 @@
     display: flex;
     width: 100%;
     height: 100%;
+    overflow: hidden;
+    min-width: 0;
 }
 
 .CodeMirror {
     height: 100%; /* Ensure the editor uses the full height */
+    width: 100%;
 }
 
 .CodeMirror-activeline-background {
