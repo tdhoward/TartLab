@@ -369,6 +369,23 @@ window.addEventListener('load', () => {
     document.getElementById('loading-overlay').style.display = 'none';
 });
 
+window.addEventListener('beforeunload', function (e) {
+    if (!editors) return;
+    // Check if there are unsaved changes
+    let unsavedChgs = false;
+    for (const key of Object.keys(editors)) {
+        if (editors[key].editor.isDirty)
+            unsavedChgs = true;
+    }
+    if (unsavedChgs) {
+        // Cancel the event and
+        // show alert that the unsaved
+        // changes would be lost
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
 export {
   baseUrl,
   apiBaseUrl,
