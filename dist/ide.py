@@ -427,11 +427,7 @@ async def api_move_file(reader, writer, request):
         print(f"API request: {request.path} with response code 400")
         print(ex)
         return await sendHTTPResponse(writer, 400, 'Invalid path!')
-    response = HTTPResponse(200, "application/json", close=True)
-    await response.send(writer)
-    await writer.drain()
-    writer.write(ujson.dumps({'files': list_files(request.path[len('/api'):])}))
-    await writer.drain()
+    await sendHTTPResponse(writer, 200, 'success')
     print(f"API request: {request.path} with response code 200")
 
 

@@ -16,7 +16,7 @@ function createNewFileTab() {
 
 function updateSaveButton() {
     if (!activeTab || 
-        activeTab.contentType != 'python' ||
+        (activeTab.contentType != 'python' && activeTab.contentType != 'txt') ||
         editors[activeTab.filename].editor.getValue() === '' || 
         editors[activeTab.filename].editor.isDirty == false) {
         saveButton.disabled = true;
@@ -39,6 +39,7 @@ function createTab(filename, content, contentType, isNamed) {
     const ext = filename.toLowerCase().split(".").pop();
     if (ext == "py") contentType = "python";
     else if (ext == "htm" || ext == "html") contentType = "html";
+    else if (ext == "txt" || ext == "log") contentType = "txt";
   }
 
   const pageDiv = document.createElement("div");
@@ -46,9 +47,11 @@ function createTab(filename, content, contentType, isNamed) {
   tabs[filename] = { tabDiv, pageDiv, filename, contentType };
 
   if (contentType == "python") {
-    createEditor(tabs[filename], content, isNamed);
-  } else if (contentType == 'html') {
+    createEditor(tabs[filename], content, isNamed, "python");
+  } else if (contentType == "html") {
     createHTMLPage(tabs[filename], content);
+  } else if (contentType == "txt") {
+    createEditor(tabs[filename], content, isNamed, "null");
   } else if (contentType == "imglink") {
     createImagePage(tabs[filename], content, contentType);
   } else {
@@ -89,14 +92,14 @@ function createImagePage(tab, content, contentType) {
 }
 
 
-function createEditor(tab, content, isNamed) {
+function createEditor(tab, content, isNamed, mode) {
   const editorDiv = tab.pageDiv;
   editorDiv.classList.add("editor-instance");
   pageContainerDiv.appendChild(editorDiv);
 
   const editor = CodeMirror(editorDiv, {
     value: content,
-    mode: "python",
+    mode: mode,
     lineNumbers: true,
     theme: "monokai",
     autoRefresh: true,

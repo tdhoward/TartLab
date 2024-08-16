@@ -77,12 +77,14 @@ function saveFile() {
         return;
     }
 
-    if (!activeTab.isNamed) {
+    if (!Object.keys(editors).includes(activeTab.filename)) return;
+
+    if (!editors[activeTab.filename].isNamed) {
       let newFilename = prompt("Enter a name for the new file:");
       if (newFilename) {
-        newFilename = stripLeadingSlashes(currentFolder + '/' + newFilename);  // include the current folder
+        newFilename = stripLeadingSlashes(currentFolder + "/" + newFilename); // include the current folder
         renameTab(activeTab.filename, newFilename);
-        activeTab.isNamed = true;
+        editors[activeTab.filename].isNamed = true;
       } else {
         showToast("File name is required to save.", "warning");
         return;
@@ -90,7 +92,7 @@ function saveFile() {
     }
 
     const filename = encodeURIComponent(activeTab.filename); // URI encode the filename
-    const content = activeTab.editor.getValue();
+    const content = editors[activeTab.filename].editor.getValue();
     showSpinners(true);
     fetch(`${baseUrl}/files/user/${filename}`, {
         method: 'POST',
@@ -108,7 +110,7 @@ function saveFile() {
     })
     .then(data => {
         showToast('File saved successfully!', 'info');
-        activeTab.editor.isDirty = false; // Mark editor as not dirty after saving
+        editors[activeTab.filename].editor.isDirty = false; // Mark editor as not dirty after saving
         updateSaveButton();
         buildFilesPanelContent();  // update file list
     })
