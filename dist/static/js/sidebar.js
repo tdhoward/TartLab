@@ -1,4 +1,4 @@
-import { createTab, switchToTab, editors } from './editor.js';
+import { createTab, switchToTab, editors } from './tabs.js';
 import {
   apiBaseUrl,
   openContextMenu,
@@ -212,7 +212,7 @@ function openFile(filename) {
                 return response.text();
             })
             .then(content => {
-                createTab(filename, content, true);
+                createTab(filename, content, '', true);
             })
             .catch(error => {
                 showToast(error, "error");

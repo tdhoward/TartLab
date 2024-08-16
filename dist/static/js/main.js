@@ -1,6 +1,5 @@
 import { currentFolder, toggleSidebar, buildFilesPanelContent } from "./sidebar.js";
-import { renameTab, activeEditor, editors } from './editor.js';
-import { createNewFileTab, updateSaveButton } from "./tabs.js";
+import { renameTab, activeTab, editors, createNewFileTab, updateSaveButton } from "./tabs.js";
 import './repl-client.js';
 import './wifi.js';
 
@@ -72,25 +71,25 @@ function closeContextMenu() {
 
 
 function saveFile() {
-    if (!activeEditor) {
+    if (!activeTab) {
         showToast('No file is currently open.', 'warning');
         return;
     }
 
-    if (!activeEditor.isNamed) {
+    if (!activeTab.isNamed) {
       let newFilename = prompt("Enter a name for the new file:");
       if (newFilename) {
         newFilename = stripLeadingSlashes(currentFolder + '/' + newFilename);  // include the current folder
-        renameTab(activeEditor.filename, newFilename);
-        activeEditor.isNamed = true;
+        renameTab(activeTab.filename, newFilename);
+        activeTab.isNamed = true;
       } else {
         showToast("File name is required to save.", "warning");
         return;
       }
     }
 
-    const filename = encodeURIComponent(activeEditor.filename); // URI encode the filename
-    const content = activeEditor.editor.getValue();
+    const filename = encodeURIComponent(activeTab.filename); // URI encode the filename
+    const content = activeTab.editor.getValue();
     showSpinners(true);
     fetch(`${baseUrl}/files/user/${filename}`, {
         method: 'POST',
@@ -108,7 +107,7 @@ function saveFile() {
     })
     .then(data => {
         showToast('File saved successfully!', 'info');
-        activeEditor.editor.isDirty = false; // Mark editor as not dirty after saving
+        activeTab.editor.isDirty = false; // Mark editor as not dirty after saving
         updateSaveButton();
         buildFilesPanelContent();  // update file list
     })

@@ -1,4 +1,4 @@
-#editor {
+#page-container {
     flex-grow: 1;
     overflow: hidden;
     display: flex;
@@ -7,7 +7,7 @@
     min-width: 0;
 }
 
-#editor-background {
+#empty-page-background {
     position: absolute; /* Absolute positioning to keep it in the background */
     top: 0;
     left: 0;
@@ -19,13 +19,20 @@
     filter: brightness(0) saturate(0%) invert(25%);
 }
 
-.editor-instance {
+.page-instance {
     flex-grow: 1;
     display: flex;
     width: 100%;
     height: 100%;
-    overflow: hidden;
     min-width: 0;
+}
+
+.error-page {
+    overflow: hidden;  /* do something here */
+}
+
+.editor-instance {
+    overflow: hidden;
 }
 
 .CodeMirror {
