@@ -17,6 +17,7 @@ const contextDelete = document.getElementById("context-delete");
 const darkOverlay = document.getElementById("dark-overlay");
 const footerSpinner = document.getElementById("footer-spinner");
 
+const imgFileTypes = ["png","svg"];
 
 const hostname = window.location.hostname;
 const baseUrl = `http://${hostname}`;
@@ -389,6 +390,7 @@ window.addEventListener('beforeunload', function (e) {
 export {
   baseUrl,
   apiBaseUrl,
+  imgFileTypes,
   saveButton,
   darkOverlay,
   openContextMenu,

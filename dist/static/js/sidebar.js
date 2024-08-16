@@ -1,6 +1,7 @@
-import { createTab, switchToTab, editors } from './tabs.js';
+import { createTab, switchToTab, tabs } from "./tabs.js";
 import {
   apiBaseUrl,
+  imgFileTypes,
   openContextMenu,
   createFolder,
   uploadFile,
@@ -199,11 +200,17 @@ function changeFolder(path) {
 }
 
 function openFile(filename) {
-    if (editors[filename]) {
+    if (tabs[filename]) {
         switchToTab(filename);
     } else {
+        const url = `/files/user/${encodeURIComponent(filename)}`;
+        const ext = filename.toLowerCase().split(".").pop();
+        if (imgFileTypes.includes(ext)) {
+            createTab(filename, url, "imglink", true);
+            return;
+        }
         showSpinners(true);
-        fetch(`/files/user/${encodeURIComponent(filename)}`)
+        fetch(url)
             .then(response => {
                 showSpinners(false);
                 if (!response.ok) {

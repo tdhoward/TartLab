@@ -49,6 +49,8 @@ function createTab(filename, content, contentType, isNamed) {
     createEditor(tabs[filename], content, isNamed);
   } else if (contentType == 'html') {
     createHTMLPage(tabs[filename], content);
+  } else if (contentType == "imglink") {
+    createImagePage(tabs[filename], content, contentType);
   } else {
     createErrorPage(tabs[filename]);
   }
@@ -73,6 +75,16 @@ function createHTMLPage(tab, content) {
   let pageDiv = tab.pageDiv;
 
   pageDiv.innerHTML = content;  // this ignores the head section, etc.
+  pageContainerDiv.appendChild(pageDiv);
+}
+
+function createImagePage(tab, content, contentType) {
+  let pageDiv = tab.pageDiv;
+
+  const imgElement = document.createElement("img");
+  imgElement.src = content;
+  
+  pageDiv.appendChild(imgElement);
   pageContainerDiv.appendChild(pageDiv);
 }
 
@@ -188,6 +200,7 @@ export {
   renameTab,
   switchToTab,
   closeTab,
+  tabs,
   editors,
   activeTab,
 };
