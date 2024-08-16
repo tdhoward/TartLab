@@ -279,7 +279,7 @@ button.dialog-close-button:hover {
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 /* Darken background for dialog */

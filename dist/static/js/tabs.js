@@ -73,7 +73,7 @@ function createErrorPage(tab) {
 
 function createHTMLPage(tab, content) {
   let pageDiv = tab.pageDiv;
-
+  pageDiv.classList.add("html-page");
   pageDiv.innerHTML = content;  // this ignores the head section, etc.
   pageContainerDiv.appendChild(pageDiv);
 }
@@ -141,11 +141,11 @@ function renameTab(fromFilename, toFilename) {
 
 function switchToTab(filename) {
   if (activeTab) {
-    activeTab.pageDiv.style.display = "none";
+    activeTab.pageDiv.classList.add('hidden');
     activeTab.tabDiv.classList.remove("active");
   }
   activeTab = tabs[filename];
-  activeTab.pageDiv.style.display = "block";
+  activeTab.pageDiv.classList.remove('hidden');
   activeTab.tabDiv.classList.add("active");
   if (activeTab.contentType == "python" && editors[filename]) {
     editors[filename].editor.refresh();
