@@ -47,8 +47,8 @@ function createTab(filename, content, contentType, isNamed) {
 
   if (contentType == "python") {
     createEditor(tabs[filename], content, isNamed);
-    //    } else if (contentType == 'html') {
-    //        createHTMLPage(tab, filename, content);
+  } else if (contentType == 'html') {
+    createHTMLPage(tabs[filename], content);
   } else {
     createErrorPage(tabs[filename]);
   }
@@ -68,6 +68,14 @@ function createErrorPage(tab) {
   pageDiv.innerHTML = "<b>Unable to display this file type.</b>";
   pageContainerDiv.appendChild(pageDiv);
 }
+
+function createHTMLPage(tab, content) {
+  let pageDiv = tab.pageDiv;
+
+  pageDiv.innerHTML = content;  // this ignores the head section, etc.
+  pageContainerDiv.appendChild(pageDiv);
+}
+
 
 function createEditor(tab, content, isNamed) {
   const editorDiv = tab.pageDiv;
