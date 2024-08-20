@@ -111,8 +111,6 @@ def scan_for_wifi(ssids: list[str], keys: list[str]):
 
 
 def connect_to_wifi(ssids: list[str], keys: list[str]):
-    if len(ssids) == 0:
-        return "0.0.0.0"
     retries = 20
     try:
         ap_if.disconnect()
@@ -123,6 +121,10 @@ def connect_to_wifi(ssids: list[str], keys: list[str]):
     sta_if.active(False)
     utime.sleep(1)
     sta_if.active(True)
+    if len(ssids) == 0:
+        scan_for_wifi([],[])  # scan anyway, so we capture the available SSIDs
+        sta_if.active(False)
+        return "0.0.0.0"
     scan_retries = 3
     foundSsid = False
     ssid = ""
@@ -171,17 +173,11 @@ def generate_ap_name():
 def create_soft_ap(ap_name):
     # Initialize the soft AP with the AP name from settings
     print(f'Creating WiFi hotspot named {ap_name}...')
-    try:
-        ap_if.disconnect()
-        sta_if.disconnect()
-    except:
-        pass
-    ap_if.active(False) #  de-activate the interfaces
-    sta_if.active(False)
-    utime.sleep(1)
+    # we assume the interfaces start out deactivated by the connect_to_wifi function.
     ap_if.active(True)
     ap_if.config(essid=ap_name)
-    return "0.0.0.0"
+    ap_if.config(authmode=network.AUTH_OPEN)  # no password
+    return '0.0.0.0'
 
 def load_settings():
     global settings
@@ -221,7 +217,9 @@ def initialize():
 
 initialize()
 ip_address = connect_to_wifi(settings['wifi_ssids'], settings['wifi_passwords'])
+softAP = False
 if ip_address == "0.0.0.0":
+    softAP = True
     ip_address = create_soft_ap(settings["ap_name"])
 app = HTTPServer(ip_address, 80)
 
@@ -621,7 +619,7 @@ try:
         # uncaught exceptions end up here
         print("global exception handler:", context)
         sys.print_exception(context["exception"])
-        sys.exit()
+        sys.exit()  # TODO: remove for production
 
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(handle_exception)
