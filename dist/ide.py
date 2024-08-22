@@ -16,7 +16,7 @@ from ahttpserver.multipart import handleMultipartUpload
 from ahttpserver.server import HTTPServerError
 
 
-network.hostname('tartlab')  # sets up tartlab.local on mDNS
+network.hostname('tartlab')  # sets up tartlab.local on mDNS (currently only works for STA interface)
 
 USER_BASE_DIR = '/files/user'
 
@@ -558,7 +558,8 @@ async def api_get_ssids(reader, writer, request):
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
-    writer.write(ujson.dumps({'stored': settings['wifi_ssids'], 'scanned': network_names}))
+    scanned = [n for n in network_names if n not in settings['wifi_ssids']]
+    writer.write(ujson.dumps({'stored': settings['wifi_ssids'], 'scanned': scanned}))
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
 
