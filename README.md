@@ -1,6 +1,8 @@
 # TartLab
 Lite web-based MicroPython IDE for embedded devices.
 
+![Logo](images/TartLabLogo_bluebg.png)
+
 **Warning! This is currently in the alpha stage.  Nothing is guaranteed to work.**
 
 ## Goals
@@ -18,6 +20,11 @@ Additionally, it would be great if a community of MicroPython developers would g
 ## Recommended embedded devices
 Any device using an ESP32 or ESP8266 processor and providing WiFi support should work.  I haven't tested with RP2040/RP2350 devices, but they should be able to be supported as well.  Devices with LCD screens are highly recommended, as that simplifies troubleshooting, if needed.
 LilyGo devices (T-Display-S3, T-Display-S3 Pro) were used to test and develop TartLab, so those should work great.
+
+## Screenshots
+**TartLab in action:**
+
+![TartLab in action](images/screenshots/TartLab_ss2.png)
 
 ## Installation
  1. Install a bin file from [MicroPython](https://micropython.org/) on the embedded device.  Sometimes there are special builds of MicroPython that are specific to your device, in which case you should use those.  For those devices without a special build, find the closest thing.  For example, the T-Display-S3 would use the "Support for Octal-SPIRAM" version of the [ESP32_GENERIC_S3 port.](https://www.micropython.org/download/ESP32_GENERIC_S3/)
