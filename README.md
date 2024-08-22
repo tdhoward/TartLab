@@ -1,7 +1,7 @@
 # TartLab
 Lite web-based MicroPython IDE for embedded devices.
 
-![Logo](images/TartLabLogo_bluebg.png)
+![Logo](images/TartLabLogoHoriz_bluebg.png)
 
 **Warning! This is currently in the alpha stage.  Nothing is guaranteed to work.**
 
