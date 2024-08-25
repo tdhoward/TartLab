@@ -19,6 +19,8 @@ from ahttpserver.server import HTTPServerError
 network.hostname('tartlab')  # sets up tartlab.local on mDNS (currently only works for STA interface)
 
 USER_BASE_DIR = '/files/user'
+IDE_BASE_DIR = '/ide'
+SETTINGS_FILE = '/settings.json'
 
 def file_exists(filepath):
     try:
@@ -182,12 +184,12 @@ def create_soft_ap(ap_name):
 def load_settings():
     global settings
     settings = {}
-    with open('settings.json', 'r') as f:
+    with open(SETTINGS_FILE, 'r') as f:
         settings = ujson.load(f)
 
 def save_settings():
     global settings
-    with open('settings.json', 'w') as f:
+    with open(SETTINGS_FILE, 'w') as f:
         ujson.dump(settings, f)
 
 def initialize():
@@ -314,7 +316,7 @@ def split_on_first(data, token = b'\r\n'):
 # General GET requests
 @app.route("GET", "/*")
 async def static_files(reader, writer, request):
-    local_path = "/static/"
+    local_path = f'{IDE_BASE_DIR}/www/'
     url_path = "/"
     subpath = unquote(request.path[len(url_path):])
     if subpath == '':
