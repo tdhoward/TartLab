@@ -12,6 +12,11 @@ Since many embedded devices have WiFi connectivity built in, why not serve a tin
 
 Additionally, it would be great if a community of MicroPython developers would get their start on TartLab and then continue to improve it for others.
 
+## Features
+ * Works with any modern web browser
+ * Python code highlighting
+ * REPL-like console
+
 ## Requirements
  * Embedded module: Must be able to run MicroPython and have WiFi  (See below for more details.)
  * Embedded storage: 4MB+ recommended
