@@ -60,20 +60,20 @@ os.makedirs(DIST_FOLDER)
 copy_only_files(SRC_FOLDER, DIST_FOLDER)
 
 # /files
-shutil.copytree(SRC_FOLDER + '/files', DIST_FOLDER)
+shutil.copytree(SRC_FOLDER + '/files', DIST_FOLDER + '/files')
 
 # /lib
 # TODO: Maybe at some point we compile the python code in the lib folder
-shutil.copytree(SRC_FOLDER + '/lib', DIST_FOLDER)
+shutil.copytree(SRC_FOLDER + '/lib', DIST_FOLDER + '/lib')
 
 # copy all the ide files (we'll delete some later)
-shutil.copytree(SRC_FOLDER + IDE_FOLDER, DIST_FOLDER)
+shutil.copytree(SRC_FOLDER + IDE_FOLDER, DIST_FOLDER + IDE_FOLDER)
 
 # remove the files used for testing
 shutil.rmtree(DIST_FOLDER + IDE_FOLDER + WEB_FOLDER + '/api')
 shutil.rmtree(DIST_FOLDER + IDE_FOLDER + WEB_FOLDER + '/files')
 
-# TODO: It would be great to include a bundler and minifier here.
+# TODO: It would be great to include a bundler and minifier here for the web app files.
 
 # Compress the static web app files
 compress_and_remove_large_files(DIST_FOLDER + IDE_FOLDER + WEB_FOLDER)
