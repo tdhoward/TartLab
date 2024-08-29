@@ -1,43 +1,72 @@
-# This script creates a release package suitable for uploading to GitHub.
-# Two files are created, 'tartlab.tar' and 'checksums.json'
+# This script uses the content of the packages.json file to create release packages
+# and a manifest.json file.  These can then be uploaded to GitHub as a new release.
+
+import os
+import shutil
 import tarfile
 import hashlib
-import os
 import json
 
-def create_tar_with_checksum(folder_path, tar_filename, target_folder):
-    if not os.path.exists(target_folder):
-        os.makedirs(target_folder)
-
-    tar_path = os.path.join(target_folder, tar_filename)
-    checksum_file_path = os.path.join(target_folder, 'checksums.json')
-
-    # Create a tar file with relative paths
-    with tarfile.open(tar_path, 'w') as tar:
-        for root, dirs, files in os.walk(folder_path):
-            for file in files:
-                file_path = os.path.join(root, file)
-                # Add file to tar, stripping the folder_path prefix
-                tar.add(file_path, arcname=os.path.relpath(file_path, folder_path))
-
-    # Calculate SHA-256 checksum of the tar file
+def calculate_sha256(file_path):
     sha256_hash = hashlib.sha256()
-    with open(tar_path, 'rb') as f:
+    with open(file_path, "rb") as f:
         for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
-    checksum = sha256_hash.hexdigest()
+    return sha256_hash.hexdigest()
 
-    # Create a dictionary with the tar file name and checksum
-    checksum_dict = {tar_filename: checksum}
+def create_tarfile(name, source, exclude_subdirs, output_dir):
+    tar_path = os.path.join(output_dir, f"{name}.tar")
+    with tarfile.open(tar_path, "w") as tar:
+        if exclude_subdirs:
+            for item in os.listdir(source):
+                item_path = os.path.join(source, item)
+                if os.path.isfile(item_path):
+                    tar.add(item_path, arcname=item)
+        else:
+            for root, dirs, files in os.walk(source):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    # Add file to tar, stripping the folder_path prefix
+                    tar.add(file_path, arcname=os.path.relpath(file_path, source))
+    return tar_path
 
-    # Write the dictionary to checksums.json
-    with open(checksum_file_path, 'w') as json_file:
-        json.dump(checksum_dict, json_file, indent=4)
+def main():
+    release_dir = "release"
+    
+    # Delete the release directory if it exists
+    if os.path.exists(release_dir):
+        shutil.rmtree(release_dir)
+    
+    # Create the release directory
+    os.makedirs(release_dir)
 
-    return checksum_dict
+    with open("packages.json", "r") as f:
+        packages = json.load(f)
+    
+    manifest = []
+    
+    for package in packages:
+        name = package["name"]
+        source = package["source"]
+        exclude_subdirs = source.endswith('*')
+        
+        if exclude_subdirs:
+            source = source.rstrip('*')
+        
+        tar_path = create_tarfile(name, source, exclude_subdirs, release_dir)
+        sha256 = calculate_sha256(tar_path)
+        
+        manifest_entry = {
+            "file_name": os.path.basename(tar_path),
+            "sha256": sha256,
+            "target": package["target"],
+            "clear_first": package["clear_first"],
+        }
+        manifest.append(manifest_entry)
+    
+    manifest_path = os.path.join(release_dir, "manifest.json")
+    with open(manifest_path, "w") as f:
+        json.dump(manifest, f, indent=4)
 
-# Example usage
-folder_to_tar = 'dist/ide'
-tar_filename = 'tartlab.tar'
-target_folder = 'release'
-create_tar_with_checksum(folder_to_tar, tar_filename, target_folder)
+if __name__ == "__main__":
+    main()

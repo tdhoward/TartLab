@@ -1,0 +1,26 @@
+[
+	{
+		"name": "tartlab",
+		"source": "dist/ide",
+		"target": "/ide",
+		"clear_first": true
+	},
+	{
+		"name": "helpfiles",
+		"source": "dist/files/help",
+		"target": "/files/help",
+		"clear_first": true
+	},
+	{
+		"name": "libahttpserver",
+		"source": "dist/lib/ahttpserver",
+		"target": "/lib/ahttpserver",
+		"clear_first": true
+	},
+	{
+		"name": "rootfiles",
+		"source": "dist/*",
+		"target": "/",
+		"clear_first": false
+	}
+]
