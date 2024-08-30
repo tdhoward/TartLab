@@ -12,12 +12,12 @@ TMP_UPDATE_FOLDER = '/tmp'
 updating_root = False
 
 def check_for_update(repo):
-    repo_api_url = f"https://api.github.com/repos/{repo['name']}/releases/latest"
+    repo_api_url = f"https://api.github.com/repos/{repo['repo']}/releases/latest"
     response = urequests.get(repo_api_url)
     
     if response.status_code == 200:
         latest_release = response.json()
-        latest_version = latest_release['tag_name']
+        latest_version = float(latest_release['tag_name'])
         
         if latest_version > repo['installed_version']:
             return latest_release['assets'], latest_version
@@ -158,11 +158,11 @@ def update_packages(repo):
 
 def main_update_routine():
     global updating_root
-    repos = []
+    repos = {}
     with open(REPOS_FILE, 'r') as file:
         repos = ujson.load(file)
     
-    for repo in repos:
+    for repo in repos['list']:
         if update_packages(repo):
             print(f"Updated {repo['name']} to version {repo['installed_version']}")
             if updating_root:

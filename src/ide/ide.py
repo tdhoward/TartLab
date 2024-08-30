@@ -203,6 +203,7 @@ def initialize():
         load_settings()
     except OSError:
         settings = {
+            'dbver': 1,
             'IDE_BUTTON_PIN': 14,
             'ap_name': generate_ap_name(),
             'wifi_ssids': [],
@@ -302,7 +303,10 @@ async def get_user_file(reader, writer, request):
         full_path = sanitize_path(subpath)
     except:
         return await sendHTTPResponse(writer, 400, 'Invalid path!')
-    await serve_file(reader, writer, request, full_path, False)
+    try:
+        await serve_file(reader, writer, request, full_path, False)
+    except Exception as e:
+        print(f'Exception serving file: {e}')
 
 # Handle POST requests for files
 @app.route("POST", f'{USER_BASE_DIR}/*')
@@ -348,7 +352,10 @@ async def help_files(reader, writer, request):
         full_path = sanitize_path(unquote(request.path[len('/files/help'):]), '/files/help')
     except:
         return await sendHTTPResponse(writer, 400, 'Invalid path!')
-    await serve_file(reader, writer, request, full_path, True)
+    try:
+        await serve_file(reader, writer, request, full_path, True)
+    except Exception as e:
+        print(f'Exception serving file: {e}')
 
 
 # -----  API endpoints  -----
@@ -465,6 +472,20 @@ async def delete_folder(reader, writer, request):
         return await sendHTTPResponse(writer, 404, 'Could not delete folder!')
     await sendHTTPResponse(writer, 200, 'success')
     print(f"DELETE {request.path} with response code 200")
+
+
+# get the versions of repos
+@app.route("GET", "/api/versions")
+async def api_get_versions(reader, writer, request):
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    repos = {}
+    with open('repos.json', 'r') as f:
+        repos = ujson.load(f)
+    writer.write(ujson.dumps(repos))
+    await writer.drain()
+    print(f"API request: {request.path} with response code 200")
 
 
 # get the disk usage

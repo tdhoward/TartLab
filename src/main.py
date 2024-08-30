@@ -1,6 +1,7 @@
 import ujson
 from machine import Pin
 import sys
+from lib.miscutils import file_exists
 
 # add search folders for importing modules
 if "/lib" not in sys.path:
@@ -16,6 +17,21 @@ except OSError:  # doesn't exist
     settings = {}
 if 'IDE_BUTTON_PIN' not in settings:
     settings['IDE_BUTTON_PIN'] = 14  # default button pin
+
+# make sure we have a repos.json file
+if not file_exists('repos.json'):
+    repos = {
+        'dbver': 1,
+        'list': [
+            {
+                'name': 'TartLab',
+                'repo': 'tdhoward/tartlab',  # owner/repo
+                'installed_version': 0.1
+            }
+        ]
+    }
+    with open('repos.json', 'w') as f:
+        ujson.dump(repos, f)
 
 # Check if IDE button is pressed
 IDE_BUTTON = Pin(settings['IDE_BUTTON_PIN'], Pin.IN)
