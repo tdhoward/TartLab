@@ -288,7 +288,10 @@ async def static_files(reader, writer, request):
     except:
         print('400: ' + full_path)
         return await sendHTTPResponse(writer, 400, 'Invalid path!')
-    await serve_file(reader, writer, request, full_path, True)
+    try:
+        await serve_file(reader, writer, request, full_path, True)
+    except Exception as e:
+        print(f'Exception serving file: {e}')
 
 # -----  User file operations  -----
 # Serve user files with no caching
