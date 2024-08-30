@@ -47,6 +47,11 @@ def main():
     
     for package in packages:
         name = package["name"]
+
+        confirm = input(f"Include '{name}' package in release? (y/n): ")
+        if confirm.lower() == 'n':
+            continue
+
         source = package["source"]
         exclude_subdirs = source.endswith('*')
         
@@ -67,6 +72,8 @@ def main():
     manifest_path = os.path.join(release_dir, "manifest.json")
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=4)
+
+    print("Process complete.")
 
 if __name__ == "__main__":
     main()
