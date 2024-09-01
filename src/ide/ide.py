@@ -505,6 +505,14 @@ async def api_check_updates(reader, writer, request):
     print(f"API request: {request.path} with response code 200")
 
 
+# start updates for the repos
+@app.route("POST", "/api/doupdates")
+async def api_do_updates(reader, writer, request):
+    await sendHTTPResponse(writer, 200, 'success')  # we return success right away, since we're restarting
+    print(f"API request: {request.path} with response code 200")
+    main_update_routine()
+
+
 # get the disk usage
 @app.route("GET", "/api/space")
 async def api_get_space(reader, writer, request):
