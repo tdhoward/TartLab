@@ -1,7 +1,7 @@
 import ujson
 from machine import Pin
 import sys
-from lib.miscutils import file_exists
+from tartlabutils import file_exists
 
 # add search folders for importing modules
 if "/lib" not in sys.path:
@@ -26,7 +26,7 @@ if not file_exists('repos.json'):
             {
                 'name': 'TartLab',
                 'repo': 'tdhoward/tartlab',  # owner/repo
-                'installed_version': 0.1
+                'installed_version': 0.1   # I guess we'll need to keep updating this
             }
         ]
     }

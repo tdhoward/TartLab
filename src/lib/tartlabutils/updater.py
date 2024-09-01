@@ -2,7 +2,7 @@ import ujson
 import urequests
 import uos
 from tarfile import TarFile
-from lib.miscutils import rmvdir, file_exists
+from .miscutils import rmvdir, file_exists
 import uhashlib
 import machine
 
@@ -138,9 +138,9 @@ def update_packages(repo):
             clean_up()
             return False
 
-    # if we're updating the root files, move that to the end of the list
+    # if we're updating the updater, move that to the end of the list
     for m in manifest:
-        if m['file_name'] == 'rootfiles.tar':
+        if m['file_name'] == 'tartlabutils.tar':
             manifest.remove(m)  # Remove the object from its current position
             manifest.append(m)  # Append it to the end of the list
             updating_root = True
@@ -154,6 +154,10 @@ def update_packages(repo):
     # Update the installed version in the package object
     repo['installed_version'] = latest_version
     return True
+
+
+def restart_device():
+    machine.reset()
 
 
 def main_update_routine():
@@ -174,4 +178,4 @@ def main_update_routine():
     with open(REPOS_FILE, 'w') as file:
         ujson.dump(repos, file)
 
-    machine.reset()
+    restart_device()

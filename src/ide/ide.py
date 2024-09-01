@@ -7,7 +7,7 @@ import utime
 import random
 import uasyncio as asyncio
 import io
-from lib.miscutils import file_exists, unquote, rmvdir, split_on_first
+from tartlabutils import file_exists, unquote, rmvdir, check_for_update, main_update_routine
 
 from ahttpserver import HTTPResponse, HTTPServer
 from ahttpserver.sse import EventSource
