@@ -474,7 +474,7 @@ async def delete_folder(reader, writer, request):
     print(f"DELETE {request.path} with response code 200")
 
 
-# get the versions of repos
+# get the installed versions of repos
 @app.route("GET", "/api/versions")
 async def api_get_versions(reader, writer, request):
     response = HTTPResponse(200, "application/json", close=True)
@@ -484,6 +484,23 @@ async def api_get_versions(reader, writer, request):
     with open('repos.json', 'r') as f:
         repos = ujson.load(f)
     writer.write(ujson.dumps(repos))
+    await writer.drain()
+    print(f"API request: {request.path} with response code 200")
+
+
+# check for version updates for the repos
+@app.route("GET", "/api/checkupdates")
+async def api_check_updates(reader, writer, request):
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    repos = {}
+    with open('repos.json', 'r') as f:
+        repos = ujson.load(f)
+    updates = []
+    for repo in repos['list']:
+        updates.append(check_for_update(repo))
+    writer.write(ujson.dumps(updates))
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
 
