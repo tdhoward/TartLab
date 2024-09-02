@@ -9,7 +9,7 @@ import machine
 
 REPOS_FILE='/repos.json'
 TMP_UPDATE_FOLDER = '/tmp'
-updating_root = False
+updating_updater = False
 
 def check_for_update(repo):
     repo_api_url = f"https://api.github.com/repos/{repo['repo']}/releases/latest"
@@ -93,7 +93,7 @@ def clean_up():
 
 
 def update_packages(repo):
-    global updating_root
+    global updating_updater
     assets, latest_version = check_for_update(repo)
     if not assets:
         return False
@@ -143,7 +143,7 @@ def update_packages(repo):
         if m['file_name'] == 'tartlabutils.tar':
             manifest.remove(m)  # Remove the object from its current position
             manifest.append(m)  # Append it to the end of the list
-            updating_root = True
+            updating_updater = True
             break
 
     # if everything is correct, install them all and update the version
@@ -161,15 +161,22 @@ def restart_device():
 
 
 def main_update_routine():
-    global updating_root
+    global updating_updater
     repos = {}
     with open(REPOS_FILE, 'r') as file:
         repos = ujson.load(file)
     
+    # if we're updating TartLab, move that to the end of the list so we update last
+    for r in repos['list']:
+        if r['name'] == 'TartLab':
+            repos['list'].remove(r)  # Remove the object from its current position
+            repos['list'].append(r)  # Append it to the end of the list
+            break
+
     for repo in repos['list']:
         if update_packages(repo):
             print(f"Updated {repo['name']} to version {repo['installed_version']}")
-            if updating_root:
+            if updating_updater:
                 break
         else:
             print(f"No update necessary for {repo['name']}")

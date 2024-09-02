@@ -491,6 +491,9 @@ async def api_get_versions(reader, writer, request):
 # check for version updates for the repos
 @app.route("GET", "/api/checkupdates")
 async def api_check_updates(reader, writer, request):
+    global softAP
+    if softAP:
+        return await sendHTTPResponse(writer, 400, 'This WiFi has no internet access.')
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
@@ -499,7 +502,11 @@ async def api_check_updates(reader, writer, request):
         repos = ujson.load(f)
     updates = []
     for repo in repos['list']:
-        updates.append(check_for_update(repo))
+        try:
+            assets, latest_version = check_for_update(repo)
+            updates.append((assets, latest_version))
+        except Exception as e:
+            updates.append(('error', e))
     writer.write(ujson.dumps(updates))
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
@@ -508,6 +515,9 @@ async def api_check_updates(reader, writer, request):
 # start updates for the repos
 @app.route("POST", "/api/doupdates")
 async def api_do_updates(reader, writer, request):
+    global softAP
+    if softAP:
+        return await sendHTTPResponse(writer, 400, 'This WiFi has no internet access.')
     await sendHTTPResponse(writer, 200, 'success')  # we return success right away, since we're restarting
     print(f"API request: {request.path} with response code 200")
     main_update_routine()
