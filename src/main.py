@@ -17,6 +17,8 @@ except OSError:  # doesn't exist
     settings = {}
 if 'IDE_BUTTON_PIN' not in settings:
     settings['IDE_BUTTON_PIN'] = 14  # default button pin
+if 'STARTUP_MODE' not in settings:
+    settings['STARTUP_MODE'] = 'BUTTON'  # use button state
 
 # make sure we have a repos.json file
 if not file_exists('repos.json'):
@@ -33,11 +35,21 @@ if not file_exists('repos.json'):
     with open('repos.json', 'w') as f:
         ujson.dump(repos, f)
 
-# Check if IDE button is pressed
-IDE_BUTTON = Pin(settings['IDE_BUTTON_PIN'], Pin.IN)
+# figure out whether to launch app or IDE
+start_mode = settings['STARTUP_MODE']
+if start_mode == 'BUTTON':
+    # Check if IDE button is pressed
+    IDE_BUTTON = Pin(settings['IDE_BUTTON_PIN'], Pin.IN)
+    if IDE_BUTTON.value() == 1:  # TODO: change to 0 when done developing IDE  (unpressed button value is 1)
+        start_mode = 'IDE'
+    else:
+        start_mode = 'APP'
+else:  # we only get here if we loaded a settings.json file with non-default STARTUP_MODE
+    settings['STARTUP_MODE'] = 'BUTTON'  # resets to default after one boot
+    with open('settings.json', 'w') as f:
+        ujson.dump(settings, f)
 
-# default button value is 1
-if IDE_BUTTON.value() == 1:  # TODO: change to 0 when done developing IDE
+if start_mode == 'IDE':  
     import ide
 else:
     import app  # launches the user's startup app
