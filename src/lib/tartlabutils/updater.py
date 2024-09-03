@@ -156,7 +156,15 @@ def update_packages(repo):
     return True
 
 
-def restart_device():
+def restart_device(stay_in_IDE = True):
+    if stay_in_IDE:
+        settings_file = '/settings.json'
+        sets = {}
+        with open(settings_file, 'r') as f:
+            sets = ujson.load(f)
+        sets['STARTUP_MODE'] = 'IDE'
+        with open(settings_file, 'w') as f:
+            ujson.dump(sets, f)
     machine.reset()
 
 
