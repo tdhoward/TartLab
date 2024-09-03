@@ -7,7 +7,8 @@ import utime
 import random
 import uasyncio as asyncio
 import io
-from tartlabutils import file_exists, unquote, rmvdir, check_for_update, main_update_routine
+from tartlabutils import file_exists, unquote, rmvdir, check_for_update, main_update_routine, \
+                        log, get_logs
 
 from ahttpserver import HTTPResponse, HTTPServer
 from ahttpserver.sse import EventSource

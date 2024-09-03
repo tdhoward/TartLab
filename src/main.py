@@ -1,12 +1,16 @@
 import ujson
 from machine import Pin
 import sys
-from tartlabutils import file_exists
 
 # add search folders for importing modules
 if "/lib" not in sys.path:
     sys.path.insert(1, '/lib')
 sys.path.insert(1, '/files/user')
+
+from tartlabutils import file_exists, init_logs, log
+
+init_logs()
+log('\nSystem startup')
 
 # read the settings file to determine IDE button
 try:
@@ -14,6 +18,7 @@ try:
         settings = ujson.load(f)
 except OSError:  # doesn't exist
     print('No settings found.')
+    log('No settings file found.')
     settings = {}
 if 'IDE_BUTTON_PIN' not in settings:
     settings['IDE_BUTTON_PIN'] = 14  # default button pin
@@ -49,7 +54,9 @@ else:  # we only get here if we loaded a settings.json file with non-default STA
     with open('settings.json', 'w') as f:
         ujson.dump(settings, f)
 
-if start_mode == 'IDE':  
+if start_mode == 'IDE':
+    log('Starting IDE')
     import ide
 else:
+    log('Starting APP')
     import app  # launches the user's startup app
