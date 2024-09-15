@@ -520,6 +520,7 @@ async def api_do_updates(reader, writer, request):
     global softAP
     if softAP:
         return await sendHTTPResponse(writer, 400, 'This WiFi has no internet access.')
+    # TODO: Are there even any updates to do?
     await sendHTTPResponse(writer, 200, 'success')  # we return success right away, since we're restarting
     print(f"API request: {request.path} with response code 200")
     main_update_routine()

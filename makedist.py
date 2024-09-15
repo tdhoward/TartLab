@@ -76,6 +76,9 @@ copy_only_files(SRC_FOLDER, DIST_FOLDER)
 # /files
 shutil.copytree(SRC_FOLDER + '/files', DIST_FOLDER + '/files')
 
+# /configs
+shutil.copytree(SRC_FOLDER + '/configs', DIST_FOLDER + '/configs')
+
 # /lib
 # TODO: Maybe at some point we compile the python code in the lib folder
 shutil.copytree(SRC_FOLDER + '/lib', DIST_FOLDER + '/lib')

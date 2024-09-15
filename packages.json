@@ -18,6 +18,12 @@
 		"clear_first": true
 	},
 	{
+		"name": "pydevices",
+		"source": "dist/lib/pydevices",
+		"target": "/lib/pydevices",
+		"clear_first": true
+	},
+	{
 		"name": "rootfiles",
 		"source": "dist/*",
 		"target": "/",

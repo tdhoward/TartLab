@@ -3,9 +3,10 @@ from machine import Pin
 import sys
 
 # add search folders for importing modules
-if "/lib" not in sys.path:
-    sys.path.insert(1, '/lib')
-sys.path.insert(1, '/files/user')
+dirs = ["/lib", "/files/user", "/configs", "/lib/pydevices"]
+for d in dirs:
+    if d not in sys.path:
+        sys.path.insert(1, d)
 
 from tartlabutils import file_exists, init_logs, log
 
