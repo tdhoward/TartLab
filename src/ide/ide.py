@@ -206,7 +206,6 @@ def initialize():
         settings = {
             'dbver': 1,
             'STARTUP_MODE': 'BUTTON',
-            'IDE_BUTTON_PIN': 14,
             'ap_name': generate_ap_name(),
             'wifi_ssids': [],
             'wifi_passwords': []

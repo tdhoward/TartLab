@@ -1,0 +1,13 @@
+{
+  "extraPaths": [
+    "src/lib",
+    "src/files/user",
+    "src/configs",
+    "src/lib/pydevices",
+    "src/lib/pydevices/buses",
+    "src/lib/pydevices/display_drv",
+    "src/lib/pydevices/touch_drv",
+    "src/lib/pydevices/displays",
+    "src/lib/pydevices/utils"
+  ]
+}

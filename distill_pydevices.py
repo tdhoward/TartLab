@@ -141,6 +141,17 @@ def process_task(task, source_root, destination_root):
             print(f"Skipped {src_path}: Not a file or directory")
 
 
+# Renames folders with dashes to underscores
+def rename_dash_folders(path):
+    for root, dirnames, filenames in os.walk(path, topdown=False):
+        for dirname in dirnames:
+            if '-' in dirname:
+                old_dir = os.path.join(root, dirname)
+                new_dirname = dirname.replace('-', '_')
+                new_dir = os.path.join(root, new_dirname)
+                os.rename(old_dir, new_dir)
+
+
 # Check if the destination directory exists
 if os.path.exists(destination_root):
     # Prompt the user for confirmation
@@ -159,3 +170,6 @@ os.makedirs(destination_root)
 # Execute all copy tasks
 for task in copy_tasks:
     process_task(task, source_root, destination_root)
+
+# Rename the folders with dashes so we can import them in python
+rename_dash_folders(os.path.join(destination_root, 'board_configs'))

@@ -1,5 +1,3 @@
-import ujson
-from machine import Pin
 import sys
 
 # add search folders for importing modules
@@ -17,10 +15,15 @@ for d in dirs:
     if d not in sys.path:
         sys.path.insert(1, d)
 
+import ujson
+from machine import Pin
 from tartlabutils import file_exists, init_logs, log
 
 init_logs()
 log('\nSystem startup')
+
+import hdwconfig
+log('\nHardware initialized')
 
 # read the settings file to determine IDE button
 try:
@@ -30,8 +33,7 @@ except OSError:  # doesn't exist
     print('No settings found.')
     log('No settings file found.')
     settings = {}
-if 'IDE_BUTTON_PIN' not in settings:
-    settings['IDE_BUTTON_PIN'] = 14  # default button pin
+
 if 'STARTUP_MODE' not in settings:
     settings['STARTUP_MODE'] = 'BUTTON'  # use button state
 
@@ -54,7 +56,7 @@ if not file_exists('repos.json'):
 start_mode = settings['STARTUP_MODE']
 if start_mode == 'BUTTON':
     # Check if IDE button is pressed
-    IDE_BUTTON = Pin(settings['IDE_BUTTON_PIN'], Pin.IN)
+    IDE_BUTTON = Pin(hdwconfig.IDE_BUTTON_PIN, Pin.IN)
     if IDE_BUTTON.value() == 1:  # TODO: change to 0 when done developing IDE  (unpressed button value is 1)
         start_mode = 'IDE'
     else:
