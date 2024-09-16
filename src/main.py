@@ -3,7 +3,16 @@ from machine import Pin
 import sys
 
 # add search folders for importing modules
-dirs = ["/lib", "/files/user", "/configs", "/lib/pydevices"]
+dirs = ["/lib", 
+        "/files/user", 
+        "/configs", 
+        "/lib/pydevices", 
+        "/lib/pydevices/buses",
+        "/lib/pydevices/displaydrv",
+        "/lib/pydevices/touchdrv",
+        "/lib/pydevices/displays",
+        "/lib/pydevices/utils"]
+
 for d in dirs:
     if d not in sys.path:
         sys.path.insert(1, d)

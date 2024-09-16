@@ -68,7 +68,7 @@ def copy_filetree(src_folder, dest_folder, minify_python = True):
             # Copy the original file's access and modification times
             shutil.copystat(src_file, dest_file)
 
-# Function to copy and minify .py files at the top level (no recursion)
+# Function to copy files at the top level (no recursion)
 def copy_top_level_files(src_folder, dest_folder):
     for item in os.listdir(src_folder):
         src_path = os.path.join(src_folder, item)
@@ -97,11 +97,11 @@ os.makedirs(DIST_FOLDER)
 # Copy the main .py files from SRC to DIST (top-level files only, no minifying)
 copy_top_level_files(SRC_FOLDER, DIST_FOLDER)
 
-# Copy and minify files in the /files directory  (These are help files, etc. so don't minify)
+# Copy and minify files in the /files directory  (These are human-readable files, so don't minify)
 copy_filetree(os.path.join(SRC_FOLDER, 'files'), os.path.join(DIST_FOLDER, 'files'), False)
 
-# Copy and minify files in the /configs directory
-copy_filetree(os.path.join(SRC_FOLDER, 'configs'), os.path.join(DIST_FOLDER, 'configs'))
+# Copy and minify files in the /configs directory  (These are human-readable files, so don't minify)
+copy_filetree(os.path.join(SRC_FOLDER, 'configs'), os.path.join(DIST_FOLDER, 'configs'), False)
 
 # Copy and minify files in the /lib directory
 copy_filetree(os.path.join(SRC_FOLDER, 'lib'), os.path.join(DIST_FOLDER, 'lib'))
@@ -109,7 +109,7 @@ copy_filetree(os.path.join(SRC_FOLDER, 'lib'), os.path.join(DIST_FOLDER, 'lib'))
 # Copy all the ide files (we'll delete some later)
 copy_filetree(os.path.join(SRC_FOLDER, IDE_FOLDER.strip('/')), os.path.join(DIST_FOLDER, IDE_FOLDER.strip('/')))
 
-# Remove the files used for testing
+# Remove the ide files used for testing
 shutil.rmtree(os.path.join(DIST_FOLDER, IDE_FOLDER.strip('/'), WEB_FOLDER.strip('/'), 'api'), ignore_errors=True)
 shutil.rmtree(os.path.join(DIST_FOLDER, IDE_FOLDER.strip('/'), WEB_FOLDER.strip('/'), 'files'), ignore_errors=True)
 
