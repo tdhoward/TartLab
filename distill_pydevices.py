@@ -14,22 +14,22 @@ destination_root = os.path.abspath(os.path.join('..', 'TartLab', 'src', 'lib', '
 # Define the copy tasks
 copy_tasks = [
     {
-        'src_pattern': os.path.join('boardconfigs', '*', 'board_config.py'),
-        'dst_pattern': os.path.join('boardconfigs', '*', 'board_config.py'),
+        'src_pattern': os.path.join('board_configs', '*', 'board_config.py'),
+        'dst_pattern': os.path.join('board_configs', '*', 'board_config.py'),
         'exclude_dirs': [
-            os.path.join('boardconfigs', 'circuitpython'),
-            os.path.join('boardconfigs', 'desktop'),
-            os.path.join('boardconfigs', 'jupyter'),
+            os.path.join('board_configs', 'circuitpython'),
+            os.path.join('board_configs', 'desktop'),
+            os.path.join('board_configs', 'jupyter'),
         ],
-        'exclude_dirs_glob': [os.path.join('boardconfigs', 'wokwi_*')],
+        'exclude_dirs_glob': [os.path.join('board_configs', 'wokwi_*')],
     },
     {
         'src_pattern': os.path.join('drivers', 'display', '*.py'),
-        'dst_pattern': os.path.join('displaydrv', ''),
+        'dst_pattern': os.path.join('display_drv', ''),
     },
     {
         'src_pattern': os.path.join('drivers', 'touch', '*.py'),
-        'dst_pattern': os.path.join('touchdrv', ''),
+        'dst_pattern': os.path.join('touch_drv', ''),
     },
     {
         'src_pattern': os.path.join('src', 'lib', '*'),
@@ -57,22 +57,22 @@ def process_task(task, source_root, destination_root):
     src_pattern_full = os.path.join(source_root, src_pattern)
     matching_paths = glob.glob(src_pattern_full, recursive=True)
 
-    # Convert src_pattern to a regex for matching and extracting variable parts
-    src_pattern_relative = src_pattern.replace(os.sep, '/')
-    src_pattern_regex = re.escape(src_pattern_relative)
-    src_pattern_regex = src_pattern_regex.replace(r'\*', '(.*)')
-    src_pattern_regex = '^' + src_pattern_regex + '$'
-    src_pattern_re = re.compile(src_pattern_regex)
+    # Convert patterns to lists of parts
+    src_pattern_parts = src_pattern.split(os.sep)
+    dst_pattern_parts = dst_pattern.split(os.sep)
+
+    # Identify the indices of wildcards in the src_pattern
+    wildcard_indices = [i for i, part in enumerate(src_pattern_parts) if part == '*']
 
     for src_path in matching_paths:
         # Apply exclusions
         excluded = False
-        relative_src_path = os.path.relpath(src_path, source_root).replace(os.sep, '/')
-        src_dir = os.path.dirname(relative_src_path).replace(os.sep, '/')
+        relative_src_path = os.path.relpath(src_path, source_root)
+        src_dir = os.path.dirname(relative_src_path)
 
         # Exclude specific directories
         for exclude_dir in exclude_dirs:
-            exclude_dir_norm = exclude_dir.replace(os.sep, '/')
+            exclude_dir_norm = os.path.normpath(exclude_dir)
             if src_dir.startswith(exclude_dir_norm):
                 excluded = True
                 break
@@ -80,7 +80,7 @@ def process_task(task, source_root, destination_root):
         # Exclude directories based on glob patterns
         if not excluded:
             for exclude_dir_glob in exclude_dirs_glob:
-                exclude_dir_glob_norm = exclude_dir_glob.replace(os.sep, '/')
+                exclude_dir_glob_norm = os.path.normpath(exclude_dir_glob)
                 if fnmatch.fnmatch(src_dir, exclude_dir_glob_norm):
                     excluded = True
                     break
@@ -94,22 +94,34 @@ def process_task(task, source_root, destination_root):
         if excluded:
             continue
 
-        # Determine destination path
-        if '*' in dst_pattern:
-            m = src_pattern_re.match(relative_src_path)
-            if not m:
-                print(f"Warning: No match for {relative_src_path} with pattern {src_pattern_regex}")
-                continue
-            variable_parts = m.groups()
-            dst_path_relative = dst_pattern
-            for vp in variable_parts:
-                dst_path_relative = dst_path_relative.replace('*', vp, 1)
-            dst_path = os.path.join(destination_root, dst_path_relative)
-        elif dst_pattern.endswith(os.sep) or dst_pattern == '':
-            filename = os.path.basename(src_path)
-            dst_path = os.path.join(destination_root, dst_pattern, filename)
+        # Split the relative source path into parts
+        src_path_parts = relative_src_path.split(os.sep)
+
+        # Extract variable parts based on wildcard positions
+        variable_parts = [src_path_parts[i] for i in wildcard_indices]
+
+        # Build the destination path parts
+        dst_path_parts = []
+        variable_idx = 0
+        for part in dst_pattern_parts:
+            if part == '*':
+                dst_path_parts.append(variable_parts[variable_idx])
+                variable_idx += 1
+            else:
+                dst_path_parts.append(part)
+
+        # Handle cases where dst_pattern ends with os.sep or is empty
+        if dst_pattern.endswith(os.sep) or dst_pattern == '':
+            # Append the filename to the destination path
+            dst_path_parts.append(os.path.basename(src_path))
         else:
-            dst_path = os.path.join(destination_root, dst_pattern)
+            # Check if the last part is an empty string
+            if dst_path_parts and dst_path_parts[-1] == '':
+                dst_path_parts[-1] = os.path.basename(src_path)
+
+        # Construct the relative destination path
+        dst_path_relative = os.path.join(*dst_path_parts)
+        dst_path = os.path.join(destination_root, dst_path_relative)
 
         # Ensure the destination directory exists
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)

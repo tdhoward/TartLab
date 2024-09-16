@@ -8,8 +8,8 @@ dirs = ["/lib",
         "/configs", 
         "/lib/pydevices", 
         "/lib/pydevices/buses",
-        "/lib/pydevices/displaydrv",
-        "/lib/pydevices/touchdrv",
+        "/lib/pydevices/display_drv",
+        "/lib/pydevices/touch_drv",
         "/lib/pydevices/displays",
         "/lib/pydevices/utils"]
 
