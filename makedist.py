@@ -9,10 +9,10 @@ from python_minifier import minify  # pip install python-minifier
 # The gzipped files can then be served by the embedded device more quickly, without
 # requiring gzipping on the fly.
 
-SRC_FOLDER = './src'
-DIST_FOLDER = './dist'
-IDE_FOLDER = '/ide'
-WEB_FOLDER = '/www'
+SRC_FOLDER = 'src'
+DIST_FOLDER = 'dist'
+IDE_FOLDER = 'ide'
+WEB_FOLDER = 'www'
 
 # Walks through all files (including subfolders) and compresses files
 # larger than size_threshold with gzip, removing the original file
@@ -107,13 +107,13 @@ copy_filetree(os.path.join(SRC_FOLDER, 'configs'), os.path.join(DIST_FOLDER, 'co
 copy_filetree(os.path.join(SRC_FOLDER, 'lib'), os.path.join(DIST_FOLDER, 'lib'))
 
 # Copy all the ide files (we'll delete some later)
-copy_filetree(os.path.join(SRC_FOLDER, IDE_FOLDER.strip('/')), os.path.join(DIST_FOLDER, IDE_FOLDER.strip('/')))
+copy_filetree(os.path.join(SRC_FOLDER, IDE_FOLDER), os.path.join(DIST_FOLDER, IDE_FOLDER))
 
 # Remove the ide files used for testing
-shutil.rmtree(os.path.join(DIST_FOLDER, IDE_FOLDER.strip('/'), WEB_FOLDER.strip('/'), 'api'), ignore_errors=True)
-shutil.rmtree(os.path.join(DIST_FOLDER, IDE_FOLDER.strip('/'), WEB_FOLDER.strip('/'), 'files'), ignore_errors=True)
+shutil.rmtree(os.path.join(DIST_FOLDER, IDE_FOLDER, WEB_FOLDER, 'api'), ignore_errors=True)
+shutil.rmtree(os.path.join(DIST_FOLDER, IDE_FOLDER, WEB_FOLDER, 'files'), ignore_errors=True)
 
 # Compress the static web app files
-compress_and_remove_large_files(os.path.join(DIST_FOLDER, IDE_FOLDER.strip('/'), WEB_FOLDER.strip('/')))
+compress_and_remove_large_files(os.path.join(DIST_FOLDER, IDE_FOLDER, WEB_FOLDER))
 
 print("Process complete.")
