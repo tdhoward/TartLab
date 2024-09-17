@@ -2,6 +2,7 @@ import os
 import gzip
 import shutil
 import time
+import sys
 from python_minifier import minify  # pip install python-minifier 
 
 # This script uses the src folder to create a dist folder ready for deployment.
@@ -13,6 +14,10 @@ SRC_FOLDER = 'src'
 DIST_FOLDER = 'dist'
 IDE_FOLDER = 'ide'
 WEB_FOLDER = 'www'
+
+do_minify = True
+if len(sys.argv) > 1:
+    do_minify = sys.argv[1].lower() != 'false'
 
 # Walks through all files (including subfolders) and compresses files
 # larger than size_threshold with gzip, removing the original file
@@ -40,7 +45,7 @@ def compress_and_remove_large_files(folder_path, size_threshold=2048):
                 os.remove(file_path)
 
 # Function to copy and minify .py files, copying other files as is
-def copy_filetree(src_folder, dest_folder, minify_python = True):
+def copy_filetree(src_folder, dest_folder, minify_python):
     for root, dirs, files in os.walk(src_folder):
         # Compute the relative path from src_folder to the current root
         rel_path = os.path.relpath(root, src_folder)
@@ -54,7 +59,17 @@ def copy_filetree(src_folder, dest_folder, minify_python = True):
                 with open(src_file, 'r', encoding='utf-8') as f_in:
                     source_code = f_in.read()
                 try:
-                    minified_code = minify(source_code)
+                    minified_code = minify(source_code, remove_annotations=False)
+                                        # If there is trouble, try these other options:
+                                           #combine_imports=False,
+                                           #remove_pass=False,
+                                           #hoist_literals=False,
+                                           #rename_locals=False
+                                           #remove_object_base=False,
+                                           #convert_posargs_to_args=False,
+                                           #preserve_shebang=False,
+                                           #remove_explicit_return_none=False,
+                                           #constant_folding=False
                     with open(dest_file, 'w', encoding='utf-8') as f_out:
                         f_out.write(minified_code)
                     print(f"Minified and copied: {src_file} -> {dest_file}")
@@ -104,10 +119,10 @@ copy_filetree(os.path.join(SRC_FOLDER, 'files'), os.path.join(DIST_FOLDER, 'file
 copy_filetree(os.path.join(SRC_FOLDER, 'configs'), os.path.join(DIST_FOLDER, 'configs'), False)
 
 # Copy and minify files in the /lib directory
-copy_filetree(os.path.join(SRC_FOLDER, 'lib'), os.path.join(DIST_FOLDER, 'lib'))
+copy_filetree(os.path.join(SRC_FOLDER, 'lib'), os.path.join(DIST_FOLDER, 'lib'), do_minify)
 
 # Copy all the ide files (we'll delete some later)
-copy_filetree(os.path.join(SRC_FOLDER, IDE_FOLDER), os.path.join(DIST_FOLDER, IDE_FOLDER))
+copy_filetree(os.path.join(SRC_FOLDER, IDE_FOLDER), os.path.join(DIST_FOLDER, IDE_FOLDER), do_minify)
 
 # Remove the ide files used for testing
 shutil.rmtree(os.path.join(DIST_FOLDER, IDE_FOLDER, WEB_FOLDER, 'api'), ignore_errors=True)
