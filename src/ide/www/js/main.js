@@ -1,7 +1,7 @@
 import { currentFolder, toggleSidebar, buildFilesPanelContent } from "./sidebar.js";
 import { renameTab, activeTab, editors, createNewFileTab, updateSaveButton } from "./tabs.js";
 import './repl-client.js';
-import './wifi.js';
+import './settings.js';
 
 const saveButton = document.getElementById("saveFileBt");
 const newButton = document.getElementById("newFileBt");

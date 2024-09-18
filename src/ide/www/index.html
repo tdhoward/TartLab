@@ -36,6 +36,7 @@
                         <div class="ul-buttons-group">
                             <ul>
                                 <li id="wifi-settings-btn">WiFi settings</li>
+                                <li id="adv-settings-btn">Advanced settings</li>
                                 <li id="check-updates-btn">Check for updates</li>
                             </ul>
                         </div>
@@ -110,6 +111,14 @@
         <span class="spinner spinner-sm hidden"> Loading... </span>
         <h4>Nearby access points:</h4>
         <div id="scannedSSIDs" class="ssid-list">(None)</div>
+    </div>
+    <div id="advanced-dialog" class="dialog hidden">
+        <h3 class="dialog-title">Advanced Settings</h3>
+        <button id="close-adv-dialog-btn" class="dialog-close-button">&times;</button>
+        <h4>Hostname:</h4>
+        <input type="text" id="hostname" placeholder="Hostname" spellcheck="false">
+        <button id="chg-hostname-btn">Change</button><br>
+        <span class="spinner spinner-sm hidden"> Loading... </span>
     </div>
     <div id="toast-container"></div>
 

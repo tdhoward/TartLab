@@ -18,8 +18,6 @@ from ahttpserver.multipart import handleMultipartUpload
 from ahttpserver.server import HTTPServerError
 
 
-network.hostname('tartlab')  # sets up tartlab.local on mDNS (currently only works for STA interface)
-
 USER_BASE_DIR = '/files/user'
 IDE_BASE_DIR = '/ide'
 SETTINGS_FILE = '/settings.json'
@@ -66,9 +64,6 @@ def pseudoREPL(source):
         return cap
     except Exception as e:
         return f"Error: {e}"
-
-sta_if = network.WLAN(network.STA_IF) # create station interface
-ap_if = network.WLAN(network.AP_IF) #  create access-point interface
 
 
 '''
@@ -207,12 +202,19 @@ def initialize():
             'dbver': 1,
             'STARTUP_MODE': 'BUTTON',
             'ap_name': generate_ap_name(),
+            'hostname':'tartlab',
             'wifi_ssids': [],
             'wifi_passwords': []
         }
         save_settings()
 
+
+# --------- Execution starts here -----------
+# Since 'app' is used in decorators below, we need it to already exist.
 initialize()
+network.hostname(settings['hostname'])  # sets up hostname (e.g. tartlab.local) on mDNS (currently only works for STA interface)
+sta_if = network.WLAN(network.STA_IF) # create station interface
+ap_if = network.WLAN(network.AP_IF) #  create access-point interface
 ip_address = connect_to_wifi(settings['wifi_ssids'], settings['wifi_passwords'])
 softAP = False
 if ip_address == "0.0.0.0":
@@ -489,6 +491,31 @@ async def api_get_versions(reader, writer, request):
     print(f"API request: {request.path} with response code 200")
 
 
+# get the hostname setting
+@app.route("GET", "/api/hostname")
+async def api_get_hostname(reader, writer, request):
+    global settings
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    hostname = settings['hostname']
+    writer.write(ujson.dumps({'hostname': hostname}))
+    await writer.drain()
+    print(f"API request: {request.path} with response code 200")
+
+# set the hostname setting
+@app.route("POST", "/api/hostname")
+async def api_get_hostname(reader, writer, request):
+    global settings
+    try:
+        data = ujson.loads(request.body.decode("utf-8"))
+        settings['hostname'] = data['hostname']
+        save_settings()
+    except:
+        return await sendHTTPResponse(writer, 400, 'Error setting hostname!')
+    await sendHTTPResponse(writer, 200, 'success')
+    print(f"API request: {request.path} with response code 200")
+
 # check for version updates for the repos
 @app.route("GET", "/api/checkupdates")
 async def api_check_updates(reader, writer, request):
@@ -640,24 +667,31 @@ async def free_memory_task():
         gc.threshold(gc.mem_free() // 4 + gc.mem_alloc())
         await asyncio.sleep(60)
 
-try:
-    def handle_exception(loop, context):
-        # uncaught exceptions end up here
-        print("global exception handler:", context)
-        sys.print_exception(context["exception"])
-        sys.exit()  # TODO: remove for production
 
-    loop = asyncio.get_event_loop()
-    loop.set_exception_handler(handle_exception)
+def main():
+    global sta_if, ap_if, ip_address, softAP, app
 
-    loop.create_task(say_hello_task())
-    loop.create_task(free_memory_task())
-    loop.create_task(app.start())
+    try:
+        def handle_exception(loop, context):
+            # uncaught exceptions end up here
+            print("global exception handler:", context)
+            sys.print_exception(context["exception"])
+            sys.exit()  # TODO: remove for production
 
-    loop.run_forever()
-except KeyboardInterrupt:
-    pass
-finally:
-    asyncio.run(app.stop())
-    asyncio.new_event_loop()
+        loop = asyncio.get_event_loop()
+        loop.set_exception_handler(handle_exception)
 
+        loop.create_task(say_hello_task())
+        loop.create_task(free_memory_task())
+        loop.create_task(app.start())
+
+        loop.run_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        asyncio.run(app.stop())
+        asyncio.new_event_loop()
+
+
+if __name__ == '__main__':
+    main()

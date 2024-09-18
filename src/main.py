@@ -69,6 +69,7 @@ else:  # we only get here if we loaded a settings.json file with non-default STA
 if start_mode == 'IDE':
     log('Starting IDE')
     import ide
+    ide.main()
 else:
     log('Starting APP')
     import app  # launches the user's startup app
