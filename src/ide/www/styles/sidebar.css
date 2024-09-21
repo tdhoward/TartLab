@@ -325,7 +325,6 @@ button.dialog-close-button:hover {
     margin-top: 0.75rem;
 }
 
-/* New stuff here */
 .ssid-list {
     max-height: 5rem;
     overflow-y: auto;
@@ -352,4 +351,8 @@ button.dialog-close-button:hover {
     cursor: pointer;
     margin: 0;
     padding: 0.25rem 0.5rem;
+}
+
+ul#updates-list {
+    padding-inline-end: 1.5rem;
 }

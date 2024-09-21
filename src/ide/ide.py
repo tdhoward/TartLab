@@ -8,7 +8,7 @@ import random
 import uasyncio as asyncio
 import io
 from tartlabutils import file_exists, unquote, rmvdir, check_for_update, main_update_routine, \
-                        log, get_logs
+                        log, get_logs, load_settings, save_settings, default_settings
 
 from ahttpserver import HTTPResponse, HTTPServer
 from ahttpserver.sse import EventSource
@@ -20,8 +20,7 @@ from ahttpserver.server import HTTPServerError
 
 USER_BASE_DIR = '/files/user'
 IDE_BASE_DIR = '/ide'
-SETTINGS_FILE = '/settings.json'
-
+settings = {}
 
 class CaptureOutput(io.IOBase):
     def __init__(self):
@@ -153,14 +152,6 @@ def connect_to_wifi(ssids: list[str], keys: list[str]):
         return sta_if.ifconfig()[0]
 
 
-# Function to generate a random AP name (currently not used)
-def generate_ap_name():
-    adjective = random.choice(["Adventurous", "Brave", "Clever", "Daring", "Energetic", "Friendly", "Gentle", "Happy", "Inquisitive", "Jolly", "Kind", "Lively", "Mighty", "Noble", "Optimistic", "Playful", "Quick", "Radiant", "Strong", "Wise"])
-    animal = random.choice(["Antelope", "Bear", "Cat", "Dolphin", "Elephant", "Fox", "Giraffe", "Horse", "Iguana", "Jaguar", "Koala", "Lion", "Monkey", "Narwhal", "Owl", "Penguin", "Quail", "Rabbit", "Squirrel", "Tiger"])
-    number = random.randint(10, 99)
-    return f"Py{adjective}{animal}{number}"
-
-
 def create_soft_ap(ap_name):
     # Initialize the soft AP with the AP name from settings
     print(f'Creating WiFi hotspot named {ap_name}...')
@@ -169,17 +160,6 @@ def create_soft_ap(ap_name):
     ap_if.config(essid=ap_name)
     ap_if.config(authmode=network.AUTH_OPEN)  # no password
     return '0.0.0.0'
-
-def load_settings():
-    global settings
-    settings = {}
-    with open(SETTINGS_FILE, 'r') as f:
-        settings = ujson.load(f)
-
-def save_settings():
-    global settings
-    with open(SETTINGS_FILE, 'w') as f:
-        ujson.dump(settings, f)
 
 def initialize():
     global settings
@@ -196,17 +176,9 @@ def initialize():
             raise
     # get settings or set defaults
     try:
-        load_settings()
+        settings = load_settings()
     except OSError:
-        settings = {
-            'dbver': 1,
-            'STARTUP_MODE': 'BUTTON',
-            'ap_name': generate_ap_name(),
-            'hostname':'tartlab',
-            'wifi_ssids': [],
-            'wifi_passwords': []
-        }
-        save_settings()
+        default_settings()
 
 
 # --------- Execution starts here -----------
@@ -477,24 +449,9 @@ async def delete_folder(reader, writer, request):
     print(f"DELETE {request.path} with response code 200")
 
 
-# get the installed versions of repos
-@app.route("GET", "/api/versions")
-async def api_get_versions(reader, writer, request):
-    response = HTTPResponse(200, "application/json", close=True)
-    await response.send(writer)
-    await writer.drain()
-    repos = {}
-    with open('repos.json', 'r') as f:
-        repos = ujson.load(f)
-    writer.write(ujson.dumps(repos))
-    await writer.drain()
-    print(f"API request: {request.path} with response code 200")
-
-
 # get the hostname setting
 @app.route("GET", "/api/hostname")
 async def api_get_hostname(reader, writer, request):
-    global settings
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
@@ -510,10 +467,24 @@ async def api_get_hostname(reader, writer, request):
     try:
         data = ujson.loads(request.body.decode("utf-8"))
         settings['hostname'] = data['hostname']
-        save_settings()
+        save_settings(settings)
     except:
         return await sendHTTPResponse(writer, 400, 'Error setting hostname!')
     await sendHTTPResponse(writer, 200, 'success')
+    print(f"API request: {request.path} with response code 200")
+
+
+# get the installed versions of repos
+@app.route("GET", "/api/versions")
+async def api_get_versions(reader, writer, request):
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    repos = {}
+    with open('repos.json', 'r') as f:
+        repos = ujson.load(f)
+    writer.write(ujson.dumps(repos))
+    await writer.drain()
     print(f"API request: {request.path} with response code 200")
 
 # check for version updates for the repos
@@ -538,7 +509,6 @@ async def api_check_updates(reader, writer, request):
     writer.write(ujson.dumps(updates))
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
-
 
 # start updates for the repos
 @app.route("POST", "/api/doupdates")
@@ -627,7 +597,7 @@ async def api_add_ssid(reader, writer, request):
     try:
         settings['wifi_ssids'].append(ssid)
         settings['wifi_passwords'].append(password)
-        save_settings()
+        save_settings(settings)
     except:
         return await sendHTTPResponse(writer, 400, 'Unable to save SSID!')
     await sendHTTPResponse(writer, 200, 'success')
@@ -643,7 +613,7 @@ async def api_add_ssid(reader, writer, request):
             if s == ssid:
                 del settings['wifi_ssids'][idx]  # remove ssid and password
                 del settings['wifi_passwords'][idx]
-                save_settings()
+                save_settings(settings)
                 print(f"DELETE SSID {ssid} with response code 200")
                 return await sendHTTPResponse(writer, 200, 'success')
     except:

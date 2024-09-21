@@ -12,6 +12,12 @@
 		"clear_first": true
 	},
 	{
+		"name": "assetfiles",
+		"source": "dist/files/assets",
+		"target": "/files/assets",
+		"clear_first": true
+	},
+	{
 		"name": "libahttpserver",
 		"source": "dist/lib/ahttpserver",
 		"target": "/lib/ahttpserver",

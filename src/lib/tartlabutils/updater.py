@@ -2,37 +2,70 @@ import ujson
 import urequests
 import uos
 from tarfile import TarFile
-from .miscutils import rmvdir, file_exists
+from .miscutils import rmvdir, mkdirs, file_exists, log, load_settings, save_settings
 import uhashlib
 import machine
+import urequests
 
 
 REPOS_FILE='/repos.json'
 TMP_UPDATE_FOLDER = '/tmp'
 updating_updater = False
 
+
 def check_for_update(repo):
-    repo_api_url = f"https://api.github.com/repos/{repo['repo']}/releases/latest"
-    response = urequests.get(repo_api_url)
+    print(f"Checking {repo['repo']} for updates")
+    repo_api_url = f"https://api.github.com/repos/{repo['repo']}/releases"
+    headers = {'User-Agent': 'TartLab'}
+    response = urequests.get(repo_api_url, headers=headers)
+    settings = load_settings()
     
     if response.status_code == 200:
-        latest_release = response.json()
-        latest_version = float(latest_release['tag_name'])
+        releases = response.json()
+        latest_release = None
         
-        if latest_version > repo['installed_version']:
-            return latest_release['assets'], latest_version
-    return None, None
+        for release in releases:
+            is_prerelease = release.get('prerelease', False)
+            if is_prerelease and not settings.get('pre-release-updates', False):
+                continue  # Skip pre-releases if pre-release updates are not enabled
+
+            latest_release = release  # Found a suitable release
+            break
+
+        if latest_release and latest_release['tag_name'] != repo['installed_version']:
+            return latest_release['assets'], latest_release['tag_name']
+        else:
+            print("No suitable releases found.")
+            return None, None
+    else:
+        print("Failed to fetch releases:", response.status_code)
+        return None, None
 
 
 def download_asset(tarball_url, target_file):
-    response = urequests.get(tarball_url, stream=True)
-    if response.status_code == 200:
-        with open(target_file, 'wb') as file:
-            for chunk in response.iter_content(chunk_size=1024):
-                if chunk:
+    print(f'Downloading {tarball_url}')
+    headers = {'User-Agent': 'TartLab'}
+    try:
+        response = urequests.get(tarball_url, headers=headers)
+        if response.status_code == 200:
+            with open(target_file, 'wb') as file:
+                while True:
+                    chunk = response.raw.read(1024)
+                    if not chunk:
+                        break
                     file.write(chunk)
-        return True
-    return False
+            return True
+        else:
+            print(f"Error: Received status code {response.status_code}")
+            return False
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return False
+    finally:
+        try:
+            response.close()
+        except:
+            pass
 
 
 def sha256_hash(file_path):
@@ -56,12 +89,11 @@ def untar(filename, target_folder='/', overwrite=False, verbose=False, chunksize
                     continue  # Skip PaxHeader files
                 target_path = target_folder + '/' + info.name
                 target_path = target_path.replace('//','/').rstrip("/")
-                if info.type == "dir":
-                    if verbose:
-                        print("D %s" % target_path)
-                    if not file_exists(target_path):
-                        uos.mkdir(target_path)
-                elif info.type == "file":
+                # Ensure the directory exists
+                dir_path = target_path.rsplit('/', 1)[0]
+                if file_exists(dir_path) != 2:  # 2 means folder exists
+                    mkdirs(dir_path)
+                if info.type == "file":
                     if verbose:
                         print("F %s" % target_path)
                     if overwrite or not file_exists(target_path):
@@ -78,13 +110,14 @@ def untar(filename, target_folder='/', overwrite=False, verbose=False, chunksize
 
 
 def update_folder(tar_file, target_folder, replace):
+    log(f'Updating {target_folder}')
     if replace:
+        log(f'Removing contents of {target_folder}')
         # Delete the existing folder contents
         if file_exists(target_folder) == 2:
             rmvdir(target_folder)
-        else:  # Create the target folder
-            uos.mkdir(target_folder)
-    untar(tar_file, True, True)
+        uos.mkdir(target_folder)  # recreate folder
+    untar(tar_file, target_folder, True, True)
 
 
 def clean_up():
@@ -97,6 +130,7 @@ def update_packages(repo):
     assets, latest_version = check_for_update(repo)
     if not assets:
         return False
+    log(f'Updates found.')
 
     # check if we have enough storage space to do this.
     total_size = sum(a['size'] for a in assets)
@@ -104,6 +138,7 @@ def update_packages(repo):
     # Block size (statvfs[1]) * Number of free blocks (statvfs[3])
     free_space = statvfs[1] * statvfs[3]
     if total_size + 10000 > free_space:  # leave a buffer of 10k
+        log(f'Not enough disk space!')
         return False
     
     # Delete the temp update folder if it exists
@@ -112,23 +147,44 @@ def update_packages(repo):
     
     # Create the temp update folder directory
     uos.mkdir(TMP_UPDATE_FOLDER)
-    
-    # download all the assets
-    for a in assets:
-        target_file = TMP_UPDATE_FOLDER + '/' + a['name']
-        url = a['browser_download_url']
-        if not download_asset(url, target_file):
-            clean_up()
-            return False
-    
+
+    manifest_asset = [a for a in assets if a['name']=='manifest.json']
+    if len(manifest_asset) != 1:
+        log(f'Could not find manifest.json.')
+        clean_up()
+        return False
+    a = manifest_asset[0]
+
+    # download the manifest
+    target_file = TMP_UPDATE_FOLDER + '/' + a['name']
+    url = a['browser_download_url']
+    if not download_asset(url, target_file):
+        clean_up()
+        return False
+
     # try to load the manifest.json file
     manifest = []
     try:
         with open(TMP_UPDATE_FOLDER + '/manifest.json', 'r') as file:
             manifest = ujson.load(file)
     except:
+        log(f'Error opening manifest.')
         clean_up()
         return False
+
+    # get list of assets specified in manifest
+    downloads = [m['file_name'] for m in manifest]
+    log(f'Manifest contains: {downloads}')
+
+    # download all the specified assets
+    for a in assets:
+        if a['name'] in downloads:
+            target_file = TMP_UPDATE_FOLDER + '/' + a['name']
+            url = a['browser_download_url']
+            if not download_asset(url, target_file):
+                log(f'Error downloading {url}')
+                clean_up()
+                return False
 
     # step through the manifest list, check csums
     for m in manifest:
@@ -137,6 +193,7 @@ def update_packages(repo):
         if hash != m['sha256']:
             clean_up()
             return False
+    log('Downloaded files successfully.')
 
     # if we're updating the updater, move that to the end of the list
     for m in manifest:
@@ -158,13 +215,9 @@ def update_packages(repo):
 
 def restart_device(stay_in_IDE = True):
     if stay_in_IDE:
-        settings_file = '/settings.json'
-        sets = {}
-        with open(settings_file, 'r') as f:
-            sets = ujson.load(f)
-        sets['STARTUP_MODE'] = 'IDE'
-        with open(settings_file, 'w') as f:
-            ujson.dump(sets, f)
+        settings = load_settings()
+        settings['STARTUP_MODE'] = 'IDE'
+        save_settings(settings)
     machine.reset()
 
 
@@ -173,7 +226,8 @@ def main_update_routine():
     repos = {}
     with open(REPOS_FILE, 'r') as file:
         repos = ujson.load(file)
-    
+    print(f'Updating repos: {repos}')
+
     # if we're updating TartLab, move that to the end of the list so we update last
     for r in repos['list']:
         if r['name'] == 'TartLab':
@@ -182,6 +236,7 @@ def main_update_routine():
             break
 
     for repo in repos['list']:
+        print(f"Starting update for {repo['name']} to version {repo['installed_version']}")
         if update_packages(repo):
             print(f"Updated {repo['name']} to version {repo['installed_version']}")
             if updating_updater:

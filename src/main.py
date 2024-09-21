@@ -17,7 +17,7 @@ for d in dirs:
 
 import ujson
 from machine import Pin
-from tartlabutils import file_exists, init_logs, log
+from tartlabutils import file_exists, init_logs, log, load_settings, save_settings
 
 init_logs()
 log('\nSystem startup')
@@ -26,13 +26,12 @@ import hdwconfig
 log('\nHardware initialized')
 
 # read the settings file to determine IDE button
+settings = {}
 try:
-    with open('settings.json', 'r') as f:
-        settings = ujson.load(f)
+    settings = load_settings()
 except OSError:  # doesn't exist
     print('No settings found.')
     log('No settings file found.')
-    settings = {}
 
 if 'STARTUP_MODE' not in settings:
     settings['STARTUP_MODE'] = 'BUTTON'  # use button state
@@ -44,8 +43,8 @@ if not file_exists('repos.json'):
         'list': [
             {
                 'name': 'TartLab',
-                'repo': 'tdhoward/tartlab',  # owner/repo
-                'installed_version': 0.1   # I guess we'll need to keep updating this
+                'repo': 'tdhoward/tartlab',
+                'installed_version': 'v0.1'   # I guess we'll need to keep updating this
             }
         ]
     }
@@ -63,8 +62,7 @@ if start_mode == 'BUTTON':
         start_mode = 'APP'
 else:  # we only get here if we loaded a settings.json file with non-default STARTUP_MODE
     settings['STARTUP_MODE'] = 'BUTTON'  # resets to default after one boot
-    with open('settings.json', 'w') as f:
-        ujson.dump(settings, f)
+    save_settings(settings)
 
 if start_mode == 'IDE':
     log('Starting IDE')
