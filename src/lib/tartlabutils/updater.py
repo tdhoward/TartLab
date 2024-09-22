@@ -16,7 +16,7 @@ updating_updater = False
 
 
 async def check_for_update(repo):
-    log(f"Checking {repo['repo']} for updates")
+    log(f"\nChecking {repo['repo']} for updates")
     repo_api_url = f"https://api.github.com/repos/{repo['repo']}/releases"
     headers = {'User-Agent': 'TartLab'}
     try:
@@ -267,7 +267,7 @@ async def main_update_routine():
     repos = {}
     with open(REPOS_FILE, 'r') as file:
         repos = ujson.load(file)
-    log(f'Updating repos: {repos}')
+    log(f'Updating repos: {repos["list"]}')
 
     # if we're updating TartLab, move that to the end of the list so we update last
     for r in repos['list']:
@@ -277,18 +277,17 @@ async def main_update_routine():
             break
 
     for repo in repos['list']:
-        print(f"Starting update for {repo['name']} to version {repo['installed_version']}")
+        log(f"\nStarting update for {repo['name']} to version {repo['installed_version']}")
         await asyncio.sleep(2)
         if await update_packages(repo):
-            print(f"Updated {repo['name']} to version {repo['installed_version']}")
+            log(f"Updated {repo['name']} to version {repo['installed_version']}")
             if updating_updater:  # this should only be at the very end anyway, but...
                 break
         else:
-            print(f"No update necessary for {repo['name']}")
-    
+            log(f"No update necessary for {repo['name']}")
+
     # Save the updated package list back to the file
     with open(REPOS_FILE, 'w') as file:
         ujson.dump(repos, file)
-
-    log('--- SUCCESSFUL UPDATE! ---')
+    
     restart_device()
