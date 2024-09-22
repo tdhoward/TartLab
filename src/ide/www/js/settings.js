@@ -293,10 +293,11 @@ function checkForUpdates() {
 
 
 function doUpdates() {
-  if (!confirm('Update will start.\nPlease do not turn off device.')) {
+  if (!confirm('Update will start.\nPlease do not turn off device.\nSwitching to log view.')) {
     return;
   }
-  doUpdatesBtn.disabled = true;
+  closeUpdDialog();
+  openLogDialog();
   showSpinners(true);
   fetch(`${apiBaseUrl}/doupdates`, {
     method: "POST",
@@ -312,13 +313,7 @@ function doUpdates() {
           throw new Error(data.error || "An error occurred");
         });
       }
-      return response.json();
-    })
-    .then((res) => {
-      showToast("Please wait. Device will restart.", "info");
-      closeUpdDialog();
-      // TODO: Monitor the logs to see if we get an 'update complete' signal.
-    });
+    });  // we don't need a response here.
 }
 
 
@@ -377,7 +372,6 @@ function fetchLogs() {
       console.error("Error fetching logs:", error);
     });
 }
-
 
 function startPollingLogs() {
   fetchLogs(); // Fetch immediately

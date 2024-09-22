@@ -7,6 +7,7 @@ import uhashlib
 import machine
 import urequests
 import time
+import uasyncio as asyncio
 
 
 REPOS_FILE='/repos.json'
@@ -14,7 +15,7 @@ TMP_UPDATE_FOLDER = '/tmp'
 updating_updater = False
 
 
-def check_for_update(repo):
+async def check_for_update(repo):
     log(f"Checking {repo['repo']} for updates")
     repo_api_url = f"https://api.github.com/repos/{repo['repo']}/releases"
     headers = {'User-Agent': 'TartLab'}
@@ -51,7 +52,7 @@ def check_for_update(repo):
             pass
 
 
-def download_asset(tarball_url, target_file):
+async def download_asset(tarball_url, target_file):
     log(f'Downloading {tarball_url}')
     headers = {'User-Agent': 'TartLab'}
     try:
@@ -90,10 +91,11 @@ def sha256_hash(file_path):
     return hash_hex
 
 
-def untar(filename, target_folder='/', overwrite=False, verbose=False, chunksize=4096):
+async def untar(filename, target_folder='/', overwrite=False, verbose=False, chunksize=4096):
     try:
         with open(filename, 'rb') as tar:
             for info in TarFile(fileobj=tar):
+                await asyncio.sleep(0.1)
                 if "PaxHeader" in info.name:
                     continue  # Skip PaxHeader files
                 target_path = target_folder + '/' + info.name
@@ -118,7 +120,7 @@ def untar(filename, target_folder='/', overwrite=False, verbose=False, chunksize
         log("Error extracting tar file:", e)
 
 
-def update_folder(tar_file, target_folder, replace):
+async def update_folder(tar_file, target_folder, replace):
     log(f'Updating {target_folder}')
     if replace:
         log(f'Removing contents of {target_folder}')
@@ -126,7 +128,8 @@ def update_folder(tar_file, target_folder, replace):
         if file_exists(target_folder) == 2:
             rmvdir(target_folder)
         mkdirs(target_folder)  # recreate folder
-    untar(tar_file, target_folder, True, True)
+        await asyncio.sleep(0.25)
+    await untar(tar_file, target_folder, True, True)
     log(f'Success ({tar_file})')
 
 
@@ -135,9 +138,9 @@ def clean_up():
         rmvdir(TMP_UPDATE_FOLDER)
 
 
-def update_packages(repo):
+async def update_packages(repo):
     global updating_updater
-    assets, latest_version = check_for_update(repo)
+    assets, latest_version = await check_for_update(repo)
     if not assets:
         return False
 
@@ -154,12 +157,12 @@ def update_packages(repo):
         log(f'Error checking disk space! {e}')
         return False
 
-    # Delete the temp update folder if it exists
+    # Delete and recreate the temp update folder if it exists
     if file_exists(TMP_UPDATE_FOLDER):
         rmvdir(TMP_UPDATE_FOLDER)
-    
-    # Create the temp update folder directory
     mkdirs(TMP_UPDATE_FOLDER)
+
+    await asyncio.sleep(0.25)
 
     try:
         manifest_asset = [a for a in assets if a['name']=='manifest.json']
@@ -173,7 +176,7 @@ def update_packages(repo):
     try:
         target_file = TMP_UPDATE_FOLDER + '/' + a['name']
         url = a['browser_download_url']
-        if not download_asset(url, target_file):
+        if not await download_asset(url, target_file):
             clean_up()
             return False
     except Exception as e:
@@ -201,7 +204,8 @@ def update_packages(repo):
             if a['name'] in downloads:
                 target_file = TMP_UPDATE_FOLDER + '/' + a['name']
                 url = a['browser_download_url']
-                if not download_asset(url, target_file):
+                await asyncio.sleep(0.25)
+                if not await download_asset(url, target_file):
                     log(f'Error downloading {url}')
                     clean_up()
                     return False
@@ -236,7 +240,7 @@ def update_packages(repo):
     try:
         for m in manifest:
             fname = TMP_UPDATE_FOLDER + '/' + m['file_name']
-            update_folder(fname, m['target'], m['clear_first'])
+            await update_folder(fname, m['target'], m['clear_first'])
     except Exception as e:
         log(f'Error installing packages! {e}')
         clean_up()
@@ -258,7 +262,7 @@ def restart_device(stay_in_IDE = True):
     machine.reset()
 
 
-def main_update_routine():
+async def main_update_routine():
     global updating_updater
     repos = {}
     with open(REPOS_FILE, 'r') as file:
@@ -274,7 +278,8 @@ def main_update_routine():
 
     for repo in repos['list']:
         print(f"Starting update for {repo['name']} to version {repo['installed_version']}")
-        if update_packages(repo):
+        await asyncio.sleep(2)
+        if await update_packages(repo):
             print(f"Updated {repo['name']} to version {repo['installed_version']}")
             if updating_updater:  # this should only be at the very end anyway, but...
                 break
@@ -285,4 +290,5 @@ def main_update_routine():
     with open(REPOS_FILE, 'w') as file:
         ujson.dump(repos, file)
 
+    log('--- SUCCESSFUL UPDATE! ---')
     restart_device()

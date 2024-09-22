@@ -502,7 +502,7 @@ async def api_check_updates(reader, writer, request):
     updates = []
     for repo in repos['list']:
         try:
-            assets, latest_version = check_for_update(repo)
+            assets, latest_version = await check_for_update(repo)
             updates.append((assets, latest_version))
         except Exception as e:
             updates.append(('error', e))
@@ -519,7 +519,7 @@ async def api_do_updates(reader, writer, request):
     # TODO: Are there even any updates to do?
     await sendHTTPResponse(writer, 200, 'success')  # we return success right away, since we're restarting
     print(f"API request: {request.path} with response code 200")
-    main_update_routine()
+    await main_update_routine()
 
 
 # get the disk usage
@@ -656,9 +656,7 @@ def main():
     try:
         def handle_exception(loop, context):
             # uncaught exceptions end up here
-            print("global exception handler:", context)
-            sys.print_exception(context["exception"])
-            sys.exit()  # TODO: remove for production
+            log(f'global exception handler: {context["exception"]}')
 
         loop = asyncio.get_event_loop()
         loop.set_exception_handler(handle_exception)
