@@ -38,6 +38,7 @@
                                 <li id="wifi-settings-btn">WiFi settings</li>
                                 <li id="adv-settings-btn">Advanced settings</li>
                                 <li id="check-updates-btn">Check for updates</li>
+                                <li id="log-dialog-btn">Log file</li>
                             </ul>
                         </div>
                     </div>
@@ -126,6 +127,11 @@
         <ul id="updates-list"></ul>
         <button id="do-updates-btn">Do updates</button><br>
         <span class="spinner spinner-sm hidden"> Loading... </span>
+    </div>
+    <div id="log-dialog" class="dialog hidden">
+        <h3 class="dialog-title">View log file</h3>
+        <button id="close-log-dialog-btn" class="dialog-close-button">&times;</button>
+        <div id="log-container"></div>
     </div>
     <div id="toast-container"></div>
 

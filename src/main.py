@@ -20,10 +20,10 @@ from machine import Pin
 from tartlabutils import file_exists, init_logs, log, load_settings, save_settings
 
 init_logs()
-log('\nSystem startup')
+log('System startup')
 
 import hdwconfig
-log('\nHardware initialized')
+log('Hardware initialized')
 
 # read the settings file to determine IDE button
 settings = {}

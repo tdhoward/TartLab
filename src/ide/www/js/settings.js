@@ -10,20 +10,28 @@ import {
 const wifiSettingsBtn = document.getElementById("wifi-settings-btn");
 const advSettingsBtn = document.getElementById("adv-settings-btn");
 const checkUpdatesBtn = document.getElementById("check-updates-btn");
+const logDialogBtn = document.getElementById("log-dialog-btn");
+
 const wifiSettingsDialog = document.getElementById("wifi-dialog");
 const advSettingsDialog = document.getElementById("advanced-dialog");
 const updatesDialog = document.getElementById("updates-dialog");
+const logDialog = document.getElementById("log-dialog");
+
 const addSsidBtn = document.getElementById("add-ssid-btn");
 const chgHostnameBtn = document.getElementById("chg-hostname-btn");
 const doUpdatesBtn = document.getElementById("do-updates-btn");
+
 const closeWifiDialogBtn = document.getElementById("close-wifi-dialog-btn");
 const closeAdvDialogBtn = document.getElementById("close-adv-dialog-btn");
 const closeUpdDialogBtn = document.getElementById("close-upd-dialog-btn");
+const closeLogDialogBtn = document.getElementById("close-log-dialog-btn");
+
 const storedSSIDsDiv = document.getElementById("storedSSIDs");
 const scannedSSIDsDiv = document.getElementById("scannedSSIDs");
 const newSsid = document.getElementById("newSSID");
 const newPassword = document.getElementById("newPassword");
 const hostnameInput = document.getElementById("hostname");
+var logContainer = document.getElementById("log-container");
 
 
 function openWifiDialog() {
@@ -45,6 +53,13 @@ function openUpdatesDialog() {
   darkOverlay.classList.remove("hidden");
   darkOverlay.onclick = closeUpdDialog;
   checkForUpdates();
+}
+
+function openLogDialog() {
+  logDialog.classList.remove("hidden");
+  darkOverlay.classList.remove("hidden");
+  darkOverlay.onclick = closeLogDialog;
+  startPollingLogs();
 }
 
 
@@ -192,9 +207,10 @@ function changeHostname() {
 }
 
 function checkForUpdates() {
+  doUpdatesBtn.disabled = true;
+  doUpdatesBtn.innerHTML = 'Checking versions...'
   showSpinners(true);
   let installedRepos = [];
-  doUpdatesBtn.disabled = true;
 
   // Fetch installed versions from /versions API
   fetch(`${apiBaseUrl}/versions`)
@@ -209,6 +225,19 @@ function checkForUpdates() {
     .then((versionsData) => {
       // Store installed repositories
       installedRepos = versionsData.list;
+
+      // Process and display versions
+      const updatesListElement = document.getElementById("updates-list");
+      updatesListElement.innerHTML = ""; // Clear previous entries
+
+      // Iterate over installed repos
+      for (let i = 0; i < installedRepos.length; i++) {
+        const repo = installedRepos[i];
+        const listItem = document.createElement("li");
+        listItem.textContent = `${repo.name} ${repo.installed_version}`;
+        updatesListElement.appendChild(listItem);
+      }
+      doUpdatesBtn.innerHTML = "Checking updates...";
 
       // Fetch available updates from /checkupdates API
       return fetch(`${apiBaseUrl}/checkupdates`);
@@ -237,7 +266,7 @@ function checkForUpdates() {
         const listItem = document.createElement("li");
         if (availableVersion !== null && availableVersion !== "None") {
           updatesAvailable = true;
-          listItem.textContent = `${repo.name} ${repo.installed_version} -> ${availableVersion}`;
+          listItem.textContent = `${repo.name} ${repo.installed_version} ⇒ ${availableVersion}`;
         } else {
           listItem.textContent = `${repo.name} ${repo.installed_version} (no updates)`;
         }
@@ -250,9 +279,12 @@ function checkForUpdates() {
       } else {
         doUpdatesBtn.disabled = false;
       }
+      doUpdatesBtn.innerHTML = "Do updates";
     })
     .catch((error) => {
       showSpinners(false);
+      doUpdatesBtn.disabled = true;
+      doUpdatesBtn.innerHTML = "Do updates";
       console.error("Error:", error);
       // Display error to the user
       showToast(error.message, "error");
@@ -261,11 +293,10 @@ function checkForUpdates() {
 
 
 function doUpdates() {
-  // TODO: check if there are any updates to do.
-  // Warn the user not to turn the device off during the update.
   if (!confirm('Update will start.\nPlease do not turn off device.')) {
     return;
   }
+  doUpdatesBtn.disabled = true;
   showSpinners(true);
   fetch(`${apiBaseUrl}/doupdates`, {
     method: "POST",
@@ -283,12 +314,80 @@ function doUpdates() {
       }
       return response.json();
     })
-    .then(() => {
+    .then((res) => {
       showToast("Please wait. Device will restart.", "info");
       closeUpdDialog();
       // TODO: Monitor the logs to see if we get an 'update complete' signal.
     });
 }
+
+
+// -------- Logs stuff
+
+var lastLogs = "";
+var pollingInterval = null;
+
+function fetchLogs() {
+  var controller = new AbortController();
+  var signal = controller.signal;
+
+  var timeoutId = setTimeout(function () {
+    controller.abort();
+  }, 4000); // Timeout after 4 seconds
+
+  fetch("/api/logs", { signal })
+    .then((response) => {
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        // If the response is not OK, throw an error to be caught in the catch block
+        throw new Error("Network response was not ok");
+      }
+
+      return response.json();
+    })
+    .then((data) => {
+      try {
+        var newLogs = data.logs || "";
+        if (newLogs !== lastLogs) {
+          // Check if the user is at the bottom before updating
+          var isAtBottom =
+            Math.abs(
+              logContainer.scrollHeight -
+                logContainer.scrollTop -
+                logContainer.clientHeight
+            ) < 1;
+
+          // Update the logs
+          logContainer.textContent = newLogs;
+          lastLogs = newLogs;
+
+          if (isAtBottom) {
+            // Scroll to the bottom
+            logContainer.scrollTop = logContainer.scrollHeight;
+          }
+        }
+      } catch (error) {
+        console.error("Error processing logs:", error);
+      }
+    })
+    .catch((error) => {
+      clearTimeout(timeoutId);
+      // Ignore fetch errors, but log them for debugging
+      console.error("Error fetching logs:", error);
+    });
+}
+
+
+function startPollingLogs() {
+  fetchLogs(); // Fetch immediately
+  pollingInterval = setInterval(fetchLogs, 5000);
+}
+
+function stopPollingLogs() {
+  clearInterval(pollingInterval);
+}
+
 
 function closeWifiDialog() {
   wifiSettingsDialog.classList.add("hidden");
@@ -305,13 +404,23 @@ function closeUpdDialog() {
   darkOverlay.classList.add("hidden");
 }
 
+function closeLogDialog() {
+  logDialog.classList.add("hidden");
+  darkOverlay.classList.add("hidden");
+  stopPollingLogs();
+}
+
 wifiSettingsBtn.onclick = openWifiDialog;
 advSettingsBtn.onclick = openAdvDialog;
 checkUpdatesBtn.onclick = openUpdatesDialog;
-addSsidBtn.onclick = addNewSSID;
+logDialogBtn.onclick = openLogDialog;
+
 closeWifiDialogBtn.onclick = closeWifiDialog;
 closeAdvDialogBtn.onclick = closeAdvDialog;
 closeUpdDialogBtn.onclick = closeUpdDialog;
+closeLogDialogBtn.onclick = closeLogDialog;
+
+addSsidBtn.onclick = addNewSSID;
 chgHostnameBtn.onclick = changeHostname;
 doUpdatesBtn.onclick = doUpdates;
 

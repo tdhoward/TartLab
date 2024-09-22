@@ -6,6 +6,7 @@ from .miscutils import rmvdir, mkdirs, file_exists, log, load_settings, save_set
 import uhashlib
 import machine
 import urequests
+import time
 
 
 REPOS_FILE='/repos.json'
@@ -14,36 +15,44 @@ updating_updater = False
 
 
 def check_for_update(repo):
-    print(f"Checking {repo['repo']} for updates")
+    log(f"Checking {repo['repo']} for updates")
     repo_api_url = f"https://api.github.com/repos/{repo['repo']}/releases"
     headers = {'User-Agent': 'TartLab'}
-    response = urequests.get(repo_api_url, headers=headers)
-    settings = load_settings()
-    
-    if response.status_code == 200:
-        releases = response.json()
-        latest_release = None
-        
-        for release in releases:
-            is_prerelease = release.get('prerelease', False)
-            if is_prerelease and not settings.get('pre-release-updates', False):
-                continue  # Skip pre-releases if pre-release updates are not enabled
+    try:
+        response = urequests.get(repo_api_url, headers=headers)
+        settings = load_settings()
+        if response.status_code == 200:
+            releases = response.json()
+            latest_release = None
+            
+            for release in releases:
+                is_prerelease = release.get('prerelease', False)
+                if is_prerelease and not settings.get('pre-release-updates', False):
+                    continue  # Skip pre-releases if pre-release updates are not enabled
 
-            latest_release = release  # Found a suitable release
-            break
+                latest_release = release  # Found a suitable release
+                break
 
-        if latest_release and latest_release['tag_name'] != repo['installed_version']:
-            return latest_release['assets'], latest_release['tag_name']
+            if latest_release and latest_release['tag_name'] != repo['installed_version']:
+                return latest_release['assets'], latest_release['tag_name']
+            else:
+                log("No suitable releases found.")
+                return None, None
         else:
-            print("No suitable releases found.")
+            log("Failed to fetch releases:", response.status_code)
             return None, None
-    else:
-        print("Failed to fetch releases:", response.status_code)
+    except Exception as e:
+        log(f'Error checking repo! {e}')
         return None, None
+    finally:
+        try:
+            response.close()
+        except:
+            pass
 
 
 def download_asset(tarball_url, target_file):
-    print(f'Downloading {tarball_url}')
+    log(f'Downloading {tarball_url}')
     headers = {'User-Agent': 'TartLab'}
     try:
         response = urequests.get(tarball_url, headers=headers)
@@ -56,10 +65,10 @@ def download_asset(tarball_url, target_file):
                     file.write(chunk)
             return True
         else:
-            print(f"Error: Received status code {response.status_code}")
+            log(f"Error: Received status code {response.status_code}")
             return False
     except Exception as e:
-        print(f"An error occurred: {e}")
+        log(f"An error occurred: {e}")
         return False
     finally:
         try:
@@ -106,7 +115,7 @@ def untar(filename, target_folder='/', overwrite=False, verbose=False, chunksize
                 elif verbose:
                     print("? %s" % target_path)
     except Exception as e:
-        print("Error extracting tar file:", e)
+        log("Error extracting tar file:", e)
 
 
 def update_folder(tar_file, target_folder, replace):
@@ -116,8 +125,9 @@ def update_folder(tar_file, target_folder, replace):
         # Delete the existing folder contents
         if file_exists(target_folder) == 2:
             rmvdir(target_folder)
-        uos.mkdir(target_folder)  # recreate folder
+        mkdirs(target_folder)  # recreate folder
     untar(tar_file, target_folder, True, True)
+    log(f'Success ({tar_file})')
 
 
 def clean_up():
@@ -130,35 +140,44 @@ def update_packages(repo):
     assets, latest_version = check_for_update(repo)
     if not assets:
         return False
-    log(f'Updates found.')
 
-    # check if we have enough storage space to do this.
-    total_size = sum(a['size'] for a in assets)
-    statvfs = uos.statvfs('/')
-    # Block size (statvfs[1]) * Number of free blocks (statvfs[3])
-    free_space = statvfs[1] * statvfs[3]
-    if total_size + 10000 > free_space:  # leave a buffer of 10k
-        log(f'Not enough disk space!')
+    try:
+        # check if we have enough storage space to do this.
+        total_size = sum(a['size'] for a in assets)
+        statvfs = uos.statvfs('/')
+        # Block size (statvfs[1]) * Number of free blocks (statvfs[3])
+        free_space = statvfs[1] * statvfs[3]
+        if total_size + 10000 > free_space:  # leave a buffer of 10k
+            log(f'Not enough disk space!')
+            return False
+    except Exception as e:
+        log(f'Error checking disk space! {e}')
         return False
-    
+
     # Delete the temp update folder if it exists
     if file_exists(TMP_UPDATE_FOLDER):
         rmvdir(TMP_UPDATE_FOLDER)
     
     # Create the temp update folder directory
-    uos.mkdir(TMP_UPDATE_FOLDER)
+    mkdirs(TMP_UPDATE_FOLDER)
 
-    manifest_asset = [a for a in assets if a['name']=='manifest.json']
-    if len(manifest_asset) != 1:
+    try:
+        manifest_asset = [a for a in assets if a['name']=='manifest.json']
+        a = manifest_asset[0]
+    except Exception as e:
         log(f'Could not find manifest.json.')
         clean_up()
         return False
-    a = manifest_asset[0]
 
     # download the manifest
-    target_file = TMP_UPDATE_FOLDER + '/' + a['name']
-    url = a['browser_download_url']
-    if not download_asset(url, target_file):
+    try:
+        target_file = TMP_UPDATE_FOLDER + '/' + a['name']
+        url = a['browser_download_url']
+        if not download_asset(url, target_file):
+            clean_up()
+            return False
+    except Exception as e:
+        log(f'Error downloading manifest! {e}')
         clean_up()
         return False
 
@@ -172,27 +191,37 @@ def update_packages(repo):
         clean_up()
         return False
 
-    # get list of assets specified in manifest
-    downloads = [m['file_name'] for m in manifest]
-    log(f'Manifest contains: {downloads}')
+    try:
+        # get list of assets specified in manifest
+        downloads = [m['file_name'] for m in manifest]
+        log(f'Manifest contains: {downloads}')
 
-    # download all the specified assets
-    for a in assets:
-        if a['name'] in downloads:
-            target_file = TMP_UPDATE_FOLDER + '/' + a['name']
-            url = a['browser_download_url']
-            if not download_asset(url, target_file):
-                log(f'Error downloading {url}')
+        # download all the specified assets
+        for a in assets:
+            if a['name'] in downloads:
+                target_file = TMP_UPDATE_FOLDER + '/' + a['name']
+                url = a['browser_download_url']
+                if not download_asset(url, target_file):
+                    log(f'Error downloading {url}')
+                    clean_up()
+                    return False
+    except Exception as e:
+        log(f'Error downloading! {e}')
+        clean_up()
+        return False
+
+    try:
+        # step through the manifest list, check hashes
+        for m in manifest:
+            fname = TMP_UPDATE_FOLDER + '/' + m['file_name']
+            hash = sha256_hash(fname)
+            if hash != m['sha256']:
                 clean_up()
                 return False
-
-    # step through the manifest list, check csums
-    for m in manifest:
-        fname = TMP_UPDATE_FOLDER + '/' + m['file_name']
-        hash = sha256_hash(fname)
-        if hash != m['sha256']:
-            clean_up()
-            return False
+    except Exception as e:
+        log(f'Error checking hashes! {e}')
+        clean_up()
+        return False
     log('Downloaded files successfully.')
 
     # if we're updating the updater, move that to the end of the list
@@ -204,20 +233,28 @@ def update_packages(repo):
             break
 
     # if everything is correct, install them all and update the version
-    for m in manifest:
-        fname = TMP_UPDATE_FOLDER + '/' + m['file_name']
-        update_folder(fname, m['target'], m['clear_first'])
+    try:
+        for m in manifest:
+            fname = TMP_UPDATE_FOLDER + '/' + m['file_name']
+            update_folder(fname, m['target'], m['clear_first'])
+    except Exception as e:
+        log(f'Error installing packages! {e}')
+        clean_up()
+        return False
 
     # Update the installed version in the package object
     repo['installed_version'] = latest_version
+    clean_up()
     return True
 
 
 def restart_device(stay_in_IDE = True):
+    log(f'Restarting device...')
     if stay_in_IDE:
         settings = load_settings()
         settings['STARTUP_MODE'] = 'IDE'
         save_settings(settings)
+    time.sleep(0.2)  # not sure if this is needed, but it might help allow the log file to be written
     machine.reset()
 
 
@@ -226,7 +263,7 @@ def main_update_routine():
     repos = {}
     with open(REPOS_FILE, 'r') as file:
         repos = ujson.load(file)
-    print(f'Updating repos: {repos}')
+    log(f'Updating repos: {repos}')
 
     # if we're updating TartLab, move that to the end of the list so we update last
     for r in repos['list']:
@@ -239,7 +276,7 @@ def main_update_routine():
         print(f"Starting update for {repo['name']} to version {repo['installed_version']}")
         if update_packages(repo):
             print(f"Updated {repo['name']} to version {repo['installed_version']}")
-            if updating_updater:
+            if updating_updater:  # this should only be at the very end anyway, but...
                 break
         else:
             print(f"No update necessary for {repo['name']}")

@@ -621,6 +621,18 @@ async def api_add_ssid(reader, writer, request):
     return await sendHTTPResponse(writer, 404, 'SSID not found!')    
 
 
+# get the stored logs
+@app.route("GET", "/api/logs")
+async def api_get_logs(reader, writer, request):
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
+    await writer.drain()
+    logs = get_logs()
+    writer.write(ujson.dumps({'logs': logs}))
+    await writer.drain()
+    print(f"API request: {request.path} with response code 200")
+
+
 async def say_hello_task():
     """ Show system is still alive """
     count = 0

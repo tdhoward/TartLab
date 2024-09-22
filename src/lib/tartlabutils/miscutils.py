@@ -92,6 +92,7 @@ def init_logs():
 
 def log(message):
     global current_log_file
+    print(message)
     if current_log_file:
         with open(LOG_DIR + '/' + current_log_file, 'a') as f:
             f.write(message + "\n")
@@ -100,6 +101,7 @@ def get_logs():
     log_files = sorted([f for f in os.listdir(LOG_DIR) if f.endswith('.log')])
     all_logs = []
     for log_file in log_files:
+        all_logs.append('------- REBOOT -------\n')
         with open(LOG_DIR + '/' + log_file, 'r') as f:
             all_logs.append(f.read())
     return "".join(all_logs)

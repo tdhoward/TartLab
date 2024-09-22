@@ -356,3 +356,27 @@ button.dialog-close-button:hover {
 ul#updates-list {
     padding-inline-end: 1.5rem;
 }
+
+#log-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Center the dialog */
+    background-color: white;
+    padding: 20px;
+    z-index: 10000;
+    width: 80%;
+    max-width: 600px;
+    max-height: 80%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+#log-container {
+    overflow-y: auto;
+    flex-grow: 1;
+    margin-top: 10px;
+    white-space: pre-wrap; /* So that \n is recognized */
+    color:slategray;
+}
