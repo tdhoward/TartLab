@@ -4,4 +4,4 @@
 print('Hello, world!')
 
 # Yeah, that's it.  Not very exciting, is it?
-# Check out the help section for more interesting examples!
+# The help section will soon contain more interesting examples!

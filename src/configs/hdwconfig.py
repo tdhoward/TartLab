@@ -2,7 +2,7 @@
 # This should be set up once for a particular piece of hardware, and never changed again.
 
 # Import the appropriate PyDevices board_config for your device
-import board_configs.t_display_s3_pro.board_config
+from board_configs.t_display_s3_pro.board_config import *
 
 # Set the button for starting up in IDE mode
 IDE_BUTTON_PIN = 12

@@ -22,8 +22,10 @@ from tartlabutils import file_exists, init_logs, log, load_settings, save_settin
 init_logs()
 log('System startup')
 
-import hdwconfig
-log('Hardware initialized')
+from hdwconfig import IDE_BUTTON_PIN, display_drv
+WIDTH, HEIGHT = display_drv.width, display_drv.height
+#display_drv.rotation = 0
+#display_drv.fill_rect(0, 0, WIDTH, HEIGHT, 0x0000)  # clear with black
 
 # read the settings file to determine IDE button
 settings = {}
@@ -55,8 +57,8 @@ if not file_exists('repos.json'):
 start_mode = settings['STARTUP_MODE']
 if start_mode == 'BUTTON':
     # Check if IDE button is pressed
-    IDE_BUTTON = Pin(hdwconfig.IDE_BUTTON_PIN, Pin.IN)
-    if IDE_BUTTON.value() == 1:  # TODO: change to 0 when done developing IDE  (unpressed button value is 1)
+    IDE_BUTTON = Pin(IDE_BUTTON_PIN, Pin.IN)
+    if IDE_BUTTON.value() == 1:  # 0 for production, 1 for dev  (unpressed button value is 1)
         start_mode = 'IDE'
     else:
         start_mode = 'APP'

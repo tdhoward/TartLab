@@ -17,10 +17,62 @@ from ahttpserver.response import sendHTTPResponse
 from ahttpserver.multipart import handleMultipartUpload
 from ahttpserver.server import HTTPServerError
 
+# Display stuff
+from hdwconfig import display_drv
+from gfx.binfont import BinFont
+from gfx.framebuf_plus import FrameBuffer, RGB565
+from palettes import get_palette
+WIDTH, HEIGHT = display_drv.width, display_drv.height
+FONT_WIDTH = 8
+BPP = display_drv.color_depth // 8  # Bytes per pixel
+ba = bytearray(WIDTH * HEIGHT * BPP)
+fb = FrameBuffer(ba, WIDTH, HEIGHT, RGB565)
+
+if display_drv.requires_byte_swap:
+    needs_swap = display_drv.disable_auto_byte_swap(True)
+else:
+    needs_swap = False
+
+# Define color palette
+class pal:
+    BLACK = 0x0000
+    WHITE = 0xFFFF
+    RED = 0xF800 if not needs_swap else 0x00F8
+    GREEN = 0x07E0 if not needs_swap else 0xE007
+    BLUE = 0x001F if not needs_swap else 0xF800
+    CYAN = 0x07FF if not needs_swap else 0xFF07
+    MAGENTA = 0xF81F if not needs_swap else 0x1FF8
+    YELLOW = 0xFFE0 if not needs_swap else 0xE0FF
+    ORANGE = 0xFD20 if not needs_swap else 0x20FD
+    PURPLE = 0x8010 if not needs_swap else 0x1080
+    GREY = 0x8410 if not needs_swap else 0x1084
+
+fb.fill(pal.BLACK)
+fb.line(0, 0, WIDTH - 1, 0, pal.BLUE)
+fb.line(WIDTH - 1, 0, WIDTH - 1, HEIGHT - 1, pal.BLUE)
+fb.line(WIDTH - 1, HEIGHT - 1, 0, HEIGHT - 1, pal.BLUE)
+fb.line(0, HEIGHT - 1, 0, 0, pal.BLUE)
+text = 'TARTLAB'
+fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 - 32, pal.WHITE)
+display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
+
 
 USER_BASE_DIR = '/files/user'
 IDE_BASE_DIR = '/ide'
 settings = {}
+
+
+def display_write(font, string, x, y, fg_color, bg_color, scale):
+    """
+    Write text to the display.
+    """
+    buffer_width = font.font_width * scale * len(string)
+    buffer_height = font.font_height * scale
+    buffer = bytearray(buffer_width * buffer_height * BPP)
+    fb = FrameBuffer(buffer, buffer_width, buffer_height, RGB565)
+    fb.fill(bg_color)
+    font.text(fb, string, 0, 0, fg_color, scale)
+    display_drv.blit_rect(buffer, x, y, buffer_width, buffer_height)
 
 class CaptureOutput(io.IOBase):
     def __init__(self):
@@ -99,8 +151,9 @@ def scan_for_wifi(ssids: list[str], keys: list[str]):
                 return True, ssid, key
     return False, "", ""
 
-
+wifi_ssid = ''
 def connect_to_wifi(ssids: list[str], keys: list[str]):
+    global wifi_ssid
     retries = 20
     try:
         ap_if.disconnect()
@@ -128,6 +181,7 @@ def connect_to_wifi(ssids: list[str], keys: list[str]):
     print(f'Found {ssid} network in scan.')
     if not sta_if.isconnected():
         print(f'Connecting to {ssid} network...')
+        wifi_ssid = ssid  # store the name
         sta_if.active(True)
         sta_if.connect(ssid, key)
 
@@ -191,8 +245,25 @@ ip_address = connect_to_wifi(settings['wifi_ssids'], settings['wifi_passwords'])
 softAP = False
 if ip_address == "0.0.0.0":
     softAP = True
-    ip_address = create_soft_ap(settings["ap_name"])
+    wifi_ssid = settings["ap_name"]
+    ip_address = create_soft_ap(wifi_ssid)
 app = HTTPServer(ip_address, 80)
+
+text = f'WiFi: {wifi_ssid}'
+dirty = fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 - 8, pal.WHITE)
+display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)  # due to bug, just blit whole screen
+#display_drv.blit_rect(ba, dirty.x, dirty.y, dirty.w, dirty.h)
+if softAP:
+    text = '192.168.4.1'
+else:
+    text = ip_address
+dirty = fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 + 8, pal.WHITE)
+display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
+#display_drv.blit_rect(ba, dirty.x, dirty.y, dirty.w, dirty.h)
+if not softAP:
+    text = settings['hostname'] + '.local'
+    dirty = fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 + 24, pal.WHITE)
+    display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
 
 
 # list folder contents, returns tuple (files, folders)
