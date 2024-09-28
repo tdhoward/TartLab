@@ -338,7 +338,7 @@ async def static_files(reader, writer, request):
     try:
         await serve_file(reader, writer, request, full_path, True)
     except Exception as e:
-        print(f'Exception serving file: {e}')
+        log(f'Exception serving file: {e}')
 
 # -----  User file operations  -----
 # Serve user files with no caching
@@ -352,7 +352,7 @@ async def get_user_file(reader, writer, request):
     try:
         await serve_file(reader, writer, request, full_path, False)
     except Exception as e:
-        print(f'Exception serving file: {e}')
+        log(f'Exception serving file: {e}')
 
 # Handle POST requests for files
 @app.route("POST", f'{USER_BASE_DIR}/*')
@@ -363,13 +363,18 @@ async def store_user_file(reader, writer, request):
         filename = sanitize_path(filename)
     except:
         return await sendHTTPResponse(writer, 400, 'Invalid path!')
-    data = ujson.loads(request.body.decode("utf-8"))
+    try:
+        print(request.body)
+        data = ujson.loads(request.body.decode("utf-8"))
+    except Exception as ex:
+        log(f'{ex} for {filename}')
+        return await sendHTTPResponse(writer, 500, 'Error parsing JSON!')
     try:
         with open(filename, 'w') as file:
             file.write(data['content'])
     except Exception as ex:  # don't stop the server
-        print(f'Filename was: {filename}')
-        print(ex)
+        log(f'Filename was: {filename}')
+        log(ex)
         return await sendHTTPResponse(writer, 500, 'Error writing file!')
     await sendHTTPResponse(writer, 200, 'success')
     print(f"POST {path} with response code 200")
@@ -401,7 +406,7 @@ async def help_files(reader, writer, request):
     try:
         await serve_file(reader, writer, request, full_path, True)
     except Exception as e:
-        print(f'Exception serving file: {e}')
+        log(f'Exception serving file: {e}')
 
 
 # -----  API endpoints  -----
@@ -443,7 +448,7 @@ async def api_move_file(reader, writer, request):
         os.rename(src, dest)
     except Exception as ex:
         print(f"API request: {request.path} with response code 400")
-        print(ex)
+        log(ex)
         return await sendHTTPResponse(writer, 400, 'Invalid path!')
     await sendHTTPResponse(writer, 200, 'success')
     print(f"API request: {request.path} with response code 200")
@@ -576,6 +581,7 @@ async def api_check_updates(reader, writer, request):
             assets, latest_version = await check_for_update(repo)
             updates.append((assets, latest_version))
         except Exception as e:
+            log(f'Checkupdates error: {e}')
             updates.append(('error', e))
     writer.write(ujson.dumps(updates))
     await writer.drain()
@@ -640,7 +646,7 @@ async def api_setasapp(reader, writer, request):
             f.write(content)
     except Exception as ex:
         print(f"API request: {request.path} with response code 400")
-        print(ex)
+        log(ex)
         return await sendHTTPResponse(writer, 400, 'Error writing app.py!')
     await sendHTTPResponse(writer, 200, 'success')
     print(f"SET AS APP {localized_filename} with response code 200")

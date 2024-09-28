@@ -66,6 +66,16 @@ class HTTPServer:
                 self._routes[(method, path)] = function
 
         return wrapper
+    
+    async def read_body(self, reader, length):
+        body = b''
+        while len(body) < length:
+            chunk_size = min(1024, length - len(body))
+            chunk = await asyncio.wait_for(reader.read(chunk_size), self.timeout)
+            if not chunk:
+                break
+            body += chunk
+        return body
 
     async def _handle_request(self, reader, writer):
         try:
@@ -105,12 +115,11 @@ class HTTPServer:
             if b'Content-Type' in request.header and request.header[b'Content-Type'].startswith(b'multipart'):
                 request.isMultipart = True
 
-            # if this is a POST or PUT, grab the body (unless it's multipart/form-data)
+            # if this is a POST or PUT, read the body in chunks (unless it's multipart/form-data)
             if request.method in ['POST', 'PUT'] and not request.isMultipart:
                 if b'Content-Length' in request.header:
                     length = int(request.header[b'Content-Length'].decode("utf-8"))
-                    line = await asyncio.wait_for(reader.read(length), self.timeout)  # read content
-                    request.body = line
+                    request.body = await self.read_body(reader, length)
 
             # search function which is connected to (method, path)
             func = self._routes.get((request.method, request.path))
