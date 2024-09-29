@@ -22,6 +22,7 @@ from hdwconfig import display_drv
 from gfx.binfont import BinFont
 from gfx.framebuf_plus import FrameBuffer, RGB565
 from palettes import get_palette
+display_drv.rotation = 90
 WIDTH, HEIGHT = display_drv.width, display_drv.height
 FONT_WIDTH = 8
 BPP = display_drv.color_depth // 8  # Bytes per pixel
