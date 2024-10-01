@@ -234,14 +234,17 @@ function buildHelpPanelContent() {
 
           fileDiv.appendChild(titleDiv);
           fileDiv.appendChild(subtitleDiv);
-          fileDiv.onclick = () => openFile(entry.file, "/files/help");
+          fileDiv.onclick = () => {
+            const allContentDivs = document.querySelectorAll(".help-file");
+            allContentDivs.forEach((div) => div.classList.remove("active"));
+            fileDiv.classList.add("active");
+            openFile(entry.file, "/files/help");
+          }
           folderContentDiv.appendChild(fileDiv);
         });
 
         folderDiv.onclick = () => {
-          const allContentDivs = document.querySelectorAll(
-            ".help-folder-content"
-          );
+          const allContentDivs = document.querySelectorAll(".help-folder-content");
           const allFolderDivs = document.querySelectorAll(".help-folder");
 
           // Collapse all folders and remove active state

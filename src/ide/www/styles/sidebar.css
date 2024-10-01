@@ -392,29 +392,30 @@ ul#updates-list {
 }
 
 .help-folder:hover {
-    background-color: var(--base-highlight-color);
+    background-color: var(--base-button-color);
 }
 
 .help-folder.active {
-    background-color: var(--base-highlight-color); /* Highlight color for active folder */
+    background-color: var(--base-button-color);
     color: var(--body-intense-fgnd-color);
 }
 
 .help-folder-content {
     display: none;
-    padding-left: 1.5rem;
-    border-left: 2px solid var(--base-color);
-    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
 }
 
 .help-file {
     cursor: pointer;
     padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-left: 2px solid var(--base-color);
     color: var(--body-foreground-color);
 }
 
-.help-file:hover {
-    color: var(--base-highlight-color);
+.help-file.active {
+    border-left: 2px solid var(--base-highlight-color);
 }
 
 .help-file-title {
