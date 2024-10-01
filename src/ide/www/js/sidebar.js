@@ -199,11 +199,76 @@ function changeFolder(path) {
     buildFilesPanelContent(); // refresh everything
 }
 
-function openFile(filename) {
+
+function buildHelpPanelContent() {
+  const helpAccordionDiv = document.getElementById("help-accordion");
+  helpAccordionDiv.innerHTML = ""; // Clear existing content
+
+  fetch("/files/help/manifest.json")
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Failed to load help manifest");
+      }
+      return response.json();
+    })
+    .then((manifest) => {
+      manifest.folders.forEach((folder) => {
+        const folderDiv = document.createElement("div");
+        folderDiv.className = "help-folder";
+        folderDiv.textContent = folder["folder name"];
+
+        const folderContentDiv = document.createElement("div");
+        folderContentDiv.className = "help-folder-content";
+
+        folder.entries.forEach((entry) => {
+          const fileDiv = document.createElement("div");
+          fileDiv.className = "help-file";
+
+          const titleDiv = document.createElement("div");
+          titleDiv.className = "help-file-title";
+          titleDiv.textContent = entry.title;
+
+          const subtitleDiv = document.createElement("div");
+          subtitleDiv.className = "help-file-subtitle";
+          subtitleDiv.textContent = entry.subtitle;
+
+          fileDiv.appendChild(titleDiv);
+          fileDiv.appendChild(subtitleDiv);
+          fileDiv.onclick = () => openFile(entry.file, "/files/help");
+          folderContentDiv.appendChild(fileDiv);
+        });
+
+        folderDiv.onclick = () => {
+          const allContentDivs = document.querySelectorAll(
+            ".help-folder-content"
+          );
+          const allFolderDivs = document.querySelectorAll(".help-folder");
+
+          // Collapse all folders and remove active state
+          allContentDivs.forEach((div) => (div.style.display = "none"));
+          allFolderDivs.forEach((div) => div.classList.remove("active"));
+
+          // Expand the clicked folder and add active state
+          folderContentDiv.style.display = "block";
+          folderDiv.classList.add("active");
+        };
+
+        helpAccordionDiv.appendChild(folderDiv);
+        helpAccordionDiv.appendChild(folderContentDiv);
+      });
+    })
+    .catch((error) => {
+      helpAccordionDiv.innerHTML = `<div class="error">${error.message}</div>`;
+      showToast(error, "error");
+    });
+}
+
+
+function openFile(filename, filepath='/files/user') {
     if (tabs[filename]) {
         switchToTab(filename);
     } else {
-        const url = `/files/user/${encodeURIComponent(filename)}`;
+        const url = `${filepath}/${encodeURIComponent(filename)}`;
         const ext = filename.toLowerCase().split(".").pop();
         if (imgFileTypes.includes(ext)) {
             createTab(filename, url, "imglink", true);
@@ -265,4 +330,9 @@ function fetchSpaceUsage() {
 newFolderDiv.onclick = createFolder;
 uploadFileDiv.onclick = uploadFile;
 
-export { currentFolder, buildFilesPanelContent, toggleSidebar };
+export {
+  currentFolder,
+  buildFilesPanelContent,
+  buildHelpPanelContent, 
+  toggleSidebar,
+};

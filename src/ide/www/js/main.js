@@ -1,4 +1,9 @@
-import { currentFolder, toggleSidebar, buildFilesPanelContent } from "./sidebar.js";
+import {
+  currentFolder,
+  toggleSidebar,
+  buildFilesPanelContent,
+  buildHelpPanelContent,
+} from "./sidebar.js";
 import { renameTab, activeTab, editors, createNewFileTab, updateSaveButton } from "./tabs.js";
 import './repl-client.js';
 import './settings.js';
@@ -362,7 +367,10 @@ function showSpinners(enabled) {
 updateSaveButton();
 
 document.getElementById('filesIcon').onclick = () => toggleSidebar('filesIcon');
-document.getElementById('helpIcon').onclick = () => toggleSidebar('helpIcon');
+document.getElementById("helpIcon").onclick = () => {
+  toggleSidebar("helpIcon");
+  buildHelpPanelContent(); // Load help content when help panel is opened
+};
 document.getElementById("settingsIcon").onclick = () => toggleSidebar("settingsIcon");
 saveButton.onclick = saveFile;
 newButton.onclick = createNewFileTab;

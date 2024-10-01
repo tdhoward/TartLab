@@ -380,3 +380,49 @@ ul#updates-list {
     white-space: pre-wrap; /* So that \n is recognized */
     color:slategray;
 }
+
+
+.help-folder {
+    cursor: pointer;
+    padding: 1rem;
+    border: 1px solid var(--body-border-color);
+    margin-bottom: 0.5rem;
+    background-color: var(--panel-background-color);
+    color: var(--body-intense-fgnd-color);
+}
+
+.help-folder:hover {
+    background-color: var(--base-highlight-color);
+}
+
+.help-folder.active {
+    background-color: var(--base-highlight-color); /* Highlight color for active folder */
+    color: var(--body-intense-fgnd-color);
+}
+
+.help-folder-content {
+    display: none;
+    padding-left: 1.5rem;
+    border-left: 2px solid var(--base-color);
+    margin-bottom: 0.5rem;
+}
+
+.help-file {
+    cursor: pointer;
+    padding: 0.5rem 0;
+    color: var(--body-foreground-color);
+}
+
+.help-file:hover {
+    color: var(--base-highlight-color);
+}
+
+.help-file-title {
+    font-size: 1rem;
+    color: var(--body-foreground-color);
+}
+
+.help-file-subtitle {
+    font-size: 0.85rem;
+    color: var(--body-weak-fgnd-color);
+}
