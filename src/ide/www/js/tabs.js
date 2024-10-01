@@ -83,7 +83,7 @@ function createHTMLPage(tab, content) {
 
 function createImagePage(tab, content, contentType) {
   let pageDiv = tab.pageDiv;
-
+  pageDiv.classList.add("img-page");
   const imgElement = document.createElement("img");
   imgElement.src = content;
   
