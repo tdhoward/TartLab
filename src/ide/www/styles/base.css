@@ -14,6 +14,7 @@
     --body-background-color: #1e1e1e;
     --body-foreground-color: #d4d4d4;
     --body-intense-fgnd-color: #fff;
+    --body-strong-fgnd-color: #afcae3;
     --body-weak-fgnd-color: #888;
     --body-weaker-fgnd-color: #666;
     --body-border-color: #333;
@@ -29,6 +30,8 @@
     --tabs-bkgnd-color: #252526;
     --error-color: #ff5c5c;
     --warning-color: #ffa500;
+    --light-body-background-color: #eaf5ff;
+    --light-body-border-highlight-color: #6A1B9A;
 }
 
 #hamburger-menu-bt {

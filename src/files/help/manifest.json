@@ -1,0 +1,35 @@
+{
+	"help_system_version": 1,
+	"folders": [
+		{
+			"folder name":"TartLab",
+			"entries": [
+				{
+					"title":"Getting started",
+					"subtitle":"Using the TartLab web app",
+					"file":"tartlab1.html"
+				}
+			]
+		},
+		{
+			"folder name":"Intro to Python",
+			"entries": [
+				{
+					"title":"Basics",
+					"subtitle":"Rules, common examples, etc",
+					"file":"pybasics.py"
+				}
+			]
+		},
+		{
+			"folder name":"Examples",
+			"entries": [
+				{
+					"title":"Testris",
+					"subtitle":"Tetris game for MicroPython",
+					"file":"testris.py"
+				}
+			]
+		}
+	]
+}

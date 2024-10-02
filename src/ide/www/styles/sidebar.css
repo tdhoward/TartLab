@@ -91,7 +91,7 @@
 .panel-content-page div h3 {
     padding: 0.75rem 0.75rem;
     margin: 0;
-    color:var(--body-weak-fgnd-color);
+    color:var(--body-strong-fgnd-color);
 }
 
 #helpContent {
@@ -420,6 +420,7 @@ ul#updates-list {
 
 .help-file-title {
     font-size: 1rem;
+    padding-bottom: 0.25rem;
     color: var(--body-foreground-color);
 }
 

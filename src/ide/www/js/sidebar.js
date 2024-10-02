@@ -235,8 +235,8 @@ function buildHelpPanelContent() {
           fileDiv.appendChild(titleDiv);
           fileDiv.appendChild(subtitleDiv);
           fileDiv.onclick = () => {
-            const allContentDivs = document.querySelectorAll(".help-file");
-            allContentDivs.forEach((div) => div.classList.remove("active"));
+            const allFileDivs = document.querySelectorAll(".help-file");
+            allFileDivs.forEach((div) => div.classList.remove("active"));
             fileDiv.classList.add("active");
             openFile(entry.file, "/files/help");
           }
@@ -246,10 +246,12 @@ function buildHelpPanelContent() {
         folderDiv.onclick = () => {
           const allContentDivs = document.querySelectorAll(".help-folder-content");
           const allFolderDivs = document.querySelectorAll(".help-folder");
+          const allFileDivs = document.querySelectorAll(".help-file");
 
           // Collapse all folders and remove active state
           allContentDivs.forEach((div) => (div.style.display = "none"));
           allFolderDivs.forEach((div) => div.classList.remove("active"));
+          allFileDivs.forEach((div) => div.classList.remove("active"));
 
           // Expand the clicked folder and add active state
           folderContentDiv.style.display = "block";
