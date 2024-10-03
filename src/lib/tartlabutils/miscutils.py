@@ -1,4 +1,5 @@
 import os
+import sys
 import ujson
 import random
 import errno
@@ -96,6 +97,16 @@ def log(message):
     if current_log_file:
         with open(LOG_DIR + '/' + current_log_file, 'a') as f:
             f.write(message + "\n")
+
+def log_exception(ex):
+    global current_log_file
+    # Get the exception type and message
+    msg = f"Exception: {str(ex)}\n"
+    print(msg)
+    if current_log_file:
+        with open(LOG_DIR + '/' + current_log_file, 'a') as f:
+            f.write(msg)
+            sys.print_exception(ex, f) # Write the full traceback
 
 def get_logs():
     log_files = sorted([f for f in os.listdir(LOG_DIR) if f.endswith('.log')])

@@ -17,7 +17,7 @@ for d in dirs:
 
 import ujson
 from machine import Pin
-from tartlabutils import file_exists, init_logs, log, load_settings, save_settings
+from tartlabutils import file_exists, init_logs, log, log_exception, load_settings, save_settings
 
 init_logs()
 log('System startup')
@@ -72,4 +72,8 @@ if start_mode == 'IDE':
     ide.main()
 else:
     log('Starting APP')
-    import app  # launches the user's startup app
+    try:
+        import app  # launches the user's startup app
+    except Exception as ex:
+        log_exception(ex)
+        display_drv.fill(0xF800)  # fill screen with red to indicate error

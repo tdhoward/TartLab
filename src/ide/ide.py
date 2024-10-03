@@ -8,7 +8,7 @@ import random
 import uasyncio as asyncio
 import io
 from tartlabutils import file_exists, unquote, rmvdir, check_for_update, main_update_routine, \
-                        log, get_logs, load_settings, save_settings, default_settings
+                    log, log_exception, get_logs, load_settings, save_settings, default_settings
 
 from ahttpserver import HTTPResponse, HTTPServer
 from ahttpserver.sse import EventSource
@@ -582,7 +582,7 @@ async def api_check_updates(reader, writer, request):
             assets, latest_version = await check_for_update(repo)
             updates.append((assets, latest_version))
         except Exception as e:
-            log(f'Checkupdates error: {e}')
+            log_exception(e)
             updates.append(('error', e))
     writer.write(ujson.dumps(updates))
     await writer.drain()
@@ -734,7 +734,7 @@ def main():
     try:
         def handle_exception(loop, context):
             # uncaught exceptions end up here
-            log(f'global exception handler: {context["exception"]}')
+            log_exception(context["exception"])
 
         loop = asyncio.get_event_loop()
         loop.set_exception_handler(handle_exception)

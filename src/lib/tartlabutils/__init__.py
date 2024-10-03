@@ -2,5 +2,5 @@
 # Released under MIT license
 
 from .miscutils import file_exists, unquote, rmvdir, mkdirs, split_on_first, \
-  init_logs, log, get_logs, load_settings, save_settings, default_settings
+  init_logs, log, log_exception, get_logs, load_settings, save_settings, default_settings
 from .updater import check_for_update, main_update_routine
