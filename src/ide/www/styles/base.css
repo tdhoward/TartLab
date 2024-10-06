@@ -1,12 +1,10 @@
 /* Define all the global variables here */
 :root {
     --font-size: 18px;
-    --large-font-size: 28px;
     --console-font-size: 18px;
     --iconbar-width: 56px;
     --icon-size: 32px;
     --side-panel-width: 250px;
-    --large-logo-size: 256px;
     --tab-container-height: 41px;
     --base-color: #155884;
     --base-button-color: #007acc;
@@ -62,12 +60,10 @@
 @media only screen and (width <= 576px) {
     :root {
         --font-size: 15px;
-        --large-font-size: 24px;
         --console-font-size: 16px;
         --iconbar-width: 40px;
         --icon-size: 28px;
         --side-panel-width: 200px;
-        --large-logo-size: 200px;
         --tab-container-height: 36px;
     }
 
@@ -127,30 +123,6 @@ body {
     margin: 0;
     padding: 0;
     overflow: hidden;
-}
-
-#loading-overlay {
-    box-sizing: border-box;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--body-background-color);
-    color: var(--body-intense-fgnd-color);
-    display: flex;
-    flex-direction: column; /* Arrange logo and text vertically */
-    justify-content: center;
-    align-items: center;
-    font-size: var(--large-font-size);
-    z-index: 9999;
-    padding-bottom: 3rem; /* Adjust this value to move the content upwards */
-}
-
-#loading-logo {
-    width: var(--large-logo-size);
-    height: var(--large-logo-size);
-    margin-bottom: 0px; /* the space between logo and text */
 }
 
 button {

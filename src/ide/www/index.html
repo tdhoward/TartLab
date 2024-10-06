@@ -7,10 +7,56 @@
     <link rel="preload" href="img/logo.svg" as="image"> <!-- Preload the logo -->
     <link rel="stylesheet" href="styles/base.css">
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <style>
+:root {
+    --large-font-size: 28px;
+    --large-logo-size: 256px;
+}
+
+@media only screen and (width <= 576px) {
+    :root {
+        --large-font-size: 24px;
+        --large-logo-size: 200px;
+    }
+}
+
+#loading-overlay {
+    box-sizing: border-box;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #1e1e1e;
+    color: #fff;
+    display: flex;
+    flex-direction: column; /* Arrange logo and text vertically */
+    justify-content: center;
+    align-items: center;
+    font-size: var(--large-font-size);
+    z-index: 9999;
+    padding-bottom: 3rem; /* Adjust this value to move the content upwards */
+}
+
+#loading-logo {
+    width: var(--large-logo-size);
+    height: var(--large-logo-size);
+    margin-bottom: 0px; /* the space between logo and text */
+}
+    </style>
+
+    <script>
+function handleLoadError() {
+    // Change the content of the loading-overlay div
+    const loadingOverlay = document.getElementById('loading-overlay');
+    loadingOverlay.innerHTML = 'Unable to connect with device.';
+    loadingOverlay.style.color = '#f00';  // Optional: Set color to red for error indication
+}
+    </script>
 </head>
 <body>
     <div id="loading-overlay">
-        <img src="img/logo.svg" alt="Logo" id="loading-logo">
+        <img src="img/logo.svg" alt="Logo" id="loading-logo" onerror="handleLoadError()">
         Loading, please wait...
     </div>
     <div id="app-container">
