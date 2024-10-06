@@ -7,6 +7,7 @@ import utime
 import random
 import uasyncio as asyncio
 import io
+from machine import Pin
 from tartlabutils import file_exists, unquote, rmvdir, check_for_update, main_update_routine, \
                     log, log_exception, get_logs, load_settings, save_settings, default_settings
 
@@ -18,7 +19,7 @@ from ahttpserver.multipart import handleMultipartUpload
 from ahttpserver.server import HTTPServerError
 
 # Display stuff
-from hdwconfig import display_drv
+from hdwconfig import display_drv, IDE_BUTTON_PIN
 from gfx.binfont import BinFont
 from gfx.framebuf_plus import FrameBuffer, RGB565
 from palettes import get_palette
@@ -711,13 +712,19 @@ async def api_get_logs(reader, writer, request):
     print(f"API request: {request.path} with response code 200")
 
 
-async def say_hello_task():
-    """ Show system is still alive """
-    count = 0
+async def check_buttons():
+    """ Check for user input on buttons """
+    IDE_BUTTON = Pin(IDE_BUTTON_PIN, Pin.IN)
+    bright = 1.0
     while True:
-        print("hello", count)
-        count += 1
-        await asyncio.sleep(60)
+        if IDE_BUTTON.value() == 0:  # (unpressed button value is 1)
+            bright -= 0.25
+            if bright <= 0:
+                bright = 1.0
+            display_drv.brightness = bright
+            while IDE_BUTTON.value() == 0:  # now wait until they release it
+                await asyncio.sleep(0.25)
+        await asyncio.sleep(0.2)
         
 
 async def free_memory_task():
@@ -739,7 +746,7 @@ def main():
         loop = asyncio.get_event_loop()
         loop.set_exception_handler(handle_exception)
 
-        loop.create_task(say_hello_task())
+        loop.create_task(check_buttons())
         loop.create_task(free_memory_task())
         loop.create_task(app.start())
 
