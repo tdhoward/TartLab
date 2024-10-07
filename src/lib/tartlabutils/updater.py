@@ -267,6 +267,7 @@ async def main_update_routine():
     repos = {}
     with open(REPOS_FILE, 'r') as file:
         repos = ujson.load(file)
+    log("============ Updater has started.  PLEASE WAIT. ============")
     log(f'Updating repos: {repos["list"]}')
 
     # if we're updating TartLab, move that to the end of the list so we update last
@@ -286,8 +287,11 @@ async def main_update_routine():
         else:
             log(f"No update necessary for {repo['name']}")
 
+    log("============ Updater has finished. ============")
+
     # Save the updated package list back to the file
     with open(REPOS_FILE, 'w') as file:
         ujson.dump(repos, file)
     
+    await asyncio.sleep(0.5)  # allow the log file to be written, I guess.
     restart_device()
