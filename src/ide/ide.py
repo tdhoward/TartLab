@@ -626,6 +626,15 @@ async def api_repl(reader, writer, request):
     await writer.drain()
     print(f"REPL command: '{data['cmd']}'")
 
+# reset the memory of the pseudo-REPL
+@app.route("POST", "/api/resetrepl")
+async def api_resetrepl(reader, writer, request):
+    global replGlobals
+    replGlobals = {}
+    await sendHTTPResponse(writer, 200, 'success')
+    print(f"RESET REPL request with response code 200")
+
+
 # set a Python file as the primary app
 @app.route("POST", "/api/setasapp")
 async def api_setasapp(reader, writer, request):

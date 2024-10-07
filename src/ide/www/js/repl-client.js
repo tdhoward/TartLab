@@ -1,4 +1,4 @@
-import { apiBaseUrl, showSpinners } from "./main.js";
+import { apiBaseUrl, showSpinners, showToast } from "./main.js";
 
 const replContent = document.getElementById("repl-content");
 const replHeader = document.getElementById("repl-header");
@@ -27,13 +27,38 @@ function setPrompt(prompt) {
 
 function toggleReplPanel() {
   replContent.classList.toggle("collapsed");
-  if (replContent.classList.contains("collapsed"))
+  if (replContent.classList.contains("collapsed")) {  // console was just closed
     replToggleIcon.innerHTML = "&#x25B2;";
-  else
+    resetReplMemory();
+  }
+  else  // console was just opened
     replToggleIcon.innerHTML = "&#x25BC;";
 }
 
-// Function to send REPL command
+
+function resetReplMemory() {
+  showSpinners(true);
+  fetch(`${apiBaseUrl}/resetrepl`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ "dummy": 0 }),
+  })
+    .then((response) => {
+      showSpinners(false);
+      if (!response.ok) {
+        return response.json().then((data) => {
+          throw new Error(data.error || "An error occurred");
+        });
+      }
+      return response.json();
+    })
+    .then((data) => {
+      updateReplConsole("Console was reset.");
+    })
+    .catch((error) => showToast(`Error: ${error}`));
+}
+
+
 function sendReplCommand(commandArray) {
   // Save command to history
   if (commandHistory.length >= 10) {
