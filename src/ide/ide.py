@@ -8,6 +8,7 @@ import random
 import uasyncio as asyncio
 import io
 from machine import Pin
+#import webrepl
 from tartlabutils import file_exists, unquote, rmvdir, check_for_update, main_update_routine, \
                     log, log_exception, get_logs, load_settings, save_settings, default_settings
 
@@ -758,12 +759,14 @@ def main():
         loop.create_task(check_buttons())
         loop.create_task(free_memory_task())
         loop.create_task(app.start())
+        #loop.create_task(webrepl.start_foreground(password='tartlab'))
 
         loop.run_forever()
     except KeyboardInterrupt:
         pass
     finally:
         asyncio.run(app.stop())
+        #asyncio.run(webrepl.stop())
         asyncio.new_event_loop()
 
 
