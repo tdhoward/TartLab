@@ -20,12 +20,10 @@ from ahttpserver.server import HTTPServerError
 
 # Display stuff
 from hdwconfig import display_drv, IDE_BUTTON_PIN
-from gfx.binfont import BinFont
-from gfx.framebuf_plus import FrameBuffer, RGB565
-from palettes import get_palette
+from pygfx.framebuf_plus import FrameBuffer, RGB565
 display_drv.rotation = 90
 WIDTH, HEIGHT = display_drv.width, display_drv.height
-FONT_WIDTH = 8
+FONT_WIDTH = 16
 BPP = display_drv.color_depth // 8  # Bytes per pixel
 ba = bytearray(WIDTH * HEIGHT * BPP)
 fb = FrameBuffer(ba, WIDTH, HEIGHT, RGB565)
@@ -55,26 +53,13 @@ fb.line(WIDTH - 1, 0, WIDTH - 1, HEIGHT - 1, pal.BLUE)
 fb.line(WIDTH - 1, HEIGHT - 1, 0, HEIGHT - 1, pal.BLUE)
 fb.line(0, HEIGHT - 1, 0, 0, pal.BLUE)
 text = 'TARTLAB'
-fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 - 32, pal.WHITE)
+fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 - 64, pal.WHITE, 2)
 display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
 
 
 USER_BASE_DIR = '/files/user'
 IDE_BASE_DIR = '/ide'
 settings = {}
-
-
-def display_write(font, string, x, y, fg_color, bg_color, scale):
-    """
-    Write text to the display.
-    """
-    buffer_width = font.font_width * scale * len(string)
-    buffer_height = font.font_height * scale
-    buffer = bytearray(buffer_width * buffer_height * BPP)
-    fb = FrameBuffer(buffer, buffer_width, buffer_height, RGB565)
-    fb.fill(bg_color)
-    font.text(fb, string, 0, 0, fg_color, scale)
-    display_drv.blit_rect(buffer, x, y, buffer_width, buffer_height)
 
 class CaptureOutput(io.IOBase):
     def __init__(self):
@@ -252,19 +237,19 @@ if ip_address == "0.0.0.0":
 app = HTTPServer(ip_address, 80)
 
 text = f'WiFi: {wifi_ssid}'
-dirty = fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 - 8, pal.WHITE)
+dirty = fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 - 16, pal.WHITE, 2)
 display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)  # due to bug, just blit whole screen
 #display_drv.blit_rect(ba, dirty.x, dirty.y, dirty.w, dirty.h)
 if softAP:
     text = '192.168.4.1'
 else:
     text = ip_address
-dirty = fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 + 8, pal.WHITE)
+dirty = fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 + 16, pal.WHITE, 2)
 display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
 #display_drv.blit_rect(ba, dirty.x, dirty.y, dirty.w, dirty.h)
 if not softAP:
     text = settings['hostname'] + '.local'
-    dirty = fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 + 24, pal.WHITE)
+    dirty = fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 + 48, pal.WHITE, 2)
     display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
 
 
