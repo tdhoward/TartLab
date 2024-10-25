@@ -1,7 +1,8 @@
 import sys
 
 # add search folders for importing modules
-dirs = ["/lib", 
+dirs = ["/lib",
+        "/",
         "/files/user", 
         "/configs", 
         "/lib/pydevices", 

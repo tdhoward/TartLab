@@ -30,6 +30,12 @@
 		"clear_first": true
 	},
 	{
+		"name": "configs",
+		"source": "dist/configs",
+		"target": "/configs",
+		"clear_first": true
+	},
+	{
 		"name": "rootfiles",
 		"source": "dist/*",
 		"target": "/",

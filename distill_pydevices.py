@@ -41,6 +41,10 @@ copy_tasks = [
         'dst_pattern': os.path.join('utils', 'png.py'),
     },
     {
+        'src_pattern': os.path.join('src', 'extras', 'pbm.py'),
+        'dst_pattern': os.path.join('utils', 'pbm.py'),
+    },
+    {
         'src_pattern': os.path.join('src', 'extras', 'bmp565.py'),
         'dst_pattern': os.path.join('utils', 'bmp565.py'),
     },
