@@ -18,6 +18,11 @@
 					"title":"Basics",
 					"subtitle":"Rules, common examples, etc",
 					"file":"pybasics.py"
+				},
+				{
+					"title":"Drawing basics",
+					"subtitle":"Intro to drawing graphics",
+					"file":"drawingbasics.py"
 				}
 			]
 		},
@@ -28,6 +33,11 @@
 					"title":"Testris",
 					"subtitle":"Tetris game for MicroPython",
 					"file":"testris.py"
+				},
+				{
+					"title":"Calculator",
+					"subtitle":"A simple calculator",
+					"file":"calculator.py"
 				}
 			]
 		}
