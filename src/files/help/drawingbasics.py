@@ -2,20 +2,32 @@
 
 from hdwconfig import display_drv    # Get the display ready
 import pygfx                         # Bring in the drawing functions
-from pygfx.palettes import get_palette   # ...and the ability to set up palettes of colors
 
-# Set up the display orientation (horizontal or vertical)
+# Set the display orientation to horizontal
+display_drv.rotation = 90
+
 HEIGHT = display_drv.height
 WIDTH = display_drv.width
-if HEIGHT > WIDTH:
-    TALL = display_drv.rotation
-    WIDE = display_drv.rotation + 90
-else:
-    WIDE = display_drv.rotation
-    TALL = display_drv.rotation + 90
-display_drv.rotation = WIDE   # We want horizontal
 
-pal = get_palette("material_design")  # Set up the palette of colors that we want
+if display_drv.requires_byte_swap:
+    needs_swap = display_drv.disable_auto_byte_swap(True)
+else:
+    needs_swap = False
+
+# define the palette of colors
+class pal:
+    BLACK = 0x0000
+    WHITE = 0xFFFF
+    RED = 0xF800 if not needs_swap else 0x00F8
+    GREEN = 0x07E0 if not needs_swap else 0xE007
+    BLUE = 0x001F if not needs_swap else 0xF800
+    CYAN = 0x07FF if not needs_swap else 0xFF07
+    MAGENTA = 0xF81F if not needs_swap else 0x1FF8
+    YELLOW = 0xFFE0 if not needs_swap else 0xE0FF
+    ORANGE = 0xFD20 if not needs_swap else 0x20FD
+    PURPLE = 0x8010 if not needs_swap else 0x1080
+    GREY = 0x8410 if not needs_swap else 0x1084
+
 
 # Figure out some reference points
 CENTER_X = display_drv.width // 2
