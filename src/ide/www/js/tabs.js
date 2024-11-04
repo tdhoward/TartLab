@@ -1,4 +1,5 @@
 import { saveButton } from './main.js';
+import { replPlayButton } from './repl-client.js';
 
 let newFileCounter = 1;
 const tabsDiv = document.getElementById("tabs");
@@ -11,7 +12,7 @@ let activeTab = null;
 
 function createNewFileTab() {
     const filename = `New file ${newFileCounter++}`;
-    createTab(filename, '', 'python', false);
+    createTab(filename, '', '', 'python', false);
 }
 
 function updateSaveButton() {
@@ -25,7 +26,19 @@ function updateSaveButton() {
     }
 }
 
-function createTab(filename, content, contentType, isNamed) {
+function updatePlayButtonVisibility() {
+  if (activeTab && 
+     (activeTab.contentType === "python") &&
+     (editors[activeTab.filename].editor.getValue() != '') &&
+     (editors[activeTab.filename].editor.isDirty == false)) {
+    replPlayButton.classList.remove("hidden");
+  } else {
+    replPlayButton.classList.add("hidden");
+  }
+}
+
+
+function createTab(filename, fullPath, content, contentType, isNamed) {
   const tabDiv = document.createElement("div");
   tabDiv.className = "tab";
   tabDiv.dataset.filename = filename;
@@ -44,7 +57,7 @@ function createTab(filename, content, contentType, isNamed) {
 
   const pageDiv = document.createElement("div");
   pageDiv.className = "page-instance";
-  tabs[filename] = { tabDiv, pageDiv, filename, contentType };
+  tabs[filename] = { tabDiv, pageDiv, filename, contentType, fullPath };
 
   if (contentType == "python") {
     createEditor(tabs[filename], content, isNamed, "python");
@@ -121,6 +134,7 @@ function createEditor(tab, content, isNamed, mode) {
   editor.on("change", () => {
     editor.isDirty = true; // Mark editor as having unsaved changes
     updateSaveButton();
+    updatePlayButtonVisibility();
   });
 
   editor.isDirty = false; // Initial state is not dirty
@@ -154,6 +168,7 @@ function switchToTab(filename) {
     editors[filename].editor.refresh();
     editors[filename].editor.focus(); // Ensure the editor gains keyboard focus
     updateSaveButton();
+    updatePlayButtonVisibility();
   }
 }
 
@@ -186,6 +201,7 @@ function closeTab(event) {
     } else {
       activeTab = null;
       updateSaveButton();
+      updatePlayButtonVisibility();
     }
   }
 }
@@ -198,7 +214,8 @@ document.addEventListener("click", function (event) {
 
 export {
   createNewFileTab,
-  updateSaveButton, 
+  updateSaveButton,
+  updatePlayButtonVisibility,
   createTab,
   renameTab,
   switchToTab,

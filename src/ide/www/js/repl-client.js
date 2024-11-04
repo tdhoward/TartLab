@@ -1,9 +1,11 @@
 import { apiBaseUrl, showSpinners, showToast } from "./main.js";
+import { activeTab, updatePlayButtonVisibility } from "./tabs.js";
 
 const replContent = document.getElementById("repl-content");
 const replHeader = document.getElementById("repl-header");
 const replConsole = document.getElementById("repl-console");
 const replToggleIcon = document.getElementById("repl-toggle-icon");
+const replPlayButton = document.getElementById("repl-play-button");
 
 let commandBuffer = [];
 let commandHistory = [];
@@ -35,7 +37,6 @@ function toggleReplPanel() {
     replToggleIcon.innerHTML = "&#x25BC;";
 }
 
-
 function resetReplMemory() {
   showSpinners(true);
   fetch(`${apiBaseUrl}/resetrepl`, {
@@ -59,16 +60,18 @@ function resetReplMemory() {
 }
 
 
-function sendReplCommand(commandArray) {
-  // Save command to history
-  if (commandHistory.length >= 10) {
-    commandHistory.shift(); // Remove oldest command if history exceeds 10
+function sendReplCommand(saveHistory = true) {
+  if (saveHistory) {
+    if (commandHistory.length >= 10) {
+      // Save command to history
+      commandHistory.shift(); // Remove oldest command if history exceeds 10
+    }
+    const storeCommand = commandBuffer.join("\n");
+    commandHistory.push(storeCommand);
+    historyIndex = commandHistory.length; // Reset history index
+    currentIndent = 0; // reset the indent
   }
   const sendCommand = commandBuffer.join("\r\n");
-  const storeCommand = commandBuffer.join("\n");
-  commandHistory.push(storeCommand);
-  historyIndex = commandHistory.length; // Reset history index
-  currentIndent = 0;  // reset the indent
 
   showSpinners(true);
   fetch(`${apiBaseUrl}/repl`, {
@@ -145,7 +148,7 @@ replConsole.addEventListener("keydown", (event) => {
     } else {
       // Handle single or multi-line command execution
       commandBuffer.push(inputCommand);
-      sendReplCommand(commandBuffer);
+      sendReplCommand();
       commandBuffer = [];
     }
   } else if (event.key === "Tab") {
@@ -260,4 +263,18 @@ setPrompt(normalPrompt);
 
 replHeader.onclick = () => toggleReplPanel();
 
-export { toggleReplPanel };
+replPlayButton.onclick = function () {
+  event.stopPropagation();
+  // Open the console if not already open
+  if (replContent.classList.contains("collapsed")) {  // console is closed
+    toggleReplPanel();
+  }
+  if (activeTab && activeTab.contentType === "python") {
+    const command = `exec(open('${activeTab.fullPath}').read())`;
+    commandBuffer = [command]; // Set the command buffer to execute the Python script
+    sendReplCommand(false); // Send the command to the REPL, but don't save it as history
+    commandBuffer = [];
+  }
+};
+
+export { toggleReplPanel, updatePlayButtonVisibility, replPlayButton };

@@ -276,7 +276,7 @@ function openFile(filename, filepath='/files/user') {
         const url = `${filepath}/${encodeURIComponent(filename)}`;
         const ext = filename.toLowerCase().split(".").pop();
         if (imgFileTypes.includes(ext)) {
-            createTab(filename, url, "imglink", true);
+            createTab(filename, `${filepath}/${filename}`, url, "imglink", true);
             return;
         }
         showSpinners(true);
@@ -289,7 +289,7 @@ function openFile(filename, filepath='/files/user') {
                 return response.text();
             })
             .then(content => {
-                createTab(filename, content, '', true);
+                createTab(filename, `${filepath}/${filename}`, content, '', true);
             })
             .catch(error => {
                 showToast(error, "error");

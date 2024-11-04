@@ -93,3 +93,15 @@
     transition: transform 0.3s ease;
     color: var(--body-weaker-fgnd-color);
 }
+
+#repl-play-button {
+    cursor: pointer;
+    padding: 0.7rem;
+    margin-right: 0.5rem;
+    font-size: var(--font-size);
+    color: #0f0;
+}
+
+#repl-play-button.hidden {
+    display: none;
+}

@@ -4,7 +4,7 @@ import {
   buildFilesPanelContent,
   buildHelpPanelContent,
 } from "./sidebar.js";
-import { renameTab, activeTab, editors, createNewFileTab, updateSaveButton } from "./tabs.js";
+import { renameTab, activeTab, editors, createNewFileTab, updateSaveButton, updatePlayButtonVisibility } from "./tabs.js";
 import './repl-client.js';
 import './settings.js';
 
@@ -117,6 +117,7 @@ function saveFile() {
         showToast('File saved successfully!', 'info');
         editors[activeTab.filename].editor.isDirty = false; // Mark editor as not dirty after saving
         updateSaveButton();
+        updatePlayButtonVisibility();
         buildFilesPanelContent();  // update file list
     })
     .catch(error => showToast(error, 'error'));
@@ -219,6 +220,7 @@ function deleteFile(filename) {
         if (filename in editors) {
             editors[filename].editor.isDirty = true;
             updateSaveButton(); // Update the Save button state
+            updatePlayButtonVisibility();
         }
         buildFilesPanelContent(); // update file list
     })
@@ -365,6 +367,7 @@ function showSpinners(enabled) {
 }
 
 updateSaveButton();
+updatePlayButtonVisibility();
 
 document.getElementById('filesIcon').onclick = () => toggleSidebar('filesIcon');
 document.getElementById("helpIcon").onclick = () => {
