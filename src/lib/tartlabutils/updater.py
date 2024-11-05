@@ -296,7 +296,7 @@ async def main_update_routine():
         log(f"\nStarting update for {repo['name']} from version {repo['installed_version']}")
         await asyncio.sleep(2)
         if await update_packages(repo):
-            log(f"Updated {repo['name']} from version {repo['installed_version']}")
+            log(f"Updated {repo['name']} to version {repo['installed_version']}")
             if updating_updater:  # this should only be at the very end anyway, but...
                 break
         else:
