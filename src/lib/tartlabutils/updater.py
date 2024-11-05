@@ -2,7 +2,7 @@ import ujson
 import urequests
 import uos
 from tarfile import TarFile
-from .miscutils import rmvdir, mkdirs, file_exists, log, load_settings, save_settings
+from .miscutils import rmvdir, mkdirs, file_exists, log, log_exception, load_settings, save_settings
 import uhashlib
 import machine
 import urequests
@@ -24,6 +24,7 @@ async def check_for_update(repo):
         settings = load_settings()
         if response.status_code == 200:
             releases = response.json()
+            response.close()
             latest_release = None
             
             for release in releases:
@@ -41,9 +42,11 @@ async def check_for_update(repo):
                 return None, None
         else:
             log("Failed to fetch releases:", response.status_code)
+            response.close()
             return None, None
     except Exception as e:
-        log(f'Error checking repo! {e}')
+        log(f'Error checking repo!')
+        log_exception(e)
         return None, None
     finally:
         try:
@@ -55,27 +58,31 @@ async def check_for_update(repo):
 async def download_asset(tarball_url, target_file):
     log(f'Downloading {tarball_url}')
     headers = {'User-Agent': 'TartLab'}
-    try:
-        response = urequests.get(tarball_url, headers=headers)
-        if response.status_code == 200:
-            with open(target_file, 'wb') as file:
-                while True:
-                    chunk = response.raw.read(1024)
-                    if not chunk:
-                        break
-                    file.write(chunk)
-            return True
-        else:
-            log(f"Error: Received status code {response.status_code}")
-            return False
-    except Exception as e:
-        log(f"An error occurred: {e}")
-        return False
-    finally:
+    retries = 0
+    while retries < 5:
         try:
-            response.close()
-        except:
-            pass
+            response = urequests.get(tarball_url, headers=headers)
+            if response.status_code == 200:
+                with open(target_file, 'wb') as file:
+                    while True:
+                        chunk = response.raw.read(1024)
+                        if not chunk:
+                            break
+                        file.write(chunk)
+                response.close()
+                return True
+            else:
+                log(f"Error: Received status code {response.status_code}")
+                response.close()
+                return False
+        except OSError as e:
+            log(f"An error occurred while downloading. Retrying...")
+            if e.args[0] == 23:    # too many open files / sockets
+                await asyncio.sleep(2)  # let the server finish out some of those requests
+                retries += 1
+            else:
+                raise
+    raise Exception("Max retries exceeded for download.")
 
 
 def sha256_hash(file_path):
@@ -117,7 +124,8 @@ async def untar(filename, target_folder='/', overwrite=False, verbose=False, chu
                 elif verbose:
                     print("? %s" % target_path)
     except Exception as e:
-        log("Error extracting tar file:", e)
+        log("Error extracting tar file:")
+        log_exception(e)
 
 
 async def update_folder(tar_file, target_folder, replace):
@@ -154,7 +162,8 @@ async def update_packages(repo):
             log(f'Not enough disk space!')
             return False
     except Exception as e:
-        log(f'Error checking disk space! {e}')
+        log(f'Error checking disk space!')
+        log_exception(e)
         return False
 
     # Delete and recreate the temp update folder if it exists
@@ -169,6 +178,7 @@ async def update_packages(repo):
         a = manifest_asset[0]
     except Exception as e:
         log(f'Could not find manifest.json.')
+        log_exception(e)
         clean_up()
         return False
 
@@ -180,7 +190,8 @@ async def update_packages(repo):
             clean_up()
             return False
     except Exception as e:
-        log(f'Error downloading manifest! {e}')
+        log(f'Error downloading manifest!')
+        log_exception(e)
         clean_up()
         return False
 
@@ -189,8 +200,9 @@ async def update_packages(repo):
     try:
         with open(TMP_UPDATE_FOLDER + '/manifest.json', 'r') as file:
             manifest = ujson.load(file)
-    except:
+    except Exception as e:
         log(f'Error opening manifest.')
+        log_exception(e)
         clean_up()
         return False
 
@@ -210,7 +222,8 @@ async def update_packages(repo):
                     clean_up()
                     return False
     except Exception as e:
-        log(f'Error downloading! {e}')
+        log(f'Error downloading!')
+        log_exception(e)
         clean_up()
         return False
 
@@ -223,7 +236,8 @@ async def update_packages(repo):
                 clean_up()
                 return False
     except Exception as e:
-        log(f'Error checking hashes! {e}')
+        log(f'Error checking hashes!')
+        log_exception(e)
         clean_up()
         return False
     log('Downloaded files successfully.')
@@ -242,7 +256,8 @@ async def update_packages(repo):
             fname = TMP_UPDATE_FOLDER + '/' + m['file_name']
             await update_folder(fname, m['target'], m['clear_first'])
     except Exception as e:
-        log(f'Error installing packages! {e}')
+        log(f'Error installing packages!')
+        log_exception(e)
         clean_up()
         return False
 
@@ -278,10 +293,10 @@ async def main_update_routine():
             break
 
     for repo in repos['list']:
-        log(f"\nStarting update for {repo['name']} to version {repo['installed_version']}")
+        log(f"\nStarting update for {repo['name']} from version {repo['installed_version']}")
         await asyncio.sleep(2)
         if await update_packages(repo):
-            log(f"Updated {repo['name']} to version {repo['installed_version']}")
+            log(f"Updated {repo['name']} from version {repo['installed_version']}")
             if updating_updater:  # this should only be at the very end anyway, but...
                 break
         else:
