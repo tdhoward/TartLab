@@ -52,14 +52,12 @@ fb.line(0, 0, WIDTH - 1, 0, pal.BLUE)
 fb.line(WIDTH - 1, 0, WIDTH - 1, HEIGHT - 1, pal.BLUE)
 fb.line(WIDTH - 1, HEIGHT - 1, 0, HEIGHT - 1, pal.BLUE)
 fb.line(0, HEIGHT - 1, 0, 0, pal.BLUE)
-text = 'TARTLAB'
-fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 - 64, pal.WHITE, 2)
-display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
 
 
 USER_BASE_DIR = '/files/user'
 IDE_BASE_DIR = '/ide'
 settings = {}
+repos = {}
 
 class CaptureOutput(io.IOBase):
     def __init__(self):
@@ -203,7 +201,7 @@ def create_soft_ap(ap_name):
     return '0.0.0.0'
 
 def initialize():
-    global settings
+    global settings, repos
     # You have to do this one-at-a-time...
     try:
         os.mkdir('/files')  # make sure folder exists
@@ -220,11 +218,34 @@ def initialize():
         settings = load_settings()
     except OSError:
         default_settings()
+    try:
+        with open('repos.json', 'r') as f:
+            repos = ujson.load(f)
+    except Exception as e:
+        log_exception(e)
 
 
 # --------- Execution starts here -----------
 # Since 'app' is used in decorators below, we need it to already exist.
 initialize()
+# Write the title info on the screen
+'''
+repos = {
+        'dbver': 1,
+        'list': [
+            {
+                'name': 'TartLab',
+                'repo': 'tdhoward/tartlab',
+                'installed_version': 'v0.2alpha'   # I guess we'll need to keep updating this
+            }
+        ]
+    }
+'''
+version = next((repo['installed_version'] for repo in repos['list'] if repo['name'] == 'TartLab'))
+text = 'TARTLAB ' + version
+fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 - 64, pal.WHITE, 2)
+display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
+
 network.hostname(settings['hostname'])  # sets up hostname (e.g. tartlab.local) on mDNS (currently only works for STA interface)
 sta_if = network.WLAN(network.STA_IF) # create station interface
 ap_if = network.WLAN(network.AP_IF) #  create access-point interface
@@ -540,12 +561,10 @@ async def api_get_hostname(reader, writer, request):
 # get the installed versions of repos
 @app.route("GET", "/api/versions")
 async def api_get_versions(reader, writer, request):
+    global repos
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
-    repos = {}
-    with open('repos.json', 'r') as f:
-        repos = ujson.load(f)
     writer.write(ujson.dumps(repos))
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
@@ -553,15 +572,12 @@ async def api_get_versions(reader, writer, request):
 # check for version updates for the repos
 @app.route("GET", "/api/checkupdates")
 async def api_check_updates(reader, writer, request):
-    global softAP
+    global softAP, repos
     if softAP:
         return await sendHTTPResponse(writer, 400, 'This WiFi has no internet access.')
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
-    repos = {}
-    with open('repos.json', 'r') as f:
-        repos = ujson.load(f)
     updates = []
     for repo in repos['list']:
         try:
