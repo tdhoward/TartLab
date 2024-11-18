@@ -228,19 +228,8 @@ def initialize():
 # --------- Execution starts here -----------
 # Since 'app' is used in decorators below, we need it to already exist.
 initialize()
+
 # Write the title info on the screen
-'''
-repos = {
-        'dbver': 1,
-        'list': [
-            {
-                'name': 'TartLab',
-                'repo': 'tdhoward/tartlab',
-                'installed_version': 'v0.2alpha'   # I guess we'll need to keep updating this
-            }
-        ]
-    }
-'''
 version = next((repo['installed_version'] for repo in repos['list'] if repo['name'] == 'TartLab'))
 text = 'TARTLAB ' + version
 fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 - 64, pal.WHITE, 2)
