@@ -82,17 +82,23 @@ def pseudoREPL(source):
         # Capture the output
         capture = CaptureOutput()
         os.dupterm(capture)
+        do_exec = False
+        if source.startswith('exec('):
+            do_exec = True
         try:
-            # Try to evaluate the input as an expression
-            result = eval(source, replGlobals)
-            if result is not None:
-                print(result)
+            if not do_exec:
+                # Try to evaluate the input as an expression
+                result = eval(source, replGlobals)
+                if result is not None:
+                    print(result)
         except (SyntaxError, NameError):
-            # If eval fails, fall back to exec
+            do_exec = True  # If eval fails, fall back to exec
+        if do_exec:
             try:
                 exec(source, replGlobals)
             except Exception as e:
                 print(f"Error: {e}")
+
         # Stop capturing
         os.dupterm(None)
         cap = capture.get_output()
