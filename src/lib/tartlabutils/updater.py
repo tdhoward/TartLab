@@ -233,6 +233,8 @@ async def update_packages(repo):
             fname = TMP_UPDATE_FOLDER + '/' + m['file_name']
             hash = sha256_hash(fname)
             if hash != m['sha256']:
+                f = m["file_name"]
+                log(f'Hash for {f} did not match!')
                 clean_up()
                 return False
     except Exception as e:
