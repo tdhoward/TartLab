@@ -167,9 +167,9 @@ function switchToTab(filename) {
   if (activeTab.contentType == "python" && editors[filename]) {
     editors[filename].editor.refresh();
     editors[filename].editor.focus(); // Ensure the editor gains keyboard focus
-    updateSaveButton();
-    updatePlayButtonVisibility();
   }
+  updateSaveButton();
+  updatePlayButtonVisibility();
 }
 
 function closeTab(event) {
