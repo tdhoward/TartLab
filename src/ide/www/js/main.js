@@ -190,6 +190,7 @@ function renameOrMoveFile(srcFile, destFile) {
         // If we just moved/renamed a file that is still open, rename that tab
         if (srcFile in editors) {
             renameTab(srcFile, destFile);
+            editors[destFile].tab.fullPath = "/files/user/" + destFile;
         }
         buildFilesPanelContent(); // update file list
     })
