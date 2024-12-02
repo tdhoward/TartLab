@@ -84,16 +84,17 @@ function saveFile() {
 
     if (!Object.keys(editors).includes(activeTab.filename)) return;
 
-    if (!editors[activeTab.filename].isNamed) {
-      let newFilename = prompt("Enter a name for the new file:");
-      if (newFilename) {
-        newFilename = stripLeadingSlashes(currentFolder + "/" + newFilename); // include the current folder
-        renameTab(activeTab.filename, newFilename);
-        editors[activeTab.filename].isNamed = true;
-      } else {
-        showToast("File name is required to save.", "warning");
-        return;
-      }
+    if (!editors[activeTab.filename].isNamed || !activeTab.fullPath.startsWith('/files/user')) {
+        let newFilename = prompt("Enter a name for the file:");
+        if (newFilename) {
+            newFilename = stripLeadingSlashes(currentFolder + "/" + newFilename); // include the current folder
+            editors[activeTab.filename].isNamed = true;
+            renameTab(activeTab.filename, newFilename);
+            activeTab.fullPath = "/files/user/" + newFilename;
+        } else {
+            showToast("File name is required to save.", "warning");
+            return;
+        }
     }
 
     const filename = encodeURIComponent(activeTab.filename); // URI encode the filename
@@ -410,6 +411,7 @@ export {
   createFolder,
   deleteFolder,
   uploadFile,
+  saveFile,
   showToast,
   showSpinners,
 };

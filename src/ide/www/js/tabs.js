@@ -1,4 +1,4 @@
-import { saveButton } from './main.js';
+import { saveButton, saveFile } from './main.js';
 import { replPlayButton } from './repl-client.js';
 
 let newFileCounter = 1;
@@ -128,6 +128,12 @@ function createEditor(tab, content, isNamed, mode) {
       Esc: function (cm) {
         if (cm.getOption("fullScreen")) cm.setOption("fullScreen", false);
       },
+      "Ctrl-S": function (cm) {
+        saveFile();
+      },
+      "Cmd-S": function (cm) { // macOS support
+        saveFile();
+      },
     },
   });
 
@@ -143,6 +149,8 @@ function createEditor(tab, content, isNamed, mode) {
 }
 
 function renameTab(fromFilename, toFilename) {
+  if(fromFilename == toFilename)
+    return;
   if (tabs[fromFilename].contentType == "python") {
     editors[toFilename] = editors[fromFilename];
     delete editors[fromFilename];
@@ -150,9 +158,7 @@ function renameTab(fromFilename, toFilename) {
   tabs[toFilename] = tabs[fromFilename];
   tabs[toFilename].filename = toFilename;
   tabs[toFilename].tabDiv.dataset.filename = toFilename;
-  tabs[
-    toFilename
-  ].tabDiv.innerHTML = `${toFilename} <button class="close-tab" data-filename="${toFilename}">X</button>`;
+  tabs[toFilename].tabDiv.innerHTML = `${toFilename} <button class="close-tab" data-filename="${toFilename}">X</button>`;
   delete tabs[fromFilename];
 }
 
