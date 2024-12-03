@@ -159,6 +159,7 @@ function renameTab(fromFilename, toFilename) {
   tabs[toFilename].filename = toFilename;
   tabs[toFilename].tabDiv.dataset.filename = toFilename;
   tabs[toFilename].tabDiv.innerHTML = `${toFilename} <button class="close-tab" data-filename="${toFilename}">X</button>`;
+  tabs[toFilename].tabDiv.onclick = () => switchToTab(toFilename);
   delete tabs[fromFilename];
 }
 
