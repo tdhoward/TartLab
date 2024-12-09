@@ -47,7 +47,7 @@ if not file_exists('repos.json'):
             {
                 'name': 'TartLab',
                 'repo': 'tdhoward/tartlab',
-                'installed_version': 'v0.6'   # I guess we'll need to keep updating this
+                'installed_version': 'v0.8'   # I guess we'll need to keep updating this
             }
         ]
     }

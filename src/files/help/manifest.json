@@ -38,6 +38,26 @@
 					"title":"Calculator",
 					"subtitle":"A simple calculator",
 					"file":"calculator.py"
+				},
+				{
+					"title":"Face",
+					"subtitle":"A cheerful face",
+					"file":"face.py"
+				},
+				{
+					"title":"Moire (slow)",
+					"subtitle":"Cool line patterns",
+					"file":"moire_slow.py"
+				},
+				{
+					"title":"Moire (fast)",
+					"subtitle":"Line patterns, but faster",
+					"file":"moire_fast.py"
+				},
+				{
+					"title":"Animation",
+					"subtitle":"A ball bounces on the screen",
+					"file":"animation.py"
 				}
 			]
 		}
