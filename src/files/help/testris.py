@@ -14,12 +14,10 @@ from micropython import const  # For constant values
 
 HIGH_SCORE_FILE = "testris_high_score.json"
 
-try:
-    from time import ticks_ms, ticks_diff  # For timing
-except ImportError:
-    from adafruit_ticks import ticks_ms, ticks_diff # type: ignore
+from time import ticks_ms, ticks_diff  # For timing
 
 # Get the display dimensions
+display_drv.rotation = 0
 display_width = display_drv.width
 display_height = display_drv.height
 if display_width > display_height:

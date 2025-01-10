@@ -1,4 +1,4 @@
-# Pulls in a distilled form of PyDevices (https://github.com/bdbarnett/mpdisplay)
+# Pulls in a distilled form of PyDevices (https://github.com/PyDevices/pydisplay)
 # in order to create a managed package that we can use for TartLab updates.
 
 import os

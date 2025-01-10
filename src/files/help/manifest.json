@@ -35,6 +35,11 @@
 					"file":"testris.py"
 				},
 				{
+					"title":"Snake",
+					"subtitle":"Feed the hungry snake!",
+					"file":"snake.py"
+				},
+				{
 					"title":"Calculator",
 					"subtitle":"A simple calculator",
 					"file":"calculator.py"
