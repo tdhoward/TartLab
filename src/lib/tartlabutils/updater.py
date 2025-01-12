@@ -5,7 +5,6 @@ from tarfile import TarFile
 from .miscutils import rmvdir, mkdirs, file_exists, log, log_exception, load_settings, save_settings
 import uhashlib
 import machine
-import urequests
 import time
 import uasyncio as asyncio
 
@@ -55,13 +54,13 @@ async def check_for_update(repo):
             pass
 
 
-async def download_asset(tarball_url, target_file):
-    log(f'Downloading {tarball_url}')
+async def download_asset(asset_url, target_file):
+    log(f'Downloading {asset_url}')
     headers = {'User-Agent': 'TartLab'}
     retries = 0
     while retries < 5:
         try:
-            response = urequests.get(tarball_url, headers=headers)
+            response = urequests.get(asset_url, headers=headers)
             if response.status_code == 200:
                 with open(target_file, 'wb') as file:
                     while True:
