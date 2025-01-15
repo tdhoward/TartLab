@@ -423,7 +423,7 @@ def bmp_to_framebuffer(filename):
             raise ValueError("Not a BMP file")
         f.seek(10)
         data_offset = struct.unpack("<I", f.read(4))[0]
-        f.seek(14)
+        f.seek(18)
         width, height = struct.unpack("<II", f.read(8))
         planes = struct.unpack("<H", f.read(2))[0]
         if planes != 1:
@@ -433,7 +433,6 @@ def bmp_to_framebuffer(filename):
             raise ValueError("Invalid color depth")
         f.seek(data_offset)
         buffer = memoryview(bytearray(width * height * 2))
-        f.seek(54)
         for i in range(height):
             buffer[(height - i - 1) * width * 2 : (height - i) * width * 2] = f.read(width * 2)
     return FrameBuffer(buffer, width, height, RGB565)
