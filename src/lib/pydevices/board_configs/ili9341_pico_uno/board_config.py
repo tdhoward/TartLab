@@ -5,18 +5,19 @@ Using Raspberry Pi Pico to Uno FlexyPin Adapter:
 See ICSP Jumpers at:
     https://learn.adafruit.com/adafruit-2-8-tft-touch-shield-v2/tsc2007-pinouts
 """
+
 from spibus import SPIBus
 from ili9341 import ILI9341
 from machine import Pin, I2C
 from ft6x36 import FT6x36
-from eventsys.devices import Devices, Broker
+from eventsys import devices
 
 display_bus = SPIBus(
     id=0,
     baudrate=62_500_000,
     sck=18,
     mosi=19,
-    miso=16, 
+    miso=16,
     dc=3,
     cs=17,
 )
@@ -44,13 +45,13 @@ display_drv = ILI9341(
 
 i2c = I2C(0, sda=Pin(20), scl=Pin(21), freq=100000)
 touch_drv = FT6x36(i2c)
-touch_read_func=touch_drv.get_positions
-touch_rotation_table=(6, 3, 0, 5)
+touch_read_func = touch_drv.get_positions
+touch_rotation_table = (6, 3, 0, 5)
 
-broker = Broker()
+broker = devices.Broker()
 
 touch_dev = broker.create_device(
-    type=Devices.TOUCH,
+    type=devices.types.TOUCH,
     read=touch_read_func,
     data=display_drv,
     data2=touch_rotation_table,

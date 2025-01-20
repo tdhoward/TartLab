@@ -3,14 +3,15 @@
 # SPDX-License-Identifier: MIT
 
 """
-PyDevices devices
+`eventsys.devices`
+====================================================
 
-Device classes for PyDevices's Event System.  May also be used
+Device classes for eventsys's Event System.  May also be used
 with other applications.  Devices are objects that poll for events
 and return them.  They can be subscribed to and unsubscribed from
 to receive events.
 
-Devices can be created with Devices.create() or by calling the
+Devices can be created with Broker.create_device() or by calling the
 constructor of the device class directly.  Devices can be
 subscribed to with .subscribe() and unsubscribed from with
 .unsubscribe().  Devices can be polled for events with .poll().
@@ -19,19 +20,19 @@ and unregistered with .unregister_device().  Devices can be chained
 together by setting the .broker property of a device to another device.
 
 Devices can be created with the following types:
-- Devices.BROKER: A device that polls multiple devices.
-- Devices.QUEUE: A device that returns multiple types of events.
-- Devices.TOUCH: A device that returns MOUSEBUTTONDOWN when touched,
+- types.BROKER: A device that polls multiple devices.
+- types.QUEUE: A device that returns multiple types of events.
+- types.TOUCH: A device that returns MOUSEBUTTONDOWN when touched,
     MOUSEMOTION when moved and MOUSEBUTTONUP when released.
-- Devices.ENCODER: A device that returns MOUSEWHEEL events when turned,
+- types.ENCODER: A device that returns MOUSEWHEEL events when turned,
     MOUSEBUTTONDOWN when pressed.
-- Devices.KEYPAD: A device that returns KEYDOWN and KEYUP events when
+- types.KEYPAD: A device that returns KEYDOWN and KEYUP events when
     keys are pressed or released.
-- Devices.JOYSTICK: A device that returns joystick events (not implemented).
+- types.JOYSTICK: A device that returns joystick events (not implemented).
 """
 
 from micropython import const
-from . import Events
+from . import events
 from sys import exit
 
 
@@ -42,11 +43,58 @@ REVERSE_X = const(0b010)
 REVERSE_Y = const(0b100)
 
 
-class Devices:
+def custom_type(type_name, responses):
+    """
+    Create a new device type with a list of responses.
+
+    Args:
+        type_name (str): The name of the device type.
+        responses (list[int]): A list of event types that the device can return.
+
+    Returns:
+        (Device): The newly created device type.
+
+    Raises:
+        ValueError: If `type_name` is not a string, `responses` is not a list, or any response is not an integer.
+        ValueError: If a device type with the same name already exists in the `types` class.
+        ValueError: If a device class with the same name already exists.
+
+    Example:
+        To create the KEYPAD device type and `KeypadDevice` class:
+
+        ```python
+        import eventsys.device as device
+        from eventsys import events
+
+        KeypadDevice = device.new_type("KEYPAD", [events.KEYDOWN, events.KEYUP])
+        ```
+    """
+    if not isinstance(type_name, str):
+        raise ValueError("type_name must be a string")
+    type_name = type_name.strip().upper()
+    if not isinstance(responses, list):
+        raise ValueError("responses must be a list")
+    if not all(isinstance(event, int) for event in responses):
+        raise ValueError("all responses must be integers")
+
+    if hasattr(types, type_name):
+        raise ValueError(f"Device type {type_name} already exists in types class.")
+    class_name = type_name[0].upper() + type_name[1:].lower() + "Device"
+    if class_name in [cls.__name__ for cls in _mapping.values()]:
+        raise ValueError(f"Device class {class_name} already exists.")
+
+    value = len(_mapping)
+    setattr(types, type_name, value)
+    NewClass = type(class_name, (Device,), {"type": value, "responses": responses})
+    _mapping[value] = NewClass
+    return NewClass
+
+
+
+class types:
     """
     Device types for the Event System.
     """
-
     UNDEFINED = const(-1)
     BROKER = const(0x00)
     QUEUE = const(0x01)
@@ -55,132 +103,68 @@ class Devices:
     KEYPAD = const(0x04)
     JOYSTICK = const(0x05)
 
-    @staticmethod
-    def create(type, *args, **kwargs):
-        """
-        Create a new instance of a device.
 
-        Args:
-            type (int): The type of device to create.
-            *args (Any): Variable length argument list.
-            **kwargs (Any): Arbitrary keyword arguments.
-
-        Returns:
-            _Device (_Device): The created device object.
-
-        Raises:
-            ValueError: If the device type is invalid.
-        """
-        if cls := _mapping.get(type):
-            return cls(*args, **kwargs)
-        raise ValueError("Invalid device type")
-
-    @staticmethod
-    def new_type(type_name, responses):
-        """
-        Create a new device type with a list of responses.
-
-        Args:
-            type_name (str): The name of the device type.
-            responses (list[int]): A list of event types that the device can return.
-
-        Returns:
-            type (_Device): The newly created device type.
-
-        Raises:
-            ValueError: If `type_name` is not a string, `responses` is not a list, or any response is not an integer.
-            ValueError: If a device type with the same name already exists in the `Devices` class.
-            ValueError: If a device class with the same name already exists.
-
-        Example:
-            To create the KEYPAD device type and `KeypadDevice` class:
-
-            ```python
-            from eventsys.devices import Devices
-            from eventsys import Events
-
-            KeypadDevice = Devices.new_type("KEYPAD", [Events.KEYDOWN, Events.KEYUP])
-            ```
-        """
-        if not isinstance(type_name, str):
-            raise ValueError("type_name must be a string")
-        type_name = type_name.strip().upper()
-        if not isinstance(responses, list):
-            raise ValueError("responses must be a list")
-        if not all(isinstance(event, int) for event in responses):
-            raise ValueError("all responses must be integers")
-
-        if hasattr(Devices, type_name):
-            raise ValueError(
-                f"Device type {type_name} already exists in Devices class."
-            )
-        class_name = type_name[0].upper() + type_name[1:].lower() + "Device"
-        if class_name in [cls.__name__ for cls in _mapping.values()]:
-            raise ValueError(f"Device class {class_name} already exists.")
-
-        value = len(_mapping)
-        setattr(Devices, type_name, value)
-        NewClass = type(class_name, (_Device,), {"type": value, "responses": responses})
-        _mapping[value] = NewClass
-        return NewClass
-
-
-class _Device:
+class Device:
     """
-    Base class for devices.
+    Base class for devices.  Must be subclassed. Should not be instantiated directly.
+
+    Attributes:
+        type (Devices): The type of the device.
+        responses (list): The list of event types that the device can respond to.
     """
 
-    type = Devices.UNDEFINED
-    responses = Events.filter
-    Events = Events
-    _broker = None
+    type = types.UNDEFINED
+    responses = events.filter
 
     def __init__(self, read=None, data=None, read2=None, data2=None):
         """
         Create a new device object.
 
         Args:
-            read (function, optional): A function that returns an event or None.  Defaults to None.
+            read (callable, optional): A function that returns an event or None.  Defaults to None.
             data (Any, optional): Data to pass to the read function.  Defaults to None.
-            read2 (function, optional): A function that returns a value or None.  Defaults to None.
+            read2 (callable, optional): A function that returns a value or None.  Defaults to None.
             data2 (Any, optional): Data to pass to the read2 function.  Defaults to None.
         """
-        self._event_callbacks = dict()
+        self._event_callbacks = {}
 
         self._read = read if read else lambda: None
         self._data = data
         self._read2 = read2 if read2 else lambda: None
         self._data2 = data2
 
+        self._broker = None
         self._state = None
         self._user_data = None  # Can be set and retrieved by apps such as lv_config
-        self._read_cb = None  # Read callback - can be set by apps such as lv_config
 
-    def poll(self) -> Events:
+    def poll(self, *args) -> events:
         """
         Poll the device for events.
+
+        Args:
+            *args (Any): Additional arguments that can be passed to the read callback functions.
 
         Returns:
             Event: The event that was polled or None if no event was polled.
         """
         if (event := self._poll()) is not None:
-            if event.type in Events.filter:
-                if event.type == Events.QUIT:
+            if event.type in events.filter:
+                if event.type == events.QUIT:
                     if self._broker:
                         self._broker.quit()
                 if callback_list := self._event_callbacks.get(event.type):
-                    for func in callback_list:
-                        func(event)
+                    for callback in callback_list:
+                        callback(event, *args)
                 return event
         return None
 
-    def subscribe(self, callback, event_types):
+    def subscribe(self, callback, event_types=None):
         """
         Subscribe to events from the device.
 
         Args:
             callback (function): The function to call when an event is received.
-            event_types (list[int]): A list of event types to subscribe to.
+            event_types (list[int] | None): A list of event types to subscribe to.
 
         Raises:
             ValueError: If `callback` is not callable.
@@ -191,23 +175,22 @@ class _Device:
             def callback(event):
                 print(event)
 
-            device.subscribe(callback, [Events.MOUSEBUTTONDOWN, Events.MOUSEBUTTONUP])
+            device.subscribe(callback, [events.MOUSEBUTTONDOWN, events.MOUSEBUTTONUP])
             ```
 
-            This will call `callback` when the device receives a MOUSEBUTTONDOWN or MOUSEBUTTONUP event.
+            This will call `callback` when the  receives a MOUSEBUTTONDOWN or MOUSEBUTTONUP event.
         """
+        event_types = event_types or self.responses
         if not callable(callback):
             raise ValueError("callback is not callable.")
         for event_type in event_types:
             if event_type not in self.responses:
-                raise ValueError(
-                    "the specified event_type is not a response from this device"
-                )
+                raise ValueError("the specified event_type is not a response from this device")
             callback_set = self._event_callbacks.get(event_type, set())
             callback_set.add(callback)
             self._event_callbacks[event_type] = callback_set
 
-    def unsubscribe(self, callback, event_types):
+    def unsubscribe(self, callback, event_types=None):
         """
         Unsubscribes a callback function from one or more event types.
 
@@ -215,6 +198,7 @@ class _Device:
             callback (function): The callback function to unsubscribe.
             event_types (list): A list of event types to unsubscribe from.
         """
+        event_types = event_types or self.responses
         for event_type in event_types:
             if callback_set := self._event_callbacks.get(event_type):
                 callback_set.remove(callback)
@@ -241,54 +225,27 @@ class _Device:
     def user_data(self, value):
         self._user_data = value
 
-    def set_read_cb(self, callback):
-        """
-        Set the callback function to be called when a read event occurs.
 
-        Args:
-            callback (callable): The callback function to be called.
-
-        Raises:
-            ValueError: If the provided callback is not callable.
-        """
-        if callable(callback):
-            self._read_cb = callback
-        else:
-            raise ValueError("callback must be callable")
-
-    def read_cb(self, *args):
-        """
-        Used by lv_config or other applications.
-        Polls itself and passes the result to the read callback function
-        saved by .set_read_cb().
-
-        Parameters:
-        *args: Additional arguments that can be passed to the read callback function.
-
-        Returns:
-        None
-        """
-        if self._read_cb:
-            self._read_cb(self.poll(), *args)
-
-
-class Broker(_Device):
+class Broker(Device):
     """
     The Broker class is a device that polls multiple devices for events and forwards them to
     subscribers.
 
     Attributes:
-        type (Devices): The type of the device (set to `Devices.BROKER`).
+        type (Devices): The type of the device (set to `types.BROKER`).
         responses (list): The list of event types that the device can respond to.
+        events (events): The events class for convenience.
+                         Applications can use Broker.events.KEYDOWN, etc.
     """
 
-    type = Devices.BROKER
-    responses = Events.filter
+    type = types.BROKER
+    responses = events.filter
+    events = events  # Create a reference to the events class for convenience.
 
     def __init__(self):
         super().__init__()
         self.devices = []  # List of devices to poll
-        self._device_callbacks = dict()
+        self._device_callbacks = {}
         # Function to call when the window close button is clicked.
         # Set it like `display_drv.quit_func = cleanup_func` where `cleanup_func` is a
         # function that cleans up resources and calls `sys.exit()`.
@@ -347,26 +304,32 @@ class Broker(_Device):
         else:
             super().unsubscribe(callback, event_types)
 
-    def create_device(self, type=Devices.QUEUE, **kwargs) -> _Device:
+    def create_device(self, type=types.QUEUE, **kwargs) -> Device:
         """
         Create a device object.
 
         Args:
-            type (int, optional): The type of device to create. Defaults to Devices.QUEUE.
+            type (int, optional): The type of device to create. Defaults to types.QUEUE.
+            **kwargs (Any): Arbitrary keyword arguments for the class constructor.
 
         Returns:
-            _Device: The created device object.
+            Device: The created device object.
+
+        Raises:
+            ValueError: If the device type is invalid.
         """
-        dev = Devices.create(type, **kwargs)
-        self.register_device(dev)
-        return dev
+        if cls := _mapping.get(type):
+            dev = cls(**kwargs)
+            self.register_device(dev)
+            return dev
+        raise ValueError("Invalid device type")
 
     def register_device(self, dev):
         """
         Register a device to be polled.
 
         Args:
-            dev (_Device): The device object to register.
+            dev (Device): The device object to register.
         """
         dev.broker = self
         self.devices.append(dev)
@@ -376,7 +339,7 @@ class Broker(_Device):
         Unregister a device.
 
         Args:
-            dev (_Device): The device object to unregister.
+            dev (Device): The device object to unregister.
         """
         if dev in self.devices:
             self.devices.remove(dev)
@@ -394,7 +357,8 @@ class Broker(_Device):
         """
         Sets the function to call when the window close button is clicked.
 
-        :param value: The function to call.
+        Args:
+            value (function): The function to call when the window close button is clicked.
         """
         if not callable(value):
             raise ValueError("quit_func must be callable")
@@ -422,7 +386,7 @@ class Broker(_Device):
         return None
 
 
-class QueueDevice(_Device):
+class QueueDevice(Device):
     """
     Represents a queue device.
 
@@ -431,13 +395,13 @@ class QueueDevice(_Device):
         responses (list): The list of events that the device can respond to.
     """
 
-    type = Devices.QUEUE
-    responses = Events.filter
+    type = types.QUEUE
+    responses = events.filter
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self._data2 is None:
-            self._data2 = Events.filter
+            self._data2 = events.filter
         if hasattr(self._data, "touch_scale"):
             self.scale = self._data.touch_scale
         else:
@@ -453,22 +417,32 @@ class QueueDevice(_Device):
         if (event := self._read()) is not None:
             if event.type in self._data2:
                 if event.type in (
-                    Events.MOUSEMOTION,
-                    Events.MOUSEBUTTONDOWN,
-                    Events.MOUSEBUTTONUP,
+                    events.MOUSEMOTION,
+                    events.MOUSEBUTTONDOWN,
+                    events.MOUSEBUTTONUP,
                 ):
                     if (scale := self.scale) != 1:
                         event.pos = (
                             int(event.pos[0] // scale),
                             int(event.pos[1] // scale),
                         )
-                        if event.type == Events.MOUSEMOTION:
+                        if event.type == events.MOUSEMOTION:
                             event.rel = (event.rel[0] // scale, event.rel[1] // scale)
                 return event
         return None
 
+    def peek(self) -> bool:
+        """
+        Peek at the next event in the queue without removing it.
 
-class TouchDevice(_Device):
+        Returns:
+            bool: True if there is an event in the queue that matches the filter in self._data, otherwise False.
+                Note: self._data defaults to events.filter but may be set to a different list.
+        """
+        raise NotImplementedError("QueueDevice.peek() not implemented")
+
+
+class TouchDevice(Device):
     """
     Represents a touch input device.
 
@@ -477,7 +451,7 @@ class TouchDevice(_Device):
     such as mouse motion, mouse button down, and mouse button up.
 
     Attributes:
-        type (str): The type of the device (set to Devices.TOUCH).
+        type (str): The type of the device (set to types.TOUCH).
         responses (tuple): The supported event types for the device.
 
     Args:
@@ -485,8 +459,8 @@ class TouchDevice(_Device):
         **kwargs (Any): Arbitrary keyword arguments.
     """
 
-    type = Devices.TOUCH
-    responses = (Events.MOUSEMOTION, Events.MOUSEBUTTONDOWN, Events.MOUSEBUTTONUP)
+    type = types.TOUCH
+    responses = (events.MOUSEMOTION, events.MOUSEBUTTONDOWN, events.MOUSEBUTTONUP)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -521,6 +495,26 @@ class TouchDevice(_Device):
         # Currently, bit 2 = invert_y, bit 1 is invert_x and bit 0 is swap_xy, but that may change.
         self._mask = self._data2[self._rotation // 90]
 
+    @property
+    def rotation_table(self):
+        """
+        Get the rotation table of the touch device.
+
+        Returns:
+            (list): The rotation table.
+        """
+        return self._data2
+
+    @rotation_table.setter
+    def rotation_table(self, value):
+        """
+        Set the rotation table of the touch device.
+
+        Args:
+            value (list): The rotation table.
+        """
+        self._data2 = value
+
     def _poll(self):
         """
         Poll the touch device for touch events.
@@ -546,8 +540,8 @@ class TouchDevice(_Device):
             self._state = (x, y)
             if last_pos is not None:
                 last_x, last_y = last_pos
-                return Events.Motion(
-                    Events.MOUSEMOTION,
+                return events.Motion(
+                    events.MOUSEMOTION,
                     self._state,
                     (x - last_x, y - last_y),
                     (1, 0, 0),
@@ -555,17 +549,15 @@ class TouchDevice(_Device):
                     None,
                 )
             else:
-                return Events.Button(
-                    Events.MOUSEBUTTONDOWN, self._state, 1, False, None
-                )
+                return events.Button(events.MOUSEBUTTONDOWN, self._state, 1, False, None)
         elif self._state is not None:
             last_pos = self._state
             self._state = None
-            return Events.Button(Events.MOUSEBUTTONUP, last_pos, 1, False, None)
+            return events.Button(events.MOUSEBUTTONUP, last_pos, 1, False, None)
         return None
 
 
-class EncoderDevice(_Device):
+class EncoderDevice(Device):
     """
     A class representing an encoder device.
 
@@ -574,8 +566,8 @@ class EncoderDevice(_Device):
         responses (tuple): The events that the device can respond to (MOUSEWHEEL, MOUSEBUTTONDOWN, MOUSEBUTTONUP).
     """
 
-    type = Devices.ENCODER
-    responses = (Events.MOUSEWHEEL, Events.MOUSEBUTTONDOWN, Events.MOUSEBUTTONUP)
+    type = types.ENCODER
+    responses = (events.MOUSEWHEEL, events.MOUSEBUTTONDOWN, events.MOUSEBUTTONUP)
 
     def __init__(self, *args, **kwargs):
         """
@@ -608,8 +600,8 @@ class EncoderDevice(_Device):
         pressed = self._read2()
         if pressed != last_pressed:
             self._state = (last_pos, pressed)
-            return Events.Button(
-                Events.MOUSEBUTTONDOWN if pressed else Events.MOUSEBUTTONUP,
+            return events.Button(
+                events.MOUSEBUTTONDOWN if pressed else events.MOUSEBUTTONUP,
                 (0, 0),
                 self._data,
                 False,
@@ -621,32 +613,26 @@ class EncoderDevice(_Device):
             steps = pos - last_pos
             self._state = (pos, last_pressed)
             if self._data % 2 == 0:
-                return Events.Wheel(
-                    Events.MOUSEWHEEL, False, 0, steps, 0, steps, False, None
-                )
-            return Events.Wheel(
-                Events.MOUSEWHEEL, False, steps, 0, steps, 0, False, None
-            )
+                return events.Wheel(events.MOUSEWHEEL, False, 0, steps, 0, steps, False, None)
+            return events.Wheel(events.MOUSEWHEEL, False, steps, 0, steps, 0, False, None)
         return None
 
 
-class KeypadDevice(_Device):
+class KeypadDevice(Device):
     """
     Represents a keypad device.
 
-    This class inherits from the `_Device` class and provides functionality for handling keypad events.
-
     Attributes:
-        type (Devices): The type of the device (set to `Devices.KEYPAD`).
-        responses (tuple): The types of events that the device can respond to (set to `(Events.KEYDOWN, Events.KEYUP)`).
+        type (Devices): The type of the device (set to `types.KEYPAD`).
+        responses (tuple): The types of events that the device can respond to (set to `(events.KEYDOWN, events.KEYUP)`).
 
     Methods:
         __init__: Initializes the KeypadDevice object.
         _poll: Polls the keypad for key events.
     """
 
-    type = Devices.KEYPAD
-    responses = (Events.KEYDOWN, Events.KEYUP)
+    type = types.KEYPAD
+    responses = (events.KEYDOWN, events.KEYUP)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -657,30 +643,28 @@ class KeypadDevice(_Device):
         Polls the keypad for key events.
 
         Returns:
-            Events.Key or None: An instance of the `Events.Key` class representing the key event, or `None` if no key event occurred.
+            events.Key or None: An instance of the `events.Key` class representing the key event, or `None` if no key event occurred.
         """
         keys = set(self._read())
         released = self._state - keys
         if released:
             key = released.pop()
             self._state.remove(key)
-            return Events.Key(Events.KEYUP, chr(key), key, 0, 0)
+            return events.Key(events.KEYUP, chr(key), key, 0, 0)
         pressed = keys - self._state
         if pressed:
             key = pressed.pop()
             self._state.add(key)
-            return Events.Key(Events.KEYDOWN, chr(key), key, 0, 0)
+            return events.Key(events.KEYDOWN, chr(key), key, 0, 0)
         return None
 
 
-class JoystickDevice(_Device):
+class JoystickDevice(Device):
     """
     Represents a joystick device.
 
-    This class inherits from the `_Device` class and provides specific functionality for joystick devices.
-
     Attributes:
-        type (Devices): The type of the device, set to `Devices.JOYSTICK`.
+        type (Devices): The type of the device, set to `types.JOYSTICK`.
         responses (tuple): A tuple of event types that this device can respond to.
 
     Methods:
@@ -691,13 +675,13 @@ class JoystickDevice(_Device):
         NotImplementedError: If the `_poll` method is not implemented.
     """
 
-    type = Devices.JOYSTICK
+    type = types.JOYSTICK
     responses = (
-        Events.JOYAXISMOTION,
-        Events.JOYBALLMOTION,
-        Events.JOYHATMOTION,
-        Events.JOYBUTTONDOWN,
-        Events.JOYBUTTONUP,
+        events.JOYAXISMOTION,
+        events.JOYBALLMOTION,
+        events.JOYHATMOTION,
+        events.JOYBUTTONDOWN,
+        events.JOYBUTTONUP,
     )
 
     def __init__(self, *args, **kwargs):
@@ -707,12 +691,48 @@ class JoystickDevice(_Device):
         raise NotImplementedError("JoystickDevice.read() not implemented")
 
 
+
+class VirtualDevices:
+    class VirtualDevice:
+        def __init__(self, virtual_devices, device_type):
+            self._virtual_devices = virtual_devices
+            self.type = device_type
+            self.user_data = None
+            self._fifo = []
+
+        def subscribe(self, callback):
+            self._callback = callback
+
+        def poll(self, *args):
+            self._virtual_devices.poll_queue_device()
+            event = self._fifo.pop(0) if self._fifo else None
+            self._callback(event, *args)
+
+        def add_event(self, event):
+            self._fifo.append(event)
+
+    def __init__(self, queue_device):
+        self._queue_device = queue_device
+        self._vd_touch = self.VirtualDevice(self, types.TOUCH)
+        self._vd_encoder = self.VirtualDevice(self, types.ENCODER)
+        self._vd_keypad = self.VirtualDevice(self, types.KEYPAD)
+        self.devices = [self._vd_touch, self._vd_encoder, self._vd_keypad]
+
+    def poll_queue_device(self):
+        if e:= self._queue_device.poll():
+            if e.type == events.MOUSEBUTTONDOWN or e.type == events.MOUSEBUTTONUP:
+                self._vd_touch.add_event(e)
+            elif e.type == events.MOUSEWHEEL:
+                self._vd_encoder.add_event(e)
+            elif e.type == events.KEYDOWN or e.type == events.KEYUP:
+                self._vd_keypad.add_event(e)
+
 _mapping = {
     # Mapping of device types to device classes
-    Devices.BROKER: Broker,
-    Devices.QUEUE: QueueDevice,
-    Devices.TOUCH: TouchDevice,
-    Devices.ENCODER: EncoderDevice,
-    Devices.KEYPAD: KeypadDevice,
-    Devices.JOYSTICK: JoystickDevice,
+    types.BROKER: Broker,
+    types.QUEUE: QueueDevice,
+    types.TOUCH: TouchDevice,
+    types.ENCODER: EncoderDevice,
+    types.KEYPAD: KeypadDevice,
+    types.JOYSTICK: JoystickDevice,
 }

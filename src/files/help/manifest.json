@@ -63,6 +63,16 @@
 					"title":"Animation",
 					"subtitle":"A ball bounces on the screen",
 					"file":"animation.py"
+				},
+				{
+					"title":"Display bitmap",
+					"subtitle":"Loads and displays a bitmap file",
+					"file":"display_bmp.py"
+				},
+				{
+					"title":"Sprite",
+					"subtitle":"Demonstrates using sprites",
+					"file":"sprite.py"
 				}
 			]
 		}

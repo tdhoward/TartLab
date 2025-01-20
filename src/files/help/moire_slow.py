@@ -1,7 +1,7 @@
 # Example of using lines and loops to make fun patterns
 
 from hdwconfig import display_drv    # Get the display ready
-import pygfx                         # Bring in the drawing functions
+import graphics                         # Bring in the drawing functions
 
 # Set the display orientation to horizontal
 display_drv.rotation = 90
@@ -9,8 +9,8 @@ display_drv.rotation = 90
 HEIGHT = display_drv.height
 WIDTH = display_drv.width
 
-if display_drv.requires_byte_swap:
-    needs_swap = display_drv.disable_auto_byte_swap(True)
+if display_drv.requires_byteswap:
+    needs_swap = display_drv.disable_auto_byteswap(True)
 else:
     needs_swap = False
 
@@ -41,22 +41,22 @@ display_drv.fill(pal.BLACK)
 x = 0
 while x < CENTER_X:
 	# Draw lines from the top left corner to along the bottom of the screen
-	pygfx.line(display_drv, 0, 0, x, HEIGHT - 1, pal.GREEN)
+	graphics.line(display_drv, 0, 0, x, HEIGHT - 1, pal.GREEN)
 	x = x + 4
 
 x = 0
 while x < CENTER_X:
 	# Draw lines from the bottom center point to along the top of the screen
-	pygfx.line(display_drv, CENTER_X, HEIGHT - 1, x, 0, pal.YELLOW)
+	graphics.line(display_drv, CENTER_X, HEIGHT - 1, x, 0, pal.YELLOW)
 	x = x + 4
 
 while x < WIDTH:
 	# Draw lines from the bottom center point to along the top of the screen
-	pygfx.line(display_drv, CENTER_X, HEIGHT - 1, x, 0, pal.ORANGE)
+	graphics.line(display_drv, CENTER_X, HEIGHT - 1, x, 0, pal.ORANGE)
 	x = x + 4
 
 x = CENTER_X
 while x < WIDTH:
 	# Draw lines from the top right corner to along the bottom of the screen
-	pygfx.line(display_drv, WIDTH - 1, 0, x, HEIGHT - 1, pal.RED)
+	graphics.line(display_drv, WIDTH - 1, 0, x, HEIGHT - 1, pal.RED)
 	x = x + 4
