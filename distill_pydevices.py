@@ -14,14 +14,17 @@ destination_root = os.path.abspath(os.path.join('..', 'TartLab', 'src', 'lib', '
 # Define the copy tasks
 copy_tasks = [
     {
-        'src_pattern': os.path.join('board_configs', '*', 'board_config.py'),
+        'src_pattern': os.path.join('board_configs', 'busdisplay', 'i80', '*', 'board_config.py'),
         'dst_pattern': os.path.join('board_configs', '*', 'board_config.py'),
-        'exclude_dirs': [
-            os.path.join('board_configs', 'circuitpython'),
-            os.path.join('board_configs', 'desktop'),
-            os.path.join('board_configs', 'jupyter'),
-        ],
-        'exclude_dirs_glob': [os.path.join('board_configs', 'wokwi_*')],
+    },
+    {
+        'src_pattern': os.path.join('board_configs', 'busdisplay', 'spi', '*', 'board_config.py'),
+        'dst_pattern': os.path.join('board_configs', '*', 'board_config.py'),
+        'exclude_dirs_glob': [os.path.join('board_configs', 'busdisplay', 'spi', 'wokwi_*')],
+    },
+    {
+        'src_pattern': os.path.join('drivers', 'bus', '*.py'),
+        'dst_pattern': os.path.join('bus_drv', ''),
     },
     {
         'src_pattern': os.path.join('drivers', 'display', '*.py'),
@@ -34,19 +37,11 @@ copy_tasks = [
     {
         'src_pattern': os.path.join('src', 'lib', '*'),
         'dst_pattern': os.path.join('', ''),
-        'exclude_files': ['framebuf.py'],
+        'exclude_files': ['path.py', 'board_config.py'],  # exclude some extra files we don't need
     },
     {
-        'src_pattern': os.path.join('src', 'extras', 'png.py'),
-        'dst_pattern': os.path.join('utils', 'png.py'),
-    },
-    {
-        'src_pattern': os.path.join('src', 'extras', 'pbm.py'),
-        'dst_pattern': os.path.join('utils', 'pbm.py'),
-    },
-    {
-        'src_pattern': os.path.join('src', 'extras', 'bmp565.py'),
-        'dst_pattern': os.path.join('utils', 'bmp565.py'),
+        'src_pattern': os.path.join('src', 'add_ons', '*'),
+        'dst_pattern': os.path.join('add_ons', ''),
     },
 ]
 
