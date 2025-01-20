@@ -4,10 +4,9 @@
     "src/files/user",
     "src/configs",
     "src/lib/pydevices",
-    "src/lib/pydevices/buses",
+    "src/lib/pydevices/bus_drv",
     "src/lib/pydevices/display_drv",
     "src/lib/pydevices/touch_drv",
-    "src/lib/pydevices/displays",
-    "src/lib/pydevices/utils"
+    "src/lib/pydevices/add_ons"
   ]
 }

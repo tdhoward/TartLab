@@ -1,4 +1,4 @@
-""" T-Display-S3 Pro 222x480 ST7796 display - contributed by @tdhoward
+"""T-Display-S3 Pro 222x480 ST7796 display - contributed by @tdhoward
 https://github.com/Xinyuan-LilyGO/T-Display-S3-Pro/blob/master/schematic/T-Display-Pro.pdf
 """
 
@@ -6,7 +6,7 @@ from spibus import SPIBus
 from st7796 import ST7796
 from machine import Pin, I2C
 from cst226 import CST226
-from eventsys.devices import Devices, Broker
+from eventsys import devices
 
 
 display_bus = SPIBus(
@@ -24,7 +24,7 @@ display_drv = ST7796(
     width=222,
     height=480,
     colstart=49,
-    rowstart=0,  
+    rowstart=0,
     rotation=0,
     mirrored=False,
     color_depth=16,
@@ -44,13 +44,13 @@ display_drv = ST7796(
 i2c = I2C(0, sda=Pin(5), scl=Pin(6), freq=100000)
 touch_drv = CST226(i2c, irq_pin=21, rst_pin=13)
 touch_read_func = touch_drv.get_point
-# Set to (0,0,0,0), reset and run mpdisplay_touch_test.py if touch rotation is wrong
+# Set to (0,0,0,0), reset and run pydisplay_touch_test.py if touch rotation is wrong
 touch_rotation_table = (0, 5, 6, 3)
 
-broker = Broker()
+broker = devices.Broker()
 
 touch_dev = broker.create_device(
-    type=Devices.TOUCH,
+    type=devices.types.TOUCH,
     read=touch_read_func,
     data=display_drv,
     data2=touch_rotation_table,

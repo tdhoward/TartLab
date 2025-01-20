@@ -20,7 +20,7 @@ from ahttpserver.server import HTTPServerError
 
 # Display stuff
 from hdwconfig import display_drv, IDE_BUTTON_PIN
-from pygfx.framebuf_plus import FrameBuffer, RGB565
+from graphics import FrameBuffer,RGB565
 display_drv.rotation = 90
 WIDTH, HEIGHT = display_drv.width, display_drv.height
 FONT_WIDTH = 16
@@ -28,8 +28,8 @@ BPP = display_drv.color_depth // 8  # Bytes per pixel
 ba = bytearray(WIDTH * HEIGHT * BPP)
 fb = FrameBuffer(ba, WIDTH, HEIGHT, RGB565)
 
-if display_drv.requires_byte_swap:
-    needs_swap = display_drv.disable_auto_byte_swap(True)
+if display_drv.requires_byteswap:
+    needs_swap = display_drv.disable_auto_byteswap(True)
 else:
     needs_swap = False
 

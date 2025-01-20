@@ -1,10 +1,10 @@
 # Example of simple animation (movement) with a bouncing ball
 
 from hdwconfig import display_drv    # Get the display ready
-import pygfx                         # Bring in the drawing functions
-from pygfx.displaybuf import DisplayBuffer as SSD     # Get display buffer stuff
-from pygfx.framebuf_plus import FrameBuffer, RGB565
-from area import Area
+import graphics                         # Bring in the drawing functions
+from displaybuf import DisplayBuffer as SSD     # Get display buffer stuff
+from graphics import FrameBuffer,RGB565
+from graphics import Area
 from time import ticks_ms, sleep_ms   # Helps us keep time to smooth out the movement
 
 # Set the display orientation to horizontal
@@ -14,8 +14,8 @@ display_drv.rotation = 90
 HEIGHT = display_drv.height
 WIDTH = display_drv.width
 
-if display_drv.requires_byte_swap:
-    needs_swap = display_drv.disable_auto_byte_swap(True)
+if display_drv.requires_byteswap:
+    needs_swap = display_drv.disable_auto_byteswap(True)
 else:
     needs_swap = False
 
@@ -54,8 +54,8 @@ ball = FrameBuffer(memoryview(bytearray(size*size*2)), size, size, RGB565)  # se
 
 # draw the ball on its buffer first
 ball.fill(background)
-pygfx.circle(ball, size // 2, size // 2, size // 2, pal.RED, True)
-pygfx.arc(ball, size // 2, size // 2, (size // 2) - 4, 210, 260, pal.WHITE)
+graphics.circle(ball, size // 2, size // 2, size // 2, pal.RED, True)
+graphics.arc(ball, size // 2, size // 2, (size // 2) - 4, 210, 260, pal.WHITE)
 
 
 TICKS = 8  # how many milliseconds should we wait between frames?

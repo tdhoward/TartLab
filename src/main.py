@@ -6,11 +6,10 @@ dirs = ["/lib",
         "/files/user", 
         "/configs", 
         "/lib/pydevices", 
-        "/lib/pydevices/buses",
+        "/lib/pydevices/bus_drv",
         "/lib/pydevices/display_drv",
         "/lib/pydevices/touch_drv",
-        "/lib/pydevices/displays",
-        "/lib/pydevices/utils"]
+        "/lib/pydevices/add_ons"]
 
 for d in dirs:
     if d not in sys.path:

@@ -1,10 +1,10 @@
-""" T-HMI 240x320 ST7789V display """
+"""T-HMI 240x320 ST7789V display"""
 
 from i80bus import I80Bus
 from st7789 import ST7789
 from machine import SPI, Pin  # See the note about reset below
 from xpt2046 import Touch
-from eventsys.devices import Devices, Broker
+from eventsys import devices
 
 
 display_bus = I80Bus(
@@ -53,12 +53,12 @@ touch_drv.calibrate(
 )
 
 touch_read_func = touch_drv.get_touch
-touch_rotation_table=None
+touch_rotation_table = None
 
-broker = Broker()
+broker = devices.Broker()
 
 touch_dev = broker.create_device(
-    type=Devices.TOUCH,
+    type=devices.types.TOUCH,
     read=touch_read_func,
     data=display_drv,
     data2=touch_rotation_table,

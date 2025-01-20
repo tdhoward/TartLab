@@ -1,11 +1,11 @@
-from hdwconfig import display_drv, broker  # type: ignore
-from eventsys.touch_keypad import Keypad   # type: ignore
-from eventsys.keys import Keys            # type: ignore
+from hdwconfig import display_drv, broker
+from touch_keypad import Keypad
+from eventsys.keys import Keys
 from random import randint
-from pygfx.framebuf_plus import FrameBuffer, RGB565   # type: ignore
+from graphics import FrameBuffer,RGB565
 from micropython import const
-from pygfx.displaybuf import DisplayBuffer as SSD
-import pygfx                         # Bring in the drawing functions
+from displaybuf import DisplayBuffer as SSD
+import graphics                         # Bring in the drawing functions
 from time import ticks_ms, ticks_diff, sleep
 import ujson as json   # for loading and saving the highscore file
 
@@ -17,8 +17,8 @@ if WIDTH > HEIGHT:
     display_drv.rotation += 90
 
 # Disable auto byte swap if supported
-if display_drv.requires_byte_swap:
-    needs_swap = display_drv.disable_auto_byte_swap(True)
+if display_drv.requires_byteswap:
+    needs_swap = display_drv.disable_auto_byteswap(True)
 else:
     needs_swap = False
 
@@ -80,14 +80,14 @@ black_cell_buf = FrameBuffer(bytearray(block_size * block_size * 2), block_size,
 # Draw pre-rendered images
 # - Apple
 apple_buf.fill(pal.BLACK)
-pygfx.circle(apple_buf, half_block, half_block, half_block, pal.RED, True)  # the apple
-pygfx.arc(apple_buf, half_block, half_block, half_block, 215, 240, pal.WHITE)  # shiny spot
-pygfx.fill_rect(apple_buf, half_block + BASE_UNIT, 0, BASE_UNIT * 2, BASE_UNIT * 4, pal.DKGREEN)  # stem
-pygfx.fill_rect(apple_buf, half_block, BASE_UNIT * 3, BASE_UNIT * 2, BASE_UNIT * 2, pal.BLACK)
+graphics.circle(apple_buf, half_block, half_block, half_block, pal.RED, True)  # the apple
+graphics.arc(apple_buf, half_block, half_block, half_block, 215, 240, pal.WHITE)  # shiny spot
+graphics.fill_rect(apple_buf, half_block + BASE_UNIT, 0, BASE_UNIT * 2, BASE_UNIT * 4, pal.DKGREEN)  # stem
+graphics.fill_rect(apple_buf, half_block, BASE_UNIT * 3, BASE_UNIT * 2, BASE_UNIT * 2, pal.BLACK)
 
 # - Snake
 snake_head_buf.fill(pal.GREEN)
-pygfx.fill_rect(snake_head_buf, (half_block // 2), (half_block // 2), 4, 4, pal.BLACK)
+graphics.fill_rect(snake_head_buf, (half_block // 2), (half_block // 2), 4, 4, pal.BLACK)
 snake_body_buf.fill(pal.DKGREEN)
 black_cell_buf.fill(pal.BLACK)
 
@@ -140,7 +140,7 @@ def canvas_text(msg, x, y, color=pal.WHITE, center = True):
     if center:
         y -= 4
         x -= len(msg) * 4
-    pygfx.text(canvas, msg, x, y, color, scale=1, inverted=False, font_file=None, height=8)
+    graphics.text(canvas, msg, x, y, color, scale=1, inverted=False, font_data=None, height=8)
 
 
 # Place an apple randomly
@@ -160,17 +160,17 @@ def main():
 
     # Show touch-screen control locations
     canvas.fill(pal.BLACK)
-    pygfx.rect(canvas, 0, 0, BT_WIDTH, BT_HEIGHT, pal.GREY)  # Start
+    graphics.rect(canvas, 0, 0, BT_WIDTH, BT_HEIGHT, pal.GREY)  # Start
     canvas_text("Start", BT_WIDTH_HALF, BT_HEIGHT_HALF, pal.ORANGE)
-    pygfx.rect(canvas, BT_WIDTH, 0, BT_WIDTH, BT_HEIGHT, pal.GREY)  # Pause
+    graphics.rect(canvas, BT_WIDTH, 0, BT_WIDTH, BT_HEIGHT, pal.GREY)  # Pause
     canvas_text("Pause", BT_WIDTH + BT_WIDTH_HALF, BT_HEIGHT_HALF, pal.ORANGE)
-    pygfx.rect(canvas, 0, BT_HEIGHT, WIDTH, BT_HEIGHT, pal.GREY)  # Up
+    graphics.rect(canvas, 0, BT_HEIGHT, WIDTH, BT_HEIGHT, pal.GREY)  # Up
     canvas_text("Up", BT_WIDTH, BT_HEIGHT + BT_HEIGHT_HALF, pal.ORANGE)
-    pygfx.rect(canvas, 0, BT_HEIGHT * 2, WIDTH, BT_HEIGHT * 2, pal.GREY)  # Left
+    graphics.rect(canvas, 0, BT_HEIGHT * 2, WIDTH, BT_HEIGHT * 2, pal.GREY)  # Left
     canvas_text("Left", BT_WIDTH_HALF, BT_HEIGHT * 3, pal.ORANGE)
-    pygfx.rect(canvas, BT_WIDTH, BT_HEIGHT * 2, WIDTH, BT_HEIGHT * 2, pal.GREY)  # Right
+    graphics.rect(canvas, BT_WIDTH, BT_HEIGHT * 2, WIDTH, BT_HEIGHT * 2, pal.GREY)  # Right
     canvas_text("Right", BT_WIDTH + BT_WIDTH_HALF, BT_HEIGHT * 3, pal.ORANGE)
-    pygfx.rect(canvas, 0, BT_HEIGHT * 4, WIDTH, BT_HEIGHT, pal.GREY)  # Down
+    graphics.rect(canvas, 0, BT_HEIGHT * 4, WIDTH, BT_HEIGHT, pal.GREY)  # Down
     canvas_text("Down", BT_WIDTH, BT_HEIGHT * 4 + BT_HEIGHT_HALF, pal.ORANGE)
     canvas.show()
 
