@@ -4,10 +4,8 @@ from bmp565 import BMP565
 from graphics import FrameBuffer, RGB565
 from time import sleep
 
+display_drv.rotation = 0  # Set the display orientation to vertical
 canvas = SSD(display_drv, SSD.RGB565)
-
-# Set the display orientation to vertical
-display_drv.rotation = 0
 display_drv.disable_auto_byteswap(False)
 
 canvas.fill(0x0)
