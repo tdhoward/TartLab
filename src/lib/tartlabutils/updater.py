@@ -74,7 +74,7 @@ async def download_asset(asset_url, target_file):
                 log(f"Error: Received status code {response.status_code}")
                 response.close()
                 return False
-        except OSError as e:
+        except Exception as e:  # was OSError
             log(f"An error occurred while downloading. Retrying...")
             if e.args[0] == 23:    # too many open files / sockets
                 await asyncio.sleep(2)  # let the server finish out some of those requests

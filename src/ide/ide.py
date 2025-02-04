@@ -417,7 +417,8 @@ async def help_files(reader, writer, request):
 @app.route("GET", "/api/files/*")
 async def api_list_files(reader, writer, request):
     try:
-        folder = sanitize_path(request.path[len('/api/files'):], '/files')
+        subpath = unquote(request.path[len('/api/files'):])
+        folder = sanitize_path(subpath, '/files')
     except:
         return await sendHTTPResponse(writer, 400, 'Invalid path!')
     response = HTTPResponse(200, "application/json", close=True)

@@ -59,7 +59,7 @@ location = point(0, 0)
 sprite = (a, fwd)
 draw_sprite(*location, *sprite)
 
-step = 3
+step = 7
 dir = choice(directions)
 while True:
     if keypad.read() == ESCAPE:
