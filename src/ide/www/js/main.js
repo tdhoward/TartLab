@@ -83,9 +83,12 @@ function saveFile() {
     }
 
     if (!Object.keys(editors).includes(activeTab.filename)) return;
-
-    if (!editors[activeTab.filename].isNamed || !activeTab.fullPath.startsWith('/files/user')) {
-        let newFilename = prompt("Enter a name for the file:");
+    let isNamed = editors[activeTab.filename].isNamed;
+    if (!isNamed || !activeTab.fullPath.startsWith('/files/user')) {
+        let defaultFilename = 'file.py';
+        if (isNamed)
+            defaultFilename = activeTab.filename;
+        let newFilename = prompt("Enter a name for the file:", defaultFilename);
         if (newFilename) {
             newFilename = stripLeadingSlashes(currentFolder + "/" + newFilename); // include the current folder
             editors[activeTab.filename].isNamed = true;
