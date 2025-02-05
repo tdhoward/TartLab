@@ -22,6 +22,7 @@ from ahttpserver.server import HTTPServerError
 from hdwconfig import display_drv, IDE_BUTTON_PIN
 from graphics import FrameBuffer,RGB565
 display_drv.rotation = 90
+display_drv.fill(0);
 WIDTH, HEIGHT = display_drv.width, display_drv.height
 FONT_WIDTH = 16
 BPP = display_drv.color_depth // 8  # Bytes per pixel

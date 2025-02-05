@@ -25,7 +25,7 @@ log('System startup')
 from hdwconfig import IDE_BUTTON_PIN, display_drv
 WIDTH, HEIGHT = display_drv.width, display_drv.height
 #display_drv.rotation = 0
-#display_drv.fill_rect(0, 0, WIDTH, HEIGHT, 0x0000)  # clear with black
+display_drv.fill(0)
 
 # read the settings file to determine IDE button
 settings = {}
