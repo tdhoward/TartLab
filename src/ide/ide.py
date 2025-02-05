@@ -22,7 +22,6 @@ from ahttpserver.server import HTTPServerError
 from hdwconfig import display_drv, IDE_BUTTON_PIN
 from graphics import FrameBuffer,RGB565
 display_drv.rotation = 90
-display_drv.fill(0);
 WIDTH, HEIGHT = display_drv.width, display_drv.height
 FONT_WIDTH = 16
 BPP = display_drv.color_depth // 8  # Bytes per pixel
@@ -53,6 +52,7 @@ fb.line(0, 0, WIDTH - 1, 0, pal.BLUE)
 fb.line(WIDTH - 1, 0, WIDTH - 1, HEIGHT - 1, pal.BLUE)
 fb.line(WIDTH - 1, HEIGHT - 1, 0, HEIGHT - 1, pal.BLUE)
 fb.line(0, HEIGHT - 1, 0, 0, pal.BLUE)
+display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
 
 
 USER_BASE_DIR = '/files/user'
