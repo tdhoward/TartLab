@@ -28,6 +28,8 @@ module.exports = {
   resolve: {
     alias: {
       "../../lib": path.resolve(__dirname, "src/ide/www/js/cm5"),
+      "../dialog": path.resolve(__dirname, "src/ide/www/js/cm5"),
+      "../scroll": path.resolve(__dirname, "src/ide/www/js/cm5"),
     },
     extensions: [".js", ".min.js"],
   },
