@@ -5,3 +5,5 @@ TartLab.code-workspace
 /CodeMirror6/node_modules
 /release
 /dist
+/node_modules
+/webpack
