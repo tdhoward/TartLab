@@ -40,7 +40,7 @@ def main():
     # Create the release directory
     os.makedirs(release_dir)
 
-    with open("packages.json", "r") as f:
+    with open("tartlab_packages.json", "r") as f:
         packages = json.load(f)
     
     manifest = []

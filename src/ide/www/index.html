@@ -6,6 +6,20 @@
     <title>TartLab</title>
     <link rel="preload" href="img/logo.svg" as="image"> <!-- Preload the logo -->
     <link rel="stylesheet" href="styles/base.css">
+    <link rel="stylesheet" href="styles/sidebar.css">
+    <link rel="stylesheet" href="styles/tabs.css">
+    <link rel="stylesheet" href="styles/repl.css">
+<!--
+    <link rel="stylesheet" href="styles/cm5/codemirror.min.css">
+    <link rel="stylesheet" href="styles/cm5/monokai.min.css">
+    <link rel="stylesheet" href="styles/cm5/lint.min.css">
+    <link rel="stylesheet" href="styles/cm5/fullscreen.css">
+-->
+    <link rel="stylesheet" href="styles/pages.css">
+<!--
+    <link rel="stylesheet" href="styles/cm5/dialog.css">
+    <link rel="stylesheet" href="styles/cm5/matchesonscrollbar.css">
+-->
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <style>
 :root {
@@ -183,26 +197,7 @@ function handleLoadError() {
         <div id="log-container"></div>
     </div>
     <div id="toast-container"></div>
-
-    <script>
-        function lazyLoadCSS(href) {
-            var link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = href;
-            document.head.appendChild(link);
-        }
-        document.addEventListener("DOMContentLoaded", function() {
-            lazyLoadCSS("styles/sidebar.css");
-            lazyLoadCSS("styles/tabs.css");
-            lazyLoadCSS("styles/repl.css");
-            lazyLoadCSS("styles/cm5/codemirror.min.css");
-            lazyLoadCSS("styles/cm5/monokai.min.css");
-            lazyLoadCSS("styles/cm5/lint.min.css");
-            lazyLoadCSS("styles/cm5/fullscreen.css");
-            lazyLoadCSS("styles/pages.css");
-        });
-    </script>
-
+<!--
     <script type="module" src="js/main.js"></script>
     <script src="js/cm5/codemirror.min.js"></script>
     <script src="js/cm5/python.min.js"></script>
@@ -210,5 +205,12 @@ function handleLoadError() {
     <script src="js/cm5/active-line.min.js"></script>
     <script src="js/cm5/lint.min.js"></script>
     <script src="js/cm5/fullscreen.js"></script>
+    <script src="js/cm5/search.js"></script>
+    <script src="js/cm5/searchcursor.js"></script>
+    <script src="js/cm5/dialog.js"></script>
+    <script src="js/cm5/matchesonscrollbar.js"></script>
+    <script src="js/cm5/annotatescrollbar.js"></script>
+    <script src="js/cm5/jump-to-line.js"></script>
+-->
 </body>
 </html>

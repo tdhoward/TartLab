@@ -1,5 +1,31 @@
-import { saveButton, saveFile } from './main.js';
-import { replPlayButton } from './repl-client.js';
+import { EditorState } from "@codemirror/state";
+import { EditorView, keymap } from "@codemirror/view";
+import { python } from "@codemirror/lang-python";
+import { linter } from "@codemirror/lint";
+import { highlightSelectionMatches } from "@codemirror/search";
+//import { basicSetup } from "@codemirror/basic-setup";
+import { basicSetup } from "codemirror";
+import { defaultKeymap } from "@codemirror/commands";
+
+import { saveButton, saveFile } from "./main.js";
+import { replPlayButton } from "./repl-client.js";
+
+// Custom monokai theme (refine as needed)
+import { EditorView as EV } from "@codemirror/view";
+const monokaiTheme = EV.theme({
+  "&": {
+    color: "#f8f8f2",
+    backgroundColor: "#272822",
+  },
+  ".cm-content": {
+    caretColor: "#f8f8f0",
+  },
+  ".cm-gutters": {
+    backgroundColor: "#272822",
+    color: "#8f908a",
+    border: "none",
+  },
+}, { dark: true });
 
 let newFileCounter = 1;
 const tabsDiv = document.getElementById("tabs");
@@ -9,34 +35,36 @@ const editors = {};
 const tabs = {};
 let activeTab = null;
 
-
 function createNewFileTab() {
-    const filename = `New file ${newFileCounter++}`;
-    createTab(filename, '', '', 'python', false);
+  const filename = `New file ${newFileCounter++}`;
+  createTab(filename, "", "", "python", false);
 }
 
 function updateSaveButton() {
-    if (!activeTab || 
-        (activeTab.contentType != 'python' && activeTab.contentType != 'txt') ||
-        editors[activeTab.filename].editor.getValue() === '' || 
-        editors[activeTab.filename].editor.isDirty == false) {
-        saveButton.disabled = true;
-    } else {
-        saveButton.disabled = false;
-    }
+  if (
+    !activeTab ||
+    (activeTab.contentType != "python" && activeTab.contentType != "txt") ||
+    editors[activeTab.filename].editor.state.doc.toString() === "" ||
+    editors[activeTab.filename].editor.isDirty == false
+  ) {
+    saveButton.disabled = true;
+  } else {
+    saveButton.disabled = false;
+  }
 }
 
 function updatePlayButtonVisibility() {
-  if (activeTab && 
-     (activeTab.contentType === "python") &&
-     (editors[activeTab.filename].editor.getValue() != '') &&
-     (editors[activeTab.filename].editor.isDirty == false)) {
+  if (
+    activeTab &&
+    activeTab.contentType === "python" &&
+    editors[activeTab.filename].editor.state.doc.toString() != "" &&
+    editors[activeTab.filename].editor.isDirty == false
+  ) {
     replPlayButton.classList.remove("hidden");
   } else {
     replPlayButton.classList.add("hidden");
   }
 }
-
 
 function createTab(filename, fullPath, content, contentType, isNamed) {
   const tabDiv = document.createElement("div");
@@ -82,7 +110,7 @@ function createTab(filename, fullPath, content, contentType, isNamed) {
 
 function createErrorPage(tab) {
   let pageDiv = tab.pageDiv;
-  pageDiv.classList.add('error-page');
+  pageDiv.classList.add("error-page");
   pageDiv.innerHTML = "<b>Unable to display this file type.</b>";
   pageContainerDiv.appendChild(pageDiv);
 }
@@ -90,7 +118,7 @@ function createErrorPage(tab) {
 function createHTMLPage(tab, content) {
   let pageDiv = tab.pageDiv;
   pageDiv.classList.add("html-page");
-  pageDiv.innerHTML = content;  // this ignores the head section, etc.
+  pageDiv.innerHTML = content; // this ignores the head section, etc.
   pageContainerDiv.appendChild(pageDiv);
 }
 
@@ -99,58 +127,92 @@ function createImagePage(tab, content, contentType) {
   pageDiv.classList.add("img-page");
   const imgElement = document.createElement("img");
   imgElement.src = content;
-  
+
   pageDiv.appendChild(imgElement);
   pageContainerDiv.appendChild(pageDiv);
 }
-
 
 function createEditor(tab, content, isNamed, mode) {
   const editorDiv = tab.pageDiv;
   editorDiv.classList.add("editor-instance");
   pageContainerDiv.appendChild(editorDiv);
 
-  const editor = CodeMirror(editorDiv, {
-    value: content,
-    mode: mode,
-    lineNumbers: true,
-    theme: "monokai",
-    autoRefresh: true,
-    styleActiveLine: { nonEmpty: true },
-    gutters: ["CodeMirror-linenumbers"],
-    indentWithTabs: true, // Use tabs for indentation
-    tabSize: 4, // Tab size set to 4
-    indentUnit: 4, // Indent unit set to 4
-    extraKeys: {
-      F11: function (cm) {
-        cm.setOption("fullScreen", !cm.getOption("fullScreen"));
-      },
-      Esc: function (cm) {
-        if (cm.getOption("fullScreen")) cm.setOption("fullScreen", false);
-      },
-      "Ctrl-S": function (cm) {
+  // Listener for document changes
+  const updateListener = EditorView.updateListener.of((update) => {
+    if (update.docChanged) {
+      // Mark editor as dirty (custom property)
+      editor.isDirty = true;
+      updateSaveButton();
+      updatePlayButtonVisibility();
+    }
+  });
+
+  // Language extension based on mode: either python or basic text editing
+  let languageExtension = mode === "python" ? python() : [];
+
+  // Custom keybindings (using CM6's keymap extension)
+  const customKeymap = keymap.of([
+    {
+      key: "Ctrl-s",
+      run: () => {
         saveFile();
-      },
-      "Cmd-S": function (cm) { // macOS support
-        saveFile();
+        return true;
       },
     },
+    {
+      key: "Cmd-s",
+      run: () => {
+        saveFile();
+        return true;
+      },
+    },
+    {
+      key: "Ctrl-f",
+      run: () => {
+        /* invoke find command */ return true;
+      },
+    },
+    {
+      key: "F11",
+      run: () => {
+        /* toggle fullscreen manually */ return true;
+      },
+    },
+    {
+      key: "Escape",
+      run: () => {
+        /* exit fullscreen if active */ return true;
+      },
+    },
+    // Add additional bindings as required...
+  ]);
+
+  const state = EditorState.create({
+    doc: content,
+    extensions: [
+      basicSetup,
+      languageExtension,
+      customKeymap,
+      updateListener,
+      monokaiTheme,
+      // Additional extensions like linting or search can be added here
+    ],
   });
 
-  editor.on("change", () => {
-    editor.isDirty = true; // Mark editor as having unsaved changes
-    updateSaveButton();
-    updatePlayButtonVisibility();
+  const editor = new EditorView({
+    state,
+    parent: editorDiv,
   });
 
-  editor.isDirty = false; // Initial state is not dirty
+  // Optionally custom properties
+  editor.isDirty = false;
+
   let filename = tab.filename;
   editors[filename] = { editor, tab, isNamed };
 }
 
 function renameTab(fromFilename, toFilename) {
-  if(fromFilename == toFilename)
-    return;
+  if (fromFilename == toFilename) return;
   if (tabs[fromFilename].contentType == "python") {
     editors[toFilename] = editors[fromFilename];
     delete editors[fromFilename];
@@ -158,18 +220,20 @@ function renameTab(fromFilename, toFilename) {
   tabs[toFilename] = tabs[fromFilename];
   tabs[toFilename].filename = toFilename;
   tabs[toFilename].tabDiv.dataset.filename = toFilename;
-  tabs[toFilename].tabDiv.innerHTML = `${toFilename} <button class="close-tab" data-filename="${toFilename}">X</button>`;
+  tabs[
+    toFilename
+  ].tabDiv.innerHTML = `${toFilename} <button class="close-tab" data-filename="${toFilename}">X</button>`;
   tabs[toFilename].tabDiv.onclick = () => switchToTab(toFilename);
   delete tabs[fromFilename];
 }
 
 function switchToTab(filename) {
   if (activeTab) {
-    activeTab.pageDiv.classList.add('hidden');
+    activeTab.pageDiv.classList.add("hidden");
     activeTab.tabDiv.classList.remove("active");
   }
   activeTab = tabs[filename];
-  activeTab.pageDiv.classList.remove('hidden');
+  activeTab.pageDiv.classList.remove("hidden");
   activeTab.tabDiv.classList.add("active");
   if (activeTab.contentType == "python" && editors[filename]) {
     editors[filename].editor.refresh();
@@ -212,12 +276,6 @@ function closeTab(event) {
     }
   }
 }
-
-document.addEventListener("click", function (event) {
-  if (event.target.classList.contains("close-tab")) {
-    closeTab(event);
-  }
-});
 
 export {
   createNewFileTab,

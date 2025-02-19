@@ -1,12 +1,22 @@
+//import "./styles.css"; // Optional: Your own CSS
+
 import {
   currentFolder,
   toggleSidebar,
   buildFilesPanelContent,
   buildHelpPanelContent,
 } from "./sidebar.js";
-import { renameTab, activeTab, editors, createNewFileTab, updateSaveButton, updatePlayButtonVisibility } from "./tabs.js";
-import './repl-client.js';
-import './settings.js';
+import {
+  renameTab,
+  activeTab,
+  closeTab,
+  editors,
+  createNewFileTab,
+  updateSaveButton,
+  updatePlayButtonVisibility,
+} from "./tabs.js";
+import "./repl-client.js";
+import "./settings.js";
 
 const saveButton = document.getElementById("saveFileBt");
 const newButton = document.getElementById("newFileBt");
@@ -22,7 +32,7 @@ const contextDelete = document.getElementById("context-delete");
 const darkOverlay = document.getElementById("dark-overlay");
 const footerSpinner = document.getElementById("footer-spinner");
 
-const imgFileTypes = ["png","svg"];
+const imgFileTypes = ["png", "svg"];
 
 const hostname = window.location.hostname;
 const baseUrl = `http://${hostname}`;
@@ -30,44 +40,43 @@ const apiBaseUrl = `${baseUrl}/api`;
 const userFilesLocation = baseUrl + "/files/user";
 
 function stripLeadingSlashes(path) {
-    return path.replace(/^\/+/, "");
+  return path.replace(/^\/+/, "");
 }
 
 function openContextMenu(name, type, isApp = false) {
-    contextMenu.classList.remove("hidden");
-    darkOverlay.classList.remove("hidden");
-    darkOverlay.onclick = closeContextMenu;  // Close the context menu when clicking outside of it
-    if (type == "file") {
-        let filename = name
-        contextMenuTitle.textContent = filename;
-        // don't allow "set as app" for non-python files
-        if (filename.endsWith(".py") && !isApp) {
-            contextSetAsApp.onclick = () => setAsApp(filename);
-            contextSetAsApp.classList.remove("hidden");
-        } else {
-            contextSetAsApp.classList.add("hidden");
-        }
-        
-        // filename already includes subfolders in the user space
-        contextDownloadLink.href = userFilesLocation + "/" + filename;
-        contextDownloadLink.onclick = closeContextMenu;
-        contextDownload.onclick = () => contextDownloadLink.click();
-        contextRename.onclick = () => renameFile(filename);
-        contextMove.onclick = () => moveFile(filename);
-        contextDelete.onclick = () => deleteFile(filename);
+  contextMenu.classList.remove("hidden");
+  darkOverlay.classList.remove("hidden");
+  darkOverlay.onclick = closeContextMenu; // Close the context menu when clicking outside of it
+  if (type == "file") {
+    let filename = name;
+    contextMenuTitle.textContent = filename;
+    // don't allow "set as app" for non-python files
+    if (filename.endsWith(".py") && !isApp) {
+      contextSetAsApp.onclick = () => setAsApp(filename);
+      contextSetAsApp.classList.remove("hidden");
+    } else {
+      contextSetAsApp.classList.add("hidden");
+    }
 
-        contextDownload.classList.remove("hidden");
-        contextMove.classList.remove("hidden");
-    }
-    else if (type == "folder") {
-        let foldername = name;
-        contextMenuTitle.textContent = stripLeadingSlashes(foldername);
-        contextSetAsApp.classList.add("hidden");
-        contextDownload.classList.add("hidden");
-        contextRename.onclick = () => renameFolder(foldername);
-        contextMove.classList.add("hidden");  // should we allow moving whole folders? Maybe.
-        contextDelete.onclick = () => deleteFolder(foldername);
-    }
+    // filename already includes subfolders in the user space
+    contextDownloadLink.href = userFilesLocation + "/" + filename;
+    contextDownloadLink.onclick = closeContextMenu;
+    contextDownload.onclick = () => contextDownloadLink.click();
+    contextRename.onclick = () => renameFile(filename);
+    contextMove.onclick = () => moveFile(filename);
+    contextDelete.onclick = () => deleteFile(filename);
+
+    contextDownload.classList.remove("hidden");
+    contextMove.classList.remove("hidden");
+  } else if (type == "folder") {
+    let foldername = name;
+    contextMenuTitle.textContent = stripLeadingSlashes(foldername);
+    contextSetAsApp.classList.add("hidden");
+    contextDownload.classList.add("hidden");
+    contextRename.onclick = () => renameFolder(foldername);
+    contextMove.classList.add("hidden"); // should we allow moving whole folders? Maybe.
+    contextDelete.onclick = () => deleteFolder(foldername);
+  }
 }
 
 function closeContextMenu() {
@@ -75,159 +84,159 @@ function closeContextMenu() {
   darkOverlay.classList.add("hidden");
 }
 
-
 function saveFile() {
-    if (!activeTab) {
-        showToast('No file is currently open.', 'warning');
-        return;
-    }
+  if (!activeTab) {
+    showToast("No file is currently open.", "warning");
+    return;
+  }
 
-    if (!Object.keys(editors).includes(activeTab.filename)) return;
-    let isNamed = editors[activeTab.filename].isNamed;
-    if (!isNamed || !activeTab.fullPath.startsWith('/files/user')) {
-        let defaultFilename = 'file.py';
-        if (isNamed)
-            defaultFilename = activeTab.filename;
-        let newFilename = prompt("Enter a name for the file:", defaultFilename);
-        if (newFilename) {
-            newFilename = stripLeadingSlashes(currentFolder + "/" + newFilename); // include the current folder
-            editors[activeTab.filename].isNamed = true;
-            renameTab(activeTab.filename, newFilename);
-            activeTab.fullPath = "/files/user/" + newFilename;
-        } else {
-            showToast("File name is required to save.", "warning");
-            return;
-        }
+  if (!Object.keys(editors).includes(activeTab.filename)) return;
+  let isNamed = editors[activeTab.filename].isNamed;
+  if (!isNamed || !activeTab.fullPath.startsWith("/files/user")) {
+    let defaultFilename = "file.py";
+    if (isNamed) defaultFilename = activeTab.filename;
+    let newFilename = prompt("Enter a name for the file:", defaultFilename);
+    if (newFilename) {
+      newFilename = stripLeadingSlashes(currentFolder + "/" + newFilename); // include the current folder
+      editors[activeTab.filename].isNamed = true;
+      renameTab(activeTab.filename, newFilename);
+      activeTab.fullPath = "/files/user/" + newFilename;
+    } else {
+      showToast("File name is required to save.", "warning");
+      return;
     }
+  }
 
-    const filename = encodeURIComponent(activeTab.filename); // URI encode the filename
-    const content = editors[activeTab.filename].editor.getValue();
-    showSpinners(true);
-    fetch(`${baseUrl}/files/user/${filename}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
-    })
+  const filename = encodeURIComponent(activeTab.filename); // URI encode the filename
+  const content = editors[activeTab.filename].editor.getValue();
+  showSpinners(true);
+  fetch(`${baseUrl}/files/user/${filename}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  })
     .then((response) => {
-        showSpinners(false);
-        if (!response.ok) {
-            return response.json().then((data) => {
-                throw new Error(data.error || 'An error occurred');
-            });
-        }
-        return response.json();
+      showSpinners(false);
+      if (!response.ok) {
+        return response.json().then((data) => {
+          throw new Error(data.error || "An error occurred");
+        });
+      }
+      return response.json();
     })
-    .then(data => {
-        showToast('File saved successfully!', 'info');
-        editors[activeTab.filename].editor.isDirty = false; // Mark editor as not dirty after saving
-        updateSaveButton();
-        updatePlayButtonVisibility();
-        buildFilesPanelContent();  // update file list
+    .then((data) => {
+      showToast("File saved successfully!", "info");
+      editors[activeTab.filename].editor.isDirty = false; // Mark editor as not dirty after saving
+      updateSaveButton();
+      updatePlayButtonVisibility();
+      buildFilesPanelContent(); // update file list
     })
-    .catch(error => showToast(error, 'error'));
+    .catch((error) => showToast(error, "error"));
 }
 
 function setAsApp(filename) {
-    closeContextMenu();
-    showSpinners(true);
-    fetch(`${apiBaseUrl}/setasapp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename })
-    })
+  closeContextMenu();
+  showSpinners(true);
+  fetch(`${apiBaseUrl}/setasapp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filename }),
+  })
     .then((response) => {
-        showSpinners(false);
-        if (!response.ok) {
-            return response.json().then((data) => {
-                throw new Error(data.error || 'An error occurred');
-            });
-        }
-        return response.json();
+      showSpinners(false);
+      if (!response.ok) {
+        return response.json().then((data) => {
+          throw new Error(data.error || "An error occurred");
+        });
+      }
+      return response.json();
     })
-    .then(data => {
-        showToast('Success!', 'info');
-        buildFilesPanelContent();  // update file list
+    .then((data) => {
+      showToast("Success!", "info");
+      buildFilesPanelContent(); // update file list
     })
-    .catch(error => showToast(error, 'error'));
+    .catch((error) => showToast(error, "error"));
 }
 
 function renameFile(filename) {
-    closeContextMenu();
-    const newFilename = prompt("Enter a new name for the file:", filename);
-    if (newFilename) {
-        renameOrMoveFile(filename, newFilename);
-    }
+  closeContextMenu();
+  const newFilename = prompt("Enter a new name for the file:", filename);
+  if (newFilename) {
+    renameOrMoveFile(filename, newFilename);
+  }
 }
 
 function moveFile(filename) {
-    closeContextMenu();
-    let newPath = prompt("Enter a new location for the file:").replace(/\\/g,"/");
-    if (newPath) {
-        if (!newPath.startsWith('/')) {
-            newPath = currentFolder + newPath;
-        }
-        renameOrMoveFile(filename, newPath + '/' + filename);
+  closeContextMenu();
+  let newPath = prompt("Enter a new location for the file:").replace(
+    /\\/g,
+    "/"
+  );
+  if (newPath) {
+    if (!newPath.startsWith("/")) {
+      newPath = currentFolder + newPath;
     }
+    renameOrMoveFile(filename, newPath + "/" + filename);
+  }
 }
 
 function renameOrMoveFile(srcFile, destFile) {
-    let src = srcFile;
-    let dest = destFile;
-    showSpinners(true);
-    fetch(`${apiBaseUrl}/files/move`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ src, dest }),
-    })
+  let src = srcFile;
+  let dest = destFile;
+  showSpinners(true);
+  fetch(`${apiBaseUrl}/files/move`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ src, dest }),
+  })
     .then((response) => {
-        showSpinners(false);
-        if (!response.ok) {
-            return response.json().then((data) => {
-                throw new Error(data.error || 'An error occurred');
-            });
-        }
-        return response.json();
+      showSpinners(false);
+      if (!response.ok) {
+        return response.json().then((data) => {
+          throw new Error(data.error || "An error occurred");
+        });
+      }
+      return response.json();
     })
     .then((data) => {
-        showToast("Success.", "info");
-        // If we just moved/renamed a file that is still open, rename that tab
-        if (srcFile in editors) {
-            renameTab(srcFile, destFile);
-            editors[destFile].tab.fullPath = "/files/user/" + destFile;
-        }
-        buildFilesPanelContent(); // update file list
+      showToast("Success.", "info");
+      // If we just moved/renamed a file that is still open, rename that tab
+      if (srcFile in editors) {
+        renameTab(srcFile, destFile);
+        editors[destFile].tab.fullPath = "/files/user/" + destFile;
+      }
+      buildFilesPanelContent(); // update file list
     })
     .catch((error) => showToast(error, "error"));
 }
 
 function deleteFile(filename) {
-    if (!confirm("Are you sure you want to delete this file?"))
-        return;
-    closeContextMenu();
-    const fname = encodeURIComponent(filename); // URI encode the filename
-    showSpinners(true);
-    fetch(`${baseUrl}/files/user/${fname}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-    })
+  if (!confirm("Are you sure you want to delete this file?")) return;
+  closeContextMenu();
+  const fname = encodeURIComponent(filename); // URI encode the filename
+  showSpinners(true);
+  fetch(`${baseUrl}/files/user/${fname}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+  })
     .then((response) => {
-        showSpinners(false);
-        if (!response.ok) {
-            return response.json().then((data) => {
-                throw new Error(data.error || 'An error occurred');
-            });
-        }
-        return response.json();
+      showSpinners(false);
+      if (!response.ok) {
+        return response.json().then((data) => {
+          throw new Error(data.error || "An error occurred");
+        });
+      }
+      return response.json();
     })
     .then((data) => {
-        showToast("File deleted.", "info");
-        // If we just deleted a file that is still open, mark that as dirty
-        if (filename in editors) {
-            editors[filename].editor.isDirty = true;
-            updateSaveButton(); // Update the Save button state
-            updatePlayButtonVisibility();
-        }
-        buildFilesPanelContent(); // update file list
+      showToast("File deleted.", "info");
+      // If we just deleted a file that is still open, mark that as dirty
+      if (filename in editors) {
+        editors[filename].editor.isDirty = true;
+        updateSaveButton(); // Update the Save button state
+        updatePlayButtonVisibility();
+      }
+      buildFilesPanelContent(); // update file list
     })
     .catch((error) => showToast(error, "error"));
 }
@@ -237,7 +246,7 @@ function createFolder() {
   if (!newFolderName) {
     return;
   }
-  newFolderName = stripLeadingSlashes(currentFolder + '/' + newFolderName);
+  newFolderName = stripLeadingSlashes(currentFolder + "/" + newFolderName);
   showSpinners(true);
   fetch(`${apiBaseUrl}/folder/create`, {
     method: "POST",
@@ -261,15 +270,19 @@ function createFolder() {
 }
 
 function deleteFolder(folderName) {
-    closeContextMenu();
-    if (!confirm("Are you sure you want to delete this folder and all its contents?"))
-        return;
-    showSpinners(true);
-    fetch(`${apiBaseUrl}/folder/delete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folderName }),
-    })
+  closeContextMenu();
+  if (
+    !confirm(
+      "Are you sure you want to delete this folder and all its contents?"
+    )
+  )
+    return;
+  showSpinners(true);
+  fetch(`${apiBaseUrl}/folder/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folderName }),
+  })
     .then((response) => {
       showSpinners(false);
       if (!response.ok) {
@@ -287,123 +300,127 @@ function deleteFolder(folderName) {
 }
 
 function renameFolder(foldername) {
-    closeContextMenu();
-    foldername = stripLeadingSlashes(foldername);
-    const newFoldername = prompt("Enter a new name for the folder:", foldername);
-    if (newFoldername) {
-        let src = foldername;
-        let dest = newFoldername;
-        showSpinners(true);
-        fetch(`${apiBaseUrl}/folder/rename`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ src, dest }),
-        })
-        .then((response) => {
-            showSpinners(false);
-            if (!response.ok) {
-            return response.json().then((data) => {
-                throw new Error(data.error || "An error occurred");
-            });
-            }
-            return response.json();
-        })
-        .then((data) => {
-            showToast("Success.", "info");
-            buildFilesPanelContent(); // update file/folder list
-        })
-        .catch((error) => showToast(error, "error"));
-    }
+  closeContextMenu();
+  foldername = stripLeadingSlashes(foldername);
+  const newFoldername = prompt("Enter a new name for the folder:", foldername);
+  if (newFoldername) {
+    let src = foldername;
+    let dest = newFoldername;
+    showSpinners(true);
+    fetch(`${apiBaseUrl}/folder/rename`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ src, dest }),
+    })
+      .then((response) => {
+        showSpinners(false);
+        if (!response.ok) {
+          return response.json().then((data) => {
+            throw new Error(data.error || "An error occurred");
+          });
+        }
+        return response.json();
+      })
+      .then((data) => {
+        showToast("Success.", "info");
+        buildFilesPanelContent(); // update file/folder list
+      })
+      .catch((error) => showToast(error, "error"));
+  }
 }
 
 function uploadFile() {
-    const fileInput = document.getElementById("fileUploadInput");
-    fileInput.click();
-    fileInput.onchange = () => {
-        let file = fileInput.files[0];
-        if (file) {
-            showSpinners(true);
-            const formData = new FormData();
-            formData.append("file", file);
-            fileInput.value = "";  // clear it for next time
-            fetch(`${apiBaseUrl}/files/upload${currentFolder}`, {
-                method: "POST",
-                body: formData,
-            })
-            .then((response) => {
-                showSpinners(false);
-                if (!response.ok) {
-                return response.json().then((data) => {
-                    throw new Error(data.error || "An error occurred");
-                });
-                }
-                return response.json();
-            })
-            .then((data) => {
-                showToast("Success.", "info");
-                buildFilesPanelContent(); // update file/folder list
-            })
-            .catch((error) => showToast(error, "error"));
-        }
-    };
+  const fileInput = document.getElementById("fileUploadInput");
+  fileInput.click();
+  fileInput.onchange = () => {
+    let file = fileInput.files[0];
+    if (file) {
+      showSpinners(true);
+      const formData = new FormData();
+      formData.append("file", file);
+      fileInput.value = ""; // clear it for next time
+      fetch(`${apiBaseUrl}/files/upload${currentFolder}`, {
+        method: "POST",
+        body: formData,
+      })
+        .then((response) => {
+          showSpinners(false);
+          if (!response.ok) {
+            return response.json().then((data) => {
+              throw new Error(data.error || "An error occurred");
+            });
+          }
+          return response.json();
+        })
+        .then((data) => {
+          showToast("Success.", "info");
+          buildFilesPanelContent(); // update file/folder list
+        })
+        .catch((error) => showToast(error, "error"));
+    }
+  };
 }
 
+function showToast(message, type = "info") {
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.innerText = message;
+  toastContainer.appendChild(toast);
 
-function showToast(message, type = 'info') {
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerText = message;
-    toastContainer.appendChild(toast);
-
-    setTimeout(() => {
-        toast.remove();
-    }, 4000);
+  setTimeout(() => {
+    toast.remove();
+  }, 4000);
 }
 
 // Show all the spinners.  This is because we generally only have one spinner visible at a time.
 function showSpinners(enabled) {
-    const spinners = document.querySelectorAll('.spinner');
-    spinners.forEach(spinner => {
-        if (enabled)
-            spinner.classList.remove("hidden");
-        else
-            spinner.classList.add("hidden");
-    });
+  const spinners = document.querySelectorAll(".spinner");
+  spinners.forEach((spinner) => {
+    if (enabled) spinner.classList.remove("hidden");
+    else spinner.classList.add("hidden");
+  });
 }
 
 updateSaveButton();
 updatePlayButtonVisibility();
 
-document.getElementById('filesIcon').onclick = () => toggleSidebar('filesIcon');
+document.getElementById("filesIcon").onclick = () => toggleSidebar("filesIcon");
 document.getElementById("helpIcon").onclick = () => {
   toggleSidebar("helpIcon");
   buildHelpPanelContent(); // Load help content when help panel is opened
 };
-document.getElementById("settingsIcon").onclick = () => toggleSidebar("settingsIcon");
+document.getElementById("settingsIcon").onclick = () =>
+  toggleSidebar("settingsIcon");
 saveButton.onclick = saveFile;
 newButton.onclick = createNewFileTab;
 
 // Hide the loading overlay once the content is fully loaded
-window.addEventListener('load', () => {
-    document.getElementById('loading-overlay').style.display = 'none';
+window.addEventListener("load", () => {
+  document.getElementById("loading-overlay").style.display = "none";
 });
 
-window.addEventListener('beforeunload', function (e) {
-    if (!editors) return;
-    // Check if there are unsaved changes
-    let unsavedChgs = false;
-    for (const key of Object.keys(editors)) {
-        if (editors[key].editor.isDirty)
-            unsavedChgs = true;
-    }
-    if (unsavedChgs) {
-        // Cancel the event and
-        // show alert that the unsaved
-        // changes would be lost
-        e.preventDefault();
-        e.returnValue = '';
-    }
+window.addEventListener("beforeunload", function (e) {
+  if (!editors) return;
+  // Check if there are unsaved changes
+  let unsavedChgs = false;
+  for (const key of Object.keys(editors)) {
+    if (editors[key].editor.isDirty) unsavedChgs = true;
+  }
+  if (unsavedChgs) {
+    // Cancel the event and
+    // show alert that the unsaved
+    // changes would be lost
+    e.preventDefault();
+    e.returnValue = "";
+  }
 });
+
+document.addEventListener("click", function (event) {
+  if (event.target.classList.contains("close-tab")) {
+    closeTab(event);
+  }
+});
+
 
 export {
   baseUrl,
