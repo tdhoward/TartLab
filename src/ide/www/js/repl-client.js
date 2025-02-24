@@ -263,7 +263,7 @@ function initRepl() {
   replHeader.onclick = () => toggleReplPanel();
 
   replPlayButton.onclick = function () {
-    stopPropagation();
+    event.stopPropagation();
     // Open the console if not already open
     if (replContent.classList.contains("collapsed")) {
       // console is closed

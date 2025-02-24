@@ -112,7 +112,7 @@ function saveFile() {
   }
 
   const filename = encodeURIComponent(activeTab.filename); // URI encode the filename
-  const content = editors[activeTab.filename].editor.getValue();
+  const content = editors[activeTab.filename].editor.state.doc.toString();
   showSpinners(true);
   fetch(`${baseUrl}/files/user/${filename}`, {
     method: "POST",

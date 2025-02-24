@@ -1,9 +1,9 @@
 import os
 import gzip
 import shutil
-import time
 import sys
 from python_minifier import minify  # pip install python-minifier 
+import subprocess
 
 # This script uses the src folder to create a dist folder ready for deployment.
 # It only copies over the files that are needed, and gzips files larger than 2k.
@@ -44,6 +44,30 @@ def compress_and_remove_large_files(folder_path, size_threshold=2048):
                 # Delete the original file
                 os.remove(file_path)
 
+def minify_py_file(src_file, dest_file):
+    # Read and minify the source file
+    with open(src_file, 'r', encoding='utf-8') as f_in:
+        source_code = f_in.read()
+    try:
+        minified_code = minify(source_code, remove_annotations=False)
+                            # If there is trouble, try these other options:
+                                #combine_imports=False,
+                                #remove_pass=False,
+                                #hoist_literals=False,
+                                #rename_locals=False
+                                #remove_object_base=False,
+                                #convert_posargs_to_args=False,
+                                #preserve_shebang=False,
+                                #remove_explicit_return_none=False,
+                                #constant_folding=False
+        with open(dest_file, 'w', encoding='utf-8') as f_out:
+            f_out.write(minified_code)
+        print(f"Minified and copied: {src_file} -> {dest_file}")
+    except Exception as e:
+        print(f"Error minifying {src_file}: {e}")
+        # Optionally, copy the file as is if minification fails
+        shutil.copy2(src_file, dest_file)
+
 # Function to copy and minify .py files, copying other files as is
 def copy_filetree(src_folder, dest_folder, minify_python):
     for root, dirs, files in os.walk(src_folder):
@@ -55,28 +79,7 @@ def copy_filetree(src_folder, dest_folder, minify_python):
             src_file = os.path.join(root, filename)
             dest_file = os.path.join(dest_dir, filename)
             if filename.endswith('.py') and minify_python:
-                # Read and minify the source file
-                with open(src_file, 'r', encoding='utf-8') as f_in:
-                    source_code = f_in.read()
-                try:
-                    minified_code = minify(source_code, remove_annotations=False)
-                                        # If there is trouble, try these other options:
-                                           #combine_imports=False,
-                                           #remove_pass=False,
-                                           #hoist_literals=False,
-                                           #rename_locals=False
-                                           #remove_object_base=False,
-                                           #convert_posargs_to_args=False,
-                                           #preserve_shebang=False,
-                                           #remove_explicit_return_none=False,
-                                           #constant_folding=False
-                    with open(dest_file, 'w', encoding='utf-8') as f_out:
-                        f_out.write(minified_code)
-                    print(f"Minified and copied: {src_file} -> {dest_file}")
-                except Exception as e:
-                    print(f"Error minifying {src_file}: {e}")
-                    # Optionally, copy the file as is if minification fails
-                    shutil.copy2(src_file, dest_file)
+                minify_py_file(src_file, dest_file)
             else:
                 # Copy other files as is
                 shutil.copy2(src_file, dest_file)
@@ -84,15 +87,41 @@ def copy_filetree(src_folder, dest_folder, minify_python):
             shutil.copystat(src_file, dest_file)
 
 # Function to copy files at the top level (no recursion)
-def copy_top_level_files(src_folder, dest_folder):
+def copy_top_level_files(src_folder, dest_folder, minify_python = False):
     for item in os.listdir(src_folder):
         src_path = os.path.join(src_folder, item)
         if os.path.isfile(src_path):
             dest_path = os.path.join(dest_folder, item)
-            # Copy the file to the destination folder
-            shutil.copy(src_path, dest_path)
+            if src_path.endswith('.py') and minify_python:
+                minify_py_file(src_path, dest_path)
+            else:
+                # Copy other files as is
+                shutil.copy2(src_path, dest_path)
             # Copy the original file's access and modification times
             shutil.copystat(src_path, dest_path)
+
+
+def build_web_app():
+    build_dir = os.path.join(SRC_FOLDER, IDE_FOLDER, WEB_FOLDER)
+    abs_build_dir = os.path.abspath(build_dir)
+    if not os.path.isdir(abs_build_dir):
+        print(f"Error: Build directory does not exist: {abs_build_dir}")
+        return
+    
+    try:
+        result = subprocess.run(
+            ["npm.cmd", "run", "build"],
+            cwd=abs_build_dir,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        print("Build succeeded!")
+    except subprocess.CalledProcessError as e:
+        print("Build failed!")
+        print(e.stderr)
+
 
 # Check if the directory exists
 if os.path.exists(DIST_FOLDER):
@@ -106,28 +135,32 @@ if os.path.exists(DIST_FOLDER):
         print("Deletion canceled.")
         exit()
 
-# Create the new dist folder
-os.makedirs(DIST_FOLDER)
+
+# Create the new dist folder structure, including for the IDE web app destination
+os.makedirs(os.path.join(DIST_FOLDER, IDE_FOLDER, WEB_FOLDER))
 
 # Copy the main .py files from SRC to DIST (top-level files only, no minifying)
 copy_top_level_files(SRC_FOLDER, DIST_FOLDER)
 
-# Copy and minify files in the /files directory  (These are human-readable files, so don't minify)
+# Copy files in the /files directory  (These are human-readable files, so don't minify)
 copy_filetree(os.path.join(SRC_FOLDER, 'files'), os.path.join(DIST_FOLDER, 'files'), False)
 
-# Copy and minify files in the /configs directory  (These are human-readable files, so don't minify)
+# Copy files in the /configs directory  (These are human-readable files, so don't minify)
 copy_filetree(os.path.join(SRC_FOLDER, 'configs'), os.path.join(DIST_FOLDER, 'configs'), False)
 
 # Copy and minify files in the /lib directory
 copy_filetree(os.path.join(SRC_FOLDER, 'lib'), os.path.join(DIST_FOLDER, 'lib'), do_minify)
 
-# Copy all the ide files (we'll delete some later)
-copy_filetree(os.path.join(SRC_FOLDER, IDE_FOLDER), os.path.join(DIST_FOLDER, IDE_FOLDER), do_minify)
 
-# Remove the ide files used for testing
-shutil.rmtree(os.path.join(DIST_FOLDER, IDE_FOLDER, WEB_FOLDER, 'api'), ignore_errors=True)
-shutil.rmtree(os.path.join(DIST_FOLDER, IDE_FOLDER, WEB_FOLDER, 'files'), ignore_errors=True)
+# Build the web app first
+print("Building web app...")
+build_web_app()
 
+# Copy the ide .py files from SRC to DIST
+copy_top_level_files(os.path.join(SRC_FOLDER, IDE_FOLDER), os.path.join(DIST_FOLDER, IDE_FOLDER), True)
+
+# Copy all the ide web app files
+copy_filetree(os.path.join(SRC_FOLDER, IDE_FOLDER, WEB_FOLDER, 'dist'), os.path.join(DIST_FOLDER, IDE_FOLDER, WEB_FOLDER), False)
 # Compress the static web app files
 compress_and_remove_large_files(os.path.join(DIST_FOLDER, IDE_FOLDER, WEB_FOLDER))
 
