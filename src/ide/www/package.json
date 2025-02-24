@@ -4,13 +4,15 @@
   "description": "TartLab IDE",
   "main": "index.js",
   "scripts": {
-    "build": "webpack",
+    "build-dev": "webpack && copyfiles favicon.ico api/**/* img/**/* files/**/* dist",
+    "build": "webpack --mode production && copyfiles favicon.ico img/**/* dist",
     "live": "npx webpack serve",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Tim Howard",
   "license": "GPL-3.0",
   "devDependencies": {
+    "copyfiles": "^2.4.1",
     "css-loader": "^7.1.2",
     "html-webpack-plugin": "^5.6.3",
     "style-loader": "^4.0.0",
@@ -19,11 +21,11 @@
     "webpack-dev-server": "^5.2.0"
   },
   "dependencies": {
-    "codemirror": "^6.0.1",
     "@codemirror/lang-python": "^6.1.7",
     "@codemirror/lint": "^6.8.4",
     "@codemirror/search": "^6.5.9",
     "@codemirror/state": "^6.5.2",
-    "@codemirror/view": "^6.36.2"
+    "@codemirror/view": "^6.36.2",
+    "codemirror": "^6.0.1"
   }
 }

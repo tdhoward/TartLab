@@ -1,4 +1,8 @@
-//import "./styles.css"; // Optional: Your own CSS
+import "../styles/base.css";
+import "../styles/sidebar.css";
+import "../styles/tabs.css";
+import "../styles/repl.css";
+import "../styles/pages.css";
 
 import {
   currentFolder,

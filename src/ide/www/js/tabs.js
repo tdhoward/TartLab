@@ -1,31 +1,46 @@
-import { EditorState } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { 
+  EditorState,
+} from "@codemirror/state";
+import {
+  EditorView,
+  keymap,
+  highlightSpecialChars,
+  drawSelection,
+  highlightActiveLine,
+  dropCursor,
+  rectangularSelection,
+  crosshairCursor,
+  lineNumbers,
+  highlightActiveLineGutter,
+} from "@codemirror/view";
+import {
+  indentOnInput,
+  indentUnit,
+  bracketMatching,
+  foldGutter,
+  foldKeymap,
+} from "@codemirror/language";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
+import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import {
+  autocompletion,
+  completionKeymap,
+  closeBrackets,
+  closeBracketsKeymap,
+} from "@codemirror/autocomplete";
+import { lintKeymap } from "@codemirror/lint";
+
 import { python } from "@codemirror/lang-python";
-import { linter } from "@codemirror/lint";
-import { highlightSelectionMatches } from "@codemirror/search";
-//import { basicSetup } from "@codemirror/basic-setup";
-import { basicSetup } from "codemirror";
-import { defaultKeymap } from "@codemirror/commands";
+//import { linter } from "@codemirror/lint";
+import { monokai as myTheme } from "./cm6theme.js";
 
 import { saveButton, saveFile } from "./main.js";
 import { replPlayButton } from "./repl-client.js";
-
-// Custom monokai theme (refine as needed)
-import { EditorView as EV } from "@codemirror/view";
-const monokaiTheme = EV.theme({
-  "&": {
-    color: "#f8f8f2",
-    backgroundColor: "#272822",
-  },
-  ".cm-content": {
-    caretColor: "#f8f8f0",
-  },
-  ".cm-gutters": {
-    backgroundColor: "#272822",
-    color: "#8f908a",
-    border: "none",
-  },
-}, { dark: true });
 
 let newFileCounter = 1;
 const tabsDiv = document.getElementById("tabs");
@@ -34,6 +49,63 @@ const pageContainerDiv = document.getElementById("page-container");
 const editors = {};
 const tabs = {};
 let activeTab = null;
+
+
+const cmSetup = [
+  // A line number gutter
+  lineNumbers(),
+  // A gutter with code folding markers
+  foldGutter(),
+  // Replace non-printable characters with placeholders
+  highlightSpecialChars(),
+  // The undo history
+  history(),
+  // Replace native cursor/selection with our own
+  drawSelection(),
+  // Show a drop cursor when dragging over the editor
+  dropCursor(),
+  // Allow multiple cursors/selections
+  EditorState.allowMultipleSelections.of(true),
+  // Re-indent lines when typing specific input
+  indentOnInput(),
+  // Set indentation to 4 spaces
+  indentUnit.of("    "),
+  // Highlight syntax with a default style
+  //syntaxHighlighting(defaultHighlightStyle),
+  // Highlight matching brackets near cursor
+  bracketMatching(),
+  // Automatically close brackets
+  closeBrackets(),
+  // Load the autocompletion system
+  autocompletion(),
+  // Allow alt-drag to select rectangular regions
+  rectangularSelection(),
+  // Change the cursor to a crosshair when holding alt
+  crosshairCursor(),
+  // Style the current line specially
+  highlightActiveLine(),
+  // Style the gutter for current line specially
+  highlightActiveLineGutter(),
+  // Highlight text that matches the selected text
+  highlightSelectionMatches(),
+  keymap.of([
+    // Closed-brackets aware backspace
+    ...closeBracketsKeymap,
+    // A large set of basic bindings
+    ...defaultKeymap,
+    // Search-related keys
+    ...searchKeymap,
+    // Redo/undo keys
+    ...historyKeymap,
+    // Code folding bindings
+    ...foldKeymap,
+    // Autocompletion keys
+    ...completionKeymap,
+    // Keys related to the linter system
+    ...lintKeymap,
+  ]),
+];
+
 
 function createNewFileTab() {
   const filename = `New file ${newFileCounter++}`;
@@ -137,16 +209,6 @@ function createEditor(tab, content, isNamed, mode) {
   editorDiv.classList.add("editor-instance");
   pageContainerDiv.appendChild(editorDiv);
 
-  // Listener for document changes
-  const updateListener = EditorView.updateListener.of((update) => {
-    if (update.docChanged) {
-      // Mark editor as dirty (custom property)
-      editor.isDirty = true;
-      updateSaveButton();
-      updatePlayButtonVisibility();
-    }
-  });
-
   // Language extension based on mode: either python or basic text editing
   let languageExtension = mode === "python" ? python() : [];
 
@@ -187,15 +249,25 @@ function createEditor(tab, content, isNamed, mode) {
     // Add additional bindings as required...
   ]);
 
+  // Listener for document changes
+  const updateListener = EditorView.updateListener.of((update) => {
+    if (update.docChanged) {
+      // Mark editor as dirty (custom property)
+      editor.isDirty = true;
+      updateSaveButton();
+      updatePlayButtonVisibility();
+    }
+  });
+
   const state = EditorState.create({
     doc: content,
     extensions: [
-      basicSetup,
+      cmSetup,
       languageExtension,
       customKeymap,
       updateListener,
-      monokaiTheme,
-      // Additional extensions like linting or search can be added here
+      myTheme,
+      keymap.of([indentWithTab]),
     ],
   });
 
@@ -236,7 +308,6 @@ function switchToTab(filename) {
   activeTab.pageDiv.classList.remove("hidden");
   activeTab.tabDiv.classList.add("active");
   if (activeTab.contentType == "python" && editors[filename]) {
-    editors[filename].editor.refresh();
     editors[filename].editor.focus(); // Ensure the editor gains keyboard focus
   }
   updateSaveButton();

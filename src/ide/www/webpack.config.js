@@ -1,8 +1,8 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
-module.exports = {
-  mode: "development",
+module.exports = (env, argv) => ({
+  mode: argv.mode || "development",
   entry: "./js/main.js",
   output: {
     filename: "bundle.js",
@@ -26,4 +26,4 @@ module.exports = {
       inject: "body", // Injects the bundle.js just before closing </body>
     }),
   ],
-};
+});
