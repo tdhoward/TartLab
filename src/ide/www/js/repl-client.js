@@ -123,83 +123,6 @@ function setCursorPositionInLine(pos, selection = false) {
   if (!selection) replConsole.selectionEnd = replConsole.selectionStart;
 }
 
-
-replConsole.addEventListener("keydown", (event) => {
-  if (!event.ctrlKey && !event.altKey && !event.metaKey) {
-    moveCursorToCurrentLine();
-  }
-  if (event.key === "Enter") {
-    event.preventDefault();
-    const currentLine = replConsole.value.split("\n").pop();
-    const inputCommand = currentLine.slice(4);
-    let needsAnotherLine = false;
-    if (inputCommand.endsWith(":") || inputCommand.endsWith("\\")) {
-      currentIndent += 1;
-      needsAnotherLine = true;
-    }
-    if (currentPrompt === waitingPrompt) needsAnotherLine = true;
-    if (inputCommand.trim() == "") needsAnotherLine = false;
-    if (event.shiftKey || needsAnotherLine) {
-      // Add current input to command buffer for multi-line command
-      commandBuffer.push(inputCommand);
-      replConsole.value += "\n";
-      setPrompt(waitingPrompt);
-      if (currentIndent > 0) replConsole.value += "\t".repeat(currentIndent);
-    } else {
-      // Handle single or multi-line command execution
-      commandBuffer.push(inputCommand);
-      sendReplCommand();
-      commandBuffer = [];
-    }
-  } else if (event.key === "Tab") {
-    replConsole.value += "\t";
-    currentIndent += 1;
-    event.preventDefault();
-  } else if (event.key === "ArrowUp") {
-    navigateHistory(-1);
-    event.preventDefault();
-  } else if (event.key === "ArrowDown") {
-    navigateHistory(1);
-    event.preventDefault();
-  } else if (event.key === "ArrowLeft") {
-    if (getCursorPositionInLine() < 5) {
-      event.preventDefault(); // don't allow going into the prompt
-      return;
-    }
-  } else if (event.key === "Backspace") {
-    const currentLine = replConsole.value.split("\n").pop();
-    let cursorPosition = getCursorPositionInLine();
-    if (cursorPosition < 5) {
-      event.preventDefault(); // don't allow deleting the prompt
-      return;
-    }
-    const beforeCursor = currentLine.slice(0, cursorPosition);
-    if (beforeCursor.endsWith("\t")) currentIndent -= 1;
-  } else if (event.key === "Home") {
-    let sel = false;
-    if (event.shiftKey)
-      sel = true;
-    setCursorPositionInLine(4, sel);
-    event.preventDefault(); // don't allow going into the prompt
-  }
-});
-
-replConsole.addEventListener("paste", (event) => {
-  const pasteText = event.clipboardData.getData("text");
-  if (pasteText == "") return;
-  moveCursorToCurrentLine();
-  const currentLine = replConsole.value.split("\n").pop();
-  const preexistingText = currentLine.slice(4);
-  let petLen = preexistingText.length;
-  if (petLen > 0)
-    replConsole.value = replConsole.value.slice(0, -petLen);  // temporarily delete existing command text
-  let addText = preexistingText + pasteText;
-  addText = addText.replace(/\r\n/g,"\n");
-  let addLines = addText.split("\n");
-  addCommandLines(addLines);  
-  event.preventDefault();
-});
-
 function countLeadingTabs(str) {
   let count = 0;
   for (let char of str) {
@@ -258,23 +181,103 @@ function navigateHistory(direction) {
   addCommandLines(cmd);
 }
 
-// Initialize the prompt
-setPrompt(normalPrompt);
 
-replHeader.onclick = () => toggleReplPanel();
+function initRepl() {
+  replConsole.addEventListener("keydown", (event) => {
+    if (!event.ctrlKey && !event.altKey && !event.metaKey) {
+      moveCursorToCurrentLine();
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const currentLine = replConsole.value.split("\n").pop();
+      const inputCommand = currentLine.slice(4);
+      let needsAnotherLine = false;
+      if (inputCommand.endsWith(":") || inputCommand.endsWith("\\")) {
+        currentIndent += 1;
+        needsAnotherLine = true;
+      }
+      if (currentPrompt === waitingPrompt) needsAnotherLine = true;
+      if (inputCommand.trim() == "") needsAnotherLine = false;
+      if (event.shiftKey || needsAnotherLine) {
+        // Add current input to command buffer for multi-line command
+        commandBuffer.push(inputCommand);
+        replConsole.value += "\n";
+        setPrompt(waitingPrompt);
+        if (currentIndent > 0) replConsole.value += "\t".repeat(currentIndent);
+      } else {
+        // Handle single or multi-line command execution
+        commandBuffer.push(inputCommand);
+        sendReplCommand();
+        commandBuffer = [];
+      }
+    } else if (event.key === "Tab") {
+      replConsole.value += "\t";
+      currentIndent += 1;
+      event.preventDefault();
+    } else if (event.key === "ArrowUp") {
+      navigateHistory(-1);
+      event.preventDefault();
+    } else if (event.key === "ArrowDown") {
+      navigateHistory(1);
+      event.preventDefault();
+    } else if (event.key === "ArrowLeft") {
+      if (getCursorPositionInLine() < 5) {
+        event.preventDefault(); // don't allow going into the prompt
+        return;
+      }
+    } else if (event.key === "Backspace") {
+      const currentLine = replConsole.value.split("\n").pop();
+      let cursorPosition = getCursorPositionInLine();
+      if (cursorPosition < 5) {
+        event.preventDefault(); // don't allow deleting the prompt
+        return;
+      }
+      const beforeCursor = currentLine.slice(0, cursorPosition);
+      if (beforeCursor.endsWith("\t")) currentIndent -= 1;
+    } else if (event.key === "Home") {
+      let sel = false;
+      if (event.shiftKey) sel = true;
+      setCursorPositionInLine(4, sel);
+      event.preventDefault(); // don't allow going into the prompt
+    }
+  });
 
-replPlayButton.onclick = function () {
-  event.stopPropagation();
-  // Open the console if not already open
-  if (replContent.classList.contains("collapsed")) {  // console is closed
-    toggleReplPanel();
-  }
-  if (activeTab && activeTab.contentType === "python") {
-    const command = `exec(open('${activeTab.fullPath}').read())`;
-    commandBuffer = [command]; // Set the command buffer to execute the Python script
-    sendReplCommand(false); // Send the command to the REPL, but don't save it as history
-    commandBuffer = [];
-  }
-};
+  replConsole.addEventListener("paste", (event) => {
+    const pasteText = event.clipboardData.getData("text");
+    if (pasteText == "") return;
+    moveCursorToCurrentLine();
+    const currentLine = replConsole.value.split("\n").pop();
+    const preexistingText = currentLine.slice(4);
+    let petLen = preexistingText.length;
+    if (petLen > 0) replConsole.value = replConsole.value.slice(0, -petLen); // temporarily delete existing command text
+    let addText = preexistingText + pasteText;
+    addText = addText.replace(/\r\n/g, "\n");
+    let addLines = addText.split("\n");
+    addCommandLines(addLines);
+    event.preventDefault();
+  });
+
+  // Initialize the prompt
+  setPrompt(normalPrompt);
+
+  replHeader.onclick = () => toggleReplPanel();
+
+  replPlayButton.onclick = function () {
+    event.stopPropagation();
+    // Open the console if not already open
+    if (replContent.classList.contains("collapsed")) {
+      // console is closed
+      toggleReplPanel();
+    }
+    if (activeTab && activeTab.contentType === "python") {
+      const command = `exec(open('${activeTab.fullPath}').read())`;
+      commandBuffer = [command]; // Set the command buffer to execute the Python script
+      sendReplCommand(false); // Send the command to the REPL, but don't save it as history
+      commandBuffer = [];
+    }
+  };
+}
+
+initRepl();
 
 export { toggleReplPanel, updatePlayButtonVisibility, replPlayButton };

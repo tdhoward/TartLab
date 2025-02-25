@@ -48,27 +48,10 @@
     overflow: hidden;
 }
 
-.CodeMirror {
-    height: 100%; /* Ensure the editor uses the full height */
+/* Ensure the editor uses the full height and width */
+.cm-editor {
+    height: 100%;
     width: 100%;
-}
-
-.CodeMirror-activeline-background {
-    background: #1c1f2b; /* Updated line highlight background color */
-}
-
-.CodeMirror-gutters {
-    background-color: var(--body-background-color);
-    border-right: 1px solid var(--body-border-color);
-}
-
-.CodeMirror-linenumber {
-    color: #4d4d4d !important; /* Darker gray for line numbers with higher specificity */
-    padding-right: 1rem; /* Add padding to the right of line numbers */
-}
-
-.CodeMirror-activeline .CodeMirror-linenumber {
-    color: var(--body-foreground-color) !important; /* Brighter color for active line number */
 }
 
 /* All the html page styling here */

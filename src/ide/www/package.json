@@ -1,0 +1,32 @@
+{
+  "name": "tartlab-ide",
+  "version": "0.11.0",
+  "description": "TartLab IDE",
+  "main": "index.js",
+  "scripts": {
+    "build-dev": "webpack && copyfiles favicon.ico api/**/* files/**/* dist",
+    "build": "webpack --mode production && copyfiles favicon.ico dist",
+    "live": "npx webpack serve",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Tim Howard",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "copyfiles": "^2.4.1",
+    "css-loader": "^7.1.2",
+    "html-webpack-plugin": "^5.6.3",
+    "style-loader": "^4.0.0",
+    "svgo-loader": "^4.0.0",
+    "webpack": "^5.98.0",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.0"
+  },
+  "dependencies": {
+    "@codemirror/lang-python": "^6.1.7",
+    "@codemirror/lint": "^6.8.4",
+    "@codemirror/search": "^6.5.9",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.36.2",
+    "codemirror": "^6.0.1"
+  }
+}

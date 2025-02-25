@@ -7,3 +7,6 @@ TartLab.code-workspace
 /dist
 /node_modules
 /webpack
+/src/ide/www/node_modules
+/src/ide/www/dist
+src/ide/www/package-lock.json

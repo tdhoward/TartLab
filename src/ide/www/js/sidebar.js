@@ -9,6 +9,9 @@ import {
   showSpinners,
 } from "./main.js";
 
+import folderSvg from "../img/folder.svg";
+import starSvg from "../img/star.svg";
+
 const iconBar = document.getElementById("iconBar");
 const iconDivs = document.querySelectorAll(".icon");
 
@@ -127,7 +130,7 @@ function buildFilesPanelContent() {
                 const iconTextWrapper = document.createElement("div");
                 iconTextWrapper.className = "icon-text-wrapper";
                 const folderIcon = document.createElement("img");
-                folderIcon.src = "img/folder.svg";
+                folderIcon.src = folderSvg;
                 iconTextWrapper.appendChild(folderIcon);
 
                 const folderName = document.createElement("span");
@@ -168,7 +171,7 @@ function buildFilesPanelContent() {
 
                 if (idx == appIndex) {
                   const appStar = document.createElement("img");
-                  appStar.src = "../img/star.svg";
+                  appStar.src = starSvg;
                   appStar.className = "app-star";
                   fileNameContainer.appendChild(appStar);
                 }

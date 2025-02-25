@@ -1,5 +1,46 @@
-import { saveButton, saveFile } from './main.js';
-import { replPlayButton } from './repl-client.js';
+import { 
+  EditorState,
+} from "@codemirror/state";
+import {
+  EditorView,
+  keymap,
+  highlightSpecialChars,
+  drawSelection,
+  highlightActiveLine,
+  dropCursor,
+  rectangularSelection,
+  crosshairCursor,
+  lineNumbers,
+  highlightActiveLineGutter,
+} from "@codemirror/view";
+import {
+  indentOnInput,
+  indentUnit,
+  bracketMatching,
+  foldGutter,
+  foldKeymap,
+} from "@codemirror/language";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
+import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import {
+  autocompletion,
+  completionKeymap,
+  closeBrackets,
+  closeBracketsKeymap,
+} from "@codemirror/autocomplete";
+import { lintKeymap } from "@codemirror/lint";
+
+import { python } from "@codemirror/lang-python";
+//import { linter } from "@codemirror/lint";
+import { monokai as myTheme } from "./cm6theme.js";
+
+import { saveButton, saveFile } from "./main.js";
+import { replPlayButton } from "./repl-client.js";
 
 let newFileCounter = 1;
 const tabsDiv = document.getElementById("tabs");
@@ -10,33 +51,92 @@ const tabs = {};
 let activeTab = null;
 
 
+const cmSetup = [
+  // A line number gutter
+  lineNumbers(),
+  // A gutter with code folding markers
+  foldGutter(),
+  // Replace non-printable characters with placeholders
+  highlightSpecialChars(),
+  // The undo history
+  history(),
+  // Replace native cursor/selection with our own
+  drawSelection(),
+  // Show a drop cursor when dragging over the editor
+  dropCursor(),
+  // Allow multiple cursors/selections
+  EditorState.allowMultipleSelections.of(true),
+  // Re-indent lines when typing specific input
+  indentOnInput(),
+  // Set indentation to 4 spaces
+  indentUnit.of("    "),
+  // Highlight syntax with a default style
+  //syntaxHighlighting(defaultHighlightStyle),
+  // Highlight matching brackets near cursor
+  bracketMatching(),
+  // Automatically close brackets
+  closeBrackets(),
+  // Load the autocompletion system
+  autocompletion(),
+  // Allow alt-drag to select rectangular regions
+  rectangularSelection(),
+  // Change the cursor to a crosshair when holding alt
+  crosshairCursor(),
+  // Style the current line specially
+  highlightActiveLine(),
+  // Style the gutter for current line specially
+  highlightActiveLineGutter(),
+  // Highlight text that matches the selected text
+  highlightSelectionMatches(),
+  keymap.of([
+    // Closed-brackets aware backspace
+    ...closeBracketsKeymap,
+    // A large set of basic bindings
+    ...defaultKeymap,
+    // Search-related keys
+    ...searchKeymap,
+    // Redo/undo keys
+    ...historyKeymap,
+    // Code folding bindings
+    ...foldKeymap,
+    // Autocompletion keys
+    ...completionKeymap,
+    // Keys related to the linter system
+    ...lintKeymap,
+  ]),
+];
+
+
 function createNewFileTab() {
-    const filename = `New file ${newFileCounter++}`;
-    createTab(filename, '', '', 'python', false);
+  const filename = `New file ${newFileCounter++}`;
+  createTab(filename, "", "", "python", false);
 }
 
 function updateSaveButton() {
-    if (!activeTab || 
-        (activeTab.contentType != 'python' && activeTab.contentType != 'txt') ||
-        editors[activeTab.filename].editor.getValue() === '' || 
-        editors[activeTab.filename].editor.isDirty == false) {
-        saveButton.disabled = true;
-    } else {
-        saveButton.disabled = false;
-    }
+  if (
+    !activeTab ||
+    (activeTab.contentType != "python" && activeTab.contentType != "txt") ||
+    editors[activeTab.filename].editor.state.doc.toString() === "" ||
+    editors[activeTab.filename].editor.isDirty == false
+  ) {
+    saveButton.disabled = true;
+  } else {
+    saveButton.disabled = false;
+  }
 }
 
 function updatePlayButtonVisibility() {
-  if (activeTab && 
-     (activeTab.contentType === "python") &&
-     (editors[activeTab.filename].editor.getValue() != '') &&
-     (editors[activeTab.filename].editor.isDirty == false)) {
+  if (
+    activeTab &&
+    activeTab.contentType === "python" &&
+    editors[activeTab.filename].editor.state.doc.toString() != "" &&
+    editors[activeTab.filename].editor.isDirty == false
+  ) {
     replPlayButton.classList.remove("hidden");
   } else {
     replPlayButton.classList.add("hidden");
   }
 }
-
 
 function createTab(filename, fullPath, content, contentType, isNamed) {
   const tabDiv = document.createElement("div");
@@ -82,7 +182,7 @@ function createTab(filename, fullPath, content, contentType, isNamed) {
 
 function createErrorPage(tab) {
   let pageDiv = tab.pageDiv;
-  pageDiv.classList.add('error-page');
+  pageDiv.classList.add("error-page");
   pageDiv.innerHTML = "<b>Unable to display this file type.</b>";
   pageContainerDiv.appendChild(pageDiv);
 }
@@ -90,7 +190,7 @@ function createErrorPage(tab) {
 function createHTMLPage(tab, content) {
   let pageDiv = tab.pageDiv;
   pageDiv.classList.add("html-page");
-  pageDiv.innerHTML = content;  // this ignores the head section, etc.
+  pageDiv.innerHTML = content; // this ignores the head section, etc.
   pageContainerDiv.appendChild(pageDiv);
 }
 
@@ -99,58 +199,92 @@ function createImagePage(tab, content, contentType) {
   pageDiv.classList.add("img-page");
   const imgElement = document.createElement("img");
   imgElement.src = content;
-  
+
   pageDiv.appendChild(imgElement);
   pageContainerDiv.appendChild(pageDiv);
 }
-
 
 function createEditor(tab, content, isNamed, mode) {
   const editorDiv = tab.pageDiv;
   editorDiv.classList.add("editor-instance");
   pageContainerDiv.appendChild(editorDiv);
 
-  const editor = CodeMirror(editorDiv, {
-    value: content,
-    mode: mode,
-    lineNumbers: true,
-    theme: "monokai",
-    autoRefresh: true,
-    styleActiveLine: { nonEmpty: true },
-    gutters: ["CodeMirror-linenumbers"],
-    indentWithTabs: true, // Use tabs for indentation
-    tabSize: 4, // Tab size set to 4
-    indentUnit: 4, // Indent unit set to 4
-    extraKeys: {
-      F11: function (cm) {
-        cm.setOption("fullScreen", !cm.getOption("fullScreen"));
-      },
-      Esc: function (cm) {
-        if (cm.getOption("fullScreen")) cm.setOption("fullScreen", false);
-      },
-      "Ctrl-S": function (cm) {
+  // Language extension based on mode: either python or basic text editing
+  let languageExtension = mode === "python" ? python() : [];
+
+  // Custom keybindings (using CM6's keymap extension)
+  const customKeymap = keymap.of([
+    {
+      key: "Ctrl-s",
+      run: () => {
         saveFile();
-      },
-      "Cmd-S": function (cm) { // macOS support
-        saveFile();
+        return true;
       },
     },
+    {
+      key: "Cmd-s",
+      run: () => {
+        saveFile();
+        return true;
+      },
+    },
+    {
+      key: "Ctrl-f",
+      run: () => {
+        /* invoke find command */ return true;
+      },
+    },
+    {
+      key: "F11",
+      run: () => {
+        /* toggle fullscreen manually */ return true;
+      },
+    },
+    {
+      key: "Escape",
+      run: () => {
+        /* exit fullscreen if active */ return true;
+      },
+    },
+    // Add additional bindings as required...
+  ]);
+
+  // Listener for document changes
+  const updateListener = EditorView.updateListener.of((update) => {
+    if (update.docChanged) {
+      // Mark editor as dirty (custom property)
+      editor.isDirty = true;
+      updateSaveButton();
+      updatePlayButtonVisibility();
+    }
   });
 
-  editor.on("change", () => {
-    editor.isDirty = true; // Mark editor as having unsaved changes
-    updateSaveButton();
-    updatePlayButtonVisibility();
+  const state = EditorState.create({
+    doc: content,
+    extensions: [
+      cmSetup,
+      languageExtension,
+      customKeymap,
+      updateListener,
+      myTheme,
+      keymap.of([indentWithTab]),
+    ],
   });
 
-  editor.isDirty = false; // Initial state is not dirty
+  const editor = new EditorView({
+    state,
+    parent: editorDiv,
+  });
+
+  // Optionally custom properties
+  editor.isDirty = false;
+
   let filename = tab.filename;
   editors[filename] = { editor, tab, isNamed };
 }
 
 function renameTab(fromFilename, toFilename) {
-  if(fromFilename == toFilename)
-    return;
+  if (fromFilename == toFilename) return;
   if (tabs[fromFilename].contentType == "python") {
     editors[toFilename] = editors[fromFilename];
     delete editors[fromFilename];
@@ -158,21 +292,22 @@ function renameTab(fromFilename, toFilename) {
   tabs[toFilename] = tabs[fromFilename];
   tabs[toFilename].filename = toFilename;
   tabs[toFilename].tabDiv.dataset.filename = toFilename;
-  tabs[toFilename].tabDiv.innerHTML = `${toFilename} <button class="close-tab" data-filename="${toFilename}">X</button>`;
+  tabs[
+    toFilename
+  ].tabDiv.innerHTML = `${toFilename} <button class="close-tab" data-filename="${toFilename}">X</button>`;
   tabs[toFilename].tabDiv.onclick = () => switchToTab(toFilename);
   delete tabs[fromFilename];
 }
 
 function switchToTab(filename) {
   if (activeTab) {
-    activeTab.pageDiv.classList.add('hidden');
+    activeTab.pageDiv.classList.add("hidden");
     activeTab.tabDiv.classList.remove("active");
   }
   activeTab = tabs[filename];
-  activeTab.pageDiv.classList.remove('hidden');
+  activeTab.pageDiv.classList.remove("hidden");
   activeTab.tabDiv.classList.add("active");
   if (activeTab.contentType == "python" && editors[filename]) {
-    editors[filename].editor.refresh();
     editors[filename].editor.focus(); // Ensure the editor gains keyboard focus
   }
   updateSaveButton();
@@ -212,12 +347,6 @@ function closeTab(event) {
     }
   }
 }
-
-document.addEventListener("click", function (event) {
-  if (event.target.classList.contains("close-tab")) {
-    closeTab(event);
-  }
-});
 
 export {
   createNewFileTab,

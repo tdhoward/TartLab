@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TartLab</title>
     <link rel="preload" href="img/logo.svg" as="image"> <!-- Preload the logo -->
-    <link rel="stylesheet" href="styles/base.css">
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <style>
 :root {
@@ -33,6 +32,7 @@
     flex-direction: column; /* Arrange logo and text vertically */
     justify-content: center;
     align-items: center;
+    font-family: Arial, sans-serif;
     font-size: var(--large-font-size);
     z-index: 9999;
     padding-bottom: 3rem; /* Adjust this value to move the content upwards */
@@ -61,15 +61,9 @@ function handleLoadError() {
     </div>
     <div id="app-container">
         <div id="iconBar">
-            <div class="icon" id="filesIcon">
-                <img src="img/files.svg" alt="Files icon">
-            </div>
-            <div class="icon" id="helpIcon">
-                <img src="img/help.svg" alt="Help icon">
-            </div>
-            <div class="icon align-bottom" id="settingsIcon">
-                <img src="img/gear.svg" alt="Settings icon">
-            </div>
+            <div class="icon" id="filesIcon"></div>
+            <div class="icon" id="helpIcon"></div>
+            <div class="icon align-bottom" id="settingsIcon"></div>
         </div>
         <div id="panel" class="collapsed">
             <div id="panel-content">
@@ -94,13 +88,8 @@ function handleLoadError() {
                 </div>
                 <div id="panel-content-files" class="panel-content-page">
                     <div id="panel-toolbar">
-                        <div class="toolbar-icon" id="newFolderIcon">
-                            <img src="img/newfolder.svg" alt="New folder">
-                        </div>
-                        <div class="toolbar-icon" id="uploadFileIcon">
-                            <img src="img/upload.svg" alt="Upload file">
-                            <input type="file" id="fileUploadInput" style="display: none;" />
-                        </div>
+                        <div class="toolbar-icon" id="newFolderIcon"></div>
+                        <div class="toolbar-icon" id="uploadFileIcon"></div>
                     </div>
                     <div id="panel-current-folder"></div>
                     <div id="fileList"></div>
@@ -183,32 +172,5 @@ function handleLoadError() {
         <div id="log-container"></div>
     </div>
     <div id="toast-container"></div>
-
-    <script>
-        function lazyLoadCSS(href) {
-            var link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = href;
-            document.head.appendChild(link);
-        }
-        document.addEventListener("DOMContentLoaded", function() {
-            lazyLoadCSS("styles/sidebar.css");
-            lazyLoadCSS("styles/tabs.css");
-            lazyLoadCSS("styles/repl.css");
-            lazyLoadCSS("styles/cm5/codemirror.min.css");
-            lazyLoadCSS("styles/cm5/monokai.min.css");
-            lazyLoadCSS("styles/cm5/lint.min.css");
-            lazyLoadCSS("styles/cm5/fullscreen.css");
-            lazyLoadCSS("styles/pages.css");
-        });
-    </script>
-
-    <script type="module" src="js/main.js"></script>
-    <script src="js/cm5/codemirror.min.js"></script>
-    <script src="js/cm5/python.min.js"></script>
-    <script src="js/cm5/autorefresh.min.js"></script>
-    <script src="js/cm5/active-line.min.js"></script>
-    <script src="js/cm5/lint.min.js"></script>
-    <script src="js/cm5/fullscreen.js"></script>
 </body>
 </html>
