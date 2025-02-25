@@ -32,6 +32,7 @@
     flex-direction: column; /* Arrange logo and text vertically */
     justify-content: center;
     align-items: center;
+    font-family: Arial, sans-serif;
     font-size: var(--large-font-size);
     z-index: 9999;
     padding-bottom: 3rem; /* Adjust this value to move the content upwards */
@@ -60,15 +61,9 @@ function handleLoadError() {
     </div>
     <div id="app-container">
         <div id="iconBar">
-            <div class="icon" id="filesIcon">
-                <img src="img/files.svg" alt="Files icon">
-            </div>
-            <div class="icon" id="helpIcon">
-                <img src="img/help.svg" alt="Help icon">
-            </div>
-            <div class="icon align-bottom" id="settingsIcon">
-                <img src="img/gear.svg" alt="Settings icon">
-            </div>
+            <div class="icon" id="filesIcon"></div>
+            <div class="icon" id="helpIcon"></div>
+            <div class="icon align-bottom" id="settingsIcon"></div>
         </div>
         <div id="panel" class="collapsed">
             <div id="panel-content">
@@ -93,13 +88,8 @@ function handleLoadError() {
                 </div>
                 <div id="panel-content-files" class="panel-content-page">
                     <div id="panel-toolbar">
-                        <div class="toolbar-icon" id="newFolderIcon">
-                            <img src="img/newfolder.svg" alt="New folder">
-                        </div>
-                        <div class="toolbar-icon" id="uploadFileIcon">
-                            <img src="img/upload.svg" alt="Upload file">
-                            <input type="file" id="fileUploadInput" style="display: none;" />
-                        </div>
+                        <div class="toolbar-icon" id="newFolderIcon"></div>
+                        <div class="toolbar-icon" id="uploadFileIcon"></div>
                     </div>
                     <div id="panel-current-folder"></div>
                     <div id="fileList"></div>

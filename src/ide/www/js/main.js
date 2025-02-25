@@ -1,8 +1,24 @@
+// Import the CSS files so they are part of the bundle
 import "../styles/base.css";
 import "../styles/sidebar.css";
 import "../styles/tabs.css";
 import "../styles/repl.css";
 import "../styles/pages.css";
+
+// Inline the SVG files for better compression and performance
+import filesSvg from "../img/files.svg";
+//import folderSvg from "../img/folder.svg";  // in sidebar.js
+import gearSvg from "../img/gear.svg";
+import helpSvg from "../img/help.svg";
+import newfolderSvg from "../img/newfolder.svg";
+//import spinnerSvg from "../img/spinner.svg";  // referenced in CSS
+//import starSvg from "../img/star.svg";  // in sidebar.js
+import uploadSvg from "../img/upload.svg";
+document.getElementById('filesIcon').innerHTML = `<img src="${filesSvg}" alt="Files icon">`;
+document.getElementById('helpIcon').innerHTML = `<img src="${helpSvg}" alt="Help icon">`;
+document.getElementById('settingsIcon').innerHTML = `<img src="${gearSvg}" alt="Settings icon">`;
+document.getElementById('newFolderIcon').innerHTML = `<img src="${newfolderSvg}" alt="New folder">`;
+document.getElementById('uploadFileIcon').innerHTML = `<img src="${uploadSvg}" alt="Upload file"><input type="file" id="fileUploadInput" style="display: none;" />`;
 
 import {
   currentFolder,

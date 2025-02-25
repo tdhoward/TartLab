@@ -18,6 +18,31 @@ module.exports = (env, argv) => ({
         test: /\.css$/,
         use: ["style-loader", "css-loader"],
       },
+      {
+        test: /\.svg$/,
+        exclude: path.resolve(__dirname, "img/logo.svg"),
+        type: "asset/inline",
+        use: [
+          {
+            loader: "svgo-loader",
+            options: {
+              plugins: [
+                { name: "removeTitle", active: true },
+                { name: "removeComments", active: true },
+                { name: "removeDesc", active: true },
+              ],
+            },
+          },
+        ],
+      },
+      // Rule for logo.svg to emit it as a separate file
+      {
+        test: /logo\.svg$/,
+        type: "asset/resource",
+        generator: {
+          filename: "img/[name][ext]",
+        },
+      },
     ],
   },
   plugins: [
