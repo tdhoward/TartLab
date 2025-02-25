@@ -7,12 +7,9 @@ import "../styles/pages.css";
 
 // Inline the SVG files for better compression and performance
 import filesSvg from "../img/files.svg";
-//import folderSvg from "../img/folder.svg";  // in sidebar.js
 import gearSvg from "../img/gear.svg";
 import helpSvg from "../img/help.svg";
 import newfolderSvg from "../img/newfolder.svg";
-//import spinnerSvg from "../img/spinner.svg";  // referenced in CSS
-//import starSvg from "../img/star.svg";  // in sidebar.js
 import uploadSvg from "../img/upload.svg";
 document.getElementById('filesIcon').innerHTML = `<img src="${filesSvg}" alt="Files icon">`;
 document.getElementById('helpIcon').innerHTML = `<img src="${helpSvg}" alt="Help icon">`;

@@ -37,7 +37,7 @@ import { lintKeymap } from "@codemirror/lint";
 
 import { python } from "@codemirror/lang-python";
 //import { linter } from "@codemirror/lint";
-import { monokai as myTheme } from "./cm6theme.js";
+import { cooldark as myTheme } from "./cm6theme.js";
 
 import { saveButton, saveFile } from "./main.js";
 import { replPlayButton } from "./repl-client.js";
