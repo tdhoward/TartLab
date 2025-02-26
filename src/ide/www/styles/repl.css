@@ -97,7 +97,7 @@
 
 #repl-play-button {
     cursor: pointer;
-    margin-right: 0.5rem;
+    margin-right: 1.0rem;
     display: inline-block;
     vertical-align: middle;
 }
