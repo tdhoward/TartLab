@@ -21,12 +21,18 @@ from ahttpserver.server import HTTPServerError
 # Display stuff
 from hdwconfig import display_drv, IDE_BUTTON_PIN
 from graphics import FrameBuffer,RGB565
+import graphics
+
 display_drv.rotation = 90
 WIDTH, HEIGHT = display_drv.width, display_drv.height
-FONT_WIDTH = 16
+BASE_UNIT = min([WIDTH, HEIGHT]) // 2
+FONT_WIDTH = 8
 BPP = display_drv.color_depth // 8  # Bytes per pixel
 ba = bytearray(WIDTH * HEIGHT * BPP)
 fb = FrameBuffer(ba, WIDTH, HEIGHT, RGB565)
+tbwidth = WIDTH - 2
+txtba = bytearray(tbwidth * FONT_WIDTH * 2 * BPP)
+txtfb = FrameBuffer(txtba, tbwidth, FONT_WIDTH * 2, RGB565)
 
 if display_drv.requires_byteswap:
     needs_swap = display_drv.disable_auto_byteswap(True)
@@ -48,10 +54,7 @@ class pal:
     GREY = 0x8410 if not needs_swap else 0x1084
 
 fb.fill(pal.BLACK)
-fb.line(0, 0, WIDTH - 1, 0, pal.BLUE)
-fb.line(WIDTH - 1, 0, WIDTH - 1, HEIGHT - 1, pal.BLUE)
-fb.line(WIDTH - 1, HEIGHT - 1, 0, HEIGHT - 1, pal.BLUE)
-fb.line(0, HEIGHT - 1, 0, 0, pal.BLUE)
+fb.rect(0, 0, WIDTH, HEIGHT, pal.BLUE)
 display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
 
 
@@ -59,6 +62,7 @@ USER_BASE_DIR = '/files/user'
 IDE_BASE_DIR = '/ide'
 settings = {}
 repos = {}
+updates_in_progress = False
 
 class CaptureOutput(io.IOBase):
     def __init__(self):
@@ -232,15 +236,21 @@ def initialize():
         log_exception(e)
 
 
+def display_text(text, row, color = pal.WHITE, size = 2):
+    global WIDTH, HEIGHT, FONT_WIDTH, txtfb, txtba, tbwidth
+    fwidth = (FONT_WIDTH * size)
+    txtfb.fill(0)
+    txtfb.text(text, (tbwidth - fwidth * len(text)) // 2, 0, color, size)
+    display_drv.blit_rect(txtba, (WIDTH - tbwidth) // 2, HEIGHT // 2 + (fwidth * row), tbwidth, FONT_WIDTH * 2)
+
+
 # --------- Execution starts here -----------
 # Since 'app' is used in decorators below, we need it to already exist.
 initialize()
 
 # Write the title info on the screen
 version = next((repo['installed_version'] for repo in repos['list'] if repo['name'] == 'TartLab'))
-text = 'TARTLAB ' + version
-fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 - 64, pal.WHITE, 2)
-display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
+display_text('TARTLAB ' + version, -4)
 
 network.hostname(settings['hostname'])  # sets up hostname (e.g. tartlab.local) on mDNS (currently only works for STA interface)
 sta_if = network.WLAN(network.STA_IF) # create station interface
@@ -253,21 +263,36 @@ if ip_address == "0.0.0.0":
     ip_address = create_soft_ap(wifi_ssid)
 app = HTTPServer(ip_address, 80)
 
-text = f'WiFi: {wifi_ssid}'
-dirty = fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 - 16, pal.WHITE, 2)
-display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)  # due to bug, just blit whole screen
-#display_drv.blit_rect(ba, dirty.x, dirty.y, dirty.w, dirty.h)
+display_text(f'WiFi: {wifi_ssid}', -1)
 if softAP:
     text = '192.168.4.1'
 else:
     text = ip_address
-dirty = fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 + 16, pal.WHITE, 2)
-display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
-#display_drv.blit_rect(ba, dirty.x, dirty.y, dirty.w, dirty.h)
+display_text(text, 1)
 if not softAP:
-    text = settings['hostname'] + '.local'
-    dirty = fb.text(text, (WIDTH - FONT_WIDTH * len(text)) // 2, HEIGHT // 2 + 48, pal.WHITE, 2)
-    display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
+    display_text(settings['hostname'] + '.local', 3)
+
+
+def show_update_progress(status, stepnum, steps):
+    global display_drv, WIDTH, HEIGHT, BASE_UNIT
+    SM_UNIT = BASE_UNIT // 5
+    if stepnum == 1:  # first step, redraw the screen
+        fb.fill(pal.BLACK)
+        fb.rect(0, 0, WIDTH, HEIGHT, pal.GREEN)
+        display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
+        display_text("UPDATE IN PROGRESS", -4)
+    display_text(status, 0)  # show the status message
+    if stepnum > steps:
+        steps = stepnum
+    display_text(f'Step {stepnum} of {steps}', 2, pal.GREY, 2)
+    # draw the progress bar
+    bar_height = SM_UNIT
+    bar_width = WIDTH - 10
+    start_x = 5
+    start_y = HEIGHT - (5 + bar_height)
+    progress_width = int(bar_width * stepnum / (steps + 1))
+    end_x = start_x + progress_width
+    graphics.gradient_rect(display_drv, start_x, start_y, end_x, bar_height, pal.CYAN, pal.BLUE)
 
 
 # list folder contents, returns tuple (files, folders)
@@ -569,9 +594,11 @@ async def api_get_versions(reader, writer, request):
 # check for version updates for the repos
 @app.route("GET", "/api/checkupdates")
 async def api_check_updates(reader, writer, request):
-    global softAP, repos
+    global softAP, repos, updates_in_progress
     if softAP:
         return await sendHTTPResponse(writer, 400, 'This WiFi has no internet access.')
+    if updates_in_progress:
+        return await sendHTTPResponse(writer, 400, 'Updates are in progress.')
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
@@ -590,13 +617,15 @@ async def api_check_updates(reader, writer, request):
 # start updates for the repos
 @app.route("POST", "/api/doupdates")
 async def api_do_updates(reader, writer, request):
-    global softAP
+    global softAP, updates_in_progress
     if softAP:
         return await sendHTTPResponse(writer, 400, 'This WiFi has no internet access.')
-    # TODO: Are there even any updates to do?
+    if updates_in_progress:
+        return await sendHTTPResponse(writer, 400, 'Updates are in progress.')
+    updates_in_progress = True
     await sendHTTPResponse(writer, 200, 'success')  # we return success right away, since we're restarting
     print(f"API request: {request.path} with response code 200")
-    await main_update_routine()
+    await main_update_routine(show_update_progress)
 
 
 # get the disk usage

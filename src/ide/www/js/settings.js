@@ -293,7 +293,7 @@ function checkForUpdates() {
 
 
 function doUpdates() {
-  if (!confirm('Update will start.\nPlease do not turn off device.\nSwitching to log view.')) {
+  if (!confirm('Make sure device is plugged in.\nPlease do not turn off or restart device during update.')) {
     return;
   }
   closeUpdDialog();

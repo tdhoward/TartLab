@@ -145,12 +145,15 @@ def clean_up():
         rmvdir(TMP_UPDATE_FOLDER)
 
 
-async def update_packages(repo):
+async def update_packages(repo, callback):
     global updating_updater
     assets, latest_version = await check_for_update(repo)
     if not assets:
         return False
+    
+    steps = 11  # 4 steps + 7 file packages
 
+    callback("Checking disk space", 1, steps)
     try:
         # check if we have enough storage space to do this.
         total_size = sum(a['size'] for a in assets)
@@ -181,6 +184,7 @@ async def update_packages(repo):
         clean_up()
         return False
 
+    callback("Downloading manifest", 2, steps)
     # download the manifest
     try:
         target_file = TMP_UPDATE_FOLDER + '/' + a['name']
@@ -204,6 +208,8 @@ async def update_packages(repo):
         log_exception(e)
         clean_up()
         return False
+    
+    callback("Downloading files", 3, steps)
 
     try:
         # get list of assets specified in manifest
@@ -226,6 +232,7 @@ async def update_packages(repo):
         clean_up()
         return False
 
+    callback("Checking files", 4, steps)
     try:
         # step through the manifest list, check hashes
         for m in manifest:
@@ -252,10 +259,13 @@ async def update_packages(repo):
             break
 
     # if everything is correct, install them all and update the version
+    step = 5
     try:
         for m in manifest:
             fname = TMP_UPDATE_FOLDER + '/' + m['file_name']
+            callback(f'Updating {m["target"]}', step, steps)
             await update_folder(fname, m['target'], m['clear_first'])
+            step = step + 1
     except Exception as e:
         log(f'Error installing packages!')
         log_exception(e)
@@ -278,7 +288,7 @@ def restart_device(stay_in_IDE = True):
     machine.reset()
 
 
-async def main_update_routine():
+async def main_update_routine(callback):
     global updating_updater
     repos = {}
     with open(REPOS_FILE, 'r') as file:
@@ -296,7 +306,7 @@ async def main_update_routine():
     for repo in repos['list']:
         log(f"\nStarting update for {repo['name']} from version {repo['installed_version']}")
         await asyncio.sleep(2)
-        if await update_packages(repo):
+        if await update_packages(repo, callback):
             log(f"Updated {repo['name']} to version {repo['installed_version']}")
             if updating_updater:  # this should only be at the very end anyway, but...
                 break
