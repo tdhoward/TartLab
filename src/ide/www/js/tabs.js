@@ -33,7 +33,7 @@ import {
   closeBrackets,
   closeBracketsKeymap,
 } from "@codemirror/autocomplete";
-import { linter, lintGutter, lintKeymap, setDiagnostics } from "@codemirror/lint";
+import { lintKeymap } from "@codemirror/lint";
 
 import { python } from "@codemirror/lang-python";
 import { cooldark as myTheme } from "./cm6theme.js";
@@ -104,50 +104,6 @@ const cmSetup = [
     ...lintKeymap,
   ]),
 ];
-
-// Create a dummy linter so that the lint system is active.
-//const dummyLinter = linter(() => []);
-
-/*
-const errorLinter = linter((view) => {
-  let diagnostics = [];
-  syntaxTree(view.state)
-    .cursor()
-    .iterate((node) => {
-      if (node.name == "RegExp")
-        diagnostics.push({
-          from: node.from,
-          to: node.to,
-          severity: "warning",
-          message: "Regular expressions are FORBIDDEN",
-          actions: [
-            {
-              name: "Remove",
-              apply(view, from, to) {
-                view.dispatch({ changes: { from, to } });
-              },
-            },
-          ],
-        });
-    });
-  return diagnostics;
-});
-*/
-
-function addErrorMarker(fname, lineNumber, message) {
-  let editorView = editors[fname].editor;
-  const line = editorView.state.doc.line(lineNumber);
-  const diagnostics = [
-    {
-      from: line.from,
-      to: line.to,
-      severity: "error",
-      message: message,
-      source: "custom",
-    },
-  ];
-  setDiagnostics(editorView.state, diagnostics);
-}
 
 function goToLine(fname, lineNumber) {
   let view = editors[fname].editor;
@@ -315,7 +271,6 @@ function createEditor(tab, content, isNamed, mode) {
 
   const state = EditorState.create({
     doc: content,
-    //codeError: {},
     extensions: [
       cmSetup,
       languageExtension,
@@ -323,8 +278,6 @@ function createEditor(tab, content, isNamed, mode) {
       updateListener,
       myTheme,
       keymap.of([indentWithTab]),
-      //lintGutter(),
-      //dummyLinter,
     ],
   });
 
@@ -413,7 +366,6 @@ export {
   renameTab,
   switchToTab,
   closeTab,
-  addErrorMarker,
   goToLine,
   tabs,
   editors,

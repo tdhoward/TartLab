@@ -2,7 +2,6 @@ import { apiBaseUrl, showSpinners, showToast } from "./main.js";
 import {
   activeTab,
   updatePlayButtonVisibility,
-  addErrorMarker,
   goToLine
 } from "./tabs.js";
 
@@ -98,8 +97,8 @@ function sendReplCommand(saveHistory = true, source = 'console') {
         updateReplConsole(data.res);
         if ("err" in data && "fname" in data && "line" in data) {
           if (data.fname == activeTab.filename) {
-            addErrorMarker(data.fname, data.line, data.err);
             goToLine(data.fname, data.line);
+            // data.err contains the error message, but we already see it in the console.
           }
         }
       } else {
