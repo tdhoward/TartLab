@@ -33,10 +33,9 @@ import {
   closeBrackets,
   closeBracketsKeymap,
 } from "@codemirror/autocomplete";
-import { lintKeymap } from "@codemirror/lint";
+import { linter, lintGutter, lintKeymap, setDiagnostics } from "@codemirror/lint";
 
 import { python } from "@codemirror/lang-python";
-//import { linter } from "@codemirror/lint";
 import { cooldark as myTheme } from "./cm6theme.js";
 
 import { saveButton, saveFile } from "./main.js";
@@ -105,6 +104,61 @@ const cmSetup = [
     ...lintKeymap,
   ]),
 ];
+
+// Create a dummy linter so that the lint system is active.
+//const dummyLinter = linter(() => []);
+
+/*
+const errorLinter = linter((view) => {
+  let diagnostics = [];
+  syntaxTree(view.state)
+    .cursor()
+    .iterate((node) => {
+      if (node.name == "RegExp")
+        diagnostics.push({
+          from: node.from,
+          to: node.to,
+          severity: "warning",
+          message: "Regular expressions are FORBIDDEN",
+          actions: [
+            {
+              name: "Remove",
+              apply(view, from, to) {
+                view.dispatch({ changes: { from, to } });
+              },
+            },
+          ],
+        });
+    });
+  return diagnostics;
+});
+*/
+
+function addErrorMarker(fname, lineNumber, message) {
+  let editorView = editors[fname].editor;
+  const line = editorView.state.doc.line(lineNumber);
+  const diagnostics = [
+    {
+      from: line.from,
+      to: line.to,
+      severity: "error",
+      message: message,
+      source: "custom",
+    },
+  ];
+  setDiagnostics(editorView.state, diagnostics);
+}
+
+function goToLine(fname, lineNumber) {
+  let view = editors[fname].editor;
+  const line = view.state.doc.line(lineNumber);
+  if (!line) return; // exit if line does not exist
+  const pos = line.from;
+  view.dispatch({
+    selection: { anchor: pos },
+    scrollIntoView: true,
+  });
+}
 
 
 function createNewFileTab() {
@@ -261,6 +315,7 @@ function createEditor(tab, content, isNamed, mode) {
 
   const state = EditorState.create({
     doc: content,
+    //codeError: {},
     extensions: [
       cmSetup,
       languageExtension,
@@ -268,6 +323,8 @@ function createEditor(tab, content, isNamed, mode) {
       updateListener,
       myTheme,
       keymap.of([indentWithTab]),
+      //lintGutter(),
+      //dummyLinter,
     ],
   });
 
@@ -294,7 +351,7 @@ function renameTab(fromFilename, toFilename) {
   tabs[toFilename].tabDiv.dataset.filename = toFilename;
   tabs[
     toFilename
-  ].tabDiv.innerHTML = `${toFilename} <button class="close-tab" data-filename="${toFilename}">X</button>`;
+  ].tabDiv.innerHTML = `${toFilename} <button class="close-tab" data-filename="${toFilename}">&times;</button>`;
   tabs[toFilename].tabDiv.onclick = () => switchToTab(toFilename);
   delete tabs[fromFilename];
 }
@@ -356,6 +413,8 @@ export {
   renameTab,
   switchToTab,
   closeTab,
+  addErrorMarker,
+  goToLine,
   tabs,
   editors,
   activeTab,

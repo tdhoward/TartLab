@@ -1,5 +1,10 @@
 import { apiBaseUrl, showSpinners, showToast } from "./main.js";
-import { activeTab, updatePlayButtonVisibility } from "./tabs.js";
+import {
+  activeTab,
+  updatePlayButtonVisibility,
+  addErrorMarker,
+  goToLine
+} from "./tabs.js";
 
 const replContent = document.getElementById("repl-content");
 const replHeader = document.getElementById("repl-header");
@@ -60,7 +65,7 @@ function resetReplMemory() {
 }
 
 
-function sendReplCommand(saveHistory = true) {
+function sendReplCommand(saveHistory = true, source = 'console') {
   if (saveHistory) {
     if (commandHistory.length >= 10) {
       // Save command to history
@@ -77,7 +82,7 @@ function sendReplCommand(saveHistory = true) {
   fetch(`${apiBaseUrl}/repl`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cmd: sendCommand }),
+    body: JSON.stringify({ cmd: sendCommand, source: source }),
   })
     .then((response) => {
       showSpinners(false);
@@ -91,6 +96,12 @@ function sendReplCommand(saveHistory = true) {
     .then((data) => {
       if (data && "res" in data) {
         updateReplConsole(data.res);
+        if ("err" in data && "fname" in data && "line" in data) {
+          if (data.fname == activeTab.filename) {
+            addErrorMarker(data.fname, data.line, data.err);
+            goToLine(data.fname, data.line);
+          }
+        }
       } else {
         updateReplConsole("Error: No result returned");
       }
@@ -272,7 +283,7 @@ function initRepl() {
     if (activeTab && activeTab.contentType === "python") {
       const command = `exec(open('${activeTab.fullPath}').read())`;
       commandBuffer = [command]; // Set the command buffer to execute the Python script
-      sendReplCommand(false); // Send the command to the REPL, but don't save it as history
+      sendReplCommand(false, activeTab.filename); // Send the command to the REPL, but don't save it as history
       commandBuffer = [];
     }
   };

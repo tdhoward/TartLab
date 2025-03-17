@@ -9,7 +9,7 @@ import uasyncio as asyncio
 import io
 from machine import Pin
 from tartlabutils import file_exists, unquote, rmvdir, check_for_update, main_update_routine, \
-                    log, log_exception, get_logs, load_settings, save_settings, default_settings
+            log, repl_exception, log_exception, get_logs, load_settings, save_settings, default_settings
 
 from ahttpserver import HTTPResponse, HTTPServer
 from ahttpserver.sse import EventSource
@@ -79,38 +79,66 @@ class CaptureOutput(io.IOBase):
         self.buffer = []
 
 
+def extract_error_and_line(traceback_str):
+    lines = traceback_str.splitlines()
+    last_file_index = None
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("File"):
+            last_file_index = i
+    if last_file_index is not None:
+        # Extract the line number from the last "File" line
+        file_line = lines[last_file_index]
+        parts = file_line.split("line")
+        if len(parts) > 1:
+            line_number = parts[1].split(",")[0].strip()
+        else:
+            line_number = None
+        # Get error message from subsequent line(s)
+        error_message = "\r\n".join(lines[last_file_index + 1:])
+        return error_message, line_number
+    return None, None
+
+
 # This isn't meant to be fast, just usable
 replGlobals = {}
-def pseudoREPL(source):
+def pseudoREPL(cmd, source):
     global replGlobals
+    error = False
+    # Capture the output
+    capture = CaptureOutput()
     try:
-        # Capture the output
-        capture = CaptureOutput()
         os.dupterm(capture)
         do_exec = False
-        if source.startswith('exec('):
+        if cmd.startswith('exec('):
             do_exec = True
         try:
             if not do_exec:
                 # Try to evaluate the input as an expression
-                result = eval(source, replGlobals)
+                result = eval(cmd, replGlobals)
                 if result is not None:
                     print(result)
         except (SyntaxError, NameError):
             do_exec = True  # If eval fails, fall back to exec
         if do_exec:
             try:
-                exec(source, replGlobals)
+                exec(cmd, replGlobals)
             except Exception as e:
-                print(f"Error: {e}")
+                error = True
+                repl_exception(e, source)
 
+    except Exception as e:
+        error = True
+        repl_exception(e, source)
+    finally:
         # Stop capturing
         os.dupterm(None)
         cap = capture.get_output()
         capture.clear()
-        return cap
-    except Exception as e:
-        return f"Error: {e}"
+        res = {'res': cap}
+        if error and source != 'console':
+            res['fname'] = source
+            res['err'], res['line'] = extract_error_and_line(cap)
+        return res
 
 
 '''
@@ -645,11 +673,11 @@ async def api_get_space(reader, writer, request):
 @app.route("POST", "/api/repl")
 async def api_repl(reader, writer, request):
     data = ujson.loads(request.body.decode("utf-8"))
-    results = pseudoREPL(data['cmd'])
+    results = pseudoREPL(data['cmd'], data['source'])
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
-    writer.write(ujson.dumps({'res': results}))
+    writer.write(ujson.dumps(results))
     await writer.drain()
     print(f"REPL command: '{data['cmd']}'")
 

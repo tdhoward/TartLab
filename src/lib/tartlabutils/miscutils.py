@@ -3,6 +3,7 @@ import sys
 import ujson
 import random
 import errno
+import uio
 
 # maintains 5 log files in the /logs folder
 LOG_DIR = '/logs'
@@ -98,14 +99,21 @@ def log(message):
         with open(LOG_DIR + '/' + current_log_file, 'a') as f:
             f.write(message + "\n")
 
+def repl_exception(ex, source):
+    s = uio.StringIO()
+    sys.print_exception(ex, s)
+    output = s.getvalue()
+    results = [s.replace("<string>", source, 1) for s in output.splitlines() if '"ide/ide.py"' not in s]
+    for r in results:
+        print(r)
+
+
 def log_exception(ex):
     global current_log_file
-    # Get the exception type and message
-    msg = f"Exception: {str(ex)}\n"
-    print(msg)
+    # Print the full traceback
+    sys.print_exception(ex)
     if current_log_file:
         with open(LOG_DIR + '/' + current_log_file, 'a') as f:
-            f.write(msg)
             sys.print_exception(ex, f) # Write the full traceback
 
 def get_logs():
