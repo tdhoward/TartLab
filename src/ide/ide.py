@@ -79,21 +79,25 @@ class CaptureOutput(io.IOBase):
         self.buffer = []
 
 
-def extract_error_and_line(traceback_str):
+def extract_error_and_line(traceback_str, source):
     lines = traceback_str.splitlines()
     last_file_index = None
+    source_line_index = None
     for i, line in enumerate(lines):
-        if line.lstrip().startswith("File"):
+        l = line.lstrip()
+        if l.startswith("File"):
             last_file_index = i
-    if last_file_index is not None:
-        # Extract the line number from the last "File" line
-        file_line = lines[last_file_index]
+            if l.startswith(f'File "{source}"'):
+                source_line_index = i
+    if last_file_index is not None and source_line_index is not None:
+        # Extract the line number from the source_line_index line
+        file_line = lines[source_line_index]
         parts = file_line.split("line")
         if len(parts) > 1:
             line_number = parts[1].split(",")[0].strip()
         else:
             line_number = None
-        # Get error message from subsequent line(s)
+        # Get error message from line(s) following the last File line
         error_message = "\r\n".join(lines[last_file_index + 1:])
         return error_message, line_number
     return None, None
@@ -137,7 +141,7 @@ def pseudoREPL(cmd, source):
         res = {'res': cap}
         if error and source != 'console':
             res['fname'] = source
-            res['err'], res['line'] = extract_error_and_line(cap)
+            res['err'], res['line'] = extract_error_and_line(cap, source)
         return res
 
 

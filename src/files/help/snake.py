@@ -145,15 +145,15 @@ def canvas_text(msg, x, y, color=pal.WHITE, center = True):
 
 # Place an apple randomly
 def place_apple():
-    global snake
+    global snake, apple_list
     while True:
         apple = (randint(0, GRID_WIDTH - 1), randint(0, GRID_HEIGHT - 1))
-        if apple not in snake:
+        if apple not in snake and apple not in apple_list:
             return apple
 
 # Main game
 def main():
-    global text_fb, snake
+    global text_fb, snake, apple_list
 
     # Load high score
     high_score = load_high_score()
@@ -184,6 +184,9 @@ def main():
     draw_outer_border()
     canvas.show()
 
+    # Create an empty list of apples
+    apple_list = []
+
     # Initialize snake
     snake = [(GRID_WIDTH//2, GRID_HEIGHT//2)]
     direction = (1, 0)  # start moving right
@@ -192,8 +195,11 @@ def main():
     apple_count = 0
     apple_bonus = 1
 
-    apple = place_apple()
-    draw_image(apple_buf, apple[0], apple[1])
+    num_apples = 3  # how many apples should there be?
+    # place and draw all the apples
+    for c in range(num_apples):
+        apple_list.append(place_apple())
+        draw_image(apple_buf, apple_list[-1][0], apple_list[-1][1])
     last_move = ticks_ms()
     move_delay = 250  # ms between snake moves
 
@@ -253,8 +259,9 @@ def main():
                 second_to_last = snake[-2]
                 draw_image(snake_body_buf, second_to_last[0], second_to_last[1])
 
-            # Check if we ate the apple
-            if new_head == apple:
+            # Check if we ate an apple
+            if new_head in apple_list:
+                apple_list.remove(new_head)  # get rid of the apple that we ate
                 snake_length += 1
                 score += apple_bonus
                 apple_count += 1
@@ -265,8 +272,8 @@ def main():
                     move_delay = min(move_delay * 0.8, move_delay - 5)
 
                 # place a new apple
-                apple = place_apple()
-                draw_image(apple_buf, apple[0], apple[1])
+                apple_list.append(place_apple())
+                draw_image(apple_buf, apple_list[-1][0], apple_list[-1][1])
                 show_text(f"Score {score}")
 
         # Update the canvas
