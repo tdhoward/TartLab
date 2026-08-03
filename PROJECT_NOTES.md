@@ -362,20 +362,24 @@ Use platform-aware npm invocation rather than hard-coding `npm.cmd`. A GitHub Ac
 ### Phase 1: Protect existing deployments
 
 1. Turn `_example_installation` into a reproducible, sanitized baseline fixture: record the board revision, exact firmware hash, capture method, filesystem capacity/free space, and expected file inventory; exclude or replace real credentials.
-2. Add structured boot diagnostics: firmware/runtime identity, reset cause, boot sequence number, free heap/PSRAM and filesystem space, update state, and explicit health markers after the IDE server or selected app is actually ready. Capture serial output alongside the rolling files during failure tests.
-3. Add an automated release-archive inspection test that lists every path each package can overwrite.
-4. Correct the local configuration boundary so hardware selection, selected-app state, user files, settings, release state, and logs cannot be cleared or overwritten.
-5. Add a minimal recovery boot path and an update-in-progress marker before changing PyDisplay.
-6. Create an OTA regression fixture that starts from the last public TartLab layout and updates to a test release.
+2. Create an automated OTA regression harness that starts from that fixture, plus release-archive inspection that lists every path each package can overwrite. Establish the tests before changing updater or filesystem ownership behavior.
+3. Correct the local ownership boundary so hardware selection, selected-app state, user files, settings, release state, and logs cannot be cleared or overwritten. Replace mutable `/app.py` with a fixed launcher plus preserved selected-app state, or explicitly preserve it until that migration is complete.
+4. Add structured boot diagnostics: firmware/runtime identity, reset cause, boot sequence number, free heap/PSRAM and filesystem space, update state, and explicit health markers after the IDE server or selected app is actually ready. Capture serial output alongside the rolling files during failure tests.
+5. Add a minimal recovery boot path and an update-in-progress marker that remain usable when the normal IDE, display stack, or vendor libraries cannot import.
+6. Fix updater failure semantics before another architectural migration: propagate download/extraction/write failures, never log package success after a failed extraction, and never advance `repos.json` until the new installation passes its boot health check.
+7. Run first-boot, IDE/app-mode, preserved-state, interrupted-update, extraction-failure, and recovery tests on the exact MicroPython 1.23.0 octal-SPIRAM baseline before deploying these protections.
 
-### Phase 2: Establish reproducible dependency management
+Do not ship an intermediate Phase 1 state that changes package ownership or updater behavior without the recovery path and OTA regression results required to repair it.
 
-1. Inventory which modules from the current embedded `pydevices` tree TartLab actually imports at runtime.
-2. Identify the current upstream equivalents across `pydisplay`, `micropython-hardware`, and `pygraphics`.
-3. Confirm whether a maintained T-Display-S3 Pro board configuration exists upstream; otherwise port TartLab's working board configuration to the current contract.
-4. Create the vendor lock/allowlist pipeline.
-5. Build a minimal legacy-compatible payload.
-6. Compare flash usage, RAM at startup, display initialization time, frame/update performance, and touch behavior against the current deployed code.
+### Phase 2: Make the legacy build and release path reproducible
+
+1. Record content hashes and provenance for the currently deployed vendored payload before attempting to replace it.
+2. Make `makedist.py` and `release.py` noninteractive and platform-aware, and require builds to start from a clean output directory so stale `dist` files cannot survive.
+3. Generate build metadata containing TartLab version, Git commit, build timestamp, `legacy-mp123` profile, firmware compatibility, and a vendor-payload identifier.
+4. Rebuild the known-working legacy payload without changing its runtime behavior; compare its file inventory, archive contents, expanded size, startup RAM, display/touch behavior, and OTA result with `_example_installation`.
+5. Add legacy CI for clean builds, import/compile checks, archive ownership, size budgets, first installation, and OTA from the captured layout.
+6. Add interrupted-download, corrupted-package, extraction/write failure, low-space, power-loss, and failed-health-check tests to the legacy release gate.
+7. Publish reproducible legacy artifacts and provenance from CI, and require successful physical-device OTA tests before promoting a legacy release.
 
 ### Phase 3: Add the TartLab hardware abstraction
 
@@ -385,7 +389,17 @@ Use platform-aware npm invocation rather than hard-coding `npm.cmd`. A GitHub Ac
 4. Add capability detection and diagnostic reporting.
 5. Add a headless or desktop test backend for non-hardware logic where practical.
 
-### Phase 4: Prototype modern LVGL firmware separately
+### Phase 4: Migrate and prune PyDevices behind the abstraction
+
+1. Inventory which modules from the current embedded `pydevices` tree TartLab actually imports at runtime.
+2. Identify the current upstream equivalents across `pydisplay`, `micropython-hardware`, and `pygraphics`.
+3. Confirm whether a maintained T-Display-S3 Pro board configuration exists upstream; otherwise port TartLab's working board configuration behind the TartLab platform contract.
+4. Create the pinned vendor lock/allowlist pipeline.
+5. Build a minimal legacy-compatible payload without exposing upstream paths or APIs to core TartLab code.
+6. Compare flash usage, RAM at startup, display initialization time, frame/update performance, touch behavior, and OTA recovery against the Phase 2 legacy baseline.
+7. Promote the new vendor payload only after it passes the established legacy CI and physical-device OTA gates.
+
+### Phase 5: Prototype modern LVGL firmware separately
 
 1. Pin a MicroPython version and the required PyDevices LVGL repositories.
 2. Produce a reproducible firmware build for one reference device.
@@ -394,13 +408,13 @@ Use platform-aware npm invocation rather than hard-coding `npm.cmd`. A GitHub Ac
 5. Keep the existing legacy release channel unchanged during this experiment.
 6. Only after successful hardware testing, define how new devices are provisioned and how adults migrate old ones.
 
-### Phase 5: Harden and automate releases
+### Phase 6: Mature release security and promotion
 
-1. Add a test matrix for legacy and modern profiles.
-2. Build signed or otherwise authenticated release metadata if feasible; SHA-256 verifies integrity but, by itself, does not establish publisher authenticity.
-3. Add interrupted-download, corrupted-package, low-space, power-loss, and failed-boot tests.
-4. Publish release artifacts and provenance from CI.
-5. Require successful OTA upgrade tests before a release is promoted to deployed devices.
+1. Extend the established legacy test matrix and CI pipeline to the modern firmware profile rather than creating a separate release process.
+2. Build signed or otherwise authenticated release metadata; SHA-256 verifies integrity but, by itself, does not establish publisher authenticity.
+3. Publish versioned firmware, filesystem packages, source/vendor provenance, compatibility declarations, and migration instructions from CI.
+4. Test both clean provisioning and adult-admin migration from the legacy firmware, including failure and recovery paths.
+5. Require successful profile-specific hardware, OTA, and recovery tests before any artifact is promoted to its deployment channel.
 
 ## Minimum test matrix
 
