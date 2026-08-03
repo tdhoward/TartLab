@@ -33,7 +33,7 @@ LilyGo devices (T-Display-S3, T-Display-S3 Pro) were used to test and develop Ta
 ![TartLab in action](images/screenshots/TartLab_ss2.png)
 
 ## Installation
- 1. Install a bin file from [MicroPython](https://micropython.org/) on the embedded device.  Sometimes there are special builds of MicroPython that are specific to your device, in which case you should use those.  For those devices without a special build, find the closest thing.  For example, the T-Display-S3 would use the "Support for Octal-SPIRAM" version of the [ESP32_GENERIC_S3 port.](https://www.micropython.org/download/ESP32_GENERIC_S3/)
+ 1. Install a bin file from [MicroPython](https://micropython.org/) on the embedded device.  Sometimes there are special builds of MicroPython that are specific to your device, in which case you should use those.  For the deployed T-Display-S3/T-Display-S3 Pro compatibility baseline, use MicroPython 1.23.0 with octal PSRAM support: `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin` from the [ESP32_GENERIC_S3 port.](https://www.micropython.org/download/ESP32_GENERIC_S3/)  Do not substitute the non-SPIRAM or quad-SPIRAM variant for these devices.
  2. Edit src/hdwconfig.py to point to one of the available config files in src/configs, based on what embedded device you are using. (Default is Lilygo T-Display-S3 Pro.)
  3. Execute makedist.py to build TartLab.  The output is a new "dist" folder.
  4. Use [mpsync](https://github.com/tdhoward/mpsync) to load the TartLab "dist" files onto the device.

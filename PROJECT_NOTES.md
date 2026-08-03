@@ -1,6 +1,6 @@
 # TartLab Project Notes
 
-> Repository review date: 2026-08-02  
+> Repository review date: 2026-08-03
 > Primary repository: <https://github.com/tdhoward/TartLab>
 
 ## Purpose of this document
@@ -38,14 +38,14 @@ Every release must preserve a reliable path to:
 
 Do not make an OTA change that can permanently strand a deployed device merely because a local USB reflash would repair it.
 
-### 2. Continue supporting deployed MicroPython 1.24 devices
+### 2. Continue supporting deployed MicroPython 1.23.0 devices
 
-Existing TartLab deployments use a generic MicroPython 1.24 firmware. New TartLab releases must continue to run on that baseline until an explicit migration policy says otherwise.
+Existing TartLab deployments use the generic ESP32-S3 MicroPython 1.23.0 image `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin`. This is the octal-SPIRAM build required to use the T-Display-S3/T-Display-S3 Pro's octal PSRAM. New TartLab releases must continue to run on that exact legacy baseline until an explicit migration policy says otherwise; compatibility with another 1.23.0 build or a newer generic build is not a substitute.
 
 Consequences:
 
 - Do not require LVGL, frozen modules, native display buses, or newly added MicroPython APIs in the legacy runtime path.
-- New dependencies must be tested on actual MicroPython 1.24 hardware, not only CPython or a recent MicroPython build.
+- New dependencies must be tested on actual hardware running `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin`, not only CPython or a recent MicroPython build.
 - Syntax compatibility is insufficient; imports, memory use, filesystem use, networking, soft resets, and display/touch behavior must also be tested.
 - The legacy-compatible path should remain a first-class build profile rather than an accidental fallback.
 
@@ -99,6 +99,36 @@ However, the update boundaries need to be made explicit and enforced by tooling.
 
 Treat this as a critical migration item: define one clearly named local configuration location that is never included in release archives and is never deleted or overwritten by the updater.
 
+### Deployed filesystem evidence and persistent state
+
+`_example_installation` is a complete deployed-style MicroPython filesystem capture. It contains 192 files totaling 1,122,530 bytes of file content; actual flash consumption is higher because of filesystem blocks and metadata. After excluding firmware-created `/boot.py`, device state, logs, and the additional student copy of `testris.py`, its files match the current local `dist` tree byte-for-byte. This makes it a useful legacy-layout fixture, but it still needs capture metadata such as board revision, firmware hash, `statvfs` output, and capture procedure before it is a reproducible compatibility baseline.
+
+The captured `settings.json` confirms that it is device-local persistent state, not a release default. In addition to startup behavior, hostname, and access-point identity, it stores Wi-Fi SSIDs and passwords in plaintext parallel arrays. Device captures, backups, and diagnostic bundles must therefore be treated as sensitive: exclude or sanitize real settings before committing a fixture, redact credentials before sharing, and use synthetic credentials in tests. Do not quote real SSIDs, passwords, or generated access-point names in documentation or test output.
+
+The capture, current source, and package manifest establish these ownership classes and conflicts:
+
+- `/boot.py` is the default MicroPython stub. It contains no TartLab startup, health check, or recovery logic and is not included in the current TartLab release payload.
+- `/main.py` is TartLab's update-managed entry point and is included in the `rootfiles` package.
+- `/app.py` is generated and overwritten by the IDE's “Set as app” operation to import the selected student program. It is therefore device-local selection state, but the current build copies it into `dist` and `rootfiles` can overwrite it during OTA. Until a fixed launcher plus preserved selected-app setting replaces this design, OTA must preserve the deployed `/app.py`.
+- `/hdwconfig.py` is device-local hardware selection, but it is also copied into `dist` and can be overwritten by `rootfiles`.
+- `/ide`, `/configs`, `/lib/ahttpserver`, `/lib/pydevices`, and `/lib/tartlabutils` are update-managed directories that are deleted before their replacement packages are extracted.
+- `/files/help` and `/files/assets` are update-managed. `/files/user` contains student work and must be preserved; the capture contains both the seeded `hello.py` and the student's selected `testris.py`.
+- `/settings.json`, `/repos.json`, and `/logs` are device state. `/settings.json` contains secrets; `/repos.json` records installed release versions; `/logs` holds boot/runtime diagnostics.
+- `/tmp` is disposable update staging space and may be recursively cleared by the updater.
+
+### Observed boot logs
+
+The capture contains the full five-file retention window, `000000.log` through `000004.log`. In order, the logs show:
+
+1. Initial startup without `settings.json`, followed by IDE selection. The IDE subsequently creates default settings.
+2. Two more IDE selections.
+3. One APP selection. The captured generated `/app.py` currently imports the student's `testris.py`, although the log itself does not record which app was selected at that boot.
+4. A final IDE selection.
+
+No captured log contains a traceback or explicit error. This is encouraging but is not a boot-health result: `Starting IDE` is written before `import ide` and before the network/server is ready, while `Starting APP` is written before `import app`. There is no later success marker. The files also lack timestamps, reset/wake causes, firmware identity, PSRAM or heap information, filesystem free space, update-in-progress state, and a boot identifier that survives log rotation.
+
+At startup, `main.py` initializes logging and writes `System startup` before importing the hardware configuration, so the files identify only the last explicit checkpoint reached. Uncaught hardware-configuration, display, or IDE import exceptions are not automatically appended to the file log; serial boot output may contain a traceback when `/logs` contains only an earlier checkpoint. Preserve both the ordered log set and serial output when diagnosing boot loops, because each boot creates a new zero-padded log and only five are retained. The logs are diagnostics, not an independent recovery path: they depend on `/main.py` and `/lib/tartlabutils` remaining importable, and the captured `/boot.py` provides no earlier fallback.
+
 ### Distribution and release tooling
 
 `makedist.py`:
@@ -123,8 +153,11 @@ Important weaknesses:
 - The default installed version is hard-coded in `main.py` as `v0.13` when `repos.json` is first created.
 - The manifest has no schema version, runtime compatibility declaration, package dependency information, preservation rules, or rollback metadata.
 - Installation is in-place and sequential. For `clear_first` packages, the old directory is deleted before the replacement is extracted.
+- `untar()` catches extraction exceptions without returning failure or re-raising them. `update_folder()` can consequently log `Success`, and the updater can advance `repos.json`, after an incomplete extraction.
+- The `rootfiles` package includes the device-generated `/app.py` selection and device-specific `/hdwconfig.py`, so an otherwise successful OTA can silently reset local behavior.
 - A reset, power loss, write failure, or extraction error can leave a partially replaced installation with no automatic rollback.
 - Free-space checking is based mainly on release asset sizes and a small fixed buffer; it does not model all staging, extraction, backup, and filesystem-overhead requirements.
+- The captured installation matches the local `dist`, but both omit `test.qoi`, `display_qoi.py`, and `qoi_reader.py` that are present in `src`. Without generated build metadata, it is not possible to distinguish a deliberately older payload from a stale build directory.
 
 ### Embedded PyDevices snapshot
 
@@ -139,6 +172,8 @@ The script is now tied to an older upstream layout. It expects paths such as:
 - `src/add_ons`
 
 It also flattens or renames parts of that structure into TartLab-specific import directories. This explains why a current PyDisplay checkout cannot simply replace the embedded copy.
+
+The deployed capture quantifies the pruning opportunity: `/lib/pydevices` contains 145 files and 729,986 bytes, about 65% of all captured file content. Its `add_ons` subtree alone is 427,540 bytes. It includes 20 board configurations, 14 display drivers, 6 touch drivers, many large font modules, and desktop-only display backends. A target-specific allowlist should remove unused boards, buses, displays, touch controllers, fonts, add-ons, and desktop backends, with hardware tests proving that every removed module is unnecessary.
 
 ## Current PyDevices/PyDisplay direction
 
@@ -171,7 +206,7 @@ TartLab should explicitly maintain two runtime profiles during migration.
 
 Target:
 
-- Existing generic MicroPython 1.24 installations.
+- Existing installations running `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin` (MicroPython 1.23.0 with octal PSRAM).
 - Pure-Python display/touch/bus support.
 - OTA-updatable filesystem payload only.
 
@@ -199,7 +234,7 @@ Rules:
 
 ### Critical migration limitation
 
-The current TartLab updater changes filesystem files only. It cannot convert an existing generic MicroPython 1.24 device into an LVGL-enabled custom firmware device.
+The current TartLab updater changes filesystem files only. It cannot convert an existing generic MicroPython 1.23.0 octal-SPIRAM device into an LVGL-enabled custom firmware device.
 
 Migrating deployed devices to Profile B therefore requires a separate adult/admin provisioning mechanism, for example:
 
@@ -256,12 +291,14 @@ Define update ownership by top-level directory. For example:
 - `/lib/vendor`: generated third-party runtime and replaceable.
 - `/device`: hardware identity and local calibration; never replaced.
 - `/files/user`: student projects; never replaced.
-- `/state`: settings, installed versions, logs, and update health state; migrated carefully, never blindly cleared.
+- `/state`: settings, selected application, installed versions, logs, and update health state; migrated carefully, never blindly cleared.
 - `/recovery`: minimal recovery/updater code; changed only through a protected process.
 
 The exact names may differ, but ownership must be represented in code and tests, not comments.
 
 For already deployed layouts, add a one-time migration that copies the existing hardware selection into the new local area only when the new file is absent. Never overwrite a detected local selection with a repository default.
+
+Before any layout migration, back up and explicitly migrate the current `/settings.json`, `/repos.json`, `/logs`, `/files/user`, generated `/app.py` selection, and hardware selection. Prefer replacing mutable `/app.py` with a fixed system launcher that reads a validated selected-app value from preserved state. Do not copy captured Wi-Fi credentials into repository fixtures while developing or testing the migration.
 
 ### 4. Harden OTA updates
 
@@ -311,7 +348,7 @@ Initialize or repair `repos.json` from that metadata. Update installed-version s
 Refactor scripts into callable functions plus a command-line interface with explicit flags such as:
 
 - `--clean`
-- `--profile legacy-mp124`
+- `--profile legacy-mp123`
 - `--profile lvgl-modern`
 - `--vendor-lock vendor-lock.json`
 - `--non-interactive`
@@ -324,10 +361,10 @@ Use platform-aware npm invocation rather than hard-coding `npm.cmd`. A GitHub Ac
 
 ### Phase 1: Protect existing deployments
 
-1. Create physical-device backups of at least one deployed-style MicroPython 1.24 T-Display-S3 Pro filesystem.
-2. Document the current boot, IDE, application, and update sequence.
+1. Turn `_example_installation` into a reproducible, sanitized baseline fixture: record the board revision, exact firmware hash, capture method, filesystem capacity/free space, and expected file inventory; exclude or replace real credentials.
+2. Add structured boot diagnostics: firmware/runtime identity, reset cause, boot sequence number, free heap/PSRAM and filesystem space, update state, and explicit health markers after the IDE server or selected app is actually ready. Capture serial output alongside the rolling files during failure tests.
 3. Add an automated release-archive inspection test that lists every path each package can overwrite.
-4. Correct the local configuration boundary so hardware selection, user files, and state cannot be cleared or overwritten.
+4. Correct the local configuration boundary so hardware selection, selected-app state, user files, settings, release state, and logs cannot be cleared or overwritten.
 5. Add a minimal recovery boot path and an update-in-progress marker before changing PyDisplay.
 6. Create an OTA regression fixture that starts from the last public TartLab layout and updates to a test release.
 
@@ -371,11 +408,13 @@ Every significant platform or dependency change should cover:
 
 | Scenario | Required checks |
 |---|---|
-| Generic MicroPython 1.24, T-Display-S3 Pro | Boot, display, touch, AP mode, IDE, edit/save/run app, switch modes, OTA update |
-| Modern generic MicroPython without LVGL | Same behavior, confirms pure-Python path is not accidentally tied to 1.24 |
+| MicroPython 1.23.0 octal-SPIRAM (`ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin`), T-Display-S3 Pro | Boot, display, touch, PSRAM availability, AP mode, IDE, edit/save/run app, switch modes, OTA update, five-log rotation |
+| Modern generic MicroPython without LVGL | Same behavior, confirms the pure-Python path remains portable without replacing the 1.23.0 legacy baseline |
 | Pinned LVGL-enabled firmware | Boot and soft reset, display/touch, AP/IDE, app mode, update, native-driver behavior |
-| Update from existing deployed layout | Preserve hardware selection, settings, and user applications |
+| First boot without settings | Create defaults safely, reach the IDE, and preserve a recovery route |
+| Update from existing deployed layout | Preserve hardware selection, selected app, settings, logs, release state, and user applications |
 | Interrupted update | Recovery path remains bootable; update can be retried |
+| Extraction failure | Installer reports failure, does not log package success, and does not advance the installed version |
 | Low filesystem space | Update refuses safely before deleting active packages |
 | Bad package/hash | No installed files are modified |
 | Missing/failed display backend | Device exposes recovery/update diagnostics where possible |
@@ -388,8 +427,9 @@ An AI agent working on TartLab must follow these rules:
 
 - Do not remove or weaken OTA capability without an explicit replacement and migration test.
 - Do not assume that firmware can be changed through the existing file updater.
+- Do not claim legacy compatibility without testing the exact `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin` image on physical hardware and confirming PSRAM availability.
 - Do not make LVGL mandatory for the legacy profile.
-- Do not replace a local hardware selector, calibration file, student project, settings file, or recovery state with a repository default.
+- Do not replace a local hardware selector, calibration file, selected-app value or generated launcher, student project, settings file, or recovery state with a repository default.
 - Do not copy an entire PyDevices repository into the device image.
 - Do not track upstream `main` without a pinned commit and test results.
 - Do not silently add a dependency because it imports successfully on CPython.
@@ -397,6 +437,7 @@ An AI agent working on TartLab must follow these rules:
 - Do not update the recorded installed version until the new system has booted successfully.
 - Prefer small compatibility adapters over widespread imports of unstable upstream internals.
 - Preserve upstream licenses and record the exact source of vendored code.
+- Treat filesystem captures, `/settings.json`, and diagnostic bundles as sensitive because settings contain plaintext Wi-Fi credentials.
 - Test on physical legacy hardware before declaring a release compatible.
 
 ## Decisions still requiring explicit confirmation
@@ -405,7 +446,7 @@ Before the migration is considered complete, the project owner should make expli
 
 1. The exact directory reserved for immutable/local device configuration.
 2. The minimum set of boards supported by each release.
-3. How long the MicroPython 1.24 compatibility profile will be maintained.
+3. How long the exact MicroPython 1.23.0 octal-SPIRAM compatibility profile will be maintained.
 4. Whether TartLab will maintain its own T-Display-S3 Pro board adapter or contribute/consume an upstream one.
 5. The approved firmware provisioning method for LVGL-capable devices.
 6. The amount of flash space reserved for staging, recovery, and rollback.
@@ -415,4 +456,4 @@ Before the migration is considered complete, the project owner should make expli
 
 The next architectural milestone should not be “TartLab runs on the newest PyDisplay.” It should be:
 
-> A reproducible, minimal, pinned PyDisplay-derived payload can be built for TartLab; an existing MicroPython 1.24 device can update to it without losing hardware configuration, user programs, recovery capability, or future OTA access; and the same TartLab hardware API can later select an LVGL-enabled backend on separately provisioned firmware.
+> A reproducible, minimal, pinned PyDisplay-derived payload can be built for TartLab; an existing device running `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin` can update to it without losing hardware configuration, selected application, user programs, settings, logs, recovery capability, or future OTA access; and the same TartLab hardware API can later select an LVGL-enabled backend on separately provisioned firmware.
