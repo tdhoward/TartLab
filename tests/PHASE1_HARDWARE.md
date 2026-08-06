@@ -4,6 +4,11 @@ Phase 1 is not approved for deployment until this checklist passes on a LilyGO
 T-Display-S3 Pro running exactly
 `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin`.
 
+The release policy is one user-initiated update directly to the latest stable
+(non-alpha/non-prerelease) GitHub release. Ordered schema/layout migrations may
+run and resume internally, including across automatic restarts, but the user
+must not need to install intermediate releases or invoke the updater again.
+
 Before testing, regenerate `fixtures/legacy_mp123` with the capture tool and
 `--release-gate-ready`, supplying the board revision, SHA-256 of the flashed
 firmware binary, capture method, and device `statvfs` capacity/free values. Keep
@@ -15,8 +20,10 @@ path inventory, reset cause, heap/PSRAM diagnostics, and filesystem statistics:
 1. First boot without settings reaches IDE and writes an IDE health marker.
 2. Button-selected IDE and APP modes work; an app that keeps running for at least
    three seconds writes an APP health marker.
-3. OTA from the v0.13 captured layout preserves `/device`, `/state`, `/files/user`,
-   the legacy hardware selector, selected app, settings, repositories, and logs.
+3. A single OTA from the v0.13 captured layout directly to the candidate latest
+   stable release preserves `/device`, `/state`, `/files/user`, the legacy
+   hardware selector, selected app, settings, repositories, and logs without a
+   user-visible intermediate release.
 4. Power loss during download makes no installed changes; power loss after the
    install marker enters the display-independent recovery AP.
 5. A truncated archive and a forced write error report failure, never report

@@ -38,6 +38,38 @@ Every release must preserve a reliable path to:
 
 Do not make an OTA change that can permanently strand a deployed device merely because a local USB reflash would repair it.
 
+#### Single-action direct-to-latest update policy
+
+Normal TartLab updates must remain a single user-initiated operation. The updater
+selects the latest stable (non-alpha/non-prerelease) GitHub release; users must
+not be required to install or select intermediate TartLab releases before they
+can reach it.
+
+This is a user-experience rule, not a prohibition on ordered migrations inside
+the update. A single update may run multiple internal schema or filesystem
+migration steps and may resume those steps across automatic restarts. Those
+steps must remain part of the same update operation and must not require the
+user to repeat “Check for updates.”
+
+Consequences:
+
+- Every stable release must provide a tested direct path from every deployed
+  version/layout inside the supported compatibility window.
+- The latest release must retain an entry path that the oldest supported
+  deployed updater can understand. If a richer updater or manifest is needed,
+  install a small compatible bootstrap/recovery stage first and let it finish
+  the same update automatically.
+- Ship required migrations with the target release as an ordered, idempotent,
+  resumable plan. Record migration progress separately from the user-visible
+  installed version.
+- Download and validate the complete migration plan before modifying active
+  files. Commit the target version only after every internal stage has finished
+  and the final target release passes boot health.
+- If a starting version is outside the supported compatibility window, reject
+  it before modification and provide a recovery or administrator path. Never
+  partially update it or instruct a classroom user to hunt down intermediate
+  GitHub releases.
+
 ### 2. Continue supporting deployed MicroPython 1.23.0 devices
 
 Existing TartLab deployments use the generic ESP32-S3 MicroPython 1.23.0 image `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin`. This is the octal-SPIRAM build required to use the T-Display-S3/T-Display-S3 Pro's octal PSRAM. New TartLab releases must continue to run on that exact legacy baseline until an explicit migration policy says otherwise; compatibility with another 1.23.0 build or a newer generic build is not a substitute.
@@ -145,6 +177,13 @@ At startup, `main.py` initializes logging and writes `System startup` before imp
 - Creates a release manifest consumed by the device updater.
 
 Useful properties already exist: the device downloads all listed packages, verifies package hashes, installs the updater package last, and records the new version only after package installation completes.
+
+The current update selector goes directly to the latest non-alpha GitHub
+release; it has no user-visible version-by-version progression. This matches the
+intended product experience, but it also means every newly published stable
+release inherits the compatibility obligation described above. In particular,
+an untouched v0.13 device begins with the v0.13 updater, so the latest stable
+release must preserve a bootstrap path that updater can consume.
 
 Important weaknesses:
 
@@ -306,6 +345,9 @@ Evolve the release manifest to include at least:
 
 - Manifest schema version.
 - TartLab version.
+- Release channel/stability and the rule for selecting the latest stable release.
+- Supported source versions, layout/schema versions, and compatibility floor.
+- Ordered internal migration identifiers and target schema version.
 - Supported MicroPython version range or runtime profile.
 - Required and optional capabilities.
 - Package hashes and sizes.
@@ -317,17 +359,22 @@ Evolve the release manifest to include at least:
 
 Use a staged update flow:
 
-1. Download manifest.
-2. Validate schema and compatibility before modifying installed files.
-3. Download every required package.
-4. Verify all hashes.
-5. Extract into staging directories when space permits.
-6. Save an update-in-progress marker and previous-version metadata.
-7. Swap or copy staged packages into place in a controlled order.
-8. Update the minimal updater/recovery component last.
-9. Boot into a health-check state.
-10. Commit the installed version only after startup succeeds.
-11. Roll back or enter recovery if startup fails repeatedly.
+1. Select the latest stable release; do not ask the user to choose or install
+   intermediate releases.
+2. Download its manifest and direct-upgrade plan.
+3. Validate the manifest, runtime, source layout/version, compatibility floor,
+   and complete ordered migration path before modifying installed files.
+4. Download every required bootstrap, migration, and target package.
+5. Verify all hashes.
+6. Extract into staging directories when space permits.
+7. Save an update-in-progress marker, previous-version metadata, and the next
+   internal migration step.
+8. Apply idempotent migration steps and swap/copy staged packages into place in
+   a controlled order, resuming automatically after a restart when necessary.
+9. Update the minimal updater/recovery component through its protected process.
+10. Boot the final target release into a health-check state.
+11. Commit the target installed version only after startup succeeds.
+12. Roll back or enter recovery if any stage fails repeatedly.
 
 True atomic directory replacement may not be available on every MicroPython filesystem, so design the algorithm around the guarantees actually provided by the target filesystems. At minimum, preserve a bootable recovery path that does not depend on the package currently being replaced.
 
@@ -435,6 +482,7 @@ Every significant platform or dependency change should cover:
 | Pinned LVGL-enabled firmware | Boot and soft reset, display/touch, AP/IDE, app mode, update, native-driver behavior |
 | First boot without settings | Create defaults safely, reach the IDE, and preserve a recovery route |
 | Update from existing deployed layout | Preserve hardware selection, selected app, settings, logs, release state, and user applications |
+| Direct update from every supported historical layout | One user action reaches the current stable release; all ordered internal migrations resume safely without requiring intermediate releases |
 | Interrupted update | Recovery path remains bootable; update can be retried |
 | Extraction failure | Installer reports failure, does not log package success, and does not advance the installed version |
 | Low filesystem space | Update refuses safely before deleting active packages |
@@ -457,6 +505,12 @@ An AI agent working on TartLab must follow these rules:
 - Do not silently add a dependency because it imports successfully on CPython.
 - Do not change update package ownership or clearing behavior without inspecting the resulting archive paths.
 - Do not update the recorded installed version until the new system has booted successfully.
+- Do not require users to install intermediate TartLab releases. Preserve and
+  test a direct path from every supported deployed layout to the latest stable
+  release, using automatic internal migration stages when needed.
+- Do not publish a latest stable release that the oldest supported deployed
+  updater cannot enter. Retain a compatible bootstrap/recovery path or reject
+  the source version safely before changing active files.
 - Prefer small compatibility adapters over widespread imports of unstable upstream internals.
 - Preserve upstream licenses and record the exact source of vendored code.
 - Treat filesystem captures, `/settings.json`, and diagnostic bundles as sensitive because settings contain plaintext Wi-Fi credentials.
@@ -473,9 +527,18 @@ Before the migration is considered complete, the project owner should make expli
 5. The approved firmware provisioning method for LVGL-capable devices.
 6. The amount of flash space reserved for staging, recovery, and rollback.
 7. Whether release authenticity will use signatures, a pinned public key, or another mechanism beyond hashes delivered in the same GitHub release.
+8. The oldest deployed TartLab version/layout included in the direct-to-latest
+   compatibility window and the administrator process for devices older than
+   that floor.
 
 ## Near-term definition of success
 
 The next architectural milestone should not be “TartLab runs on the newest PyDisplay.” It should be:
 
-> A reproducible, minimal, pinned PyDisplay-derived payload can be built for TartLab; an existing device running `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin` can update to it without losing hardware configuration, selected application, user programs, settings, logs, recovery capability, or future OTA access; and the same TartLab hardware API can later select an LVGL-enabled backend on separately provisioned firmware.
+> A reproducible, minimal, pinned PyDisplay-derived payload can be built for
+> TartLab; with one user-initiated update, any supported existing device running
+> `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin` can move directly to the
+> latest stable release without installing intermediate releases or losing
+> hardware configuration, selected application, user programs, settings, logs,
+> recovery capability, or future OTA access; and the same TartLab hardware API
+> can later select an LVGL-enabled backend on separately provisioned firmware.

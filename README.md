@@ -53,7 +53,16 @@ The display should indicate which WiFi access point it is either creating or usi
 From the IDE, click the gear icon and select WiFi Settings.  This dialog will show you any stored WiFi access points, as well as allowing you to add new access points.  It will display the SSIDs that were discovered during the startup scan.  Note: Most embedded devices only support 2.4GHz WiFi connections, and therefore will only show them in the list of scanned access points.
 
 ### Updates
-TartLab is updated every so often to include more examples, fix bugs, and make improvements.  If the device is connected to an internet-linked WiFi access point, you can check for updates through the TartLab interface.  Click on the gear icon, and select "Check for updates".  During the update process, it is best to have the device plugged in to make sure it stays on.  Wait until the update process is complete before doing anything else in TartLab.
+TartLab is updated every so often to include more examples, fix bugs, and make
+improvements. If the device is connected to an internet-linked WiFi access
+point, you can check for updates through the TartLab interface. Click on the
+gear icon, and select "Check for updates". One update takes the device directly
+to the latest stable release; you do not need to find or install intermediate
+versions. TartLab may perform several internal migration steps or automatic
+restarts as part of that one update. During the update process, it is best to
+have the device plugged in to make sure it stays on. Wait until the update
+process is complete before doing anything else in TartLab, and do not start
+"Check for updates" again while an update is being resumed.
 
 ### Feedback
 Please feel free to add new issues if you are experiencing problems.  I will try to respond as soon as I can.
