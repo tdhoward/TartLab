@@ -5,12 +5,11 @@ import random
 import errno
 import uio
 
+from .state import LOG_DIR, SETTINGS_FILE, ensure_dir, read_json, write_json
+
 # maintains 5 log files in the /logs folder
-LOG_DIR = '/logs'
 MAX_LOG_COUNT = 5
 current_log_file = None
-
-SETTINGS_FILE = '/settings.json'
 
 # Returns 1 for file, 2 for folder, or 0 if doesn't exist
 def file_exists(filepath):
@@ -73,7 +72,7 @@ def split_on_first(data, token = b'\r\n'):
 def init_logs():
     global current_log_file
     if file_exists(LOG_DIR) != 2:
-        os.mkdir(LOG_DIR)
+        ensure_dir(LOG_DIR)
     log_files = sorted([f for f in os.listdir(LOG_DIR) if f.endswith('.log')])
     if log_files:
         current_log_index = int(log_files[-1].split('.')[0])
@@ -134,14 +133,13 @@ def generate_ap_name():
 
 
 def load_settings():
-    settings = {}
-    with open(SETTINGS_FILE, 'r') as f:
-        settings = ujson.load(f)
+    settings = read_json(SETTINGS_FILE, None)
+    if settings is None:
+        raise OSError("Settings file not found")
     return settings
 
 def save_settings(settings):
-    with open(SETTINGS_FILE, 'w') as f:
-        ujson.dump(settings, f)
+    write_json(SETTINGS_FILE, settings)
 
 def default_settings():
     settings = {
@@ -154,3 +152,4 @@ def default_settings():
         'wifi_passwords': []
     }
     save_settings(settings)
+    return settings

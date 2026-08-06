@@ -1,143 +1,214 @@
-import ujson
-import urequests
-import uos
-from tarfile import TarFile
-from .miscutils import rmvdir, mkdirs, file_exists, log, log_exception, load_settings, save_settings
-import uhashlib
 import machine
 import time
 import uasyncio as asyncio
+import uhashlib
+import ujson
+import uos
+import urequests
+from tarfile import TarFile
+
+from .miscutils import file_exists, load_settings, log, log_exception, mkdirs, rmvdir, save_settings
+from .state import REPOS_FILE, begin_update, set_update_failed, set_update_pending_health
 
 
-REPOS_FILE='/repos.json'
-TMP_UPDATE_FOLDER = '/tmp'
+TMP_UPDATE_FOLDER = "/tmp"
+UPDATE_NONE = 0
+UPDATE_INSTALLED = 1
+UPDATE_FAILED = -1
 updating_updater = False
+
+PROTECTED_PATHS = (
+    "/app.py", "/hdwconfig.py", "/settings.json", "/repos.json", "/logs",
+    "/device", "/state", "/files/user",
+)
+PHASE1_MIGRATION_FILE = "/state/phase1_migration.json"
+
+
+def _is_protected(path):
+    path = "/" + path.strip("/")
+    for protected in PROTECTED_PATHS:
+        if path == protected or path.startswith(protected + "/"):
+            return True
+    return False
+
+
+def _target_path(target_folder, archive_name):
+    archive_name = archive_name.replace("\\", "/")
+    parts = archive_name.split("/")
+    if archive_name.startswith("/") or any(part in ("", ".", "..") for part in parts):
+        raise ValueError("Unsafe archive path: " + archive_name)
+    target = "/" + target_folder.strip("/")
+    if target == "/":
+        target = ""
+    path = target + "/" + archive_name
+    if _is_protected(path):
+        raise ValueError("Archive targets protected state: " + path)
+    return path
+
+
+def validate_manifest(manifest):
+    if not isinstance(manifest, list) or not manifest:
+        raise ValueError("Manifest must contain at least one package")
+    required = ("file_name", "sha256", "target", "clear_first")
+    for package in manifest:
+        if not isinstance(package, dict) or any(key not in package for key in required):
+            raise ValueError("Invalid package manifest entry")
+        target = "/" + package["target"].strip("/")
+        if _is_protected(target):
+            raise ValueError("Manifest targets protected state: " + target)
+        if target == "/recovery" and package["clear_first"]:
+            raise ValueError("Recovery package cannot be cleared in place")
 
 
 async def check_for_update(repo):
-    log(f"\nChecking {repo['repo']} for updates")
-    repo_api_url = f"https://api.github.com/repos/{repo['repo']}/releases"
-    headers = {'User-Agent': 'TartLab'}
+    log("\nChecking %s for updates" % repo["repo"])
+    url = "https://api.github.com/repos/%s/releases" % repo["repo"]
+    response = None
     try:
-        response = urequests.get(repo_api_url, headers=headers)
+        response = urequests.get(url, headers={"User-Agent": "TartLab"})
         settings = load_settings()
-        if response.status_code == 200:
-            releases = response.json()
-            response.close()
-            latest_release = None
-            
-            for release in releases:
-                is_prerelease = release.get('prerelease', False)
-                if is_prerelease and not settings.get('pre-release-updates', False):
-                    continue  # Skip pre-releases if pre-release updates are not enabled
-
-                latest_release = release  # Found a suitable release
-                break
-
-            if latest_release and latest_release['tag_name'] != repo['installed_version']:
-                return latest_release['assets'], latest_release['tag_name']
-            else:
-                log("No suitable releases found.")
-                return None, None
-        else:
-            log("Failed to fetch releases:", response.status_code)
-            response.close()
+        if response.status_code != 200:
+            log("Failed to fetch releases: %s" % response.status_code)
             return None, None
-    except Exception as e:
-        log(f'Error checking repo!')
-        log_exception(e)
+        for release in response.json():
+            if release.get("prerelease", False) and not settings.get("pre-release-updates", False):
+                continue
+            if release["tag_name"] != repo["installed_version"]:
+                return release["assets"], release["tag_name"]
+            break
+        log("No suitable releases found.")
+        return None, None
+    except Exception as error:
+        log("Error checking repo!")
+        log_exception(error)
         return None, None
     finally:
-        try:
-            response.close()
-        except:
-            pass
+        if response is not None:
+            try:
+                response.close()
+            except Exception:
+                pass
 
 
 async def download_asset(asset_url, target_file):
-    log(f'Downloading {asset_url}')
-    headers = {'User-Agent': 'TartLab'}
+    log("Downloading %s" % asset_url)
     retries = 0
     while retries < 5:
+        response = None
         try:
-            response = urequests.get(asset_url, headers=headers)
-            if response.status_code == 200:
-                with open(target_file, 'wb') as file:
-                    while True:
-                        chunk = response.raw.read(1024)
-                        if not chunk:
-                            break
-                        file.write(chunk)
-                response.close()
-                return True
-            else:
-                log(f"Error: Received status code {response.status_code}")
-                response.close()
+            response = urequests.get(asset_url, headers={"User-Agent": "TartLab"})
+            if response.status_code != 200:
+                log("Error: Received status code %s" % response.status_code)
                 return False
-        except Exception as e:  # was OSError
-            log(f"An error occurred while downloading. Retrying...")
-            if e.args[0] == 23:    # too many open files / sockets
-                await asyncio.sleep(2)  # let the server finish out some of those requests
+            with open(target_file, "wb") as stream:
+                while True:
+                    chunk = response.raw.read(1024)
+                    if not chunk:
+                        break
+                    stream.write(chunk)
+            return True
+        except Exception as error:
+            if error.args and error.args[0] == 23:
                 retries += 1
+                await asyncio.sleep(2)
             else:
                 raise
-    raise Exception("Max retries exceeded for download.")
+        finally:
+            if response is not None:
+                try:
+                    response.close()
+                except Exception:
+                    pass
+    raise OSError("Maximum download retries exceeded")
 
 
 def sha256_hash(file_path):
     sha256 = uhashlib.sha256()
-    with open(file_path, 'rb') as file:
+    with open(file_path, "rb") as stream:
         while True:
-            chunk = file.read(1024)  # Read in 1 KB chunks
+            chunk = stream.read(1024)
             if not chunk:
                 break
             sha256.update(chunk)
-    hash_bytes = sha256.digest()
-    hash_hex = ''.join('{:02x}'.format(byte) for byte in hash_bytes)
-    return hash_hex
+    return "".join("{:02x}".format(byte) for byte in sha256.digest())
 
 
-async def untar(filename, target_folder='/', overwrite=False, verbose=False, chunksize=4096):
-    try:
-        with open(filename, 'rb') as tar:
-            for info in TarFile(fileobj=tar):
-                await asyncio.sleep(0.1)
-                if "PaxHeader" in info.name:
-                    continue  # Skip PaxHeader files
-                target_path = target_folder + '/' + info.name
-                target_path = target_path.replace('//','/').rstrip("/")
-                # Ensure the directory exists
-                dir_path = target_path.rsplit('/', 1)[0]
-                if file_exists(dir_path) != 2:  # 2 means folder exists
-                    mkdirs(dir_path)
-                if info.type == "file":
-                    if verbose:
-                        print("F %s" % target_path)
-                    if overwrite or not file_exists(target_path):
-                        with open(target_path, "wb") as fp:
-                            while True:
-                                chunk = info.subf.read(chunksize)
-                                if not chunk:
-                                    break
-                                fp.write(chunk)
-                elif verbose:
-                    print("? %s" % target_path)
-    except Exception as e:
-        log("Error extracting tar file:")
-        log_exception(e)
+def inspect_archive(filename, target_folder):
+    paths = []
+    terminated = False
+    with open(filename, "rb") as tar:
+        while True:
+            header = tar.read(512)
+            if len(header) != 512:
+                raise ValueError("Truncated tar header")
+            if header == b"\0" * 512:
+                terminated = True
+                break
+            stored_text = header[148:156].split(b"\0", 1)[0].strip() or b"0"
+            stored_checksum = int(stored_text, 8)
+            actual_checksum = sum(header[:148]) + (32 * 8) + sum(header[156:])
+            if stored_checksum != actual_checksum:
+                raise ValueError("Invalid tar header checksum")
+            name = header[0:100].split(b"\0", 1)[0].decode("utf-8")
+            prefix = header[345:500].split(b"\0", 1)[0].decode("utf-8")
+            if prefix:
+                name = prefix + "/" + name
+            if not name:
+                raise ValueError("Empty tar member name")
+            size_text = header[124:136].split(b"\0", 1)[0].strip() or b"0"
+            size = int(size_text, 8)
+            if "PaxHeader" not in name:
+                paths.append(_target_path(target_folder, name.rstrip("/")))
+            remaining = size + ((512 - size % 512) % 512)
+            while remaining:
+                chunk = tar.read(min(1024, remaining))
+                if not chunk:
+                    raise ValueError("Truncated tar member")
+                remaining -= len(chunk)
+    if not terminated or not paths:
+        raise ValueError("Empty or unterminated tar archive")
+    return paths
+
+
+async def untar(filename, target_folder="/", overwrite=False, verbose=False, chunksize=4096):
+    inspect_archive(filename, target_folder)
+    with open(filename, "rb") as tar:
+        for info in TarFile(fileobj=tar):
+            await asyncio.sleep(0.01)
+            if "PaxHeader" in info.name:
+                continue
+            target_path = _target_path(target_folder, info.name)
+            if target_path == "/boot.py" and file_exists(PHASE1_MIGRATION_FILE) == 1:
+                log("Preserving protected recovery boot gate")
+                continue
+            directory = target_path.rsplit("/", 1)[0]
+            if file_exists(directory) != 2:
+                mkdirs(directory)
+            if info.type == "file":
+                if verbose:
+                    print("F %s" % target_path)
+                if overwrite or not file_exists(target_path):
+                    with open(target_path, "wb") as stream:
+                        while True:
+                            chunk = info.subf.read(chunksize)
+                            if not chunk:
+                                break
+                            stream.write(chunk)
+            elif verbose:
+                print("? %s" % target_path)
 
 
 async def update_folder(tar_file, target_folder, replace):
-    log(f'Updating {target_folder}')
+    log("Updating %s" % target_folder)
+    inspect_archive(tar_file, target_folder)
     if replace:
-        log(f'Removing contents of {target_folder}')
-        # Delete the existing folder contents
+        log("Removing contents of %s" % target_folder)
         if file_exists(target_folder) == 2:
             rmvdir(target_folder)
-        mkdirs(target_folder)  # recreate folder
+        mkdirs(target_folder)
         await asyncio.sleep(0.25)
     await untar(tar_file, target_folder, True, True)
-    log(f'Success ({tar_file})')
+    log("Success (%s)" % tar_file)
 
 
 def clean_up():
@@ -149,175 +220,132 @@ async def update_packages(repo, callback):
     global updating_updater
     assets, latest_version = await check_for_update(repo)
     if not assets:
-        return False
-    
-    steps = 11  # 4 steps + 7 file packages
+        return UPDATE_NONE
 
-    callback("Checking disk space", 1, steps)
+    callback("Checking disk space", 1, 11)
     try:
-        # check if we have enough storage space to do this.
-        total_size = sum(a['size'] for a in assets)
-        statvfs = uos.statvfs('/')
-        # Block size (statvfs[1]) * Number of free blocks (statvfs[3])
+        total_size = sum(asset["size"] for asset in assets)
+        statvfs = uos.statvfs("/")
         free_space = statvfs[1] * statvfs[3]
-        if total_size + 10000 > free_space:  # leave a buffer of 10k
-            log(f'Not enough disk space!')
-            return False
-    except Exception as e:
-        log(f'Error checking disk space!')
-        log_exception(e)
-        return False
+        if total_size + 10000 > free_space:
+            log("Not enough disk space!")
+            return UPDATE_FAILED
+    except Exception as error:
+        log("Error checking disk space!")
+        log_exception(error)
+        return UPDATE_FAILED
 
-    # Delete and recreate the temp update folder if it exists
-    if file_exists(TMP_UPDATE_FOLDER):
-        rmvdir(TMP_UPDATE_FOLDER)
+    clean_up()
     mkdirs(TMP_UPDATE_FOLDER)
-
     await asyncio.sleep(0.25)
+    asset_map = {asset["name"]: asset for asset in assets}
+    manifest_asset = asset_map.get("manifest.json")
+    if manifest_asset is None:
+        log("Could not find manifest.json.")
+        clean_up()
+        return UPDATE_FAILED
 
     try:
-        manifest_asset = [a for a in assets if a['name']=='manifest.json']
-        a = manifest_asset[0]
-    except Exception as e:
-        log(f'Could not find manifest.json.')
-        log_exception(e)
+        callback("Downloading manifest", 2, 11)
+        manifest_path = TMP_UPDATE_FOLDER + "/manifest.json"
+        if not await download_asset(manifest_asset["browser_download_url"], manifest_path):
+            raise OSError("Manifest download failed")
+        with open(manifest_path, "r") as stream:
+            manifest = ujson.load(stream)
+        validate_manifest(manifest)
+
+        callback("Downloading files", 3, 11)
+        for package in manifest:
+            asset = asset_map.get(package["file_name"])
+            if asset is None:
+                raise ValueError("Missing release asset: " + package["file_name"])
+            target_file = TMP_UPDATE_FOLDER + "/" + package["file_name"]
+            if not await download_asset(asset["browser_download_url"], target_file):
+                raise OSError("Package download failed: " + package["file_name"])
+
+        callback("Checking files", 4, 11)
+        for package in manifest:
+            filename = TMP_UPDATE_FOLDER + "/" + package["file_name"]
+            if sha256_hash(filename) != package["sha256"]:
+                raise ValueError("Hash did not match: " + package["file_name"])
+            inspect_archive(filename, package["target"])
+        log("Downloaded files successfully.")
+    except Exception as error:
+        log("Update validation failed!")
+        log_exception(error)
         clean_up()
-        return False
+        return UPDATE_FAILED
 
-    callback("Downloading manifest", 2, steps)
-    # download the manifest
-    try:
-        target_file = TMP_UPDATE_FOLDER + '/' + a['name']
-        url = a['browser_download_url']
-        if not await download_asset(url, target_file):
-            clean_up()
-            return False
-    except Exception as e:
-        log(f'Error downloading manifest!')
-        log_exception(e)
-        clean_up()
-        return False
-
-    # try to load the manifest.json file
-    manifest = []
-    try:
-        with open(TMP_UPDATE_FOLDER + '/manifest.json', 'r') as file:
-            manifest = ujson.load(file)
-    except Exception as e:
-        log(f'Error opening manifest.')
-        log_exception(e)
-        clean_up()
-        return False
-    
-    callback("Downloading files", 3, steps)
-
-    try:
-        # get list of assets specified in manifest
-        downloads = [m['file_name'] for m in manifest]
-        log(f'Manifest contains: {downloads}')
-
-        # download all the specified assets
-        for a in assets:
-            if a['name'] in downloads:
-                target_file = TMP_UPDATE_FOLDER + '/' + a['name']
-                url = a['browser_download_url']
-                await asyncio.sleep(0.25)
-                if not await download_asset(url, target_file):
-                    log(f'Error downloading {url}')
-                    clean_up()
-                    return False
-    except Exception as e:
-        log(f'Error downloading!')
-        log_exception(e)
-        clean_up()
-        return False
-
-    callback("Checking files", 4, steps)
-    try:
-        # step through the manifest list, check hashes
-        for m in manifest:
-            fname = TMP_UPDATE_FOLDER + '/' + m['file_name']
-            hash = sha256_hash(fname)
-            if hash != m['sha256']:
-                f = m["file_name"]
-                log(f'Hash for {f} did not match!')
-                clean_up()
-                return False
-    except Exception as e:
-        log(f'Error checking hashes!')
-        log_exception(e)
-        clean_up()
-        return False
-    log('Downloaded files successfully.')
-
-    # if we're updating the updater, move that to the end of the list
-    for m in manifest:
-        if m['file_name'] == 'tartlabutils.tar':
-            manifest.remove(m)  # Remove the object from its current position
-            manifest.append(m)  # Append it to the end of the list
+    for package in manifest:
+        if package["file_name"] == "tartlabutils.tar":
+            manifest.remove(package)
+            manifest.append(package)
             updating_updater = True
             break
 
-    # if everything is correct, install them all and update the version
-    step = 5
     try:
-        for m in manifest:
-            fname = TMP_UPDATE_FOLDER + '/' + m['file_name']
-            callback(f'Updating {m["target"]}', step, steps)
-            await update_folder(fname, m['target'], m['clear_first'])
-            step = step + 1
-    except Exception as e:
-        log(f'Error installing packages!')
-        log_exception(e)
+        begin_update(repo["name"], repo["installed_version"], latest_version)
+        step = 5
+        for package in manifest:
+            filename = TMP_UPDATE_FOLDER + "/" + package["file_name"]
+            callback("Updating %s" % package["target"], step, 11)
+            if package["target"].rstrip("/") == "/recovery" and \
+                    file_exists("/recovery/recovery.py") == 1:
+                log("Preserving installed recovery runtime")
+                step += 1
+                continue
+            await update_folder(filename, package["target"], package["clear_first"])
+            step += 1
+        set_update_pending_health()
         clean_up()
-        return False
+        return UPDATE_INSTALLED
+    except Exception as error:
+        log("Error installing packages!")
+        log_exception(error)
+        try:
+            set_update_failed(error)
+        except Exception as marker_error:
+            log("Could not persist failed-update marker!")
+            log_exception(marker_error)
+        clean_up()
+        return UPDATE_FAILED
 
-    # Update the installed version in the package object
-    repo['installed_version'] = latest_version
-    clean_up()
-    return True
 
-
-def restart_device(stay_in_IDE = True):
-    log(f'Restarting device...')
+def restart_device(stay_in_IDE=True):
+    log("Restarting device...")
     if stay_in_IDE:
         settings = load_settings()
-        settings['STARTUP_MODE'] = 'IDE'
+        settings["STARTUP_MODE"] = "IDE"
         save_settings(settings)
-    time.sleep(0.2)  # not sure if this is needed, but it might help allow the log file to be written
+    time.sleep(0.2)
     machine.reset()
 
 
 async def main_update_routine(callback):
     global updating_updater
-    repos = {}
-    with open(REPOS_FILE, 'r') as file:
-        repos = ujson.load(file)
-    log("============ Updater has started.  PLEASE WAIT. ============")
-    log(f'Updating repos: {repos["list"]}')
-
-    # if we're updating TartLab, move that to the end of the list so we update last
-    for r in repos['list']:
-        if r['name'] == 'TartLab':
-            repos['list'].remove(r)  # Remove the object from its current position
-            repos['list'].append(r)  # Append it to the end of the list
-            break
-
-    for repo in repos['list']:
-        log(f"\nStarting update for {repo['name']} from version {repo['installed_version']}")
-        await asyncio.sleep(2)
-        if await update_packages(repo, callback):
-            log(f"Updated {repo['name']} to version {repo['installed_version']}")
-            if updating_updater:  # this should only be at the very end anyway, but...
+    updating_updater = False
+    with open(REPOS_FILE, "r") as stream:
+        repos = ujson.load(stream)
+    log("============ Updater has started. PLEASE WAIT. ============")
+    repo_list = list(repos["list"])
+    repo_list.sort(key=lambda item: item["name"] == "TartLab")
+    restart_required = False
+    for repo in repo_list:
+        log("\nStarting update for %s from version %s" % (repo["name"], repo["installed_version"]))
+        await asyncio.sleep(0.2)
+        result = await update_packages(repo, callback)
+        if result == UPDATE_INSTALLED:
+            restart_required = True
+            log("Installed %s; version commit is pending boot health" % repo["name"])
+            if updating_updater:
                 break
+        elif result == UPDATE_FAILED:
+            restart_required = True
+            log("Update FAILED for %s" % repo["name"])
+            break
         else:
-            log(f"No update necessary for {repo['name']}")
-
+            log("No update necessary for %s" % repo["name"])
     log("============ Updater has finished. ============")
-
-    # Save the updated package list back to the file
-    with open(REPOS_FILE, 'w') as file:
-        ujson.dump(repos, file)
-    
-    await asyncio.sleep(0.5)  # allow the log file to be written, I guess.
-    restart_device()
+    await asyncio.sleep(0.5)
+    if restart_required:
+        restart_device()

@@ -148,6 +148,10 @@ copy_filetree(os.path.join(SRC_FOLDER, 'files'), os.path.join(DIST_FOLDER, 'file
 # Copy files in the /configs directory  (These are human-readable files, so don't minify)
 copy_filetree(os.path.join(SRC_FOLDER, 'configs'), os.path.join(DIST_FOLDER, 'configs'), False)
 
+# Copy provisioning defaults and the protected recovery runtime.
+copy_filetree(os.path.join(SRC_FOLDER, 'defaults'), os.path.join(DIST_FOLDER, 'defaults'), False)
+copy_filetree(os.path.join(SRC_FOLDER, 'recovery'), os.path.join(DIST_FOLDER, 'recovery'), False)
+
 # Copy and minify files in the /lib directory
 copy_filetree(os.path.join(SRC_FOLDER, 'lib'), os.path.join(DIST_FOLDER, 'lib'), do_minify)
 

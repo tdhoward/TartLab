@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "sanitized": true,
+  "release_gate_ready": true,
+  "source_capture": "baseline_v013",
+  "board": {
+    "model": "LilyGO T-Display-S3 Pro",
+    "revision": "v1.1"
+  },
+  "firmware": {
+    "image": "ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin",
+    "sha256": "41a750a8f047224e3e0a7544a626338c252407df420e2b94dcb0d2dad9793212"
+  },
+  "capture_method": "USB CDC raw-REPL snapshot using tools/phase1_device.py on 2026-08-03",
+  "filesystem": {
+    "capacity_bytes": 6291456,
+    "free_bytes": 3923968
+  },
+  "source_file_count": 192,
+  "source_content_bytes": 1121974,
+  "inventory": "inventory.json"
+}

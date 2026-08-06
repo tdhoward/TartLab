@@ -1,79 +1,103 @@
 import sys
 
-# add search folders for importing modules
-dirs = ["/lib",
-        "/",
-        "/files/user", 
-        "/configs", 
-        "/lib/pydevices", 
-        "/lib/pydevices/bus_drv",
-        "/lib/pydevices/display_drv",
-        "/lib/pydevices/touch_drv",
-        "/lib/pydevices/add_ons"]
 
-for d in dirs:
-    if d not in sys.path:
-        sys.path.insert(1, d)
+SEARCH_PATHS = [
+    "/device",
+    "/lib",
+    "/",
+    "/files/user",
+    "/configs",
+    "/lib/pydevices",
+    "/lib/pydevices/bus_drv",
+    "/lib/pydevices/display_drv",
+    "/lib/pydevices/touch_drv",
+    "/lib/pydevices/add_ons",
+]
+for path in reversed(SEARCH_PATHS):
+    if path not in sys.path:
+        sys.path.insert(0, path)
 
 import ujson
 from machine import Pin
-from tartlabutils import file_exists, init_logs, log, log_exception, load_settings, save_settings
+from tartlabutils import default_settings, diagnostics, ensure_layout, init_logs, load_settings, log, log_exception, \
+    mark_boot_failed, save_settings
 
-init_logs()
-log('System startup')
 
-from hdwconfig import IDE_BUTTON_PIN, display_drv
-WIDTH, HEIGHT = display_drv.width, display_drv.height
-#display_drv.rotation = 0
-display_drv.fill(0)
+def _recovery(reason):
+    log("Entering recovery: " + reason)
+    if "/recovery" not in sys.path:
+        sys.path.insert(0, "/recovery")
+    import recovery
+    recovery.run(reason)
 
-# read the settings file to determine IDE button
-settings = {}
-try:
-    settings = load_settings()
-except OSError:  # doesn't exist
-    print('No settings found.')
-    log('No settings file found.')
 
-if 'STARTUP_MODE' not in settings:
-    settings['STARTUP_MODE'] = 'BUTTON'  # use button state
+def _ensure_repos():
+    from tartlabutils.state import REPOS_FILE, path_kind, write_json
+    if path_kind(REPOS_FILE) == 0:
+        # This is a compatibility fallback for an unprovisioned development board.
+        # Releases must migrate or generate an installed version before promotion.
+        write_json(REPOS_FILE, {
+            "dbver": 1,
+            "list": [{
+                "name": "TartLab",
+                "repo": "tdhoward/tartlab",
+                "installed_version": "unknown",
+            }],
+        })
 
-# make sure we have a repos.json file
-if not file_exists('repos.json'):
-    repos = {
-        'dbver': 1,
-        'list': [
-            {
-                'name': 'TartLab',
-                'repo': 'tdhoward/tartlab',
-                'installed_version': 'v0.13'   # I guess we'll need to keep updating this
-            }
-        ]
-    }
-    with open('repos.json', 'w') as f:
-        ujson.dump(repos, f)
 
-# figure out whether to launch app or IDE
-start_mode = settings['STARTUP_MODE']
-if start_mode == 'BUTTON':
-    # Check if IDE button is pressed
-    IDE_BUTTON = Pin(IDE_BUTTON_PIN, Pin.IN)
-    if IDE_BUTTON.value() == 1:  # 0 for production, 1 for dev  (unpressed button value is 1)
-        start_mode = 'IDE'
-    else:
-        start_mode = 'APP'
-else:  # we only get here if we loaded a settings.json file with non-default STARTUP_MODE
-    settings['STARTUP_MODE'] = 'BUTTON'  # resets to default after one boot
+def _select_mode(settings, ide_button_pin):
+    start_mode = settings.get("STARTUP_MODE", "BUTTON")
+    if start_mode == "BUTTON":
+        button = Pin(ide_button_pin, Pin.IN)
+        return "IDE" if button.value() == 1 else "APP"
+    settings["STARTUP_MODE"] = "BUTTON"
     save_settings(settings)
+    return start_mode
 
-if start_mode == 'IDE':
-    log('Starting IDE')
-    import ide
-    ide.main()
-else:
-    log('Starting APP')
+
+def run():
+    display = None
     try:
-        import app  # launches the user's startup app
-    except Exception as ex:
-        log_exception(ex)
-        display_drv.fill(0xF800)  # fill screen with red to indicate error
+        ensure_layout()
+        init_logs()
+        log("System startup")
+        log(ujson.dumps(diagnostics()))
+        _ensure_repos()
+
+        from hdwconfig import IDE_BUTTON_PIN, display_drv
+        display = display_drv
+        display.fill(0)
+
+        try:
+            settings = load_settings()
+        except OSError:
+            settings = default_settings()
+            log("No settings file found.")
+
+        start_mode = _select_mode(settings, IDE_BUTTON_PIN)
+        if start_mode == "RECOVERY":
+            _recovery("startup_mode")
+        elif start_mode == "IDE":
+            log("Starting IDE")
+            import ide
+            ide.main()
+        else:
+            log("Starting APP")
+            from tartlabutils.launcher import launch_selected_app
+            launch_selected_app()
+    except Exception as error:
+        try:
+            log_exception(error)
+            mark_boot_failed(error)
+        except Exception:
+            sys.print_exception(error)
+        if display is not None:
+            try:
+                display.fill(0xF800)
+            except Exception:
+                pass
+        _recovery("startup_error")
+
+
+run()

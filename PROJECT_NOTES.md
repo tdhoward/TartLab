@@ -371,6 +371,14 @@ Use platform-aware npm invocation rather than hard-coding `npm.cmd`. A GitHub Ac
 
 Do not ship an intermediate Phase 1 state that changes package ownership or updater behavior without the recovery path and OTA regression results required to repair it.
 
+Phase 1 implementation and its physical legacy-hardware release gate are complete for the
+tested working tree. The sanitized `tests/fixtures/legacy_mp123` baseline is marked
+release-ready with physical board, firmware-hash, capture, and filesystem metadata. See
+`tests/PHASE1_HARDWARE.md` for the complete 2026-08-03 through 2026-08-05 evidence record.
+Before publishing a deployment artifact, commit the reviewed changes and repeat the final
+legacy build/tests from that clean commit; the hardware-test artifact itself records a dirty
+working tree and is not a release tag.
+
 ### Phase 2: Make the legacy build and release path reproducible
 
 1. Record content hashes and provenance for the currently deployed vendored payload before attempting to replace it.

@@ -1,0 +1,1153 @@
+[
+  {
+    "path": "app.py",
+    "size": 90,
+    "ownership": "protected-state",
+    "content": "sanitized"
+  },
+  {
+    "path": "boot.py",
+    "ownership": "firmware",
+    "content": "excluded"
+  },
+  {
+    "path": "configs/t_display_s3.py",
+    "size": 228,
+    "ownership": "update-managed",
+    "sha256": "a6cf52f4613b3a6c722f23de68e5e3e201a1cc34dfe115fa5ee89d28f5be6060"
+  },
+  {
+    "path": "configs/t_display_s3_pro.py",
+    "size": 232,
+    "ownership": "update-managed",
+    "sha256": "c9bd0c6396be002e1b0e0bb3bcf695e0243c95d0f16f40b10ae21df330ead3ab"
+  },
+  {
+    "path": "files/assets/warrior.bmp",
+    "size": 73866,
+    "ownership": "update-managed",
+    "sha256": "f6093efb5ed79dc0e96b10f706a8b75a487c9f49144f47dc54d27c6bca912058"
+  },
+  {
+    "path": "files/help/animation.py",
+    "size": 3874,
+    "ownership": "update-managed",
+    "sha256": "cc5059de33aa60102960dd5cf8c260dd9b20153dd457e6846a8d3e151264a5b0"
+  },
+  {
+    "path": "files/help/calculator.py",
+    "size": 6391,
+    "ownership": "update-managed",
+    "sha256": "018ce18ff6823aadeb50918de0441597195c0f4c8795a4c4e04e2a9a1876cc6f"
+  },
+  {
+    "path": "files/help/display_bmp.py",
+    "size": 503,
+    "ownership": "update-managed",
+    "sha256": "09afc1b7157645c5ebb386ae7d3a498839b94b56c2fd7ae20758e5995d79f780"
+  },
+  {
+    "path": "files/help/drawingbasics.py",
+    "size": 2225,
+    "ownership": "update-managed",
+    "sha256": "d2019fd2984c3426831f166a73a0a2da53966a719a18073e3603dbdb8beafee3"
+  },
+  {
+    "path": "files/help/face.py",
+    "size": 3081,
+    "ownership": "update-managed",
+    "sha256": "df6a8a86e07daf2ff01ff6cac8167233d82b3452aa7ec5cae7fb0021925ebd30"
+  },
+  {
+    "path": "files/help/manifest.json",
+    "size": 1627,
+    "ownership": "update-managed",
+    "sha256": "65260986122c742c68e958569b378f9380a11d00f1dd16cf05d3c0f07a037182"
+  },
+  {
+    "path": "files/help/moire_fast.py",
+    "size": 2339,
+    "ownership": "update-managed",
+    "sha256": "f14b0ff87eb5d923af925e5c9557cb65f601185d5dd013c51c78ad71e4bc1d9f"
+  },
+  {
+    "path": "files/help/moire_slow.py",
+    "size": 2013,
+    "ownership": "update-managed",
+    "sha256": "e178296b5b400274303990e09d0bed19778a825fa635681005e82eca7e23a450"
+  },
+  {
+    "path": "files/help/pybasics.py",
+    "size": 10356,
+    "ownership": "update-managed",
+    "sha256": "8586872dd84ac3d337365300f4f1b9f0b5283bd97a5d88b993460114f56f02ff"
+  },
+  {
+    "path": "files/help/snake.py",
+    "size": 10217,
+    "ownership": "update-managed",
+    "sha256": "5aa3ca2e40246afbaca4928f856d0e987dcf47c73ebb5eba9f2ed80a25a67190"
+  },
+  {
+    "path": "files/help/sprite.py",
+    "size": 3093,
+    "ownership": "update-managed",
+    "sha256": "35a80bf478597025dfc93f17f347e67545e8a62040cd64644fc85fad3ca51665"
+  },
+  {
+    "path": "files/help/tartlab1.html",
+    "size": 2853,
+    "ownership": "update-managed",
+    "sha256": "321ce84af316ddb418d2cc1cea7c53bcf3d6569649e637628a7bf9d755165360"
+  },
+  {
+    "path": "files/help/testris.py",
+    "size": 23088,
+    "ownership": "update-managed",
+    "sha256": "224660096e03f2fa161433d06e5409e46c8b3367af7aeef4a8c24fbd52518987"
+  },
+  {
+    "path": "files/user/hello.py",
+    "size": 32,
+    "ownership": "protected-state",
+    "content": "sanitized"
+  },
+  {
+    "path": "files/user/selected_app.py",
+    "size": 38,
+    "ownership": "protected-state",
+    "content": "sanitized"
+  },
+  {
+    "path": "hdwconfig.py",
+    "size": 60,
+    "ownership": "protected-state",
+    "content": "sanitized"
+  },
+  {
+    "path": "ide/__init__.py",
+    "size": 16,
+    "ownership": "update-managed",
+    "sha256": "270060b6f60a360ebcd7942eca058296817678b83875e216afa81891daab5b1f"
+  },
+  {
+    "path": "ide/ide.py",
+    "size": 20796,
+    "ownership": "update-managed",
+    "sha256": "4e7d907d3dc0934845c3146bfec4cad8febe40b80f798854e58470b6afc520ee"
+  },
+  {
+    "path": "ide/www/bundle.js.gz",
+    "size": 170224,
+    "ownership": "update-managed",
+    "sha256": "713b6bf56cfc5036f81b32cd4d96227df3ae5716bcc535d39786797672c922eb"
+  },
+  {
+    "path": "ide/www/favicon.ico.gz",
+    "size": 2833,
+    "ownership": "update-managed",
+    "sha256": "326c482e337de6796b935cb40a439e36aa51ca595ea079294e6859db4f6e1a83"
+  },
+  {
+    "path": "ide/www/img/logo.svg.gz",
+    "size": 1961,
+    "ownership": "update-managed",
+    "sha256": "0da4bcaa251f3a1eb0f430c3f07b44e5d7af18952fd22c36cdce2cb1dd9abbf6"
+  },
+  {
+    "path": "ide/www/index.html.gz",
+    "size": 1936,
+    "ownership": "update-managed",
+    "sha256": "9b10c23f7c671ba6c5eef5432b20516e1c44a90957678af49cfa87f648cc66c3"
+  },
+  {
+    "path": "lib/ahttpserver/__init__.py",
+    "size": 95,
+    "ownership": "update-managed",
+    "sha256": "751ad4113ab0e406bf462b6339ef9ad3e1b9c9c8874b26671ac0c7a35b6c67a1"
+  },
+  {
+    "path": "lib/ahttpserver/multipart.py",
+    "size": 1275,
+    "ownership": "update-managed",
+    "sha256": "bf144326a6135ce46590afd7d1f6b02b97ffb5b810ba1735e47f65302455d2af"
+  },
+  {
+    "path": "lib/ahttpserver/response.py",
+    "size": 1292,
+    "ownership": "update-managed",
+    "sha256": "c54e4621f06a6f71901002579d104a3324acc3ba5a93454fea2fad0d6a5d82a4"
+  },
+  {
+    "path": "lib/ahttpserver/sendfile.py",
+    "size": 412,
+    "ownership": "update-managed",
+    "sha256": "3d355476c85f64093bd4990d3dfbf26ad170d109e08bf4166f61ada93eb01b81"
+  },
+  {
+    "path": "lib/ahttpserver/servefile.py",
+    "size": 1560,
+    "ownership": "update-managed",
+    "sha256": "994875effe5499058ac5dda73bc338f4e9b53f9b16ba3e17545568c20315566a"
+  },
+  {
+    "path": "lib/ahttpserver/server.py",
+    "size": 2728,
+    "ownership": "update-managed",
+    "sha256": "291b4b05d5a9508caf62b6d3a6548f182b827157c4eea61eb2403b5a9e5eb107"
+  },
+  {
+    "path": "lib/ahttpserver/sse.py",
+    "size": 990,
+    "ownership": "update-managed",
+    "sha256": "39f54b924e348a0db9c747732a3d6fa64a37258951c22b578593bf89d906422a"
+  },
+  {
+    "path": "lib/ahttpserver/url.py",
+    "size": 2272,
+    "ownership": "update-managed",
+    "sha256": "f62322676796c99557e69ef0a065abee850229c880719ab4690bfc715e3ec140"
+  },
+  {
+    "path": "lib/pydevices/add_ons/README.md",
+    "size": 625,
+    "ownership": "update-managed",
+    "sha256": "1b1cdd87a09da52a7381cf8d8a4b434e66908acd019a5b9c670e0755dce4c1fd"
+  },
+  {
+    "path": "lib/pydevices/add_ons/adafruit_ticks.py",
+    "size": 4264,
+    "ownership": "update-managed",
+    "sha256": "a3869fbe14f0a35a609fc4a9ebc8803bbfc8a55f2c60cf7a83d642a747e4e914"
+  },
+  {
+    "path": "lib/pydevices/add_ons/bmp565.py",
+    "size": 3940,
+    "ownership": "update-managed",
+    "sha256": "a231cec6c6c6ea32edd76426c869c9e08906bab403ebe594db6846c7e4284175"
+  },
+  {
+    "path": "lib/pydevices/add_ons/byteswap.py",
+    "size": 936,
+    "ownership": "update-managed",
+    "sha256": "5692352c6fd5bf0a9d6189144c04cbedf2d5d87af46f6c73d1b588fcac7ede97"
+  },
+  {
+    "path": "lib/pydevices/add_ons/color_setup.py",
+    "size": 340,
+    "ownership": "update-managed",
+    "sha256": "12a2a6962e94b46997368bf48e4cda679be399219e29c7dc827aaea81631ebf4"
+  },
+  {
+    "path": "lib/pydevices/add_ons/console.py",
+    "size": 7096,
+    "ownership": "update-managed",
+    "sha256": "8b5b945e32ee0b102862f6edf52f3cf2345c63609892cdce14c0dd7d10f52d50"
+  },
+  {
+    "path": "lib/pydevices/add_ons/display_driver.py",
+    "size": 2932,
+    "ownership": "update-managed",
+    "sha256": "f17d331ba0afb62fe9e9bbb9b20c19f2f553f824705c5bee3ac641f68e7b2979"
+  },
+  {
+    "path": "lib/pydevices/add_ons/displaybuf.py",
+    "size": 5794,
+    "ownership": "update-managed",
+    "sha256": "d7c26394cbbfda30d4eeb1b0deb09ffa33bd951a2106ca5b940cd5413d300c88"
+  },
+  {
+    "path": "lib/pydevices/add_ons/ezfont.py",
+    "size": 627,
+    "ownership": "update-managed",
+    "sha256": "f27916b9b0c23ebcdaec9d77d4e12d60f5b0c28a1c7a9a490b44ba7e103a42ec"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/__init__.py",
+    "size": 0,
+    "ownership": "update-managed",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/compile_upload.sh",
+    "size": 364,
+    "ownership": "update-managed",
+    "sha256": "411b83c187a28db2a07c5fd079437a6403e10e9d7f380724bd4fa27e437621b2"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/vga1_16x16.py",
+    "size": 10982,
+    "ownership": "update-managed",
+    "sha256": "cdd140bd2801c86493cb1cc67bfedd739e51ae4ec4e2e07436a104c11832825b"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/vga1_16x32.py",
+    "size": 21890,
+    "ownership": "update-managed",
+    "sha256": "043f83eb7fffd5122570aa0abfcae117c7746e1f1ef51f82cc57a1bb4a394752"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/vga1_8x16.py",
+    "size": 5297,
+    "ownership": "update-managed",
+    "sha256": "cda7b45e9e00afe8b04ec07358f92bd95c69eb1a7a3b4b32cab6abcc22507c8d"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/vga1_8x8.py",
+    "size": 2436,
+    "ownership": "update-managed",
+    "sha256": "b2c2bb4462ebf880000f160aa1f6edbc1d0317d5d6f563de8aceae96509293a2"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/vga1_bold_16x16.py",
+    "size": 10928,
+    "ownership": "update-managed",
+    "sha256": "431838874ecca05c2271922f35705b8c8c4f7888ccebb723ac7fa58d5ea00cfd"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/vga1_bold_16x32.py",
+    "size": 21782,
+    "ownership": "update-managed",
+    "sha256": "799863c076d8e20c50e428179f8293980a243dc855f75a3faf723dfc2660d6c9"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/vga2_16x16.py",
+    "size": 29316,
+    "ownership": "update-managed",
+    "sha256": "5e50e5eac8c896ff96c4f43a9aff1a5ef2866676da8d323a3da4cf1d1375ba57"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/vga2_16x32.py",
+    "size": 58559,
+    "ownership": "update-managed",
+    "sha256": "0c8aa3d12e6b20c840bf2530fdefcc60c567e7da9eca3347f4f7b2fa1c2ef511"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/vga2_8x16.py",
+    "size": 13754,
+    "ownership": "update-managed",
+    "sha256": "9d743c7a6932c7991c5018e171f34622c7894d4909850da7dd602974e3e48430"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/vga2_8x8.py",
+    "size": 6346,
+    "ownership": "update-managed",
+    "sha256": "bfa01443081224d855dcfdb571c1078e8ef0c030887ee872790f5d5ab191f77d"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/vga2_bold_16x16.py",
+    "size": 29049,
+    "ownership": "update-managed",
+    "sha256": "808c65155ce817064f30a9e9587f83a79b3ca3231ba0c9704899336b560d3dd6"
+  },
+  {
+    "path": "lib/pydevices/add_ons/fonts/vga2_bold_16x32.py",
+    "size": 58025,
+    "ownership": "update-managed",
+    "sha256": "e97ed916e27c8a81155eb9983d5b781ff91d88109e174c9fc0dad6660e1ae739"
+  },
+  {
+    "path": "lib/pydevices/add_ons/framebuf.py",
+    "size": 306,
+    "ownership": "update-managed",
+    "sha256": "6759772ef5903966d134b77bed60ab7fb5b03268d58e146cb968df7c6c1f91bc"
+  },
+  {
+    "path": "lib/pydevices/add_ons/hardware_setup.py",
+    "size": 1240,
+    "ownership": "update-managed",
+    "sha256": "f73ed822c3a014474c54bf1372decba34a81c8a485c468cc0ba09b83726beab3"
+  },
+  {
+    "path": "lib/pydevices/add_ons/keypins.py",
+    "size": 1563,
+    "ownership": "update-managed",
+    "sha256": "e2cbc128f383074bb2d6cfe89ff3f665d54825c59a521d30929d814dce010271"
+  },
+  {
+    "path": "lib/pydevices/add_ons/lv_timer.py",
+    "size": 3131,
+    "ownership": "update-managed",
+    "sha256": "a4a7453a3e205c46feaf36a46bb254399699877cc870cafa09840c2a159247d4"
+  },
+  {
+    "path": "lib/pydevices/add_ons/lv_utils.py",
+    "size": 2544,
+    "ownership": "update-managed",
+    "sha256": "8c24e95b636538f833fbd2b219149bc8eda76be91f64b768230a50a87ed88bcd"
+  },
+  {
+    "path": "lib/pydevices/add_ons/micropython.py",
+    "size": 293,
+    "ownership": "update-managed",
+    "sha256": "d1c22eb966a872ace8493d6f4081718be10ce6cd124cd19f6846f174051a3dc7"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pbm.py",
+    "size": 4085,
+    "ownership": "update-managed",
+    "sha256": "7ec131e03fa60edbd804295dc45d2276cf8d9bdab16618fb86dfa2127e681c59"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/__init__.py",
+    "size": 49100,
+    "ownership": "update-managed",
+    "sha256": "b21c37637b94a584c2735fd2158d00ecc57a7c55c1608d4d9afb287bf025f586"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/_constants.py",
+    "size": 1674,
+    "ownership": "update-managed",
+    "sha256": "1505ccd64a5a458b1288a57029007aebe539f9cf093676215f539508e8e2d8e1"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/_themes.py",
+    "size": 2411,
+    "ownership": "update-managed",
+    "sha256": "22018346266ab364d6064e24d8adfb74c68154085e9cf128786fe7cda1f29cae"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/console.py",
+    "size": 4673,
+    "ownership": "update-managed",
+    "sha256": "4df174676a173f75980f71b0aeabe24620d346a1dcfa8f4f980e03d205da9b98"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/LICENSE",
+    "size": 11558,
+    "ownership": "update-managed",
+    "sha256": "49bbe9114e49214df2ccc324cb3ac8d1d1aa1c3a0947f94c286765e86647b32e"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/README.md",
+    "size": 424,
+    "ownership": "update-managed",
+    "sha256": "9e59860ce7287be4ecfbd019f729a67217a78da4a435f5f133673c70b6bfe980"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/check_box_36dp.pbm",
+    "size": 189,
+    "ownership": "update-managed",
+    "sha256": "a11ec9457ab18f34cf66c87bafe49b4f1de5f5278064b58bbfb487c275cc90ec"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/check_box_outline_blank_36dp.pbm",
+    "size": 189,
+    "ownership": "update-managed",
+    "sha256": "f37a7161c65d975daa1bc5741670e6d76bc0ce51f70230e31c848895ca5f8c67"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/home_filled_36dp.pbm",
+    "size": 189,
+    "ownership": "update-managed",
+    "sha256": "f62a4be0144bedf95d20c5c5d3d17093277b5ee14b5c24df27db6e2b5ad850ad"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/keyboard_arrow_down_18dp.pbm",
+    "size": 63,
+    "ownership": "update-managed",
+    "sha256": "5a4b31c752b824a37809dd061f4378b38f42f852df60a0911f1bbde4e1e124ba"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/keyboard_arrow_down_36dp.pbm",
+    "size": 189,
+    "ownership": "update-managed",
+    "sha256": "bc8b33212141732599ce6a4f5bd1a3146a56e860f5b98b0f2d80146f581257a6"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/keyboard_arrow_left_18dp.pbm",
+    "size": 63,
+    "ownership": "update-managed",
+    "sha256": "ad0b45a013d942c5fcdd343748be9921e8191e39996676f28173227c4c058000"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/keyboard_arrow_left_36dp.pbm",
+    "size": 189,
+    "ownership": "update-managed",
+    "sha256": "712d3e482ef03be94c15ea6e574467f03d707ff7cfa868f9c0821fabc1e82363"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/keyboard_arrow_right_18dp.pbm",
+    "size": 63,
+    "ownership": "update-managed",
+    "sha256": "dc3561c3776d23f284f3110d70146f044083918469e822154dbfc58642650072"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/keyboard_arrow_right_36dp.pbm",
+    "size": 189,
+    "ownership": "update-managed",
+    "sha256": "b5cad1bb320bb198c3fbe83514f3c94cde35836a5ca2269f2b28969ed1dfcaa4"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/keyboard_arrow_up_18dp.pbm",
+    "size": 63,
+    "ownership": "update-managed",
+    "sha256": "90c833bab56d4fa2429d62e6d6e154fbec7348d9ed70c5abb792ea3815bf39cd"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/keyboard_arrow_up_36dp.pbm",
+    "size": 189,
+    "ownership": "update-managed",
+    "sha256": "ff8d05a5404a2e3442addcaa3f76c71217bfcd310a15d09abd9c7cc6826735d9"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/radio_button_checked_36dp.pbm",
+    "size": 189,
+    "ownership": "update-managed",
+    "sha256": "9b61a5263bcc799ce0d84f69e0573a220cb0f4d94b1687f360559f561785fd30"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/radio_button_unchecked_36dp.pbm",
+    "size": 189,
+    "ownership": "update-managed",
+    "sha256": "48c1e4f1c05906821b2c4431e4ce06690333624dc00897915792a0fdf4ff074b"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/toggle_off_18dp.pbm",
+    "size": 63,
+    "ownership": "update-managed",
+    "sha256": "f0dc64a27bbc42f1f97f8ab01dbf315dce7c2d8fc86a0dac6e1d26bb7e5ce9b6"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/toggle_off_36dp.pbm",
+    "size": 189,
+    "ownership": "update-managed",
+    "sha256": "640f75ab4c54877c01ddc5bda4f12d24bba3d0347047997741a9fb8cb0041e10"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/toggle_on_18dp.pbm",
+    "size": 63,
+    "ownership": "update-managed",
+    "sha256": "eb1c0381d170625a9c662aa6ec58df1889eefc9a793cc663b8bca581d7739cc6"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/icons/toggle_on_36dp.pbm",
+    "size": 189,
+    "ownership": "update-managed",
+    "sha256": "73c08936e07342c9c690524d7f7dcb6135e046cc2f34cf2a9a01afca955b6d8b"
+  },
+  {
+    "path": "lib/pydevices/add_ons/pdwidgets/pct.py",
+    "size": 3360,
+    "ownership": "update-managed",
+    "sha256": "282487237f9f2c6443d9c73b41726e38643438296b34e1e9db476da81db24eb1"
+  },
+  {
+    "path": "lib/pydevices/add_ons/png.py",
+    "size": 24467,
+    "ownership": "update-managed",
+    "sha256": "e3fea789000c785960f466c50e4b08b74d0ba424328b3869b206eb9a4884a119"
+  },
+  {
+    "path": "lib/pydevices/add_ons/romfont.py",
+    "size": 2217,
+    "ownership": "update-managed",
+    "sha256": "caf1499f5ff459b0e78cd30b06fef81ccc7a88fd885ee0f209a023ba7d5a454a"
+  },
+  {
+    "path": "lib/pydevices/add_ons/tft_bitmap.py",
+    "size": 3054,
+    "ownership": "update-managed",
+    "sha256": "89576869855d738f1ecb9156801d906b50fa53da8c438e89868b40f2b823fd85"
+  },
+  {
+    "path": "lib/pydevices/add_ons/tft_config.py",
+    "size": 1056,
+    "ownership": "update-managed",
+    "sha256": "81d0a1103b1b93f24281b24398b4641a3876a436b541c994e589bfefbc8ed115"
+  },
+  {
+    "path": "lib/pydevices/add_ons/tft_text.py",
+    "size": 4905,
+    "ownership": "update-managed",
+    "sha256": "4c5a18b5b83f95eecd6af97f5105e449b2a477ab332e573337bb8f8678172706"
+  },
+  {
+    "path": "lib/pydevices/add_ons/tft_write.py",
+    "size": 3011,
+    "ownership": "update-managed",
+    "sha256": "dced4d14740ff2520f4a02dbc6f7ac4ae44e988b603493045f20f452020dd98a"
+  },
+  {
+    "path": "lib/pydevices/add_ons/touch_keypad.py",
+    "size": 1549,
+    "ownership": "update-managed",
+    "sha256": "889dab35a87d37e7f891950f83f8b6837875bf90ab1dbb001c6551f61a10f75d"
+  },
+  {
+    "path": "lib/pydevices/add_ons/viper_tools.py",
+    "size": 2365,
+    "ownership": "update-managed",
+    "sha256": "7c5b074101b6ce60b347a393cff5d62a90fd79eff52535aa20d9b153163ba43f"
+  },
+  {
+    "path": "lib/pydevices/add_ons/wifi.py",
+    "size": 815,
+    "ownership": "update-managed",
+    "sha256": "b3690828ca9c959cf074892b60eba82b80cea0f8889a23066bf9868ee937f528"
+  },
+  {
+    "path": "lib/pydevices/board_configs/bpi_centi_s3/board_config.py",
+    "size": 900,
+    "ownership": "update-managed",
+    "sha256": "63275623ca55f207427b18b8e3e279bc7d787bf023d4162c3f1f24ccc1c3c524"
+  },
+  {
+    "path": "lib/pydevices/board_configs/cp_esp32_pico_eyespi_ili9341/board_config.py",
+    "size": 965,
+    "ownership": "update-managed",
+    "sha256": "11de6a78821f83c38296f724c9211b28cc95c7736e85301377aaa0d27ab84fcb"
+  },
+  {
+    "path": "lib/pydevices/board_configs/diy_esp32_ili9341_xpt2046/board_config.py",
+    "size": 1044,
+    "ownership": "update-managed",
+    "sha256": "6e5ff17adbeb031345b8c71028c9c2900711ca1eace68a5c203a69aa0bf2b15f"
+  },
+  {
+    "path": "lib/pydevices/board_configs/ili9341_eyespi_qtpy_esp32s3/board_config.py",
+    "size": 846,
+    "ownership": "update-managed",
+    "sha256": "3910a7c9c301c278a8be52506a375e57a59d1f28d3e7b1fdb332702bbe19ab82"
+  },
+  {
+    "path": "lib/pydevices/board_configs/ili9341_eyespi_qtpy_rp2040/board_config.py",
+    "size": 926,
+    "ownership": "update-managed",
+    "sha256": "f16f000bb06aa26d69037be2bf4c977db18e3bc016db8c696a669a06e4e4b257"
+  },
+  {
+    "path": "lib/pydevices/board_configs/ili9341_i80_rp2040/board_config.py",
+    "size": 859,
+    "ownership": "update-managed",
+    "sha256": "97bbd01def6fccb068ee7c2f41e40915e6fb50d51ebde6378c4c176e5c9372f5"
+  },
+  {
+    "path": "lib/pydevices/board_configs/ili9341_pico_uno/board_config.py",
+    "size": 1112,
+    "ownership": "update-managed",
+    "sha256": "1c449455490cfde4eb027e0acb4202f90fc66098980199ee47ff8647190b959d"
+  },
+  {
+    "path": "lib/pydevices/board_configs/m5stack_cores3/board_config.py",
+    "size": 831,
+    "ownership": "update-managed",
+    "sha256": "59f9eeabff31a05134c9abb194fb16994cdec39ba3b03f482012b122e75c9a2a"
+  },
+  {
+    "path": "lib/pydevices/board_configs/odroid_go/board_config.py",
+    "size": 456,
+    "ownership": "update-managed",
+    "sha256": "59c0e380bde05a19b3de38fd334b7cfdbe3d0002109d5824d282602ea6ec98f0"
+  },
+  {
+    "path": "lib/pydevices/board_configs/pico_lcd_1.8/board_config.py",
+    "size": 462,
+    "ownership": "update-managed",
+    "sha256": "7a500de122e8c95e8de8669669e90b2cce1dcd78a157294310df077e66533396"
+  },
+  {
+    "path": "lib/pydevices/board_configs/rp2040_touch_lcd_1.28/board_config.py",
+    "size": 853,
+    "ownership": "update-managed",
+    "sha256": "d2c39fe1b5f0dfe29de762d4baa54176c72f89a9a3b86d6c0e4665fc9d011f4c"
+  },
+  {
+    "path": "lib/pydevices/board_configs/seeed_gc9a01_on_qtpy_esp32s3/board_config.py",
+    "size": 884,
+    "ownership": "update-managed",
+    "sha256": "175f042c091199fa2aeca5a569e1a51f4e39626edd41dc041c27e3b22542bfed"
+  },
+  {
+    "path": "lib/pydevices/board_configs/seeed_gc9a01_on_qtpy_rp2040/board_config.py",
+    "size": 881,
+    "ownership": "update-managed",
+    "sha256": "1c7940c1b94c7910197d87f49511d95e79731963d7d5b1e71a4b3c2a07585ad4"
+  },
+  {
+    "path": "lib/pydevices/board_configs/t_display_s3/board_config.py",
+    "size": 705,
+    "ownership": "update-managed",
+    "sha256": "56eee2ea072f370ec09d3e7fc3559fe740ceb01d677f51235cdbd13b02b8efe0"
+  },
+  {
+    "path": "lib/pydevices/board_configs/t_display_s3_pro/board_config.py",
+    "size": 968,
+    "ownership": "update-managed",
+    "sha256": "35e04e26f903c48e048d8f4249ad0f3bbf31f8a3c61c80c5f93d37bad1f2055a"
+  },
+  {
+    "path": "lib/pydevices/board_configs/t_dongle_s3/board_config.py",
+    "size": 445,
+    "ownership": "update-managed",
+    "sha256": "13dc35e573c1a302a49314c1318e1491c2b7580e0da0552a89e528af55044592"
+  },
+  {
+    "path": "lib/pydevices/board_configs/t_embed/board_config.py",
+    "size": 879,
+    "ownership": "update-managed",
+    "sha256": "7d6a094738f87c121d60e83b8971ad4c24dd86d8d95cfb1f073051805126b499"
+  },
+  {
+    "path": "lib/pydevices/board_configs/t_hmi/board_config.py",
+    "size": 942,
+    "ownership": "update-managed",
+    "sha256": "b6dac42428556d1bbec710c104dc2223ee80106a438ec4525a433e1385bbc8ba"
+  },
+  {
+    "path": "lib/pydevices/board_configs/t_qt_pro/board_config.py",
+    "size": 441,
+    "ownership": "update-managed",
+    "sha256": "da279baf1836c2560cf72f4a476ebc109fe530444df5da2da02bd53c9c97e13f"
+  },
+  {
+    "path": "lib/pydevices/board_configs/wt32sc01_plus/board_config.py",
+    "size": 883,
+    "ownership": "update-managed",
+    "sha256": "24b470b196a5ba6aa0ee7e3ae58b8b177c64f93d6ef60644485c28e9b7503903"
+  },
+  {
+    "path": "lib/pydevices/bus_drv/_rp2_wip.py",
+    "size": 2388,
+    "ownership": "update-managed",
+    "sha256": "d583d5d61d60b37610223df4e4d2b2cd80f326411527311578178e4729315fa3"
+  },
+  {
+    "path": "lib/pydevices/bus_drv/gpio_pin.py",
+    "size": 3307,
+    "ownership": "update-managed",
+    "sha256": "1e849ab57358ab4b4481be3e1af221ac8d6679c918d46d410a9a32a3b69b7b9a"
+  },
+  {
+    "path": "lib/pydevices/bus_drv/i80bus.py",
+    "size": 6239,
+    "ownership": "update-managed",
+    "sha256": "50d5c3aa3aa74d97c650bfa13099bc61221da214ee2e8969b3d655d91cda71dc"
+  },
+  {
+    "path": "lib/pydevices/bus_drv/spibus.py",
+    "size": 2702,
+    "ownership": "update-managed",
+    "sha256": "bf9b2c381664e542870308aee23dc0127b8ad15f2a2b469f68a763c1ef8d1822"
+  },
+  {
+    "path": "lib/pydevices/display_drv/gc9a01.py",
+    "size": 1055,
+    "ownership": "update-managed",
+    "sha256": "eccec20d1346936cc769e4635b2427b4ce99ea424c70e7dc92329ea5d140f27c"
+  },
+  {
+    "path": "lib/pydevices/display_drv/gc9d01.py",
+    "size": 1679,
+    "ownership": "update-managed",
+    "sha256": "9a5e3c292c34db1cf9a21e7c18ea9e222b798985cfc9ca09da4f461336f02115"
+  },
+  {
+    "path": "lib/pydevices/display_drv/hx8357.py",
+    "size": 1434,
+    "ownership": "update-managed",
+    "sha256": "91565d0913135d5d3e5744d2585087ae8bdbe54f50902277892a2a6101908ccf"
+  },
+  {
+    "path": "lib/pydevices/display_drv/ili9163.py",
+    "size": 1233,
+    "ownership": "update-managed",
+    "sha256": "b311588b256041640f3685a9c0b27ae5f57990db9fb6fbf9eee9c2d9c1b01522"
+  },
+  {
+    "path": "lib/pydevices/display_drv/ili9341.py",
+    "size": 2101,
+    "ownership": "update-managed",
+    "sha256": "6c4a5fa8cbd7684ed97f8ffa1cb968e2d8d066c1fd94a87a677d39859f5dc8ad"
+  },
+  {
+    "path": "lib/pydevices/display_drv/ili9488.py",
+    "size": 1156,
+    "ownership": "update-managed",
+    "sha256": "0338306e2353e6bc1d3cb2a7838aa83bbec836d6def354186d232249057715f8"
+  },
+  {
+    "path": "lib/pydevices/display_drv/st7701.py",
+    "size": 2426,
+    "ownership": "update-managed",
+    "sha256": "e0efd885b67dcdcec6f00f03610e83803a88236c7a8fe449909c6750bd8a9482"
+  },
+  {
+    "path": "lib/pydevices/display_drv/st7735.py",
+    "size": 1024,
+    "ownership": "update-managed",
+    "sha256": "80edd9c983999d295c87f06cb57cffe1009927e6460e81b3900af6c9751c248e"
+  },
+  {
+    "path": "lib/pydevices/display_drv/st7735r.py",
+    "size": 1671,
+    "ownership": "update-managed",
+    "sha256": "41fd48b1e384f39c3b926d11f1ed518cb7952474fd7c6f9a68e6064de5edc947"
+  },
+  {
+    "path": "lib/pydevices/display_drv/st7735r_1.py",
+    "size": 530,
+    "ownership": "update-managed",
+    "sha256": "b816b76eb1e106717846645363cdc0cc7cf01f142768e62ccc9fea334c7bdbba"
+  },
+  {
+    "path": "lib/pydevices/display_drv/st7789.py",
+    "size": 719,
+    "ownership": "update-managed",
+    "sha256": "6e5a12ce02be3c121c4585c566cf4f130f80bf5332942e5c3eae49e9c64aa072"
+  },
+  {
+    "path": "lib/pydevices/display_drv/st7789vw.py",
+    "size": 797,
+    "ownership": "update-managed",
+    "sha256": "d05eb39a1264d07ce8b667e1dce701184eae44bfa674f2753a49b55727141ba5"
+  },
+  {
+    "path": "lib/pydevices/display_drv/st7796.py",
+    "size": 1481,
+    "ownership": "update-managed",
+    "sha256": "e037494b135a2c81501c8610949f61afe012894a734841c56b4b664531159f84"
+  },
+  {
+    "path": "lib/pydevices/display_drv/st7796_test.py",
+    "size": 951,
+    "ownership": "update-managed",
+    "sha256": "4ee889485fb9227a228cb0fbf9e2d0fe94dcd3b21ce636c69560e416b444afa4"
+  },
+  {
+    "path": "lib/pydevices/displaysys/__init__.py",
+    "size": 11980,
+    "ownership": "update-managed",
+    "sha256": "560deb365b32b061b6c87af85f615358777b3ef6e9d1b7813e27d50b5eb0a407"
+  },
+  {
+    "path": "lib/pydevices/displaysys/busdisplay.py",
+    "size": 15220,
+    "ownership": "update-managed",
+    "sha256": "6b4d21c7fe8446c536924a5022abeb49c1e1280e94ed044c76ae0b56d3b4dabd"
+  },
+  {
+    "path": "lib/pydevices/displaysys/fbdisplay.py",
+    "size": 3027,
+    "ownership": "update-managed",
+    "sha256": "ce29e034cb06b61abdeef727b0414eefc226df89c1c6bdd94520c9b62672aef7"
+  },
+  {
+    "path": "lib/pydevices/displaysys/jndisplay.py",
+    "size": 3010,
+    "ownership": "update-managed",
+    "sha256": "7e8c40eb214ad90522ccf29c5c7f67e43b0224762fee24f62a5d82d13889bedf"
+  },
+  {
+    "path": "lib/pydevices/displaysys/pgdisplay.py",
+    "size": 5906,
+    "ownership": "update-managed",
+    "sha256": "dde282e7cab80fdd07c10eba28f413eb2e656afb58d18f216997acf793dcbfaf"
+  },
+  {
+    "path": "lib/pydevices/displaysys/psdisplay.py",
+    "size": 4185,
+    "ownership": "update-managed",
+    "sha256": "65f07344d907e6ae83d278aeec3cbbf240bc71b4ea5ca4f08c0d65756bc92710"
+  },
+  {
+    "path": "lib/pydevices/displaysys/sdldisplay/__init__.py",
+    "size": 10717,
+    "ownership": "update-managed",
+    "sha256": "201b8025c739e1bc7e10600262494a79fe5dbdb74520d70bc833cc3cc4048e05"
+  },
+  {
+    "path": "lib/pydevices/displaysys/sdldisplay/_sdl2_lib/__init__.py",
+    "size": 371,
+    "ownership": "update-managed",
+    "sha256": "1f9e904c9d756f8e4dc035ca070c6f3c4ceb22522c2c8fe7ebb67947c443a448"
+  },
+  {
+    "path": "lib/pydevices/displaysys/sdldisplay/_sdl2_lib/_constants.py",
+    "size": 7071,
+    "ownership": "update-managed",
+    "sha256": "3ef4353355a9be0380b970416fda6087796f6ca02b0c415a036675ec58d16a13"
+  },
+  {
+    "path": "lib/pydevices/displaysys/sdldisplay/_sdl2_lib/_cpython.py",
+    "size": 6971,
+    "ownership": "update-managed",
+    "sha256": "20e4febf7f5873ff14f50ba21e589236a6004064be8fba0ea23cce327698852d"
+  },
+  {
+    "path": "lib/pydevices/displaysys/sdldisplay/_sdl2_lib/_micropython.py",
+    "size": 3737,
+    "ownership": "update-managed",
+    "sha256": "b7dbf7cebfae2094830cf6468ef2c99dff2976895cba2d03173743d30c41c835"
+  },
+  {
+    "path": "lib/pydevices/eventsys/__init__.py",
+    "size": 2138,
+    "ownership": "update-managed",
+    "sha256": "9fea1bd79320e2605d687968d940794504bb8ffa5a0b0fdd2f2c1a871cdd7c73"
+  },
+  {
+    "path": "lib/pydevices/eventsys/devices.py",
+    "size": 19334,
+    "ownership": "update-managed",
+    "sha256": "b7ac70ee66cf89b8d8f9de48c1c44b1996b3fc5a4774cc0457f51c9c05f7a05d"
+  },
+  {
+    "path": "lib/pydevices/eventsys/keys.py",
+    "size": 11559,
+    "ownership": "update-managed",
+    "sha256": "0756ec375f42d855430abefb098645d496f087b71ab4cc57ae51ade086635b66"
+  },
+  {
+    "path": "lib/pydevices/graphics/__init__.py",
+    "size": 956,
+    "ownership": "update-managed",
+    "sha256": "7e96b7593a20e1f89c2779ddb37caa2d1dcf428cc5794829389458d8969e8c21"
+  },
+  {
+    "path": "lib/pydevices/graphics/_area.py",
+    "size": 8987,
+    "ownership": "update-managed",
+    "sha256": "b643f7eacdd164089b789773b3c255114162a5f09ce1a950492d76ccc8214a10"
+  },
+  {
+    "path": "lib/pydevices/graphics/_draw.py",
+    "size": 2246,
+    "ownership": "update-managed",
+    "sha256": "3baab3e276ab6d009ee88f583927073ef49ceea24dd95796290ce56caf70ecb6"
+  },
+  {
+    "path": "lib/pydevices/graphics/_files.py",
+    "size": 1940,
+    "ownership": "update-managed",
+    "sha256": "c49149dc7dc1478c7349307a8d4937f4f0d91e3abdd92909927a0fb93b65d364"
+  },
+  {
+    "path": "lib/pydevices/graphics/_font.py",
+    "size": 9456,
+    "ownership": "update-managed",
+    "sha256": "47b5f6eafaa5f9828b09c6591275de030dfdda2ea9a243ac9271e79e1cba131b"
+  },
+  {
+    "path": "lib/pydevices/graphics/_font_8x14.py",
+    "size": 11819,
+    "ownership": "update-managed",
+    "sha256": "5e8c785ddc9a5657036abb94f1525364525f8eee8d36694cf43698eee9f55ea4"
+  },
+  {
+    "path": "lib/pydevices/graphics/_font_8x16.py",
+    "size": 13684,
+    "ownership": "update-managed",
+    "sha256": "2ddcc43d02c2e4b6113e22199689f7b51633b12ddd20fa4dfc21eedd5585fe7e"
+  },
+  {
+    "path": "lib/pydevices/graphics/_font_8x8.py",
+    "size": 6278,
+    "ownership": "update-managed",
+    "sha256": "fca413f61206296793a64df53d1f06340349a68337e73dd01bf8452c71df96cd"
+  },
+  {
+    "path": "lib/pydevices/graphics/_framebuf.py",
+    "size": 15027,
+    "ownership": "update-managed",
+    "sha256": "67edded50573a944044b6def1e6a7cdcb6371cba74515da390678ceea1db7162"
+  },
+  {
+    "path": "lib/pydevices/graphics/_framebuf_plus.py",
+    "size": 18150,
+    "ownership": "update-managed",
+    "sha256": "ef7a40f696ef53d08316ea0522cb9addcc589d912d88427b55d902a4c1f213b8"
+  },
+  {
+    "path": "lib/pydevices/graphics/_shapes.py",
+    "size": 19631,
+    "ownership": "update-managed",
+    "sha256": "46d2b9ba81cf4153afd3da560ef54db714fb5f2706d4bfafedc3e4944f6e5834"
+  },
+  {
+    "path": "lib/pydevices/multimer/__init__.py",
+    "size": 1561,
+    "ownership": "update-managed",
+    "sha256": "277b4fe93a39eafc9cfb438fdaf15beef1423b72b59e9d33006c137ba77f6e5c"
+  },
+  {
+    "path": "lib/pydevices/multimer/_librt.py",
+    "size": 2542,
+    "ownership": "update-managed",
+    "sha256": "144533e39427e06f2d79aaf947b9fae36b9d0f5b393d1eba942e45edda44e09e"
+  },
+  {
+    "path": "lib/pydevices/multimer/_sdl2.py",
+    "size": 1091,
+    "ownership": "update-managed",
+    "sha256": "4d33c4256c7875adbf3bc02b54634c19ba82f9dfadaab23bd2c3cbd0ca2cf501"
+  },
+  {
+    "path": "lib/pydevices/multimer/_timerbase.py",
+    "size": 2751,
+    "ownership": "update-managed",
+    "sha256": "5e405f43bc4489ed18ae783a0574e1c10b6680da51ac69edb2210a18745beae8"
+  },
+  {
+    "path": "lib/pydevices/palettes/__init__.py",
+    "size": 3220,
+    "ownership": "update-managed",
+    "sha256": "641727f551c8e82e090197b322a15643d03cea5760b5fbdc0661cb293fe07ae6"
+  },
+  {
+    "path": "lib/pydevices/palettes/_cube125.py",
+    "size": 2165,
+    "ownership": "update-managed",
+    "sha256": "e0a3237a2dbdda276e4deb9ab249e5ec622e9110b140a4e3b2ceae68a8203e25"
+  },
+  {
+    "path": "lib/pydevices/palettes/_cube27.py",
+    "size": 463,
+    "ownership": "update-managed",
+    "sha256": "de40ad124403f0514a1272803176a9d819f7bcce0cc178012761d07671b5a55a"
+  },
+  {
+    "path": "lib/pydevices/palettes/_cube64.py",
+    "size": 1166,
+    "ownership": "update-managed",
+    "sha256": "7fe0223244dca710ce7282cc5fb71ca796c7232f19f242ba3e76ed562fa0e1bd"
+  },
+  {
+    "path": "lib/pydevices/palettes/_cube8.py",
+    "size": 124,
+    "ownership": "update-managed",
+    "sha256": "e1c60d1318e732d2c85774c86f9d6c00aec130c6f26167f812762dbe86a4f4a5"
+  },
+  {
+    "path": "lib/pydevices/palettes/_material_design.py",
+    "size": 2759,
+    "ownership": "update-managed",
+    "sha256": "e315cc91e6fccc6720fa08f8abb539fd44b0d19945e9552f8bdf1233c9dd9e3f"
+  },
+  {
+    "path": "lib/pydevices/palettes/cube.py",
+    "size": 1323,
+    "ownership": "update-managed",
+    "sha256": "66735d75b833e80f44c4b39add1cfadd28e312e2f3ee2eef3f5bdf897761d253"
+  },
+  {
+    "path": "lib/pydevices/palettes/material_design.py",
+    "size": 1805,
+    "ownership": "update-managed",
+    "sha256": "35affbde15d08f3d6aa0948d206cf5f6ca6d403b2ae639500cd7daa1747fd265"
+  },
+  {
+    "path": "lib/pydevices/palettes/wheel.py",
+    "size": 2281,
+    "ownership": "update-managed",
+    "sha256": "7fcce5da820c156d71f632e7dd21ea258d5bbc2ce245f000661948c21466e907"
+  },
+  {
+    "path": "lib/pydevices/touch_drv/chsc6x.py",
+    "size": 959,
+    "ownership": "update-managed",
+    "sha256": "7871182a78206e235186024a868ad2d07df836b16020eeb56a3e78f2d51b9114"
+  },
+  {
+    "path": "lib/pydevices/touch_drv/cst226.py",
+    "size": 2563,
+    "ownership": "update-managed",
+    "sha256": "f7b03e94fe197adb9bf32060d5c7c9c8e2f9fe1b4a297a134ad9864fe0d43efb"
+  },
+  {
+    "path": "lib/pydevices/touch_drv/cst8xx.py",
+    "size": 2418,
+    "ownership": "update-managed",
+    "sha256": "8d06d55ab440861e827922e6d9451730a1f054b1989968d2bafcda9e401396dd"
+  },
+  {
+    "path": "lib/pydevices/touch_drv/ft6x36.py",
+    "size": 5708,
+    "ownership": "update-managed",
+    "sha256": "4810951eb2ea0343d94fdf69b71196c349e2a9791cbfc99302cc2f0188cd0f61"
+  },
+  {
+    "path": "lib/pydevices/touch_drv/gt911.py",
+    "size": 3068,
+    "ownership": "update-managed",
+    "sha256": "9f975ba2b87fa6eb7b89e1634d82e0c672927b8a053eae6f3e62c434dc1bce4c"
+  },
+  {
+    "path": "lib/pydevices/touch_drv/xpt2046.py",
+    "size": 1904,
+    "ownership": "update-managed",
+    "sha256": "6f5456251b4728a7af091e5bbc427e9bd7aa2103d4e33114963822762888c7fc"
+  },
+  {
+    "path": "lib/tarfile/__init__.py",
+    "size": 2330,
+    "ownership": "update-managed",
+    "sha256": "c13d515d2e9800162a243135447c1dbf78698e0c63ac0f32bc48647465965bbc"
+  },
+  {
+    "path": "lib/tartlabutils/__init__.py",
+    "size": 225,
+    "ownership": "update-managed",
+    "sha256": "0aba027261eba518ead5f731f0aea4ce0b1d8c0e0ddd33c3c6213ef6b766ec0a"
+  },
+  {
+    "path": "lib/tartlabutils/miscutils.py",
+    "size": 2963,
+    "ownership": "update-managed",
+    "sha256": "30855689d73a499f774d96d87b0ae96c341f2dcecd409517021cc736c5b96c97"
+  },
+  {
+    "path": "lib/tartlabutils/updater.py",
+    "size": 5993,
+    "ownership": "update-managed",
+    "sha256": "c3b843f064379e2abf6ed0b01287c879202cf2018cb367b359538ee4bd96e3c0"
+  },
+  {
+    "path": "logs/000000.log",
+    "size": 27,
+    "ownership": "protected-state",
+    "content": "sanitized"
+  },
+  {
+    "path": "logs/000001.log",
+    "size": 27,
+    "ownership": "protected-state",
+    "content": "sanitized"
+  },
+  {
+    "path": "logs/000002.log",
+    "size": 27,
+    "ownership": "protected-state",
+    "content": "sanitized"
+  },
+  {
+    "path": "logs/000003.log",
+    "size": 27,
+    "ownership": "protected-state",
+    "content": "sanitized"
+  },
+  {
+    "path": "logs/000004.log",
+    "size": 27,
+    "ownership": "protected-state",
+    "content": "sanitized"
+  },
+  {
+    "path": "main.py",
+    "size": 2316,
+    "ownership": "update-managed",
+    "sha256": "ff4a94fc38da914be28f5ee0259afa4a23776835e95a4e0a88e4c2738e3c2aea"
+  },
+  {
+    "path": "repos.json",
+    "size": 150,
+    "ownership": "protected-state",
+    "content": "sanitized"
+  },
+  {
+    "path": "settings.json",
+    "size": 261,
+    "ownership": "protected-state",
+    "content": "sanitized"
+  }
+]

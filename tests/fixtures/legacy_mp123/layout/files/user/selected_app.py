@@ -1,0 +1,1 @@
+# Synthetic selected-app placeholder
