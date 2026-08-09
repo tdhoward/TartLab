@@ -14,7 +14,7 @@ from pathlib import Path
 
 CHUNK_SIZE = 64 * 1024
 TEXT_SUFFIXES = {
-    ".css", ".html", ".js", ".json", ".md", ".py", ".svg", ".txt",
+    ".css", ".html", ".js", ".json", ".md", ".py", ".sh", ".svg", ".txt",
 }
 
 

@@ -54,8 +54,8 @@
     },
     {
       "path": "add_ons/fonts/compile_upload.sh",
-      "sha256": "411b83c187a28db2a07c5fd079437a6403e10e9d7f380724bd4fa27e437621b2",
-      "size": 364
+      "sha256": "182f72799caad52bf6df801f50f2eae1827409e82b65ac7ba997c21dd10be136",
+      "size": 348
     },
     {
       "path": "add_ons/fonts/vga1_16x16.py",
@@ -738,7 +738,7 @@
       "size": 3150
     }
   ],
-  "identifier": "sha256:512f96d718339fe5e85332f1edd5de2835f1620d96f87967fd9af9ca76f6cf1b",
+  "identifier": "sha256:0d60321054aa7b440caf5c81d0808f1c4ef31effa3dca2a8fabc8493788d8136",
   "name": "legacy-pydevices",
   "provenance": {
     "distillation_script": "distill_pydevices.py",
