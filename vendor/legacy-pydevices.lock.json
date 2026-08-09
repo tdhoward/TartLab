@@ -179,8 +179,8 @@
     },
     {
       "path": "add_ons/pdwidgets/icons/LICENSE",
-      "sha256": "49bbe9114e49214df2ccc324cb3ac8d1d1aa1c3a0947f94c286765e86647b32e",
-      "size": 11558
+      "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+      "size": 11357
     },
     {
       "path": "add_ons/pdwidgets/icons/README.md",
@@ -738,7 +738,7 @@
       "size": 3150
     }
   ],
-  "identifier": "sha256:0d60321054aa7b440caf5c81d0808f1c4ef31effa3dca2a8fabc8493788d8136",
+  "identifier": "sha256:881d8740b62117975be763f8e291c215aaa3b70daaea34222abfd0e5da5b3cdd",
   "name": "legacy-pydevices",
   "provenance": {
     "distillation_script": "distill_pydevices.py",

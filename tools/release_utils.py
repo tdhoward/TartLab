@@ -16,6 +16,7 @@ CHUNK_SIZE = 64 * 1024
 TEXT_SUFFIXES = {
     ".css", ".html", ".js", ".json", ".md", ".py", ".sh", ".svg", ".txt",
 }
+TEXT_FILENAMES = {"LICENSE"}
 
 
 def sha256_file(path: Path) -> str:
@@ -30,7 +31,7 @@ def canonical_source_bytes(path: Path) -> bytes:
     """Return checkout-independent bytes for text sources."""
 
     data = path.read_bytes()
-    if path.suffix.lower() in TEXT_SUFFIXES:
+    if path.suffix.lower() in TEXT_SUFFIXES or path.name in TEXT_FILENAMES:
         data = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
     return data
 

@@ -77,6 +77,15 @@ class DistributionBuildTests(unittest.TestCase):
             paths = [item["path"] for item in file_inventory(root)]
             self.assertEqual(paths, sorted(paths))
 
+    def test_file_inventory_normalizes_extensionless_license_text(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "LICENSE").write_bytes(b"line\r\n")
+            item = file_inventory(root, normalize_source_text=True)[0]
+            self.assertEqual(item["size"], len(b"line\n"))
+            self.assertEqual(
+                item["sha256"], hashlib.sha256(b"line\n").hexdigest())
+
     def make_source(self, root):
         source = root / "src"
         for relative in (
