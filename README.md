@@ -35,7 +35,11 @@ LilyGo devices (T-Display-S3, T-Display-S3 Pro) were used to test and develop Ta
 ## Installation
  1. Install a bin file from [MicroPython](https://micropython.org/) on the embedded device.  Sometimes there are special builds of MicroPython that are specific to your device, in which case you should use those.  For the deployed T-Display-S3/T-Display-S3 Pro compatibility baseline, use MicroPython 1.23.0 with octal PSRAM support: `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin` from the [ESP32_GENERIC_S3 port.](https://www.micropython.org/download/ESP32_GENERIC_S3/)  Do not substitute the non-SPIRAM or quad-SPIRAM variant for these devices.
  2. Edit src/hdwconfig.py to point to one of the available config files in src/configs, based on what embedded device you are using. (Default is Lilygo T-Display-S3 Pro.)
- 3. Execute makedist.py to build TartLab.  The output is a new "dist" folder.
+ 3. Install the pinned host build dependency with
+    `python -m pip install --require-hashes -r requirements-build.txt`, run
+    `npm ci --prefix src/ide/www`, then execute
+    `python makedist.py --clean`. The output is a newly recreated `dist`
+    directory; the command never reuses stale output.
  4. Use [mpsync](https://github.com/tdhoward/mpsync) to load the TartLab "dist" files onto the device.
  5. Restart the device and enjoy!
 
@@ -63,6 +67,35 @@ restarts as part of that one update. During the update process, it is best to
 have the device plugged in to make sure it stays on. Wait until the update
 process is complete before doing anything else in TartLab, and do not start
 "Check for updates" again while an update is being resumed.
+
+## Reproducible legacy releases
+
+The `legacy-mp123` release profile is the compatibility path for deployed
+T-Display-S3 Pro devices using the exact MicroPython 1.23.0 octal-SPIRAM image
+listed above. Use the exact Python and Node versions recorded in
+`profiles/legacy-mp123.json`, then build it noninteractively from a clean
+checkout:
+
+```text
+python -m pip install --require-hashes -r requirements-build.txt
+npm ci --prefix src/ide/www
+npm run build --prefix src/ide/www
+python makedist.py --output build/legacy/dist --clean --skip-web-build
+python release.py --dist build/legacy/dist --output build/legacy/release --clean --version vX.Y
+python tools/check_legacy_release.py --dist build/legacy/dist --release build/legacy/release
+```
+
+`release.py` keeps `manifest.json` compatible with the deployed updater and
+adds deterministic USTAR archives, file/archive inventories, checksums, size
+budgets, firmware compatibility, Git/build identity, and the locked legacy
+vendor-payload identifier. `SOURCE_DATE_EPOCH` may be supplied explicitly; it
+defaults to the current Git commit timestamp.
+
+Pull requests and pushes run the same build twice and require byte-identical
+release directories. CI artifacts are candidates only. Stable promotion is a
+separate reviewed workflow gated by the physical-device checklist in
+`tests/PHASE2_HARDWARE.md` and the protected `legacy-release` GitHub
+environment.
 
 ### Feedback
 Please feel free to add new issues if you are experiencing problems.  I will try to respond as soon as I can.

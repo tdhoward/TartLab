@@ -16,6 +16,7 @@ UPDATE_NONE = 0
 UPDATE_INSTALLED = 1
 UPDATE_FAILED = -1
 updating_updater = False
+FILESYSTEM_RESERVE_BYTES = 10000
 
 PROTECTED_PATHS = (
     "/app.py", "/hdwconfig.py", "/settings.json", "/repos.json", "/logs",
@@ -93,21 +94,29 @@ async def check_for_update(repo):
 async def download_asset(asset_url, target_file):
     log("Downloading %s" % asset_url)
     retries = 0
+    partial_file = target_file + ".part"
     while retries < 5:
         response = None
         try:
+            if file_exists(partial_file) == 1:
+                uos.remove(partial_file)
             response = urequests.get(asset_url, headers={"User-Agent": "TartLab"})
             if response.status_code != 200:
                 log("Error: Received status code %s" % response.status_code)
                 return False
-            with open(target_file, "wb") as stream:
+            with open(partial_file, "wb") as stream:
                 while True:
                     chunk = response.raw.read(1024)
                     if not chunk:
                         break
                     stream.write(chunk)
+            if file_exists(target_file) == 1:
+                uos.remove(target_file)
+            uos.rename(partial_file, target_file)
             return True
         except Exception as error:
+            if file_exists(partial_file) == 1:
+                uos.remove(partial_file)
             if error.args and error.args[0] == 23:
                 retries += 1
                 await asyncio.sleep(2)
@@ -120,6 +129,24 @@ async def download_asset(asset_url, target_file):
                 except Exception:
                     pass
     raise OSError("Maximum download retries exceeded")
+
+
+def _required_install_space(manifest):
+    required = FILESYSTEM_RESERVE_BYTES
+    for package in manifest:
+        expanded = package.get("expanded_size")
+        if expanded is None:
+            filename = TMP_UPDATE_FOLDER + "/" + package["file_name"]
+            expanded = uos.stat(filename)[6]
+        if not isinstance(expanded, int) or expanded < 0:
+            raise ValueError("Invalid expanded package size")
+        required += expanded
+    return required
+
+
+def _free_space():
+    statvfs = uos.statvfs("/")
+    return statvfs[1] * statvfs[3]
 
 
 def sha256_hash(file_path):
@@ -225,9 +252,8 @@ async def update_packages(repo, callback):
     callback("Checking disk space", 1, 11)
     try:
         total_size = sum(asset["size"] for asset in assets)
-        statvfs = uos.statvfs("/")
-        free_space = statvfs[1] * statvfs[3]
-        if total_size + 10000 > free_space:
+        free_space = _free_space()
+        if total_size + FILESYSTEM_RESERVE_BYTES > free_space:
             log("Not enough disk space!")
             return UPDATE_FAILED
     except Exception as error:
@@ -269,6 +295,8 @@ async def update_packages(repo, callback):
             if sha256_hash(filename) != package["sha256"]:
                 raise ValueError("Hash did not match: " + package["file_name"])
             inspect_archive(filename, package["target"])
+        if _required_install_space(manifest) > _free_space():
+            raise OSError("Not enough disk space to extract release safely")
         log("Downloaded files successfully.")
     except Exception as error:
         log("Update validation failed!")

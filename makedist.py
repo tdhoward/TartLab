@@ -1,171 +1,197 @@
-import os
+"""Build a clean, deterministic TartLab device filesystem.
+
+The command is deliberately noninteractive. Existing output is rejected unless
+``--clean`` is supplied, which prevents stale files from surviving a build.
+"""
+
+from __future__ import annotations
+
+import argparse
 import gzip
+import hashlib
+import json
+import os
+from pathlib import Path
 import shutil
-import sys
-from python_minifier import minify  # pip install python-minifier 
 import subprocess
+import sys
 
-# This script uses the src folder to create a dist folder ready for deployment.
-# It only copies over the files that are needed, and gzips files larger than 2k.
-# The gzipped files can then be served by the embedded device more quickly, without
-# requiring gzipping on the fly.
 
-SRC_FOLDER = 'src'
-DIST_FOLDER = 'dist'
-IDE_FOLDER = 'ide'
-WEB_FOLDER = 'www'
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / "tools"))
+from release_utils import canonical_source_bytes, ensure_safe_output, file_inventory
 
-do_minify = True
-if len(sys.argv) > 1:
-    do_minify = sys.argv[1].lower() != 'false'
 
-# Walks through all files (including subfolders) and compresses files
-# larger than size_threshold with gzip, removing the original file
-def compress_and_remove_large_files(folder_path, size_threshold=2048):
-    # Walk through the directory tree
-    for root, dirs, files in os.walk(folder_path):
-        for filename in files:
-            file_path = os.path.join(root, filename)
-            
-            # Check if the file size is greater than the threshold
-            if os.path.getsize(file_path) > size_threshold:
-                # Get the original file's creation and modification times
-                stat = os.stat(file_path)
-                original_times = (stat.st_atime, stat.st_mtime)
+IDE_FOLDER = "ide"
+WEB_FOLDER = "www"
+COPY_EXCLUDES = {"__pycache__"}
 
-                # Create a gzipped version of the file
-                with open(file_path, 'rb') as f_in:
-                    with gzip.open(file_path + '.gz', 'wb') as f_out:
-                        shutil.copyfileobj(f_in, f_out)
-                
-                # Set the creation and modification times of the new .gz file
-                os.utime(file_path + '.gz', times=original_times)
 
-                # Delete the original file
-                os.remove(file_path)
-
-def minify_py_file(src_file, dest_file):
-    # Read and minify the source file
-    with open(src_file, 'r', encoding='utf-8') as f_in:
-        source_code = f_in.read()
+def source_date_epoch() -> int:
+    configured = os.environ.get("SOURCE_DATE_EPOCH")
+    if configured is not None:
+        return int(configured)
     try:
-        minified_code = minify(source_code, remove_annotations=False)
-                            # If there is trouble, try these other options:
-                                #combine_imports=False,
-                                #remove_pass=False,
-                                #hoist_literals=False,
-                                #rename_locals=False
-                                #remove_object_base=False,
-                                #convert_posargs_to_args=False,
-                                #preserve_shebang=False,
-                                #remove_explicit_return_none=False,
-                                #constant_folding=False
-        with open(dest_file, 'w', encoding='utf-8') as f_out:
-            f_out.write(minified_code)
-        print(f"Minified and copied: {src_file} -> {dest_file}")
-    except Exception as e:
-        print(f"Error minifying {src_file}: {e}")
-        # Optionally, copy the file as is if minification fails
-        shutil.copy2(src_file, dest_file)
-
-# Function to copy and minify .py files, copying other files as is
-def copy_filetree(src_folder, dest_folder, minify_python):
-    for root, dirs, files in os.walk(src_folder):
-        # Compute the relative path from src_folder to the current root
-        rel_path = os.path.relpath(root, src_folder)
-        dest_dir = os.path.join(dest_folder, rel_path)
-        os.makedirs(dest_dir, exist_ok=True)
-        for filename in files:
-            src_file = os.path.join(root, filename)
-            dest_file = os.path.join(dest_dir, filename)
-            if filename.endswith('.py') and minify_python:
-                minify_py_file(src_file, dest_file)
-            else:
-                # Copy other files as is
-                shutil.copy2(src_file, dest_file)
-            # Copy the original file's access and modification times
-            shutil.copystat(src_file, dest_file)
-
-# Function to copy files at the top level (no recursion)
-def copy_top_level_files(src_folder, dest_folder, minify_python = False):
-    for item in os.listdir(src_folder):
-        src_path = os.path.join(src_folder, item)
-        if os.path.isfile(src_path):
-            dest_path = os.path.join(dest_folder, item)
-            if src_path.endswith('.py') and minify_python:
-                minify_py_file(src_path, dest_path)
-            else:
-                # Copy other files as is
-                shutil.copy2(src_path, dest_path)
-            # Copy the original file's access and modification times
-            shutil.copystat(src_path, dest_path)
+        return int(subprocess.check_output(
+            ["git", "log", "-1", "--format=%ct"], cwd=ROOT,
+            text=True, stderr=subprocess.DEVNULL).strip())
+    except (OSError, subprocess.CalledProcessError, ValueError):
+        return 0
 
 
-def build_web_app():
-    build_dir = os.path.join(SRC_FOLDER, IDE_FOLDER, WEB_FOLDER)
-    abs_build_dir = os.path.abspath(build_dir)
-    if not os.path.isdir(abs_build_dir):
-        print(f"Error: Build directory does not exist: {abs_build_dir}")
-        return
-    
+def _is_excluded(path: Path) -> bool:
+    return any(part in COPY_EXCLUDES for part in path.parts) or \
+        path.suffix.lower() in (".pyc", ".pyo")
+
+
+def _write_source_file(source: Path, target: Path) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(canonical_source_bytes(source))
+
+
+def _minifier():
     try:
-        result = subprocess.run(
-            ["npm.cmd", "run", "build"],
-            cwd=abs_build_dir,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        print("Build succeeded!")
-    except subprocess.CalledProcessError as e:
-        print("Build failed!")
-        print(e.stderr)
+        from python_minifier import minify
+    except ImportError as error:
+        raise RuntimeError(
+            "Python minification is enabled. Install the pinned dependencies "
+            "with: python -m pip install --require-hashes -r requirements-build.txt"
+        ) from error
+    return minify
 
 
-# Check if the directory exists
-if os.path.exists(DIST_FOLDER):
-    # Prompt the user for confirmation
-    confirm = input(f"Are you sure you want to delete the directory '{DIST_FOLDER}'? (y/n): ")
-    if confirm.lower() == 'y':
-        # Delete the directory and all its contents
-        shutil.rmtree(DIST_FOLDER)
-        print(f"The directory '{DIST_FOLDER}' has been deleted.")
+def copy_file(source: Path, target: Path, minify_python: bool) -> None:
+    if source.suffix == ".py" and minify_python:
+        source_code = canonical_source_bytes(source).decode("utf-8")
+        minified = _minifier()(source_code, remove_annotations=False)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(minified, encoding="utf-8", newline="\n")
     else:
-        print("Deletion canceled.")
-        exit()
+        _write_source_file(source, target)
 
 
-# Create the new dist folder structure, including for the IDE web app destination
-os.makedirs(os.path.join(DIST_FOLDER, IDE_FOLDER, WEB_FOLDER))
-
-# Copy the main .py files from SRC to DIST (top-level files only, no minifying)
-copy_top_level_files(SRC_FOLDER, DIST_FOLDER)
-
-# Copy files in the /files directory  (These are human-readable files, so don't minify)
-copy_filetree(os.path.join(SRC_FOLDER, 'files'), os.path.join(DIST_FOLDER, 'files'), False)
-
-# Copy files in the /configs directory  (These are human-readable files, so don't minify)
-copy_filetree(os.path.join(SRC_FOLDER, 'configs'), os.path.join(DIST_FOLDER, 'configs'), False)
-
-# Copy provisioning defaults and the protected recovery runtime.
-copy_filetree(os.path.join(SRC_FOLDER, 'defaults'), os.path.join(DIST_FOLDER, 'defaults'), False)
-copy_filetree(os.path.join(SRC_FOLDER, 'recovery'), os.path.join(DIST_FOLDER, 'recovery'), False)
-
-# Copy and minify files in the /lib directory
-copy_filetree(os.path.join(SRC_FOLDER, 'lib'), os.path.join(DIST_FOLDER, 'lib'), do_minify)
+def copy_tree(source: Path, target: Path, minify_python: bool) -> None:
+    if not source.is_dir():
+        raise FileNotFoundError("Source directory does not exist: %s" % source)
+    for path in sorted(source.rglob("*")):
+        if not path.is_file() or _is_excluded(path.relative_to(source)):
+            continue
+        copy_file(path, target / path.relative_to(source), minify_python)
 
 
-# Build the web app first
-print("Building web app...")
-build_web_app()
+def copy_top_level(source: Path, target: Path, minify_python: bool = False) -> None:
+    for path in sorted(item for item in source.iterdir() if item.is_file()):
+        if not _is_excluded(path.relative_to(source)):
+            copy_file(path, target / path.name, minify_python)
 
-# Copy the ide .py files from SRC to DIST
-copy_top_level_files(os.path.join(SRC_FOLDER, IDE_FOLDER), os.path.join(DIST_FOLDER, IDE_FOLDER), True)
 
-# Copy all the ide web app files
-copy_filetree(os.path.join(SRC_FOLDER, IDE_FOLDER, WEB_FOLDER, 'dist'), os.path.join(DIST_FOLDER, IDE_FOLDER, WEB_FOLDER), False)
-# Compress the static web app files
-compress_and_remove_large_files(os.path.join(DIST_FOLDER, IDE_FOLDER, WEB_FOLDER))
+def npm_executable() -> str:
+    candidates = ("npm.cmd", "npm") if os.name == "nt" else ("npm", "npm.cmd")
+    for candidate in candidates:
+        executable = shutil.which(candidate)
+        if executable:
+            return executable
+    raise FileNotFoundError("npm was not found on PATH")
 
-print("Process complete.")
+
+def build_web_app(web_source: Path, install_dependencies: bool = False) -> None:
+    npm = npm_executable()
+    if install_dependencies:
+        subprocess.run([npm, "ci"], cwd=web_source, check=True)
+    subprocess.run([npm, "run", "build"], cwd=web_source, check=True)
+
+
+def compress_large_files(folder: Path, epoch: int, size_threshold: int = 2048) -> None:
+    for path in sorted(item for item in folder.rglob("*") if item.is_file()):
+        if path.stat().st_size <= size_threshold:
+            continue
+        target = path.with_name(path.name + ".gz")
+        with path.open("rb") as source, target.open("wb") as raw:
+            with gzip.GzipFile(
+                    filename="", mode="wb", fileobj=raw, mtime=epoch,
+                    compresslevel=9) as compressed:
+                shutil.copyfileobj(source, compressed)
+        path.unlink()
+
+
+def prepare_output(output: Path, source: Path, clean: bool) -> Path:
+    output = ensure_safe_output(output, (ROOT, source))
+    if output.exists():
+        if not clean:
+            raise FileExistsError(
+                "Output already exists; rerun with --clean to remove it first: %s" % output)
+        shutil.rmtree(output)
+    output.mkdir(parents=True)
+    return output
+
+
+def build_distribution(
+        source: Path, output: Path, *, clean: bool = False,
+        minify_python: bool = True, build_web: bool = True,
+        install_web_dependencies: bool = False, epoch: int | None = None,
+) -> dict[str, object]:
+    source = source.resolve()
+    output = prepare_output(output, source, clean)
+    epoch = source_date_epoch() if epoch is None else epoch
+    web_source = source / IDE_FOLDER / WEB_FOLDER
+
+    if build_web:
+        build_web_app(web_source, install_web_dependencies)
+    web_dist = web_source / "dist"
+    if not web_dist.is_dir():
+        raise FileNotFoundError(
+            "Web output is missing. Run without --skip-web-build: %s" % web_dist)
+
+    copy_top_level(source, output)
+    for relative in ("files", "configs", "defaults", "recovery"):
+        copy_tree(source / relative, output / relative, False)
+    copy_tree(source / "lib", output / "lib", minify_python)
+    copy_top_level(source / IDE_FOLDER, output / IDE_FOLDER, minify_python)
+    copy_tree(web_dist, output / IDE_FOLDER / WEB_FOLDER, False)
+    compress_large_files(output / IDE_FOLDER / WEB_FOLDER, epoch)
+
+    inventory = file_inventory(output)
+    return {
+        "file_count": len(inventory),
+        "expanded_bytes": sum(int(item["size"]) for item in inventory),
+        "source_date_epoch": epoch,
+        "minified": minify_python,
+        "output": str(output),
+        "inventory_sha256": hashlib.sha256(json.dumps(
+            inventory, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+    }
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--source", type=Path, default=ROOT / "src")
+    parser.add_argument("--output", type=Path, default=ROOT / "dist")
+    parser.add_argument(
+        "--clean", action="store_true",
+        help="remove the exact output directory before building")
+    parser.add_argument(
+        "--no-minify", action="store_true",
+        help="copy Python sources verbatim (intended for diagnostics only)")
+    parser.add_argument(
+        "--skip-web-build", action="store_true",
+        help="reuse an existing ignored src/ide/www/dist directory")
+    parser.add_argument(
+        "--install-web-dependencies", action="store_true",
+        help="run npm ci before the web build")
+    parser.add_argument("--source-date-epoch", type=int)
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    result = build_distribution(
+        args.source, args.output, clean=args.clean,
+        minify_python=not args.no_minify,
+        build_web=not args.skip_web_build,
+        install_web_dependencies=args.install_web_dependencies,
+        epoch=args.source_date_epoch)
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()

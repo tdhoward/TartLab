@@ -1,0 +1,753 @@
+{
+  "deployed_legacy_mp123": {
+    "expanded_bytes": 729986,
+    "file_count": 145,
+    "identifier": "sha256:96d2059780a75bfd6844fe8a7681cc96c5a31c1279881b5ded3b622855954f3a",
+    "phase1_tested_archive_sha256": "ba29c18c126de7b08964d6ad8150dd1e7f7e2dbab24e0b03c4bbfda0070567a1",
+    "source": "tests/fixtures/legacy_mp123/inventory.json"
+  },
+  "files": [
+    {
+      "path": "add_ons/adafruit_ticks.py",
+      "sha256": "ad59ad2baf4bfdb32ed675df5c291647a755a748b51f7b19ed82366bb91e9fc7",
+      "size": 5884
+    },
+    {
+      "path": "add_ons/bmp565.py",
+      "sha256": "d0d80e89fb4683b350363ba1ddcf8bc861c2f7848200a6d1e59175bfa7de2441",
+      "size": 8091
+    },
+    {
+      "path": "add_ons/byteswap.py",
+      "sha256": "c601d45856d7d5c902963b0b79c4e17ce79cf05377b2ce7dbc57a30bdc886d97",
+      "size": 1311
+    },
+    {
+      "path": "add_ons/color_setup.py",
+      "sha256": "1a37dc5313180176801924744ba61769561ce3c056016ad178e916c83a9862b9",
+      "size": 701
+    },
+    {
+      "path": "add_ons/console.py",
+      "sha256": "9515524a05603cf831f93e3745ac71fee70589d23dc987d5d81b6c08986a22a7",
+      "size": 11651
+    },
+    {
+      "path": "add_ons/display_driver.py",
+      "sha256": "3f606698b9078a42f91a80313d928f89fe4b9013428fddb9a8d8ae5d7597312e",
+      "size": 5491
+    },
+    {
+      "path": "add_ons/displaybuf.py",
+      "sha256": "0698c93d019d26e6d89283b19f3dbd420f8c1ec1de3c678e1cbd7ccecc1215f6",
+      "size": 10222
+    },
+    {
+      "path": "add_ons/ezfont.py",
+      "sha256": "3823136222d02e55a2d75d87f97f32212ff2df731fd2f7676e255c451ccd424f",
+      "size": 1450
+    },
+    {
+      "path": "add_ons/fonts/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "add_ons/fonts/compile_upload.sh",
+      "sha256": "411b83c187a28db2a07c5fd079437a6403e10e9d7f380724bd4fa27e437621b2",
+      "size": 364
+    },
+    {
+      "path": "add_ons/fonts/vga1_16x16.py",
+      "sha256": "8605330392464662f996d2e7125cab051742f54502b148cc79aec3cfed0d0bb0",
+      "size": 13141
+    },
+    {
+      "path": "add_ons/fonts/vga1_16x32.py",
+      "sha256": "09c2e95229259dea72c761a6db9868394ebd6c42515af85dd729217d61767bc2",
+      "size": 25429
+    },
+    {
+      "path": "add_ons/fonts/vga1_8x16.py",
+      "sha256": "a9b343633b83373471105ac6e8f042997e3f958989b08929a73ffef7c4ea4397",
+      "size": 7031
+    },
+    {
+      "path": "add_ons/fonts/vga1_8x8.py",
+      "sha256": "35d4f2f368629ed6f1203602714527a5c4ea5bceb660b4d9f165f92a3ac76515",
+      "size": 3957
+    },
+    {
+      "path": "add_ons/fonts/vga1_bold_16x16.py",
+      "sha256": "e3f9bf98b6fafec754894b9087c524d1be27bdb5103500b1fd9504c1c4808c46",
+      "size": 13141
+    },
+    {
+      "path": "add_ons/fonts/vga1_bold_16x32.py",
+      "sha256": "c3d0292c9948e64704a13d984a901a30a122564f9644de8b76587d9baf240921",
+      "size": 25429
+    },
+    {
+      "path": "add_ons/fonts/vga2_16x16.py",
+      "sha256": "931ff6f6d183ab7023d9d3a34bd4c34c7b0f592b3b149e9a749c2a073c17cbdf",
+      "size": 34902
+    },
+    {
+      "path": "add_ons/fonts/vga2_16x32.py",
+      "sha256": "cae3fdff15ca02134efcc7bab003b8b27554bb6a17179b3731a555d6b87785b5",
+      "size": 67670
+    },
+    {
+      "path": "add_ons/fonts/vga2_8x16.py",
+      "sha256": "b324c6863b15dcedefbe9e55c99ab8c0b4a3341a4cf28d2af68bd02198018e31",
+      "size": 18551
+    },
+    {
+      "path": "add_ons/fonts/vga2_8x8.py",
+      "sha256": "c0055a34372eadc7b3656572328f9ebac69257c2cd76bea213604cd493b135cc",
+      "size": 10357
+    },
+    {
+      "path": "add_ons/fonts/vga2_bold_16x16.py",
+      "sha256": "3f98edb751a82d7f2fdddd140b41b0c0a031ec4559bb5d0802a269c96bf45277",
+      "size": 34902
+    },
+    {
+      "path": "add_ons/fonts/vga2_bold_16x32.py",
+      "sha256": "66723ba03b171a30d774523bdda60bebaf7eaa246f3aa6c335241776928275e6",
+      "size": 67670
+    },
+    {
+      "path": "add_ons/framebuf.py",
+      "sha256": "291bb7eb342fc9425954e2db956f53ff4171a86b237c302a0fbeba9db766f9c7",
+      "size": 396
+    },
+    {
+      "path": "add_ons/hardware_setup.py",
+      "sha256": "789b3ee14f878e99007252549d59cb03ebb703feacf6afcfc0ba68f12883482c",
+      "size": 1828
+    },
+    {
+      "path": "add_ons/keypins.py",
+      "sha256": "aee891f4d23baab06b37be5d41794f74b3bffae10e828db51922d0aec2c0ca86",
+      "size": 2123
+    },
+    {
+      "path": "add_ons/lv_timer.py",
+      "sha256": "6eb62fb72908dff2f92db4895d247eab152ac34c490badfb44457da53b1ba9e9",
+      "size": 5668
+    },
+    {
+      "path": "add_ons/lv_utils.py",
+      "sha256": "6310d3eb6cc51ec494e1003e5e06537e2679f7841c35bda91999269a61fe2ac8",
+      "size": 5079
+    },
+    {
+      "path": "add_ons/micropython.py",
+      "sha256": "dc2c3cf3494a42b1b19c0c60e5601392bfabd1ed8158c4e37015e988187df048",
+      "size": 308
+    },
+    {
+      "path": "add_ons/pbm.py",
+      "sha256": "b0f898f87ac1514c02e0cb7d3d1c97d612a3504f0642577b7dfadfc5aad1efef",
+      "size": 5944
+    },
+    {
+      "path": "add_ons/pdwidgets/__init__.py",
+      "sha256": "8dd8fbf2a80856ddce80c535e24fa366628144c5e37dad1bf34fbc873100fa61",
+      "size": 68076
+    },
+    {
+      "path": "add_ons/pdwidgets/_constants.py",
+      "sha256": "4a19a2e5c9a1f53790087f78e443d7403a526c7f93ac2ef8fe91309f84fb735d",
+      "size": 2139
+    },
+    {
+      "path": "add_ons/pdwidgets/_themes.py",
+      "sha256": "95358a4940122a06d10c46605411ddda2adb422a21586c3e2435959c6cb508a5",
+      "size": 3054
+    },
+    {
+      "path": "add_ons/pdwidgets/console.py",
+      "sha256": "079c788af407b46e580bd45c15c422bf727587d790a521e32c4d934eb178f79d",
+      "size": 7344
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/check_box_36dp.pbm",
+      "sha256": "a11ec9457ab18f34cf66c87bafe49b4f1de5f5278064b58bbfb487c275cc90ec",
+      "size": 189
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/check_box_outline_blank_36dp.pbm",
+      "sha256": "f37a7161c65d975daa1bc5741670e6d76bc0ce51f70230e31c848895ca5f8c67",
+      "size": 189
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/home_filled_36dp.pbm",
+      "sha256": "f62a4be0144bedf95d20c5c5d3d17093277b5ee14b5c24df27db6e2b5ad850ad",
+      "size": 189
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/keyboard_arrow_down_18dp.pbm",
+      "sha256": "5a4b31c752b824a37809dd061f4378b38f42f852df60a0911f1bbde4e1e124ba",
+      "size": 63
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/keyboard_arrow_down_36dp.pbm",
+      "sha256": "bc8b33212141732599ce6a4f5bd1a3146a56e860f5b98b0f2d80146f581257a6",
+      "size": 189
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/keyboard_arrow_left_18dp.pbm",
+      "sha256": "ad0b45a013d942c5fcdd343748be9921e8191e39996676f28173227c4c058000",
+      "size": 63
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/keyboard_arrow_left_36dp.pbm",
+      "sha256": "712d3e482ef03be94c15ea6e574467f03d707ff7cfa868f9c0821fabc1e82363",
+      "size": 189
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/keyboard_arrow_right_18dp.pbm",
+      "sha256": "dc3561c3776d23f284f3110d70146f044083918469e822154dbfc58642650072",
+      "size": 63
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/keyboard_arrow_right_36dp.pbm",
+      "sha256": "b5cad1bb320bb198c3fbe83514f3c94cde35836a5ca2269f2b28969ed1dfcaa4",
+      "size": 189
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/keyboard_arrow_up_18dp.pbm",
+      "sha256": "90c833bab56d4fa2429d62e6d6e154fbec7348d9ed70c5abb792ea3815bf39cd",
+      "size": 63
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/keyboard_arrow_up_36dp.pbm",
+      "sha256": "ff8d05a5404a2e3442addcaa3f76c71217bfcd310a15d09abd9c7cc6826735d9",
+      "size": 189
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/LICENSE",
+      "sha256": "49bbe9114e49214df2ccc324cb3ac8d1d1aa1c3a0947f94c286765e86647b32e",
+      "size": 11558
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/radio_button_checked_36dp.pbm",
+      "sha256": "9b61a5263bcc799ce0d84f69e0573a220cb0f4d94b1687f360559f561785fd30",
+      "size": 189
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/radio_button_unchecked_36dp.pbm",
+      "sha256": "48c1e4f1c05906821b2c4431e4ce06690333624dc00897915792a0fdf4ff074b",
+      "size": 189
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/README.md",
+      "sha256": "367b81c13a7fb61bb3132a2c4706bb8d6e7ac6a9b4336419ee6fb4820cf74cde",
+      "size": 418
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/toggle_off_18dp.pbm",
+      "sha256": "f0dc64a27bbc42f1f97f8ab01dbf315dce7c2d8fc86a0dac6e1d26bb7e5ce9b6",
+      "size": 63
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/toggle_off_36dp.pbm",
+      "sha256": "640f75ab4c54877c01ddc5bda4f12d24bba3d0347047997741a9fb8cb0041e10",
+      "size": 189
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/toggle_on_18dp.pbm",
+      "sha256": "eb1c0381d170625a9c662aa6ec58df1889eefc9a793cc663b8bca581d7739cc6",
+      "size": 63
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/toggle_on_36dp.pbm",
+      "sha256": "73c08936e07342c9c690524d7f7dcb6135e046cc2f34cf2a9a01afca955b6d8b",
+      "size": 189
+    },
+    {
+      "path": "add_ons/pdwidgets/pct.py",
+      "sha256": "db3b342036ce81bee21bf73c3d9c4340f163d91cfd98ad1127a576936f9ca2ce",
+      "size": 4058
+    },
+    {
+      "path": "add_ons/png.py",
+      "sha256": "565f377daef2d676f9864ed83c18bf25570085ea054e9404af30b856e641bc3d",
+      "size": 87389
+    },
+    {
+      "path": "add_ons/qoi_reader.py",
+      "sha256": "977fd8285f595552114e75c264c352538e710a43cfe931db7c93c2a406505db9",
+      "size": 6405
+    },
+    {
+      "path": "add_ons/README.md",
+      "sha256": "d8a389d04c720d7b5d2cd261b732351961923c6eebf40ddef903f68dfcc3a9eb",
+      "size": 613
+    },
+    {
+      "path": "add_ons/romfont.py",
+      "sha256": "55be5437f351f7157ebdd644ec614331e8900e8247390788d463f3665194bfa9",
+      "size": 2813
+    },
+    {
+      "path": "add_ons/tft_bitmap.py",
+      "sha256": "a36c58ed3ad2e52a23ceca666b4c4dcaee89f01c6cf159fa0b68cf9cda6f359e",
+      "size": 4306
+    },
+    {
+      "path": "add_ons/tft_config.py",
+      "sha256": "dc6ac9ec72e8c9bf9d3f64c74e88a75acc95b07b89ffdc0bde73345e36f36975",
+      "size": 1379
+    },
+    {
+      "path": "add_ons/tft_text.py",
+      "sha256": "12f806f9526e018d9d9e2081b7387b4ac72560ccbc360db3cc64747650bd7893",
+      "size": 6550
+    },
+    {
+      "path": "add_ons/tft_write.py",
+      "sha256": "2c1b8ceef137da3751e03a10d30f2fc451d42b137721ad4b331ae79ff9ec89bc",
+      "size": 3911
+    },
+    {
+      "path": "add_ons/touch_keypad.py",
+      "sha256": "7a1d18d0a675b61edfa103f245e89d4f69b9d2291e2a3c461f4fca9641488b00",
+      "size": 2414
+    },
+    {
+      "path": "add_ons/viper_tools.py",
+      "sha256": "038834d706bcc6acbaebc3924947e3465e963d3d6f600657b8b8f75020ad5708",
+      "size": 4571
+    },
+    {
+      "path": "add_ons/wifi.py",
+      "sha256": "25012e53c0179f149a817f770a3e3ef4dd871beaf1491026b995374389da50ce",
+      "size": 1152
+    },
+    {
+      "path": "board_configs/bpi_centi_s3/board_config.py",
+      "sha256": "5878cdce5c2b13ff31317b64a434e43d5edf6ce19dd78845cae61e3f4f0fd064",
+      "size": 1074
+    },
+    {
+      "path": "board_configs/cp_esp32_pico_eyespi_ili9341/board_config.py",
+      "sha256": "2a2681001a804239a8da1a5b51c867891a2d48ed6f16b101d55a4df6e4378526",
+      "size": 1182
+    },
+    {
+      "path": "board_configs/diy_esp32_ili9341_xpt2046/board_config.py",
+      "sha256": "98d78b250252dd45b5104044e01624285ef6b2f85fdcdf4473d3a3d76490a624",
+      "size": 1346
+    },
+    {
+      "path": "board_configs/ili9341_eyespi_qtpy_esp32s3/board_config.py",
+      "sha256": "9b9b31b37a8401324eb089bd0198bd12309a5d15174df4a2b8817c7ab336e831",
+      "size": 1025
+    },
+    {
+      "path": "board_configs/ili9341_eyespi_qtpy_rp2040/board_config.py",
+      "sha256": "8e5d53c0cd38ea035e7dcaa4fe774f18768caeeaa4bd2b23e493865c5a9ab66a",
+      "size": 1104
+    },
+    {
+      "path": "board_configs/ili9341_i80_rp2040/board_config.py",
+      "sha256": "c3f311801aa34f47097625c0d662d40d00cc1073e2b3f861d036bf135731c852",
+      "size": 1072
+    },
+    {
+      "path": "board_configs/ili9341_pico_uno/board_config.py",
+      "sha256": "7c4621ce377c06eb46ef7fbd3dad81b3c4d72b24115e54b83257645d289df497",
+      "size": 1284
+    },
+    {
+      "path": "board_configs/m5stack_cores3/board_config.py",
+      "sha256": "fc937f98e246fed34e97a462120643f2a8f37f51876ff5be735104ed76b91317",
+      "size": 1001
+    },
+    {
+      "path": "board_configs/odroid_go/board_config.py",
+      "sha256": "a301ff7a6a4d19d2f9ef30230c3c7d7254c4b516bd2685ae91ee9d37084527ea",
+      "size": 597
+    },
+    {
+      "path": "board_configs/pico_lcd_1.8/board_config.py",
+      "sha256": "388db55272ea0f63e939f4bafed7a1a6305c4c752a130d1907bc8e1836e3d418",
+      "size": 596
+    },
+    {
+      "path": "board_configs/rp2040_touch_lcd_1.28/board_config.py",
+      "sha256": "bdf7cbd59d81536f275a26a394524ca898e99c33ce4aaf766ac585b3a954e69c",
+      "size": 1035
+    },
+    {
+      "path": "board_configs/seeed_gc9a01_on_qtpy_esp32s3/board_config.py",
+      "sha256": "ebe86b49ea024e4e5dfaee427b53276bf05028a0c170c43a11fa0fde6258640a",
+      "size": 1066
+    },
+    {
+      "path": "board_configs/seeed_gc9a01_on_qtpy_rp2040/board_config.py",
+      "sha256": "94e62d543eae735b57ff246e4726eecec96205deabae6a54cc88543e8641a8a1",
+      "size": 1063
+    },
+    {
+      "path": "board_configs/t_display_s3/board_config.py",
+      "sha256": "dc8ab5b6ad86404f9b1a8bcc424080d4e99b9ef1334dfd9938cd08b63dedd2a4",
+      "size": 841
+    },
+    {
+      "path": "board_configs/t_display_s3_pro/board_config.py",
+      "sha256": "4d2a5c7eecfbf3eedb5dbdcd97f827e1d008c3c298065bb7e9947dba8fc559fc",
+      "size": 1233
+    },
+    {
+      "path": "board_configs/t_dongle_s3/board_config.py",
+      "sha256": "ff0df64564420be98a3aeadb1d76ee56e9dc1bf1fc76e733b09ce56489118cd6",
+      "size": 582
+    },
+    {
+      "path": "board_configs/t_embed/board_config.py",
+      "sha256": "df7b657864b2563588d57e523e5b5befe1dc78f14b3e3ecea20199d164fe4c2c",
+      "size": 1056
+    },
+    {
+      "path": "board_configs/t_hmi/board_config.py",
+      "sha256": "6057b73e43602c5047aa9a934d26a15dcb957c046a25ff6a3edbc7c8aa79a2cf",
+      "size": 1190
+    },
+    {
+      "path": "board_configs/t_qt_pro/board_config.py",
+      "sha256": "97028dd3cb8673c56be429a1f2d6b9c9db1afbbba149de65a27b989c5ccf16f5",
+      "size": 598
+    },
+    {
+      "path": "board_configs/wt32sc01_plus/board_config.py",
+      "sha256": "b066aa1315a748f8c6d234266eeb15ea938fe357e95a34b0244a9d55de3a14b9",
+      "size": 1403
+    },
+    {
+      "path": "bus_drv/_rp2_wip.py",
+      "sha256": "1eff68a3ae01b20dd8cdc3e6f5d85356729cb99338d56f9cc245c8bef4d9faac",
+      "size": 3934
+    },
+    {
+      "path": "bus_drv/gpio_pin.py",
+      "sha256": "fde73e569a506efba1a83a74b71832d1be353d0e02c1b60e62e1b4a795e8a854",
+      "size": 6591
+    },
+    {
+      "path": "bus_drv/i80bus.py",
+      "sha256": "4180829f379496e38171993b5ed65ded70a02a0dc7a8e80406e7679a048950a3",
+      "size": 14474
+    },
+    {
+      "path": "bus_drv/spibus.py",
+      "sha256": "e79621208c0fc1e4fbb89bf6a8fe4464b80cf96f2ff3b50b7b77323a11b5196c",
+      "size": 3847
+    },
+    {
+      "path": "display_drv/gc9a01.py",
+      "sha256": "58c5845b60286b28a73639f32ef48897a267af3bf0d32d5ec5c8271baabf76c3",
+      "size": 2371
+    },
+    {
+      "path": "display_drv/gc9d01.py",
+      "sha256": "3c1ac4571742dd0f60580d4faa062804c2df94eadd4f79df0ee71f4c152fed28",
+      "size": 3338
+    },
+    {
+      "path": "display_drv/hx8357.py",
+      "sha256": "2d561e5fccc08f33558edd6dde9ed31534d6e35ba1bb12903fc35929b247efe1",
+      "size": 2345
+    },
+    {
+      "path": "display_drv/ili9163.py",
+      "sha256": "e53dfb4044ea2ceacf5422160b9ceb0a53505a5e971004f71a04e0d07e39d8e8",
+      "size": 2727
+    },
+    {
+      "path": "display_drv/ili9341.py",
+      "sha256": "8e22d537661decb362dbd09a8a372ca8b8a5feb5bc3c9ccb08c7bca6c28a4989",
+      "size": 2933
+    },
+    {
+      "path": "display_drv/ili9488.py",
+      "sha256": "b5a5baf2c5f2e230b605b600006364cf66e482190620ac4c00655e05ec3e4761",
+      "size": 1934
+    },
+    {
+      "path": "display_drv/st7701.py",
+      "sha256": "fe9b88fc03329b15b6b0d7f39be44d7af714799cbe3f64cc421a2b287394d8a4",
+      "size": 3642
+    },
+    {
+      "path": "display_drv/st7735.py",
+      "sha256": "ee188d6c91414c882b9f071b2d490cb7bf271bd1116ca8bc9a9f8699afe18773",
+      "size": 1864
+    },
+    {
+      "path": "display_drv/st7735r.py",
+      "sha256": "6a3adda18946fe3f9bb05c5074688d8638db9691eefd9a81e1bb5432d34df862",
+      "size": 2629
+    },
+    {
+      "path": "display_drv/st7735r_1.py",
+      "sha256": "7aaaa2ca6035c5523c936821e11484f29af3a5bae1e7d694bf61c936be9319d2",
+      "size": 865
+    },
+    {
+      "path": "display_drv/st7789.py",
+      "sha256": "d582abe6b5a89d5f2b8366e66ec16c1d0c80d638153aa3fdaf944b2225841354",
+      "size": 1421
+    },
+    {
+      "path": "display_drv/st7789vw.py",
+      "sha256": "af9fcb03c30b2b64616017f271bda06c84f9813f221ab03dd2a029c640f2d63a",
+      "size": 1072
+    },
+    {
+      "path": "display_drv/st7796.py",
+      "sha256": "c78fd5b1dcc4b1491db826c73fd699a19c6ed604b6fde60c0b76ceb4eda6e900",
+      "size": 3084
+    },
+    {
+      "path": "display_drv/st7796_test.py",
+      "sha256": "8ca321979e3f5519b6f2375f8cc5475734644a8b8176b5adb52772cec35f9aa3",
+      "size": 1644
+    },
+    {
+      "path": "displaysys/__init__.py",
+      "sha256": "7177f38dd55f48ff7674e1221870bf3ae81d97cf19b23afd79c6379d7a52c3c9",
+      "size": 16026
+    },
+    {
+      "path": "displaysys/busdisplay.py",
+      "sha256": "f0f7a164d1abfbc2102a61562982b9da22741924fc996ac1ad1582b762cd48f6",
+      "size": 21810
+    },
+    {
+      "path": "displaysys/fbdisplay.py",
+      "sha256": "9d303480820e80f8bda23e67424d3ecf526689a1160304364852b5e5a9cddf81",
+      "size": 3955
+    },
+    {
+      "path": "displaysys/jndisplay.py",
+      "sha256": "972afc491a79d779fc82f41507ab089efb5f3694ecd6a7d8e22a6930194b23bb",
+      "size": 3841
+    },
+    {
+      "path": "displaysys/pgdisplay.py",
+      "sha256": "74e9b82b236f9d2209e8d406c3bb9adf93593a1739f749c8a3d1b56595175cab",
+      "size": 8429
+    },
+    {
+      "path": "displaysys/psdisplay.py",
+      "sha256": "a6b88520f6a8ae093250bb75bf2df96f613547066dee80f5ebb4e112a899f03e",
+      "size": 5527
+    },
+    {
+      "path": "displaysys/sdldisplay/__init__.py",
+      "sha256": "6ebb21f44746402c894aabf95cbadff49e875a2888395bbeaba4d9c60f958f58",
+      "size": 15940
+    },
+    {
+      "path": "displaysys/sdldisplay/_sdl2_lib/__init__.py",
+      "sha256": "292653fb99edd4f159baddfb635ff22b895926f49a4b2b5136669af81f821030",
+      "size": 492
+    },
+    {
+      "path": "displaysys/sdldisplay/_sdl2_lib/_constants.py",
+      "sha256": "5b0fdec3e47f76a43b46ccfb9eb1f26c0028a0ed16416a1c092571065947b6a1",
+      "size": 9046
+    },
+    {
+      "path": "displaysys/sdldisplay/_sdl2_lib/_cpython.py",
+      "sha256": "ff298a30da4a89143f8334b5b3c5910c3bdf3b600bb060bc5bd03e245d533686",
+      "size": 9366
+    },
+    {
+      "path": "displaysys/sdldisplay/_sdl2_lib/_micropython.py",
+      "sha256": "9195207d71ddd59f82909347f9b93ec8c7a96ca078823923ea711de846535945",
+      "size": 6068
+    },
+    {
+      "path": "eventsys/__init__.py",
+      "sha256": "aef73da79350c46ba1a82b150ff18603c2436987182e15b7e6844f8bee8cad89",
+      "size": 3397
+    },
+    {
+      "path": "eventsys/devices.py",
+      "sha256": "7764447cafee845c62891c6fcf5c632fa1ce29496fc5aa092f1cdf52e9e22b64",
+      "size": 25434
+    },
+    {
+      "path": "eventsys/keys.py",
+      "sha256": "5c0d2338a4c41f2d8d068e906a509aeea5d092f3c33d99046be46f270bb8f91f",
+      "size": 16465
+    },
+    {
+      "path": "graphics/__init__.py",
+      "sha256": "07342ab4f17fecde5d7650318266d5be130c857eeb9f36f0e463e6cb05a3922c",
+      "size": 1286
+    },
+    {
+      "path": "graphics/_area.py",
+      "sha256": "7177a2fdbbc7da4a030a0b4f96d80cfa5902b1016ad8de6ae46fa86e5c5da880",
+      "size": 10276
+    },
+    {
+      "path": "graphics/_draw.py",
+      "sha256": "9b9c5d9ac18d6fa7ce7eaccfeb49efba5ec3bf4e2b438cc087e6307ba2e952c4",
+      "size": 3040
+    },
+    {
+      "path": "graphics/_files.py",
+      "sha256": "391c7811f528033a14cb7c2378351da20804990262a0732dfc393a0f82327eef",
+      "size": 3156
+    },
+    {
+      "path": "graphics/_font.py",
+      "sha256": "6c4a09aa219f34af94e004b20fdf1721d1819d88f143b76269e2e8011fe879bc",
+      "size": 14658
+    },
+    {
+      "path": "graphics/_font_8x14.py",
+      "sha256": "37579c73f95bab463328d390d8acb68850eab261231ac6aa4907540acd6252da",
+      "size": 16421
+    },
+    {
+      "path": "graphics/_font_8x16.py",
+      "sha256": "256859f5784e7736b6504d34f250dd62bdcbe7e22abe8ba0ede6bcf380047478",
+      "size": 18469
+    },
+    {
+      "path": "graphics/_font_8x8.py",
+      "sha256": "5e7e829a97619317679e15c792c6cb223a9b67b00d8a9a3bd0fc0cb404f47c55",
+      "size": 10277
+    },
+    {
+      "path": "graphics/_framebuf.py",
+      "sha256": "7c56e5210671f8b089760bbe99553fae8bd192be51138b7002e5bb2ea69d2058",
+      "size": 20922
+    },
+    {
+      "path": "graphics/_framebuf_plus.py",
+      "sha256": "746ac9fa9e4d4b52e5dcc700331984de460db67b60693714a9d13cc5ef89fcdb",
+      "size": 22403
+    },
+    {
+      "path": "graphics/_shapes.py",
+      "sha256": "2e3999e93519346451289a31892f6e8200d311e82ccaed6ea37e95138959a3e6",
+      "size": 29919
+    },
+    {
+      "path": "multimer/__init__.py",
+      "sha256": "ad1e77a2e6d4760f31703c241b12e1d70a30689871df2065d74026010abf60a7",
+      "size": 1790
+    },
+    {
+      "path": "multimer/_librt.py",
+      "sha256": "5ecdd25b948a89694121182c8c32a1a68e576710fd5dda5fa1672094275d330c",
+      "size": 4100
+    },
+    {
+      "path": "multimer/_sdl2.py",
+      "sha256": "7fb0bccb851e6c020b53b0a5bfcb34c26b1937009749e5b45f57bd57b090f98c",
+      "size": 1370
+    },
+    {
+      "path": "multimer/_timerbase.py",
+      "sha256": "a432743b249f80762c6f9ebc1fbe48dc1c5aaca12503e6c814cef2ba68f68da0",
+      "size": 3612
+    },
+    {
+      "path": "palettes/__init__.py",
+      "sha256": "44892e431b466452fca3900071d8053470a5fd6558579855a04798c52cfb046a",
+      "size": 5324
+    },
+    {
+      "path": "palettes/_cube125.py",
+      "sha256": "5a94cb126a1f8424748911e0c8d5aafd937df14fad83e9bce4088b08ffb3c9b0",
+      "size": 3293
+    },
+    {
+      "path": "palettes/_cube27.py",
+      "sha256": "c226128071417f904bda904306935a255b95f9c617f0d9a07a65f54267f808df",
+      "size": 998
+    },
+    {
+      "path": "palettes/_cube64.py",
+      "sha256": "63042ce33f132b50e429eeff533309f074fe607084ecc2de0a16a5c2c2a1fbc1",
+      "size": 1858
+    },
+    {
+      "path": "palettes/_cube8.py",
+      "sha256": "475f58a24c979d23520c40b1d36da0b82070094fbe279ac5421fd0b03692ac77",
+      "size": 341
+    },
+    {
+      "path": "palettes/_material_design.py",
+      "sha256": "9374b2b41de52ca745d37714886d2a795578e7fedf8d86e8e5ecbe2275c054b2",
+      "size": 7755
+    },
+    {
+      "path": "palettes/cube.py",
+      "sha256": "34196fcb0b5e9b6a73ff1934930313c6f1b42b413951e63966871f53f21f1383",
+      "size": 1712
+    },
+    {
+      "path": "palettes/material_design.py",
+      "sha256": "fcd72572c3bf0300ec042c8d9dd799d00e4767016607518ba2b14fbaac8852a2",
+      "size": 2711
+    },
+    {
+      "path": "palettes/wheel.py",
+      "sha256": "2d67970b2565db02b67df56ee3481d2966b1fc9c2ddb047acb1cbcf118c4c234",
+      "size": 3449
+    },
+    {
+      "path": "touch_drv/chsc6x.py",
+      "sha256": "a7adf9a0867ed958c6dbefb62687d66c94df0b7cb937a212829ef7f676e8e8cd",
+      "size": 1704
+    },
+    {
+      "path": "touch_drv/cst226.py",
+      "sha256": "74951b81bf1d9e031932d348c9ab62b1f0b27da804f5e2093e5285959ef584dc",
+      "size": 4484
+    },
+    {
+      "path": "touch_drv/cst8xx.py",
+      "sha256": "bc82681bcf3761bd1cfb854215d7141aa6e3a7310f3a194bdcb0faaf61efe76b",
+      "size": 3415
+    },
+    {
+      "path": "touch_drv/ft6x36.py",
+      "sha256": "ceeee877235ce31dfa63bcc386d6d0745b17a1f22a80d8431e5b77549bb8476a",
+      "size": 7071
+    },
+    {
+      "path": "touch_drv/gt911.py",
+      "sha256": "a9b927bd8913b8dc19f163d337412f4b0920de760e5ca33a5b5140317289302a",
+      "size": 4388
+    },
+    {
+      "path": "touch_drv/xpt2046.py",
+      "sha256": "3e777b6c63c2bf1c8aff91d2b49a857a587ff23f7544975683d9b77fa14f7e2d",
+      "size": 3150
+    }
+  ],
+  "identifier": "sha256:512f96d718339fe5e85332f1edd5de2835f1620d96f87967fd9af9ca76f6cf1b",
+  "name": "legacy-pydevices",
+  "provenance": {
+    "distillation_script": "distill_pydevices.py",
+    "last_tartlab_commit_affecting_source": "deadef158e7ac76ab60107912d04a303ce775889",
+    "note": "The historical distillation did not record an upstream commit. This lock preserves the exact TartLab source and deployed payload identities before Phase 4 replacement work begins.",
+    "status": "incomplete-historical-snapshot",
+    "upstream_commit": null,
+    "upstream_repository": "https://github.com/PyDevices/pydisplay"
+  },
+  "schema": 1,
+  "source_path": "src/lib/pydevices"
+}

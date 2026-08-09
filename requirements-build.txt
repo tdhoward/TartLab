@@ -1,0 +1,1 @@
+python-minifier==3.2.0 --hash=sha256:b8486b1dc15980d1d833f72a8a8696616a611f1a10fb72aaf96e2de891beb4c2

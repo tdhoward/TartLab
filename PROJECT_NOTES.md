@@ -428,6 +428,24 @@ working tree and is not a release tag.
 
 ### Phase 2: Make the legacy build and release path reproducible
 
+Implementation status (2026-08-09): the host-side Phase 2 build, provenance,
+CI, failure-injection, and promotion gates are implemented. The historical
+vendored source and deployed payload have separate content locks because the
+tracked source contains one file that the stale v0.13 distribution omitted.
+`makedist.py` and `release.py` now use clean noninteractive outputs,
+platform-aware commands, normalized gzip/USTAR metadata, the pinned
+`legacy-mp123` profile, deterministic inventories and checksums, explicit size
+budgets, and legacy-compatible manifests. `legacy-ci.yml` builds twice and
+publishes candidates; `promote-legacy-release.yml` requires a matching tested
+candidate hash plus reviewed physical evidence through the protected
+`legacy-release` environment.
+
+The Phase 2 implementation is not yet approved for stable deployment. Run and
+record the physical candidate matrix in `tests/PHASE2_HARDWARE.md`, including
+the clean-built inventory/size/performance comparison and all power-loss
+boundaries. Until that evidence is reviewed, CI output remains a candidate and
+the promotion gate must stay closed.
+
 1. Record content hashes and provenance for the currently deployed vendored payload before attempting to replace it.
 2. Make `makedist.py` and `release.py` noninteractive and platform-aware, and require builds to start from a clean output directory so stale `dist` files cannot survive.
 3. Generate build metadata containing TartLab version, Git commit, build timestamp, `legacy-mp123` profile, firmware compatibility, and a vendor-payload identifier.

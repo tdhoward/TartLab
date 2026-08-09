@@ -1,0 +1,73 @@
+name: Legacy release CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-mp123:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11.9"
+          cache: pip
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "20.19.4"
+          cache: npm
+          cache-dependency-path: src/ide/www/package-lock.json
+
+      - name: Install pinned build dependencies
+        run: python -m pip install --require-hashes -r requirements-build.txt
+
+      - name: Build web application from lockfile
+        run: npm ci --prefix src/ide/www && npm run build --prefix src/ide/www
+
+      - name: Set deterministic build identity
+        shell: bash
+        run: |
+          echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            echo "BUILD_VERSION=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          else
+            echo "BUILD_VERSION=ci-${GITHUB_SHA}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Verify vendored payload provenance
+        run: python tools/vendor_lock.py
+
+      - name: Build candidate twice from clean outputs
+        shell: bash
+        run: |
+          python makedist.py --output build/one/dist --clean --skip-web-build
+          python release.py --dist build/one/dist --output build/one/release --clean --version "$BUILD_VERSION"
+          python makedist.py --output build/two/dist --clean --skip-web-build
+          python release.py --dist build/two/dist --output build/two/release --clean --version "$BUILD_VERSION"
+
+      - name: Run legacy release gates
+        run: |
+          python -m unittest discover -s tests -v
+          python tools/check_legacy_release.py --dist build/one/dist --release build/one/release
+          python tools/compare_releases.py build/one/release build/two/release
+          git diff --check
+
+      - name: Publish reproducible candidate and provenance
+        uses: actions/upload-artifact@v7
+        with:
+          name: legacy-mp123-${{ github.sha }}
+          path: build/one/release/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 30

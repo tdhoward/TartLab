@@ -13,6 +13,7 @@ STATE_REPOS = STATE_DIR + "/repos.json"
 LEGACY_REPOS = "/repos.json"
 UPDATE_STATE = STATE_DIR + "/update.json"
 TEMP_DIR = "/tmp/recovery"
+FILESYSTEM_RESERVE_BYTES = 10000
 PHASE1_MIGRATION_FILE = STATE_DIR + "/phase1_migration.json"
 PROTECTED = (
     "/app.py", "/hdwconfig.py", "/settings.json", "/repos.json", "/logs",
@@ -199,6 +200,23 @@ def _validate_manifest(manifest):
             raise ValueError("Recovery cannot clear itself")
 
 
+def _free_space():
+    stats = os.statvfs("/")
+    return stats[1] * stats[3]
+
+
+def _required_install_space(manifest):
+    required = FILESYSTEM_RESERVE_BYTES
+    for package in manifest:
+        expanded = package.get("expanded_size")
+        if expanded is None:
+            expanded = os.stat(TEMP_DIR + "/" + package["file_name"])[6]
+        if not isinstance(expanded, int) or expanded < 0:
+            raise ValueError("Invalid expanded package size")
+        required += expanded
+    return required
+
+
 def _tartlab_repo(repos):
     for item in repos.get("list", []):
         if item.get("name") == "TartLab":
@@ -277,6 +295,8 @@ def resume_staged_update(progress=print):
         if _kind(path) != 1 or _sha256(path) != package["sha256"]:
             raise ValueError("Staged package hash mismatch")
         _tar_members(path, package["target"], False)
+    if _required_install_space(manifest) > _free_space():
+        raise OSError("Not enough disk space to extract release safely")
     return _install_verified_packages(tartlab, version, manifest, progress)
 
 
@@ -311,5 +331,8 @@ def update_to_latest(progress=print):
             progress("Downloading " + package["file_name"])
             _download_verified(asset["browser_download_url"], path, package["sha256"])
         _tar_members(path, package["target"], False)
+
+    if _required_install_space(manifest) > _free_space():
+        raise OSError("Not enough disk space to extract release safely")
 
     return _install_verified_packages(tartlab, version, manifest, progress)

@@ -1,0 +1,91 @@
+name: Promote tested legacy release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Stable tag whose commit produced the tested candidate
+        required: true
+        type: string
+      candidate_checksums_sha256:
+        description: SHA-256 of the candidate checksums.json tested on hardware
+        required: true
+        type: string
+      hardware_evidence_sha256:
+        description: SHA-256 of the completed physical-test evidence bundle
+        required: true
+        type: string
+      hardware_evidence_reference:
+        description: Durable URL or artifact reference for the evidence bundle
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: legacy-release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11.9"
+          cache: pip
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "20.19.4"
+          cache: npm
+          cache-dependency-path: src/ide/www/package-lock.json
+
+      - name: Install and build pinned inputs
+        run: |
+          python -m pip install --require-hashes -r requirements-build.txt
+          npm ci --prefix src/ide/www
+          npm run build --prefix src/ide/www
+
+      - name: Rebuild the hardware-tested candidate
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+          python makedist.py --output build/promote/dist --clean --skip-web-build
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" python release.py --dist build/promote/dist --output build/promote/release --clean --version "$RELEASE_TAG"
+          python tools/check_legacy_release.py --dist build/promote/dist --release build/promote/release
+
+      - name: Bind physical evidence to the rebuilt release
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          CANDIDATE_HASH: ${{ inputs.candidate_checksums_sha256 }}
+          EVIDENCE_HASH: ${{ inputs.hardware_evidence_sha256 }}
+          EVIDENCE_REFERENCE: ${{ inputs.hardware_evidence_reference }}
+        run: >-
+          python tools/create_promotion_attestation.py
+          --release build/promote/release
+          --tag "$RELEASE_TAG"
+          --candidate-checksums-sha256 "$CANDIDATE_HASH"
+          --hardware-evidence-sha256 "$EVIDENCE_HASH"
+          --hardware-evidence-reference "$EVIDENCE_REFERENCE"
+          --output build/promote/release/promotion_attestation.json
+
+      - name: Publish stable GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: >-
+          gh release create "$RELEASE_TAG"
+          build/promote/release/*.tar
+          build/promote/release/*.json
+          --verify-tag
+          --title "TartLab $RELEASE_TAG"
+          --notes "legacy-mp123 release; physical-gate evidence is recorded in promotion_attestation.json"
