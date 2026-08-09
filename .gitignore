@@ -10,7 +10,6 @@ TartLab.code-workspace
 /webpack
 /src/ide/www/node_modules
 /src/ide/www/dist
-src/ide/www/package-lock.json
 /_example_installation
 /hardware_test_artifacts
 __pycache__/
