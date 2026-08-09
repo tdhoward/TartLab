@@ -115,6 +115,7 @@ class StateTests(unittest.TestCase):
 
 class BootStateTests(unittest.TestCase):
     def test_healthy_boot_clears_previous_error(self):
+        sys.modules.setdefault("ujson", json)
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / "state").mkdir()
