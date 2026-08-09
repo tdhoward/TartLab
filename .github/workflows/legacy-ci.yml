@@ -57,8 +57,29 @@ jobs:
           python makedist.py --output build/two/dist --clean --skip-web-build
           python release.py --dist build/two/dist --output build/two/release --clean --version "$BUILD_VERSION"
 
-      - name: Run Phase 1 host tests
-        run: python -m unittest tests.test_phase1 -v
+      - name: Test Phase 1 state migration
+        run: python -m unittest tests.test_phase1.StateTests -v
+
+      - name: Test Phase 1 boot state
+        run: python -m unittest tests.test_phase1.BootStateTests -v
+
+      - name: Test Phase 1 default settings
+        run: python -m unittest tests.test_phase1.DefaultSettingsTests -v
+
+      - name: Test Phase 1 release ownership
+        run: python -m unittest tests.test_phase1.ReleaseOwnershipTests -v
+
+      - name: Test Phase 1 updater failures
+        run: python -m unittest tests.test_phase1.UpdaterFailureTests -v
+
+      - name: Test Phase 1 recovery updater
+        run: python -m unittest tests.test_phase1.RecoveryUpdaterTests -v
+
+      - name: Test Phase 1 boot recovery
+        run: python -m unittest tests.test_phase1.BootRecoveryGateTests -v
+
+      - name: Test Phase 1 fixture
+        run: python -m unittest tests.test_phase1.FixtureTests -v
 
       - name: Run Phase 2 host tests
         run: python -m unittest tests.test_phase2 -v
