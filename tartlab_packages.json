@@ -64,6 +64,13 @@
 		"ownership": "system"
 	},
 	{
+		"name": "libtarfile",
+		"source": "dist/lib/tarfile",
+		"target": "/lib/tarfile",
+		"clear_first": true,
+		"ownership": "system"
+	},
+	{
 		"name": "tartlabutils",
 		"source": "dist/lib/tartlabutils",
 		"target": "/lib/tartlabutils",

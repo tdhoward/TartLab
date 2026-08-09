@@ -30,6 +30,13 @@ PROTECTED_PATHS = (
 )
 
 
+def is_protected_path(path):
+    normalized = "/" + str(path).strip("/")
+    return any(
+        normalized == protected or normalized.startswith(protected + "/")
+        for protected in PROTECTED_PATHS)
+
+
 def calculate_sha256(file_path):
     return sha256_file(Path(file_path))
 
@@ -87,9 +94,8 @@ def archive_paths(tar_path, target):
 def validate_archive_ownership(paths):
     for path in paths:
         normalized = "/" + path.strip("/")
-        for protected in PROTECTED_PATHS:
-            if normalized == protected or normalized.startswith(protected + "/"):
-                raise ValueError("Release archive targets protected path: %s" % normalized)
+        if is_protected_path(normalized):
+            raise ValueError("Release archive targets protected path: %s" % normalized)
 
 
 def _git_value(*args):
@@ -289,6 +295,14 @@ def build_release(
     write_json(output / "archive_inventory.json", archive_inventory)
     write_json(output / "payload_inventory.json", payload_inventory)
     dist_inventory = file_inventory(dist)
+    required_ota_paths = {
+        "/" + item["path"].strip("/") for item in dist_inventory
+        if not is_protected_path(item["path"])
+    }
+    missing_ota_paths = sorted(required_ota_paths.difference(owned_paths))
+    if missing_ota_paths:
+        raise ValueError(
+            "Distribution file has no OTA package owner: %s" % missing_ota_paths[0])
     write_json(output / "dist_inventory.json", dist_inventory)
     baseline_comparison = _baseline_comparison(dist_inventory, profile)
     if baseline_comparison["removed"]:

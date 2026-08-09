@@ -160,6 +160,16 @@ def check(dist: Path, release_dir: Path) -> dict[str, object]:
         total_archive += package["archive_size"]
         total_expanded += expanded
 
+    required_ota_paths = {
+        "/" + item["path"].strip("/") for item in recorded_dist
+        if not release_tools.is_protected_path(item["path"])
+    }
+    if paths != required_ota_paths:
+        missing = sorted(required_ota_paths.difference(paths))
+        extra = sorted(paths.difference(required_ota_paths))
+        detail = missing[0] if missing else extra[0]
+        raise ValueError("OTA package ownership differs from distribution: %s" % detail)
+
     if total_archive != metadata["totals"]["archive_bytes"] or \
             total_expanded != metadata["totals"]["expanded_bytes"]:
         raise ValueError("Release totals differ from build metadata")

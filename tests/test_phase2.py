@@ -151,13 +151,26 @@ class ReleaseBuildTests(unittest.TestCase):
     def test_release_metadata_and_archive_gate(self):
         result = check_legacy_release(self.dist, self.first)
         metadata = json.loads((self.first / "build_metadata.json").read_text())
-        self.assertEqual(result["packages"], 10)
+        self.assertEqual(result["packages"], 11)
         self.assertEqual(metadata["profile"], "legacy-mp123")
         self.assertEqual(metadata["source_date_epoch"], 123456789)
         self.assertEqual(
             metadata["firmware_compatibility"]["version"], "1.23.0")
         self.assertIn("identifier", metadata["vendor_payload"])
         self.assertEqual(metadata["baseline_comparison"]["removed"], 0)
+
+    def test_ota_packages_cover_every_non_protected_distribution_file(self):
+        manifest = json.loads((self.first / "manifest.json").read_text())
+        owned = set()
+        for package in manifest:
+            owned.update(release.archive_paths(
+                self.first / package["file_name"], package["target"]))
+        required = {
+            "/" + item["path"] for item in file_inventory(self.dist)
+            if not release.is_protected_path(item["path"])
+        }
+        self.assertEqual(owned, required)
+        self.assertIn("/lib/tarfile/__init__.py", owned)
 
     def test_first_install_contains_local_defaults(self):
         device = self.root / "first-install"
