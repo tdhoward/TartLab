@@ -46,7 +46,9 @@ def file_inventory(
 
     root = root.resolve()
     result = []
-    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+    files = (item for item in root.rglob("*") if item.is_file())
+    for path in sorted(
+            files, key=lambda item: item.relative_to(root).as_posix()):
         relative = path.relative_to(root)
         if "__pycache__" in relative.parts or path.suffix.lower() in (".pyc", ".pyo"):
             continue

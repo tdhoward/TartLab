@@ -8,6 +8,11 @@
   },
   "files": [
     {
+      "path": "add_ons/README.md",
+      "sha256": "d8a389d04c720d7b5d2cd261b732351961923c6eebf40ddef903f68dfcc3a9eb",
+      "size": 613
+    },
+    {
       "path": "add_ons/adafruit_ticks.py",
       "sha256": "ad59ad2baf4bfdb32ed675df5c291647a755a748b51f7b19ed82366bb91e9fc7",
       "size": 5884
@@ -173,6 +178,16 @@
       "size": 7344
     },
     {
+      "path": "add_ons/pdwidgets/icons/LICENSE",
+      "sha256": "49bbe9114e49214df2ccc324cb3ac8d1d1aa1c3a0947f94c286765e86647b32e",
+      "size": 11558
+    },
+    {
+      "path": "add_ons/pdwidgets/icons/README.md",
+      "sha256": "367b81c13a7fb61bb3132a2c4706bb8d6e7ac6a9b4336419ee6fb4820cf74cde",
+      "size": 418
+    },
+    {
       "path": "add_ons/pdwidgets/icons/check_box_36dp.pbm",
       "sha256": "a11ec9457ab18f34cf66c87bafe49b4f1de5f5278064b58bbfb487c275cc90ec",
       "size": 189
@@ -228,11 +243,6 @@
       "size": 189
     },
     {
-      "path": "add_ons/pdwidgets/icons/LICENSE",
-      "sha256": "49bbe9114e49214df2ccc324cb3ac8d1d1aa1c3a0947f94c286765e86647b32e",
-      "size": 11558
-    },
-    {
       "path": "add_ons/pdwidgets/icons/radio_button_checked_36dp.pbm",
       "sha256": "9b61a5263bcc799ce0d84f69e0573a220cb0f4d94b1687f360559f561785fd30",
       "size": 189
@@ -241,11 +251,6 @@
       "path": "add_ons/pdwidgets/icons/radio_button_unchecked_36dp.pbm",
       "sha256": "48c1e4f1c05906821b2c4431e4ce06690333624dc00897915792a0fdf4ff074b",
       "size": 189
-    },
-    {
-      "path": "add_ons/pdwidgets/icons/README.md",
-      "sha256": "367b81c13a7fb61bb3132a2c4706bb8d6e7ac6a9b4336419ee6fb4820cf74cde",
-      "size": 418
     },
     {
       "path": "add_ons/pdwidgets/icons/toggle_off_18dp.pbm",
@@ -281,11 +286,6 @@
       "path": "add_ons/qoi_reader.py",
       "sha256": "977fd8285f595552114e75c264c352538e710a43cfe931db7c93c2a406505db9",
       "size": 6405
-    },
-    {
-      "path": "add_ons/README.md",
-      "sha256": "d8a389d04c720d7b5d2cd261b732351961923c6eebf40ddef903f68dfcc3a9eb",
-      "size": 613
     },
     {
       "path": "add_ons/romfont.py",

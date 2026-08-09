@@ -69,6 +69,14 @@ class VendorProvenanceTests(unittest.TestCase):
 
 
 class DistributionBuildTests(unittest.TestCase):
+    def test_file_inventory_uses_platform_independent_path_order(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "README.md").write_text("upper\n")
+            (root / "a.py").write_text("lower\n")
+            paths = [item["path"] for item in file_inventory(root)]
+            self.assertEqual(paths, sorted(paths))
+
     def make_source(self, root):
         source = root / "src"
         for relative in (
