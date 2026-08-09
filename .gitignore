@@ -1,4 +1,5 @@
 settings.json
+!tests/fixtures/legacy_mp123/layout/settings.json
 sync_files.bat
 mpsync.py
 TartLab.code-workspace

@@ -1,0 +1,13 @@
+{
+  "dbver": 1,
+  "STARTUP_MODE": "BUTTON",
+  "pre-release-updates": false,
+  "ap_name": "PySyntheticDevice42",
+  "hostname": "tartlab-fixture",
+  "wifi_ssids": [
+    "SYNTHETIC_CLASSROOM"
+  ],
+  "wifi_passwords": [
+    "not-a-real-password"
+  ]
+}
