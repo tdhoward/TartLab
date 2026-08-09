@@ -57,12 +57,17 @@ jobs:
           python makedist.py --output build/two/dist --clean --skip-web-build
           python release.py --dist build/two/dist --output build/two/release --clean --version "$BUILD_VERSION"
 
-      - name: Run legacy release gates
-        run: |
-          python -m unittest discover -s tests -v
-          python tools/check_legacy_release.py --dist build/one/dist --release build/one/release
-          python tools/compare_releases.py build/one/release build/two/release
-          git diff --check
+      - name: Run host test suite
+        run: python -m unittest discover -s tests -v
+
+      - name: Validate legacy release archive
+        run: python tools/check_legacy_release.py --dist build/one/dist --release build/one/release
+
+      - name: Compare independent release builds
+        run: python tools/compare_releases.py build/one/release build/two/release
+
+      - name: Check patch whitespace
+        run: git diff --check
 
       - name: Publish reproducible candidate and provenance
         uses: actions/upload-artifact@v7
