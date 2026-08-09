@@ -78,8 +78,11 @@ jobs:
       - name: Test Phase 1 boot recovery
         run: python -m unittest tests.test_phase1.BootRecoveryGateTests -v
 
-      - name: Test Phase 1 fixture
-        run: python -m unittest tests.test_phase1.FixtureTests -v
+      - name: Test Phase 1 fixture sanitization
+        run: python -m unittest tests.test_phase1.FixtureTests.test_fixture_is_sanitized_and_release_approved -v
+
+      - name: Test Phase 1 fixture update preservation
+        run: python -m unittest tests.test_phase1.FixtureTests.test_legacy_fixture_survives_release_application_and_interruption -v
 
       - name: Run Phase 2 host tests
         run: python -m unittest tests.test_phase2 -v
