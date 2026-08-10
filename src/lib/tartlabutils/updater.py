@@ -149,6 +149,16 @@ def _free_space():
     return statvfs[1] * statvfs[3]
 
 
+def _initial_progress_steps(assets):
+    """Count fixed validation steps plus package archives before manifest load."""
+    packages = 0
+    for asset in assets:
+        name = asset.get("name", "")
+        if isinstance(name, str) and name.endswith(".tar"):
+            packages += 1
+    return 4 + packages
+
+
 def sha256_hash(file_path):
     sha256 = uhashlib.sha256()
     with open(file_path, "rb") as stream:
@@ -249,7 +259,8 @@ async def update_packages(repo, callback):
     if not assets:
         return UPDATE_NONE
 
-    callback("Checking disk space", 1, 11)
+    progress_steps = _initial_progress_steps(assets)
+    callback("Checking disk space", 1, progress_steps)
     try:
         total_size = sum(asset["size"] for asset in assets)
         free_space = _free_space()
@@ -272,15 +283,16 @@ async def update_packages(repo, callback):
         return UPDATE_FAILED
 
     try:
-        callback("Downloading manifest", 2, 11)
+        callback("Downloading manifest", 2, progress_steps)
         manifest_path = TMP_UPDATE_FOLDER + "/manifest.json"
         if not await download_asset(manifest_asset["browser_download_url"], manifest_path):
             raise OSError("Manifest download failed")
         with open(manifest_path, "r") as stream:
             manifest = ujson.load(stream)
         validate_manifest(manifest)
+        progress_steps = 4 + len(manifest)
 
-        callback("Downloading files", 3, 11)
+        callback("Downloading files", 3, progress_steps)
         for package in manifest:
             asset = asset_map.get(package["file_name"])
             if asset is None:
@@ -289,7 +301,7 @@ async def update_packages(repo, callback):
             if not await download_asset(asset["browser_download_url"], target_file):
                 raise OSError("Package download failed: " + package["file_name"])
 
-        callback("Checking files", 4, 11)
+        callback("Checking files", 4, progress_steps)
         for package in manifest:
             filename = TMP_UPDATE_FOLDER + "/" + package["file_name"]
             if sha256_hash(filename) != package["sha256"]:
@@ -316,7 +328,7 @@ async def update_packages(repo, callback):
         step = 5
         for package in manifest:
             filename = TMP_UPDATE_FOLDER + "/" + package["file_name"]
-            callback("Updating %s" % package["target"], step, 11)
+            callback("Updating %s" % package["target"], step, progress_steps)
             if package["target"].rstrip("/") == "/recovery" and \
                     file_exists("/recovery/recovery.py") == 1:
                 log("Preserving installed recovery runtime")

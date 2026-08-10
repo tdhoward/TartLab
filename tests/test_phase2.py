@@ -241,6 +241,13 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
             "phase2pkg.updater", ROOT / "src/lib/tartlabutils/updater.py")
         cls.state = state
 
+    def test_progress_total_tracks_candidate_package_count(self):
+        assets = [
+            {"name": "manifest.json"},
+            {"name": "metadata.json"},
+        ] + [{"name": "package-%02d.tar" % index} for index in range(11)]
+        self.assertEqual(self.updater._initial_progress_steps(assets), 15)
+
     def test_interrupted_download_never_promotes_partial_file(self):
         updater = self.updater
 
