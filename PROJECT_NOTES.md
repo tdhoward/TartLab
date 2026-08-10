@@ -428,9 +428,9 @@ working tree and is not a release tag.
 
 ### Phase 2: Make the legacy build and release path reproducible
 
-Implementation status (2026-08-09): the host-side Phase 2 build, provenance,
-CI, failure-injection, and promotion gates are implemented. The historical
-vendored source and deployed payload have separate content locks because the
+Implementation and test status (2026-08-10): the host-side Phase 2 build,
+provenance, CI, failure-injection, and promotion gates are implemented. The
+historical vendored source and deployed payload have separate content locks because the
 tracked source contains one file that the stale v0.13 distribution omitted.
 `makedist.py` and `release.py` now use clean noninteractive outputs,
 platform-aware commands, normalized gzip/USTAR metadata, the pinned
@@ -440,11 +440,18 @@ publishes candidates; `promote-legacy-release.yml` requires a matching tested
 candidate hash plus reviewed physical evidence through the protected
 `legacy-release` environment.
 
-The Phase 2 implementation is not yet approved for stable deployment. Run and
-record the physical candidate matrix in `tests/PHASE2_HARDWARE.md`, including
-the clean-built inventory/size/performance comparison and all power-loss
-boundaries. Until that evidence is reviewed, CI output remains a candidate and
-the promotion gate must stay closed.
+Candidate `a42bedc1367d0b1e6b694dd059889db15f1008d2` passed the reproducible
+host/CI gates and the physical legacy-hardware provisioning, browser, OTA,
+protected-state, failure, recovery, failed-health, and future-OTA matrix on
+2026-08-10. The complete record and sanitized evidence hash are in
+`tests/PHASE2_HARDWARE.md`. Testing has an explicit environmental qualification:
+the laptop hotspot and USB power path produced intermittent real resets, all of
+which preserved recovery guarantees; a retry from unchanged v0.13 completed.
+The implementation is therefore technically validated but is not yet approved
+for stable deployment. Keep promotion closed until a reviewer accepts the
+qualification (or requests a controlled-power repetition), selects a stable tag
+and durable evidence reference, and confirms that the `legacy-release`
+environment requires an approving reviewer.
 
 1. Record content hashes and provenance for the currently deployed vendored payload before attempting to replace it.
 2. Make `makedist.py` and `release.py` noninteractive and platform-aware, and require builds to start from a clean output directory so stale `dist` files cannot survive.
