@@ -551,8 +551,12 @@ or radio behavior.
 
 1. **Implemented:** define the small TartLab platform contract used by startup
    and the IDE.
-2. **Implemented, pending physical smoke:** wrap the current legacy backend
-   without intentionally changing visible behavior.
+2. **Implemented; focused physical smoke completed 2026-08-12:** wrap the
+   current legacy backend without intentionally changing visible behavior.
+   `tests/PHASE3_HARDWARE.md` records healthy update commit, IDE/APP routing,
+   fallback-AP and station HTTP behavior, display-driver calls, and unchanged
+   protected-state hashes. The candidate will not be promoted; pressed-button
+   and human visual checks remain explicitly unclaimed.
 3. **Implemented for core startup:** move direct historical PyDevices path
    assumptions into the legacy adapter.
 4. **Partial:** capability detection is exposed by the platform; include it in

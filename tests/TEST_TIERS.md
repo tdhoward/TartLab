@@ -89,6 +89,9 @@ hardware configuration, display/touch, networking, memory-sensitive code,
 firmware-facing APIs, or recovery behavior. A smoke run should cover only the
 affected physical claims plus a boot/IDE sanity check.
 
+`PHASE3_HARDWARE.md` records the 2026-08-12 focused smoke for the platform
+abstraction. Its explicitly unobserved manual items are not release claims.
+
 ## Tier 4: physical release qualification
 
 Before stable promotion, run the complete applicable hardware gate in

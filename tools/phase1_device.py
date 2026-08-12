@@ -59,6 +59,37 @@ class RawRepl:
             raise RuntimeError(error.decode("utf-8", "replace"))
         return stdout
 
+    def stream_file(self, remote_path, content, expected_sha256, timeout=180):
+        """Write one verified file in acknowledged chunks over raw REPL."""
+        self.exec("open(%r, 'wb').close()" % remote_path, timeout)
+        chunk_size = 1536
+        for offset in range(0, len(content), chunk_size):
+            encoded = base64.b64encode(content[offset:offset + chunk_size])
+            code = (
+                "import ubinascii\n"
+                "f=open(%r,'ab')\n"
+                "f.write(ubinascii.a2b_base64(%r))\n"
+                "f.close()\n" % (remote_path, encoded)
+            )
+            self.exec(code, timeout)
+        verify_code = r'''
+import uhashlib
+path = %r
+expected = %r
+digest = uhashlib.sha256()
+with open(path, 'rb') as stream:
+    while True:
+        chunk = stream.read(1024)
+        if not chunk:
+            break
+        digest.update(chunk)
+actual = ''.join('{:02x}'.format(byte) for byte in digest.digest())
+if actual != expected:
+    raise ValueError('Serial transfer hash mismatch')
+print('SERIAL_STAGED=' + path + ' ' + actual)
+''' % (remote_path, expected_sha256)
+        return self.exec(verify_code, timeout)
+
 
 PROBE_CODE = r'''
 import os, sys, gc, machine, ujson
@@ -138,6 +169,41 @@ while stack:
             result.append([child, os.stat(child)[6]])
 result.sort()
 print('PHASE1_INVENTORY=' + ujson.dumps(result))
+'''
+
+
+PROTECTED_DIGEST_CODE = r'''
+import os, uhashlib, ujson
+PATHS = (
+    '/app.py', '/hdwconfig.py', '/device', '/files/user',
+    '/state/selected_app.json',
+)
+def digest(root):
+    value = uhashlib.sha256()
+    stack = [root]
+    while stack:
+        path = stack.pop()
+        try:
+            entries = os.ilistdir(path)
+        except OSError:
+            entries = None
+        if entries is None:
+            value.update(path.encode())
+            with open(path, 'rb') as stream:
+                while True:
+                    chunk = stream.read(1024)
+                    if not chunk:
+                        break
+                    value.update(chunk)
+        else:
+            children = []
+            for entry in entries:
+                children.append(path.rstrip('/') + '/' + entry[0])
+            children.sort(reverse=True)
+            stack.extend(children)
+    return ''.join('{:02x}'.format(byte) for byte in value.digest())
+print('PROTECTED_DIGEST=' + ujson.dumps(
+    dict((path, digest(path)) for path in PATHS)))
 '''
 
 
@@ -283,6 +349,15 @@ def snapshot(args):
     (destination / "snapshot_manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print("Backed up %d files to %s" % (len(manifest), destination))
+
+
+def protected_digest(args):
+    repl = connect(args)
+    try:
+        output = repl.exec(PROTECTED_DIGEST_CODE, 30)
+    finally:
+        repl.close()
+    sys.stdout.buffer.write(output)
 
 
 def execute(args):
@@ -714,6 +789,102 @@ print('RECOVERY_RESUMED_VERSION=' + str(installed))
     sys.stdout.buffer.write(output)
 
 
+def serial_install(args):
+    release_dir = args.release_dir.resolve()
+    manifest_path = release_dir / "manifest.json"
+    checksums_path = release_dir / "checksums.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    checksums = json.loads(checksums_path.read_text(encoding="utf-8"))
+    files = [manifest_path]
+    for package in manifest:
+        name = package.get("file_name")
+        if not isinstance(name, str) or Path(name).name != name:
+            raise ValueError("Unsafe package name in manifest: %r" % name)
+        path = release_dir / name
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        files.append(path)
+    for path in files:
+        expected = checksums.get(path.name)
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if not isinstance(expected, str) or actual != expected:
+            raise ValueError("Release checksum mismatch: " + path.name)
+
+    prepare_code = r'''
+import os
+ROOT = '/tmp/recovery'
+def kind(path):
+    try:
+        return 1 if os.stat(path)[0] & 0x8000 else 2
+    except OSError:
+        return 0
+def remove(path):
+    if kind(path) == 2:
+        for name in os.listdir(path):
+            remove(path.rstrip('/') + '/' + name)
+        os.rmdir(path)
+    elif kind(path) == 1:
+        os.remove(path)
+remove(ROOT)
+if kind('/tmp') == 0:
+    os.mkdir('/tmp')
+os.mkdir(ROOT)
+print('SERIAL_STAGE_READY=True')
+'''
+    repl = connect(args)
+    try:
+        output = repl.exec(prepare_code, 30)
+        sys.stdout.buffer.write(output)
+        for index, path in enumerate(files, 1):
+            content = path.read_bytes()
+            expected = checksums[path.name]
+            print("Staging %d/%d %s (%d bytes)" % (
+                index, len(files), path.name, len(content)), flush=True)
+            output = repl.stream_file(
+                "/tmp/recovery/" + path.name, content, expected,
+                max(args.timeout, 300))
+            sys.stdout.buffer.write(output)
+
+        install_code = r'''
+import sys, ujson
+if '/recovery' not in sys.path:
+    sys.path.insert(0, '/recovery')
+import recovery_update
+VERSION = %r
+manifest = recovery_update._read_json(
+    recovery_update.TEMP_DIR + '/manifest.json', None)
+recovery_update._validate_manifest(manifest)
+for package in manifest:
+    path = recovery_update.TEMP_DIR + '/' + package['file_name']
+    if recovery_update._kind(path) != 1:
+        raise ValueError('Staged package missing: ' + package['file_name'])
+    if recovery_update._sha256(path) != package['sha256']:
+        raise ValueError('Staged package hash mismatch: ' + package['file_name'])
+    recovery_update._tar_members(path, package['target'], False)
+if recovery_update._required_install_space(manifest) > recovery_update._free_space():
+    raise OSError('Not enough disk space to extract release safely')
+repos_path = recovery_update.STATE_REPOS
+if recovery_update._kind(repos_path) != 1:
+    repos_path = recovery_update.LEGACY_REPOS
+repos = recovery_update._read_json(repos_path, {})
+tartlab = recovery_update._tartlab_repo(repos)
+if tartlab is None:
+    raise ValueError('TartLab release state not found')
+installed = recovery_update._install_verified_packages(
+    tartlab, VERSION, manifest,
+    lambda message: print('SERIAL_INSTALL=' + message))
+from tartlabutils.state import read_json, write_json, SETTINGS_FILE
+settings = read_json(SETTINGS_FILE, {})
+settings['STARTUP_MODE'] = 'IDE'
+write_json(SETTINGS_FILE, settings)
+print('SERIAL_INSTALLED_VERSION=' + str(installed))
+''' % args.version
+        output = repl.exec(install_code, max(args.timeout, 300))
+        sys.stdout.buffer.write(output)
+    finally:
+        repl.close()
+
+
 def reset_device(args):
     repl = connect(args)
     try:
@@ -778,6 +949,7 @@ def parser():
     result.add_argument("--timeout", type=int, default=15)
     commands = result.add_subparsers(dest="command", required=True)
     commands.add_parser("probe").set_defaults(func=probe)
+    commands.add_parser("protected-digest").set_defaults(func=protected_digest)
     commands.add_parser("reset").set_defaults(func=reset_device)
     commands.add_parser("guided-app-reset").set_defaults(func=guided_app_reset)
     commands.add_parser("press-detected-app-reset").set_defaults(func=press_detected_app_reset)
@@ -809,6 +981,10 @@ def parser():
     recovery_parser.add_argument("--version", required=True)
     recovery_parser.set_defaults(func=recovery_install)
     commands.add_parser("recovery-resume").set_defaults(func=recovery_resume)
+    serial_parser = commands.add_parser("serial-install")
+    serial_parser.add_argument("--release-dir", type=Path, required=True)
+    serial_parser.add_argument("--version", required=True)
+    serial_parser.set_defaults(func=serial_install)
     snapshot_parser = commands.add_parser("snapshot")
     snapshot_parser.add_argument("--output", type=Path, required=True)
     snapshot_parser.set_defaults(func=snapshot)
