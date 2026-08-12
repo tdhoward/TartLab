@@ -6,21 +6,15 @@ SEARCH_PATHS = [
     "/lib",
     "/",
     "/files/user",
-    "/configs",
-    "/lib/pydevices",
-    "/lib/pydevices/bus_drv",
-    "/lib/pydevices/display_drv",
-    "/lib/pydevices/touch_drv",
-    "/lib/pydevices/add_ons",
 ]
 for path in reversed(SEARCH_PATHS):
     if path not in sys.path:
         sys.path.insert(0, path)
 
 import ujson
-from machine import Pin
 from tartlabutils import default_settings, diagnostics, ensure_layout, init_logs, load_settings, log, log_exception, \
     mark_boot_failed, save_settings
+from tartlabutils.platform import get_platform, set_platform
 
 
 def _recovery(reason):
@@ -46,17 +40,16 @@ def _ensure_repos():
         })
 
 
-def _select_mode(settings, ide_button_pin):
+def _select_mode(settings, platform):
     start_mode = settings.get("STARTUP_MODE", "BUTTON")
     if start_mode == "BUTTON":
-        button = Pin(ide_button_pin, Pin.IN)
-        return "IDE" if button.value() == 1 else "APP"
+        return "IDE" if platform.ide_button_value() == 1 else "APP"
     settings["STARTUP_MODE"] = "BUTTON"
     save_settings(settings)
     return start_mode
 
 
-def run():
+def run(platform=None, start_ide=None, start_app=None, start_recovery=None):
     display = None
     try:
         ensure_layout()
@@ -65,9 +58,13 @@ def run():
         log(ujson.dumps(diagnostics()))
         _ensure_repos()
 
-        from hdwconfig import IDE_BUTTON_PIN, display_drv
-        display = display_drv
-        display.fill(0)
+        if platform is None:
+            platform = get_platform()
+        else:
+            set_platform(platform)
+        display = platform.display
+        if display is not None:
+            display.fill(0)
 
         try:
             settings = load_settings()
@@ -75,17 +72,21 @@ def run():
             settings = default_settings()
             log("No settings file found.")
 
-        start_mode = _select_mode(settings, IDE_BUTTON_PIN)
+        start_mode = _select_mode(settings, platform)
         if start_mode == "RECOVERY":
-            _recovery("startup_mode")
+            (start_recovery or _recovery)("startup_mode")
         elif start_mode == "IDE":
             log("Starting IDE")
-            import ide
-            ide.main()
+            if start_ide is None:
+                import ide
+                start_ide = ide.main
+            start_ide()
         else:
             log("Starting APP")
-            from tartlabutils.launcher import launch_selected_app
-            launch_selected_app()
+            if start_app is None:
+                from tartlabutils.launcher import launch_selected_app
+                start_app = launch_selected_app
+            start_app()
     except Exception as error:
         try:
             log_exception(error)
@@ -97,7 +98,7 @@ def run():
                 display.fill(0xF800)
             except Exception:
                 pass
-        _recovery("startup_error")
+        (start_recovery or _recovery)("startup_error")
 
 
 run()

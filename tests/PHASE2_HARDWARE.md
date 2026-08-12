@@ -1,5 +1,10 @@
 # Phase 2 reproducible legacy release gate
 
+The development test matrix is divided into the tiers documented in
+`tests/TEST_TIERS.md`. Host and virtual-device tiers should pass before starting
+this physical gate; they reduce repetition but do not replace any physical
+claim required for stable promotion.
+
 Phase 2 candidate artifacts may be produced by `legacy-ci.yml`, but they must
 not be promoted to a stable GitHub release until this gate passes on a LilyGO
 T-Display-S3 Pro running exactly

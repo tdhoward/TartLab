@@ -24,8 +24,14 @@ Additionally, it would be great if a community of MicroPython developers would g
  * Client device (for development): Any device with a relatively modern browser (keyboard recommended)
 
 ## Recommended embedded devices
-Any device using an ESP32 or ESP8266 processor and providing WiFi support should work.  I haven't tested with RP2040/RP2350 devices, but they should be able to be supported as well.  Devices with LCD screens are not actually required, but it should make your life so much easier.
-LilyGo devices (T-Display-S3, T-Display-S3 Pro) were used to test and develop TartLab, so those should work great.
+TartLab is intended to support multiple Wi-Fi-capable MicroPython devices, but
+the currently qualified legacy release profile is specifically the LilyGO
+T-Display-S3 Pro running the exact MicroPython image listed below. LilyGO
+T-Display-S3 devices have also been used during development. Other ESP32,
+ESP8266, and RP2040/RP2350 targets should be treated as ports requiring their
+own board adapter and test results, not as already-qualified devices. A display
+is not structurally required, although it makes standalone operation much more
+usable.
 
 ## Screenshots
 **TartLab in action:**
@@ -34,7 +40,10 @@ LilyGo devices (T-Display-S3, T-Display-S3 Pro) were used to test and develop Ta
 
 ## Installation
  1. Install a bin file from [MicroPython](https://micropython.org/) on the embedded device.  Sometimes there are special builds of MicroPython that are specific to your device, in which case you should use those.  For the deployed T-Display-S3/T-Display-S3 Pro compatibility baseline, use MicroPython 1.23.0 with octal PSRAM support: `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin` from the [ESP32_GENERIC_S3 port.](https://www.micropython.org/download/ESP32_GENERIC_S3/)  Do not substitute the non-SPIRAM or quad-SPIRAM variant for these devices.
- 2. Edit src/hdwconfig.py to point to one of the available config files in src/configs, based on what embedded device you are using. (Default is Lilygo T-Display-S3 Pro.)
+ 2. Before first provisioning, edit `src/hdwconfig.py` to point to one of the
+    available modules in `src/configs` for your device. The default is the
+    LilyGO T-Display-S3 Pro. After first boot, TartLab migrates the selection to
+    protected `/device/hdwconfig.py`; OTA updates preserve that local choice.
  3. Install the pinned host build dependency with
     `python -m pip install --require-hashes -r requirements-build.txt`, run
     `npm ci --prefix src/ide/www`, then execute
@@ -96,6 +105,24 @@ release directories. CI artifacts are candidates only. Stable promotion is a
 separate reviewed workflow gated by the physical-device checklist in
 `tests/PHASE2_HARDWARE.md` and the protected `legacy-release` GitHub
 environment.
+
+## Testing
+
+TartLab separates fast host checks from physical-device qualification. Run the
+complete implemented hardware-free suite with:
+
+```text
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+```
+
+The suite covers deterministic releases, the captured legacy layout, OTA and
+recovery fault handling, a virtual device filesystem, startup mode routing, and
+headless IDE initialization. CI additionally compiles the generated runtime and
+executes its platform-independent compatibility probe with pinned MicroPython
+v1.23.0 host tools. The exact tier boundaries, local Tier 2 command, and current
+limitations are documented in
+[`tests/TEST_TIERS.md`](tests/TEST_TIERS.md). Passing host tests does not replace
+the applicable physical smoke or release-qualification gate.
 
 ### Feedback
 Please feel free to add new issues if you are experiencing problems.  I will try to respond as soon as I can.

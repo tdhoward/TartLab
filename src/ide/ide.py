@@ -1,16 +1,14 @@
 import sys
 import gc
-import network
 import os
 import ujson
-import utime
 import random
 import uasyncio as asyncio
 import io
-from machine import Pin
 from tartlabutils import file_exists, unquote, rmvdir, check_for_update, main_update_routine, \
             log, repl_exception, log_exception, get_logs, load_settings, save_settings, default_settings, \
             get_selected_app, save_selected_app, mark_boot_healthy
+from tartlabutils.platform import get_platform
 from tartlabutils.state import REPOS_FILE
 
 from ahttpserver import HTTPResponse, HTTPServer
@@ -20,44 +18,8 @@ from ahttpserver.response import sendHTTPResponse
 from ahttpserver.multipart import handleMultipartUpload
 from ahttpserver.server import HTTPServerError
 
-# Display stuff
-from hdwconfig import display_drv, IDE_BUTTON_PIN
-from graphics import FrameBuffer,RGB565
-import graphics
-
-display_drv.rotation = 90
-WIDTH, HEIGHT = display_drv.width, display_drv.height
-BASE_UNIT = min([WIDTH, HEIGHT]) // 2
-FONT_WIDTH = 8
-BPP = display_drv.color_depth // 8  # Bytes per pixel
-ba = bytearray(WIDTH * HEIGHT * BPP)
-fb = FrameBuffer(ba, WIDTH, HEIGHT, RGB565)
-tbwidth = WIDTH - 2
-txtba = bytearray(tbwidth * FONT_WIDTH * 2 * BPP)
-txtfb = FrameBuffer(txtba, tbwidth, FONT_WIDTH * 2, RGB565)
-
-if display_drv.requires_byteswap:
-    needs_swap = display_drv.disable_auto_byteswap(True)
-else:
-    needs_swap = False
-
-# Define color palette
-class pal:
-    BLACK = 0x0000
-    WHITE = 0xFFFF
-    RED = 0xF800 if not needs_swap else 0x00F8
-    GREEN = 0x07E0 if not needs_swap else 0xE007
-    BLUE = 0x001F if not needs_swap else 0xF800
-    CYAN = 0x07FF if not needs_swap else 0xFF07
-    MAGENTA = 0xF81F if not needs_swap else 0x1FF8
-    YELLOW = 0xFFE0 if not needs_swap else 0xE0FF
-    ORANGE = 0xFD20 if not needs_swap else 0x20FD
-    PURPLE = 0x8010 if not needs_swap else 0x1080
-    GREY = 0x8410 if not needs_swap else 0x1084
-
-fb.fill(pal.BLACK)
-fb.rect(0, 0, WIDTH, HEIGHT, pal.BLUE)
-display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
+platform = get_platform()
+ide_view = platform.create_ide_view()
 
 
 USER_BASE_DIR = '/files/user'
@@ -192,7 +154,7 @@ def connect_to_wifi(ssids: list[str], keys: list[str]):
         pass
     ap_if.active(False) #  de-activate the interfaces
     sta_if.active(False)
-    utime.sleep(1)
+    platform.sleep(1)
     sta_if.active(True)
     if len(ssids) == 0:
         scan_for_wifi([],[])  # scan anyway, so we capture the available SSIDs
@@ -221,7 +183,7 @@ def connect_to_wifi(ssids: list[str], keys: list[str]):
                 print(sta_if.ifconfig())
                 return sta_if.ifconfig()[0]
             print ('.', end = '')
-            utime.sleep(1)
+            platform.sleep(1)
             retries -= 1
 
         if (retries == 0):
@@ -240,9 +202,7 @@ def create_soft_ap(ap_name):
     # Initialize the soft AP with the AP name from settings
     print(f'Creating WiFi hotspot named {ap_name}...')
     # we assume the interfaces start out deactivated by the connect_to_wifi function.
-    ap_if.active(True)
-    ap_if.config(essid=ap_name)
-    ap_if.config(authmode=network.AUTH_OPEN)  # no password
+    platform.configure_open_access_point(ap_if, ap_name)
     return '0.0.0.0'
 
 def initialize():
@@ -270,25 +230,17 @@ def initialize():
         log_exception(e)
 
 
-def display_text(text, row, color = pal.WHITE, size = 2):
-    global WIDTH, HEIGHT, FONT_WIDTH, txtfb, txtba, tbwidth
-    fwidth = (FONT_WIDTH * size)
-    txtfb.fill(0)
-    txtfb.text(text, (tbwidth - fwidth * len(text)) // 2, 0, color, size)
-    display_drv.blit_rect(txtba, (WIDTH - tbwidth) // 2, HEIGHT // 2 + (fwidth * row), tbwidth, FONT_WIDTH * 2)
-
-
 # --------- Execution starts here -----------
 # Since 'app' is used in decorators below, we need it to already exist.
 initialize()
 
 # Write the title info on the screen
 version = next((repo['installed_version'] for repo in repos['list'] if repo['name'] == 'TartLab'))
-display_text('TARTLAB ' + version, -4)
+ide_view.show_startup(version)
 
-network.hostname(settings['hostname'])  # sets up hostname (e.g. tartlab.local) on mDNS (currently only works for STA interface)
-sta_if = network.WLAN(network.STA_IF) # create station interface
-ap_if = network.WLAN(network.AP_IF) #  create access-point interface
+platform.set_hostname(settings['hostname'])
+sta_if = platform.station_interface()
+ap_if = platform.access_point_interface()
 ip_address = connect_to_wifi(settings['wifi_ssids'], settings['wifi_passwords'])
 softAP = False
 if ip_address == "0.0.0.0":
@@ -297,36 +249,17 @@ if ip_address == "0.0.0.0":
     ip_address = create_soft_ap(wifi_ssid)
 app = HTTPServer(ip_address, 80)
 
-display_text(f'WiFi: {wifi_ssid}', -1)
 if softAP:
     text = '192.168.4.1'
+    local_hostname = None
 else:
     text = ip_address
-display_text(text, 1)
-if not softAP:
-    display_text(settings['hostname'] + '.local', 3)
+    local_hostname = settings['hostname']
+ide_view.show_network(wifi_ssid, text, local_hostname)
 
 
 def show_update_progress(status, stepnum, steps):
-    global display_drv, WIDTH, HEIGHT, BASE_UNIT
-    SM_UNIT = BASE_UNIT // 5
-    if stepnum == 1:  # first step, redraw the screen
-        fb.fill(pal.BLACK)
-        fb.rect(0, 0, WIDTH, HEIGHT, pal.GREEN)
-        display_drv.blit_rect(ba, 0, 0, WIDTH, HEIGHT)
-        display_text("UPDATE IN PROGRESS", -4)
-    display_text(status, 0)  # show the status message
-    if stepnum > steps:
-        steps = stepnum
-    display_text(f'Step {stepnum} of {steps}', 2, pal.GREY, 2)
-    # draw the progress bar
-    bar_height = SM_UNIT
-    bar_width = WIDTH - 10
-    start_x = 5
-    start_y = HEIGHT - (5 + bar_height)
-    progress_width = int(bar_width * stepnum / (steps + 1))
-    end_x = start_x + progress_width
-    graphics.gradient_rect(display_drv, start_x, start_y, end_x, bar_height, pal.CYAN, pal.BLUE)
+    ide_view.show_update_progress(status, stepnum, steps)
 
 
 # list folder contents, returns tuple (files, folders)
@@ -771,15 +704,14 @@ async def api_get_logs(reader, writer, request):
 
 async def check_buttons():
     """ Check for user input on buttons """
-    IDE_BUTTON = Pin(IDE_BUTTON_PIN, Pin.IN)
     bright = 1.0
     while True:
-        if IDE_BUTTON.value() == 0:  # (unpressed button value is 1)
+        if platform.ide_button_value() == 0:  # (unpressed button value is 1)
             bright -= 0.25
             if bright <= 0:
                 bright = 1.0
-            display_drv.brightness = bright
-            while IDE_BUTTON.value() == 0:  # now wait until they release it
+            platform.set_brightness(bright)
+            while platform.ide_button_value() == 0:  # now wait until they release it
                 await asyncio.sleep(0.25)
         await asyncio.sleep(0.2)
         

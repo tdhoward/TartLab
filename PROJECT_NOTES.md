@@ -114,38 +114,76 @@ The exact runtime payload must be generated reproducibly rather than maintained 
 
 ### Startup and mode selection
 
-`src/main.py` adds TartLab, user-file, board-config, and embedded PyDevices directories to `sys.path`. It imports `IDE_BUTTON_PIN` and `display_drv` from `hdwconfig.py`, then selects IDE or APP mode from settings and button state. The user's application is launched through `app.py`.
+`src/main.py` adds only TartLab's core `/device`, `/lib`, root, and user-file
+directories to `sys.path`. It obtains display and IDE-button behavior through
+`tartlabutils.platform`, selects IDE or APP mode from settings and platform
+input, and launches the selected user module through
+`tartlabutils.launcher`. Its injectable mode runners support headless startup
+tests without changing normal device startup.
 
-This is a sensible basic separation, but core startup currently knows the historical embedded PyDevices directory layout (`bus_drv`, `display_drv`, `touch_drv`, and `add_ons`). Those paths should not remain a permanent public contract because upstream PyDisplay has changed its repository and package structure.
+The legacy platform adapter, rather than core startup, owns the historical
+embedded PyDevices paths (`bus_drv`, `display_drv`, `touch_drv`, and `add_ons`).
+The IDE also consumes the platform boundary for status rendering, WLAN/AP
+configuration, hostname, delay, button input, and brightness. Some bundled
+student examples still import `hdwconfig` and PyDevices display APIs directly;
+the stable TartLab boundary is currently a core startup/IDE contract, not yet a
+replacement student graphics API.
 
 ### Hardware selection
 
-`src/hdwconfig.py` is intended to be set once for a device and imports a board-specific module from `/configs`. It currently selects `t_display_s3_pro`.
+`src/hdwconfig.py` is the clean-provisioning default and imports a
+board-specific module from `/configs`. It currently selects
+`t_display_s3_pro`. After migration, `/device/hdwconfig.py` is the authoritative
+device-local selector.
 
 The intended distinction is useful:
 
 - A local selector identifies the physical board.
 - Update-managed board support modules provide the implementation.
 
-However, the update boundaries need to be made explicit and enforced by tooling. `hdwconfig.py` is included among top-level distribution files, while `/configs` is an update package configured with `clear_first: true`. The root package is not cleared, but files present in its archive are still overwritten during extraction. Therefore the current comments alone do not guarantee that local hardware configuration is preserved.
-
-Treat this as a critical migration item: define one clearly named local configuration location that is never included in release archives and is never deleted or overwritten by the updater.
+The ownership boundary is now enforced. Clean provisioning supplies a default
+`hdwconfig.py`, while OTA archives exclude `/hdwconfig.py`. Layout migration
+copies the detected local selector to `/device/hdwconfig.py` only when the
+destination is absent, and `/device` is searched first and remains protected.
+Board support modules under `/configs` remain update-managed and may be replaced
+with `clear_first: true`; local identity and calibration under `/device` may
+not be cleared or overwritten.
 
 ### Deployed filesystem evidence and persistent state
 
-`_example_installation` is a complete deployed-style MicroPython filesystem capture. It contains 192 files totaling 1,122,530 bytes of file content; actual flash consumption is higher because of filesystem blocks and metadata. After excluding firmware-created `/boot.py`, device state, logs, and the additional student copy of `testris.py`, its files match the current local `dist` tree byte-for-byte. This makes it a useful legacy-layout fixture, but it still needs capture metadata such as board revision, firmware hash, `statvfs` output, and capture procedure before it is a reproducible compatibility baseline.
+`_example_installation` was the original private deployed-style filesystem
+capture used to establish the migration requirements. The authoritative tracked
+baseline is now `tests/fixtures/legacy_mp123`: a sanitized v0.13 layout with
+synthetic credentials, board revision, exact firmware hash, capture method,
+filesystem capacity/free values, deterministic inventory, and
+`release_gate_ready: true`. The ignored private capture and hardware evidence
+may contain protected state and must not be treated as a distributable fixture
+or as a claim that it still matches the evolving source tree.
 
 The captured `settings.json` confirms that it is device-local persistent state, not a release default. In addition to startup behavior, hostname, and access-point identity, it stores Wi-Fi SSIDs and passwords in plaintext parallel arrays. Device captures, backups, and diagnostic bundles must therefore be treated as sensitive: exclude or sanitize real settings before committing a fixture, redact credentials before sharing, and use synthetic credentials in tests. Do not quote real SSIDs, passwords, or generated access-point names in documentation or test output.
 
-The capture, current source, and package manifest establish these ownership classes and conflicts:
+The capture, current source, and package manifest establish these ownership
+classes and compatibility boundaries:
 
-- `/boot.py` is the default MicroPython stub. It contains no TartLab startup, health check, or recovery logic and is not included in the current TartLab release payload.
+- `/boot.py` is an update-managed early recovery gate. It evaluates durable
+  update and boot-health state before normal startup and can enter the
+  display-independent recovery path. Migration/install logic preserves the
+  working gate at the compatibility boundary where required.
 - `/main.py` is TartLab's update-managed entry point and is included in the `rootfiles` package.
-- `/app.py` is generated and overwritten by the IDE's “Set as app” operation to import the selected student program. It is therefore device-local selection state, but the current build copies it into `dist` and `rootfiles` can overwrite it during OTA. Until a fixed launcher plus preserved selected-app setting replaces this design, OTA must preserve the deployed `/app.py`.
-- `/hdwconfig.py` is device-local hardware selection, but it is also copied into `dist` and can be overwritten by `rootfiles`.
+- `/app.py` is protected legacy state. Current startup uses a fixed launcher and
+  the validated `/state/selected_app.json` value; migration preserves the
+  historical selection and OTA archives do not overwrite `/app.py`.
+- `/hdwconfig.py` is protected legacy hardware selection. The authoritative
+  migrated selector is `/device/hdwconfig.py`, which is also protected; clean
+  distributions retain a default only for first provisioning.
 - `/ide`, `/configs`, `/lib/ahttpserver`, `/lib/pydevices`, and `/lib/tartlabutils` are update-managed directories that are deleted before their replacement packages are extracted.
 - `/files/help` and `/files/assets` are update-managed. `/files/user` contains student work and must be preserved; the capture contains both the seeded `hello.py` and the student's selected `testris.py`.
-- `/settings.json`, `/repos.json`, and `/logs` are device state. `/settings.json` contains secrets; `/repos.json` records installed release versions; `/logs` holds boot/runtime diagnostics.
+- `/state` is authoritative persistent state for settings, repositories,
+  selected application, update/boot health, migrations, and rolling logs.
+  Legacy `/settings.json`, `/repos.json`, and `/logs` remain protected migration
+  inputs. Settings contain secrets.
+- `/device` is authoritative local hardware identity/configuration and is never
+  update-cleared.
 - `/tmp` is disposable update staging space and may be recursively cleared by the updater.
 
 ### Observed boot logs
@@ -159,7 +197,14 @@ The capture contains the full five-file retention window, `000000.log` through `
 
 No captured log contains a traceback or explicit error. This is encouraging but is not a boot-health result: `Starting IDE` is written before `import ide` and before the network/server is ready, while `Starting APP` is written before `import app`. There is no later success marker. The files also lack timestamps, reset/wake causes, firmware identity, PSRAM or heap information, filesystem free space, update-in-progress state, and a boot identifier that survives log rotation.
 
-At startup, `main.py` initializes logging and writes `System startup` before importing the hardware configuration, so the files identify only the last explicit checkpoint reached. Uncaught hardware-configuration, display, or IDE import exceptions are not automatically appended to the file log; serial boot output may contain a traceback when `/logs` contains only an earlier checkpoint. Preserve both the ordered log set and serial output when diagnosing boot loops, because each boot creates a new zero-padded log and only five are retained. The logs are diagnostics, not an independent recovery path: they depend on `/main.py` and `/lib/tartlabutils` remaining importable, and the captured `/boot.py` provides no earlier fallback.
+In the captured v0.13 runtime, `main.py` wrote `System startup` before importing
+hardware configuration, so those historical logs identify only the last
+explicit checkpoint reached. Current startup records structured diagnostics,
+catches and logs startup exceptions where possible, marks boot failures, and
+routes failures through the early recovery gate. Preserve both rolling logs and
+serial output when diagnosing boot loops: logging can still fail before normal
+libraries are usable, while `/boot.py` and `/recovery` deliberately avoid that
+dependency.
 
 ### Distribution and release tooling
 
@@ -185,7 +230,12 @@ release inherits the compatibility obligation described above. In particular,
 an untouched v0.13 device begins with the v0.13 updater, so the latest stable
 release must preserve a bootstrap path that updater can consume.
 
-Important weaknesses:
+Historical v0.13 weaknesses:
+
+The following findings describe the deployed v0.13 updater and original build
+path that motivated Phases 1 and 2. They are retained as migration context, not
+as claims about the current implementation; the phase-status sections below
+record the implemented protections and remaining release decisions.
 
 - Build and release scripts are interactive, which makes reproducible CI releases difficult.
 - `makedist.py` directly invokes `npm.cmd`, making the build Windows-specific.
@@ -463,11 +513,52 @@ environment requires an approving reviewer.
 
 ### Phase 3: Add the TartLab hardware abstraction
 
-1. Define the smallest useful TartLab platform contract.
-2. Wrap the current legacy backend first without changing visible behavior.
-3. Remove direct historical PyDevices path assumptions from core startup code.
-4. Add capability detection and diagnostic reporting.
-5. Add a headless or desktop test backend for non-hardware logic where practical.
+Implementation status (2026-08-12): three headless testing slices and a pinned
+MicroPython compatibility tier are in place. The CPython hardware-free suite
+contains 52 tests; CI also builds the MicroPython v1.23.0 Unix interpreter and
+cross-compiler from pinned commit
+`a61c446c0b34e82aeb54b9770250d267656f2b7f`.
+`tests/virtual_device.py` provides an isolated device-root filesystem,
+deterministic capacity reporting, a mutation journal, and abrupt power-loss
+injection. `tests/test_virtual_device.py` applies the real candidate archives
+through the recovery updater, interrupts every managed target during clearing
+and every installable package at its first extraction write, reloads the
+recovery runtime, and verifies protected content, old-version retention, staged
+resume, and exactly-once health commit.
+
+`tartlabutils.platform` is now the production startup boundary. Its legacy
+adapter owns the historical PyDevices search paths and exposes display, pointer,
+IDE-button, dimensions, capabilities, and deinitialization without changing the
+deployed backend. `main.run()` accepts that contract plus injectable mode
+runners. The test-only headless backend exercises real IDE/APP/recovery mode
+selection, health commit, and startup-failure routing without board imports.
+The platform boundary also owns IDE status rendering, WLAN interface creation,
+hostname/open-AP configuration, delay, button reads, and brightness changes.
+The complete IDE module now initializes headlessly in station and fallback-AP
+modes, registers its real HTTP routes, and records startup, network, update, and
+brightness UI behavior against the virtual filesystem. The test tiers and claim
+boundaries are documented in `tests/TEST_TIERS.md`. Actual socket acceptance,
+browser behavior, touch input, and student display programs remain outside the
+headless claim and in the applicable physical tiers.
+
+The pinned compatibility tier compiles every Python file in the generated
+legacy distribution with the v1.23.0 `mpy-cross` using the ESP32 port's
+`xtensawin` native emitter, then executes the real state migration, boot
+recovery decisions, recovery validation/hash helpers, and legacy platform
+adapter with the v1.23.0 Unix interpreter. It catches parser and core runtime
+differences without claiming to emulate ESP32 flash, memory, reset, peripheral,
+or radio behavior.
+
+1. **Implemented:** define the small TartLab platform contract used by startup
+   and the IDE.
+2. **Implemented, pending physical smoke:** wrap the current legacy backend
+   without intentionally changing visible behavior.
+3. **Implemented for core startup:** move direct historical PyDevices path
+   assumptions into the legacy adapter.
+4. **Partial:** capability detection is exposed by the platform; include it in
+   structured device diagnostics after the physical behavior is confirmed.
+5. **Implemented:** provide virtual-filesystem and headless backends for OTA,
+   recovery, startup, and IDE initialization logic.
 
 ### Phase 4: Migrate and prune PyDevices behind the abstraction
 
@@ -543,16 +634,17 @@ An AI agent working on TartLab must follow these rules:
 
 ## Decisions still requiring explicit confirmation
 
-Before the migration is considered complete, the project owner should make explicit decisions about:
+Before the migration is considered complete, the project owner should make
+explicit decisions about the following items. The local configuration directory
+is no longer undecided: `/device` is the authoritative protected location.
 
-1. The exact directory reserved for immutable/local device configuration.
-2. The minimum set of boards supported by each release.
-3. How long the exact MicroPython 1.23.0 octal-SPIRAM compatibility profile will be maintained.
-4. Whether TartLab will maintain its own T-Display-S3 Pro board adapter or contribute/consume an upstream one.
-5. The approved firmware provisioning method for LVGL-capable devices.
-6. The amount of flash space reserved for staging, recovery, and rollback.
-7. Whether release authenticity will use signatures, a pinned public key, or another mechanism beyond hashes delivered in the same GitHub release.
-8. The oldest deployed TartLab version/layout included in the direct-to-latest
+1. The minimum set of boards supported by each release.
+2. How long the exact MicroPython 1.23.0 octal-SPIRAM compatibility profile will be maintained.
+3. Whether TartLab will maintain its own T-Display-S3 Pro board adapter or contribute/consume an upstream one.
+4. The approved firmware provisioning method for LVGL-capable devices.
+5. The amount of flash space reserved for staging, recovery, and rollback.
+6. Whether release authenticity will use signatures, a pinned public key, or another mechanism beyond hashes delivered in the same GitHub release.
+7. The oldest deployed TartLab version/layout included in the direct-to-latest
    compatibility window and the administrator process for devices older than
    that floor.
 

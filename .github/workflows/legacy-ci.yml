@@ -18,6 +18,15 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Check out pinned MicroPython 1.23 source
+        uses: actions/checkout@v7
+        with:
+          repository: micropython/micropython
+          ref: a61c446c0b34e82aeb54b9770250d267656f2b7f
+          path: build/micropython-v1.23.0
+          fetch-depth: 1
+          persist-credentials: false
+
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11.9"
@@ -57,6 +66,20 @@ jobs:
           python makedist.py --output build/two/dist --clean --skip-web-build
           python release.py --dist build/two/dist --output build/two/release --clean --version "$BUILD_VERSION"
 
+      - name: Build pinned MicroPython 1.23 host tools
+        shell: bash
+        run: |
+          make -C build/micropython-v1.23.0/mpy-cross -j2
+          make -C build/micropython-v1.23.0/ports/unix submodules VARIANT=standard MICROPY_STANDALONE=1
+          make -C build/micropython-v1.23.0/ports/unix -j2 VARIANT=standard MICROPY_STANDALONE=1
+
+      - name: Run pinned MicroPython 1.23 compatibility tier
+        run: >-
+          python tools/run_micropython_compat.py
+          --micropython build/micropython-v1.23.0/ports/unix/build-standard/micropython
+          --mpy-cross build/micropython-v1.23.0/mpy-cross/build/mpy-cross
+          --dist build/one/dist
+
       - name: Test Phase 1 state migration
         run: python -m unittest tests.test_phase1.StateTests -v
 
@@ -86,6 +109,15 @@ jobs:
 
       - name: Run Phase 2 host tests
         run: python -m unittest tests.test_phase2 -v
+
+      - name: Run virtual-device recovery tests
+        run: python -m unittest tests.test_virtual_device -v
+
+      - name: Run headless platform and startup tests
+        run: python -m unittest tests.test_platform -v
+
+      - name: Run full headless IDE initialization tests
+        run: python -m unittest tests.test_headless_ide -v
 
       - name: Validate legacy release archive
         run: python tools/check_legacy_release.py --dist build/one/dist --release build/one/release
