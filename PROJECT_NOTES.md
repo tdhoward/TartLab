@@ -2,6 +2,7 @@
 
 > Repository review date: 2026-08-03
 > Primary repository: <https://github.com/tdhoward/TartLab>
+> Computer-transfer restart guide: `TRANSFER_HANDOFF.md`
 
 ## Purpose of this document
 

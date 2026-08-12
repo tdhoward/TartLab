@@ -1,6 +1,10 @@
 # TartLab
 Lite web-based MicroPython IDE for embedded devices.
 
+Moving development to another computer? Start with
+[`TRANSFER_HANDOFF.md`](TRANSFER_HANDOFF.md) for the authoritative branch,
+clean setup, non-portable data, board state, and exact continuation point.
+
 ![Logo](images/TartLabLogoHoriz_bluebg.png)
 
 **Warning! This is currently in the alpha stage.  Nothing is guaranteed to work.**

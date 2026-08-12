@@ -15,3 +15,5 @@ TartLab.code-workspace
 /hardware_test_artifacts
 __pycache__/
 *.py[cod]
+/.venv/
+/venv/
