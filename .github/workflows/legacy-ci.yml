@@ -71,6 +71,7 @@ jobs:
         run: |
           make -C build/micropython-v1.23.0/mpy-cross -j2
           make -C build/micropython-v1.23.0/ports/unix submodules VARIANT=standard MICROPY_STANDALONE=1
+          make -C build/micropython-v1.23.0/ports/unix deplibs VARIANT=standard MICROPY_STANDALONE=1
           make -C build/micropython-v1.23.0/ports/unix -j2 VARIANT=standard MICROPY_STANDALONE=1
 
       - name: Run pinned MicroPython 1.23 compatibility tier
