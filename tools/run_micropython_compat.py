@@ -12,6 +12,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_VERSION = "v1.23.0"
+EXPECTED_COMMIT = "a61c446"
 
 
 def executable(value: str) -> str:
@@ -36,10 +37,11 @@ def run(command: list[str], *, cwd: Path = ROOT) -> subprocess.CompletedProcess[
 
 def require_version(command: str, arguments: list[str], label: str) -> str:
     output = run([command, *arguments]).stdout.strip()
-    if not re.search(r"\bv1\.23\.0\b", output):
+    expected = (r"\bv1\.23\.0\b", r"\ba61c446\b")
+    if not any(re.search(pattern, output) for pattern in expected):
         raise RuntimeError(
-            "%s must be %s; reported:\n%s" %
-            (label, EXPECTED_VERSION, output))
+            "%s must be %s / %s; reported:\n%s" %
+            (label, EXPECTED_VERSION, EXPECTED_COMMIT, output))
     return output
 
 

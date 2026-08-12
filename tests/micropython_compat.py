@@ -11,6 +11,7 @@ import ujson
 
 
 EXPECTED_VERSION = "v1.23.0"
+EXPECTED_COMMIT = "a61c446"
 HOST_OPEN = open
 CHECKS = 0
 
@@ -362,9 +363,9 @@ def probe_platform(source_root):
 
 
 def main():
-    check(EXPECTED_VERSION in sys.version,
-          "expected MicroPython %s, got %s" %
-          (EXPECTED_VERSION, sys.version))
+    check(EXPECTED_VERSION in sys.version or EXPECTED_COMMIT in sys.version,
+          "expected MicroPython %s / %s, got %s" %
+          (EXPECTED_VERSION, EXPECTED_COMMIT, sys.version))
     if len(sys.argv) != 3:
         raise ValueError(
             "usage: micropython micropython_compat.py SOURCE_ROOT DEVICE_ROOT")
@@ -376,8 +377,8 @@ def main():
     probe_boot(source_root, device_os, state)
     probe_recovery(source_root, device_os)
     probe_platform(source_root)
-    print("MICROPYTHON_COMPAT_OK version=%s checks=%s" %
-          (EXPECTED_VERSION, CHECKS))
+    print("MICROPYTHON_COMPAT_OK version=%s commit=%s checks=%s" %
+          (EXPECTED_VERSION, EXPECTED_COMMIT, CHECKS))
 
 
 main()
