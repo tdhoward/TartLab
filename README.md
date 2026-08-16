@@ -1,9 +1,9 @@
 # TartLab
 Lite web-based MicroPython IDE for embedded devices.
 
-Moving development to another computer? Start with
-[`TRANSFER_HANDOFF.md`](TRANSFER_HANDOFF.md) for the authoritative branch,
-clean setup, non-portable data, board state, and exact continuation point.
+For source-development prerequisites, clean setup, build and test commands,
+local credentials, and optional physical-board tooling, see
+[`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ![Logo](images/TartLabLogoHoriz_bluebg.png)
 
@@ -85,9 +85,10 @@ process is complete before doing anything else in TartLab, and do not start
 
 The `legacy-mp123` release profile is the compatibility path for deployed
 T-Display-S3 Pro devices using the exact MicroPython 1.23.0 octal-SPIRAM image
-listed above. Use the exact Python and Node versions recorded in
-`profiles/legacy-mp123.json`, then build it noninteractively from a clean
-checkout:
+listed above. Use a compatible Python (`>=3.10,<3.15`) and Node.js 20 or newer,
+then build it noninteractively from a clean checkout. The
+`python-minifier==3.2.0` build dependency and npm dependency graph remain
+locked because they directly affect the payload:
 
 ```text
 python -m pip install --require-hashes -r requirements-build.txt

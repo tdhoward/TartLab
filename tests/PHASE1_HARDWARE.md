@@ -127,7 +127,7 @@ clean tree.
   file unchanged. Exclusions were limited to rolling `/state/logs`, boot state,
   the restored selected-app record, the removed temporary health app, and the
   host-side snapshot manifest.
-- Final device state before handoff: IDE HTTP 200; boot sequence 31 healthy with
+- Final recorded device state: IDE HTTP 200; boot sequence 31 healthy with
   zero failures; five state logs; no update marker; empty `/tmp`; committed
   version `phase1-recovery-corrective`; selected app `phase1_hw_test.py`; and no
   temporary health-test file.
