@@ -9,6 +9,7 @@ import importlib.metadata
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -133,12 +134,55 @@ def _actual_toolchain():
     }
 
 
+def _numeric_version(value):
+    if not isinstance(value, str) or not re.fullmatch(r"\d+(?:\.\d+)*", value):
+        raise ValueError("Tool versions must contain dot-separated integers: %r" % value)
+    return tuple(int(part) for part in value.split("."))
+
+
+def _requirement_label(requirement):
+    if isinstance(requirement, str):
+        return requirement
+    if not isinstance(requirement, dict):
+        raise ValueError("Toolchain requirements must be a version or range object")
+    unknown = set(requirement).difference(("min_inclusive", "max_exclusive"))
+    if unknown:
+        raise ValueError("Unknown toolchain requirement field: %s" % sorted(unknown)[0])
+    parts = []
+    if "min_inclusive" in requirement:
+        _numeric_version(requirement["min_inclusive"])
+        parts.append(">=" + requirement["min_inclusive"])
+    if "max_exclusive" in requirement:
+        _numeric_version(requirement["max_exclusive"])
+        parts.append("<" + requirement["max_exclusive"])
+    if not parts:
+        raise ValueError("Toolchain version range must define at least one bound")
+    return ",".join(parts)
+
+
+def _matches_requirement(actual, requirement):
+    if isinstance(requirement, str):
+        return actual == requirement
+    _requirement_label(requirement)
+    if actual is None:
+        return False
+    try:
+        version = _numeric_version(actual)
+    except ValueError:
+        return False
+    minimum = requirement.get("min_inclusive")
+    maximum = requirement.get("max_exclusive")
+    return (minimum is None or version >= _numeric_version(minimum)) and \
+        (maximum is None or version < _numeric_version(maximum))
+
+
 def _check_toolchain(required, actual):
     mismatches = []
-    for name, expected in required.items():
-        if actual.get(name) != expected:
+    for name, requirement in required.items():
+        if not _matches_requirement(actual.get(name), requirement):
             mismatches.append(
-                "%s=%s (required %s)" % (name, actual.get(name), expected))
+                "%s=%s (required %s)" % (
+                    name, actual.get(name), _requirement_label(requirement)))
     if mismatches:
         raise ValueError(
             "Build toolchain does not match the legacy profile: " + "; ".join(mismatches))

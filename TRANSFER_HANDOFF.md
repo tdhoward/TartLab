@@ -27,7 +27,8 @@ promotion workflow or describe this branch as a stable release.
 
 ## Clean setup on the new Windows computer
 
-Install Git, Python, and Node.js, then use PowerShell:
+Install Git, a compatible Python (`>=3.10,<3.15`), and Node.js 20 or newer,
+then use PowerShell:
 
 ```powershell
 git clone https://github.com/tdhoward/TartLab.git
@@ -37,7 +38,7 @@ git pull --ff-only
 git status --short --branch
 git log -1 --oneline --decorate
 
-py -3.11 -m venv .venv
+python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements-build.txt
 npm ci --prefix src/ide/www
 npm run build --prefix src/ide/www
@@ -49,10 +50,15 @@ name/email and authenticate `origin` using Git Credential Manager, an SSH
 remote, or another normal GitHub credential flow. Do not put a token in a
 tracked file or command transcript.
 
-The reproducible legacy profile pins Python 3.11.9 and Node 20.19.4 in
-[`profiles/legacy-mp123.json`](profiles/legacy-mp123.json). Use those exact versions for byte-reproducible
-candidate builds. Ordinary source inspection and host tests may work on newer
-versions, but that is not evidence that a release matches CI.
+The legacy profile records the supported host ranges in
+[`profiles/legacy-mp123.json`](profiles/legacy-mp123.json): Python 3.10 through
+3.14 and Node.js 20 or newer. The payload-transforming
+`python-minifier==3.2.0` dependency and the npm dependency graph remain locked.
+Release metadata records the actual Python and Node.js versions used, and CI
+compares two clean builds made with the selected compatible toolchain. Exact
+host runtime patch versions are not a development-machine requirement. If an
+old candidate must be reconstructed byte-for-byte, use its recorded toolchain
+or download the original CI artifact.
 
 CI builds the pinned MicroPython v1.23.0 Unix interpreter and `mpy-cross` on
 Ubuntu. A local Windows build of full MicroPython is not required. See

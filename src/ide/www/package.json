@@ -11,6 +11,9 @@
   },
   "author": "Tim Howard",
   "license": "GPL-3.0",
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "copyfiles": "^2.4.1",
     "css-loader": "^7.1.2",

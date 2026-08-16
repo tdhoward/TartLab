@@ -68,6 +68,42 @@ class VendorProvenanceTests(unittest.TestCase):
         self.assertEqual(lock["deployed_legacy_mp123"]["expanded_bytes"], 729986)
 
 
+class ToolchainCompatibilityTests(unittest.TestCase):
+    requirements = json.loads(
+        (ROOT / "profiles/legacy-mp123.json").read_text())["build_toolchain"]
+
+    def test_supported_runtime_versions_are_accepted(self):
+        for python, node in (("3.10.0", "20.0.0"), ("3.14.9", "24.1.0")):
+            with self.subTest(python=python, node=node):
+                release._check_toolchain(self.requirements, {
+                    "python": python,
+                    "python_minifier": "3.2.0",
+                    "node": node,
+                })
+
+    def test_runtime_bounds_and_minifier_pin_are_enforced(self):
+        incompatible = (
+            ("3.9.99", "3.2.0", "22.0.0", "python"),
+            ("3.15.0", "3.2.0", "22.0.0", "python"),
+            ("3.12.0", "3.2.0", "19.99.0", "node"),
+            ("3.12.0", "3.2.1", "22.0.0", "python_minifier"),
+        )
+        for python, minifier, node, expected_name in incompatible:
+            with self.subTest(
+                    python=python, minifier=minifier, node=node):
+                with self.assertRaisesRegex(ValueError, expected_name):
+                    release._check_toolchain(self.requirements, {
+                        "python": python,
+                        "python_minifier": minifier,
+                        "node": node,
+                    })
+
+    def test_malformed_version_range_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Unknown toolchain"):
+            release._check_toolchain(
+                {"python": {"minimum": "3.10"}}, {"python": "3.12.0"})
+
+
 class DistributionBuildTests(unittest.TestCase):
     def test_file_inventory_uses_platform_independent_path_order(self):
         with tempfile.TemporaryDirectory() as temp:
