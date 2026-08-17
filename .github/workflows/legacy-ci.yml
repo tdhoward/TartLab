@@ -63,16 +63,14 @@ jobs:
       - name: Verify vendored payload provenance
         run: python tools/vendor_lock.py
 
-      - name: Build candidate twice from clean outputs
+      - name: Build historical base distributions twice from clean outputs
         shell: bash
         run: |
-          python makedist.py --output build/one/dist --clean --skip-web-build
-          python release.py --dist build/one/dist --output build/one/release --clean --version "$BUILD_VERSION"
-          python makedist.py --output build/two/dist --clean --skip-web-build
-          python release.py --dist build/two/dist --output build/two/release --clean --version "$BUILD_VERSION"
+          python makedist.py --output build/base-one/dist --clean --skip-web-build
+          python makedist.py --output build/base-two/dist --clean --skip-web-build
 
-      - name: Verify PyDevices import and payload inventory
-        run: python tools/pydevices_inventory.py --dist build/one/dist
+      - name: Verify historical PyDevices import and payload inventory
+        run: python tools/pydevices_inventory.py --dist build/base-one/dist
 
       - name: Build pinned PyDevices migration candidate
         run: >-
@@ -93,6 +91,12 @@ jobs:
           make -C build/micropython-v1.23.0/mpy-cross -j2
           make -C build/micropython-v1.23.0/ports/unix submodules VARIANT=standard
           make -C build/micropython-v1.23.0/ports/unix -j2 VARIANT=standard
+
+      - name: Build promoted vendor release twice
+        shell: bash
+        run: |
+          python tools/build_promoted_release.py --base-dist build/base-one/dist --candidate build/vendor/pydevices-candidate --output build/one --version "$BUILD_VERSION" --mpy-cross build/micropython-v1.23.0/mpy-cross/build/mpy-cross --clean
+          python tools/build_promoted_release.py --base-dist build/base-two/dist --candidate build/vendor/pydevices-candidate --output build/two --version "$BUILD_VERSION" --mpy-cross build/micropython-v1.23.0/mpy-cross/build/mpy-cross --clean
 
       - name: Run pinned MicroPython 1.23 compatibility tier
         run: >-

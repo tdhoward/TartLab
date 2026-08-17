@@ -135,25 +135,28 @@ python tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candida
 
 Changes to selected upstream files must be strict JSON patch manifests under
 `patches/pydevices-candidate`. Each operation pins its complete input and output
-hashes and exact replacement counts. The five approved patches cover the
+hashes and exact replacement counts. The six approved patches cover the
 MicroPython 1.23 parser, the selected display constructor contract, native
-framebuffer selection, ST7796 solid fills, and ESP32 SPI transfer
+framebuffer selection, two stages of ST7796 solid-fill compatibility and
+performance work, and ESP32 SPI transfer
 configuration. TartLab compatibility files remain separate, source- and
 hash-pinned inputs rather than patches disguised as upstream code.
 
-At the current pins the generated runtime is 71 files and 521,163 normalized
+At the promoted pins the generated runtime is 71 files and 522,319 normalized
 source bytes, with runtime identifier
-`sha256:090f9bd96352cfd8730e1bf3448112129f12e9f4954efbf5feb237b639783984`.
+`sha256:277bc307b4e20dc07afd61580e737800f639a161ac2a9a341c4febef981fe23c`.
 `tests/pydevices_candidate_compat.py` checks the legacy surface without board
 hardware, and the pinned MicroPython 1.23 tier compiles every candidate module
 for the ESP32 `xtensawin` emitter before running the same probe.
 
 `tools/build_phase4_test_release.py` can produce an exact hardware-comparison
 artifact from a normal legacy distribution and a generated candidate. It
-verifies the source provenance, applies the locked Python minifier, and marks
-the artifact `research-only-not-for-promotion`; the ordinary release path still
-rejects a non-legacy vendor inventory. `tests/PHASE4_HARDWARE.md` records the
-first physical result. Storage and full-frame transfer results are promising,
-but startup and solid-fill regressions plus unobserved touch/color and OTA fault
-cases keep item 6 partial. The checked-in historical payload remains the
-release source.
+verifies the source provenance, applies the locked Python minifier, compiles
+the 71 modules with pinned MicroPython 1.23 `mpy-cross` for `xtensawin`, and
+marks the artifact `research-only-not-for-promotion`. The separate
+`tools/build_promoted_release.py` path requires a clean build and exact matches
+for the qualified source and packaged-runtime identities in the legacy profile.
+`tests/PHASE4_HARDWARE.md` records the completed physical gate, including
+touch/color, direct OTA, fault, and offline recovery-resume results. The
+checked-in historical payload remains an audited base/fallback input; normal
+release artifacts use the promoted generated payload.

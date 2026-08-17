@@ -425,8 +425,11 @@ def apply_patch_manifest(
                 raise ValueError("patch replacement count mismatch: %s" % relative)
             text = text.replace(old, new)
         after = text.encode("utf-8")
-        if _sha256_bytes(after) != operation.get("after_sha256"):
-            raise ValueError("patch result mismatch: %s" % relative)
+        actual_after = _sha256_bytes(after)
+        if actual_after != operation.get("after_sha256"):
+            raise ValueError(
+                "patch result mismatch: %s expected=%s actual=%s" % (
+                    relative, operation.get("after_sha256"), actual_after))
         target.write_bytes(after)
         changed.append({
             "after_sha256": operation["after_sha256"],

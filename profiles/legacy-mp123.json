@@ -9,6 +9,19 @@
     "spiram": "octal"
   },
   "vendor_lock": "vendor/legacy-pydevices.lock.json",
+  "promoted_vendor": {
+    "profile": "legacy-mp123-candidate",
+    "lock_file": "vendor/pydevices-candidate.lock.json",
+    "source_runtime_identifier": "sha256:277bc307b4e20dc07afd61580e737800f639a161ac2a9a341c4febef981fe23c",
+    "source_runtime_files": 71,
+    "packaged_runtime_identifier": "sha256:409eda4922f6b66c7fde8cdbca75489d15813749e6ef607ed94e4f81d67dc034",
+    "packaged_runtime_files": 71,
+    "target_arch": "xtensawin",
+    "mpy_version": "v1.23.0",
+    "mpy_format": "mpy v6.3",
+    "qualified_candidate": "phase4-candidate9-6d930fd",
+    "physical_gate": "tests/PHASE4_HARDWARE.md"
+  },
   "baseline": {
     "fixture": "tests/fixtures/legacy_mp123",
     "physical_gate": "tests/PHASE1_HARDWARE.md",

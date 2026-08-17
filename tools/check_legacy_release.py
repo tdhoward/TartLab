@@ -18,7 +18,10 @@ sys.path.insert(0, str(ROOT / "tools"))
 import release as release_tools
 from pydevices_inventory import check_inventory as check_pydevices_inventory
 from pydevices_upstream import check_upstream_mapping
-from release_utils import file_inventory, read_json, sha256_file
+from release_utils import (
+    file_inventory, inventory_identifier, read_json, sha256_file,
+    sha256_source_file,
+)
 from vendor_pydevices import check_vendor_lock as check_pydevices_candidate_lock
 from vendor_lock import check_lock
 
@@ -102,11 +105,51 @@ def check(dist: Path, release_dir: Path) -> dict[str, object]:
     dist = dist.resolve()
     release_dir = release_dir.resolve()
     check_lock()
-    check_pydevices_inventory(dist=dist)
     check_upstream_mapping()
     check_pydevices_candidate_lock()
     manifest = read_json(release_dir / "manifest.json")
     metadata = read_json(release_dir / "build_metadata.json")
+    promoted_payload = (
+        metadata.get("vendor_payload", {}).get("promotion_status") ==
+        "promoted")
+    if promoted_payload:
+        profile = read_json(ROOT / "profiles/legacy-mp123.json")
+        promoted = profile["promoted_vendor"]
+        payload = metadata["vendor_payload"]
+        packaged = file_inventory(dist / "lib/pydevices")
+        expected = {
+            "lock_file": promoted["lock_file"],
+            "profile": promoted["profile"],
+            "source_runtime_identifier": promoted["source_runtime_identifier"],
+            "packaged_runtime_identifier": promoted["packaged_runtime_identifier"],
+            "target_arch": promoted["target_arch"],
+            "physical_gate": promoted["physical_gate"],
+            "qualified_candidate": promoted["qualified_candidate"],
+        }
+        mismatches = [
+            name for name, value in expected.items()
+            if payload.get(name) != value
+        ]
+        packaged_identifier = inventory_identifier(packaged)
+        if packaged_identifier != promoted["packaged_runtime_identifier"]:
+            mismatches.append("qualified packaged inventory")
+        if payload.get("identifier") != packaged_identifier:
+            mismatches.append("packaged inventory")
+        if payload.get("lock_sha256") != sha256_source_file(
+                ROOT / promoted["lock_file"]):
+            mismatches.append("vendor lock")
+        if len(packaged) != promoted["packaged_runtime_files"]:
+            mismatches.append("packaged file count")
+        if any(not item["path"].endswith(".mpy") for item in packaged):
+            mismatches.append("packaged file types")
+        if metadata.get("artifact_status") is not None:
+            mismatches.append("artifact status")
+        if mismatches:
+            raise ValueError(
+                "Promoted PyDevices release metadata mismatch: %s" %
+                ", ".join(sorted(mismatches)))
+    else:
+        check_pydevices_inventory(dist=dist)
     checksums = read_json(release_dir / "checksums.json")
     archive_inventory = read_json(release_dir / "archive_inventory.json")
     payload_inventory = read_json(release_dir / "payload_inventory.json")
@@ -120,7 +163,12 @@ def check(dist: Path, release_dir: Path) -> dict[str, object]:
     if file_inventory(dist) != recorded_dist:
         raise ValueError("Distribution does not match dist_inventory.json")
     if comparison["removed"]:
-        raise ValueError("Release removed a deployed legacy file")
+        unexpected_removed = [
+            path for path in comparison["removed"]
+            if not promoted_payload or not path.startswith("lib/pydevices/")
+        ]
+        if unexpected_removed:
+            raise ValueError("Release removed a deployed legacy file")
 
     epoch = metadata["source_date_epoch"]
     paths = set()

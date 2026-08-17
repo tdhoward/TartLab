@@ -84,18 +84,21 @@ build, run:
 
 ```powershell
 .\.venv\Scripts\python.exe makedist.py --output build/legacy/dist --clean --skip-web-build
-.\.venv\Scripts\python.exe release.py --dist build/legacy/dist --output build/legacy/release --clean --version local-development-check
-.\.venv\Scripts\python.exe tools/check_legacy_release.py --dist build/legacy/dist --release build/legacy/release
 .\.venv\Scripts\python.exe tools/pydevices_inventory.py --dist build/legacy/dist
 .\.venv\Scripts\python.exe tools/pydevices_upstream.py
 .\.venv\Scripts\python.exe tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
 .\.venv\Scripts\python.exe -B tests/pydevices_candidate_compat.py build/vendor/pydevices-candidate/runtime src/files/assets/test.qoi
-.\.venv\Scripts\python.exe tools/build_phase4_test_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/phase4/candidate --version descriptive-research-version --clean
+.\.venv\Scripts\python.exe tools/build_promoted_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/promoted --version descriptive-version --mpy-cross path\to\v1.23.0\mpy-cross --clean
+.\.venv\Scripts\python.exe tools/check_legacy_release.py --dist build/promoted/dist --release build/promoted/release
+.\.venv\Scripts\python.exe tools/build_phase4_test_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/phase4/candidate --version descriptive-research-version --mpy-cross path\to\v1.23.0\mpy-cross --clean
 ```
 
-`release.py` requires a clean Git worktree for a normal candidate. The
-`--allow-dirty` option is available for local diagnostics, but artifacts built
-that way are not promotion eligible. The PyDevices inventory check compares the
+The promoted builder requires a clean Git worktree for a normal candidate and
+rejects source or bytecode that differs from the physically qualified Phase 4
+identities. Direct `release.py` builds from the checked-in historical vendor
+tree are diagnostic-only and are rejected by its normal CLI path. The
+`--allow-dirty` option remains available to lower-level diagnostic builds, but
+artifacts built that way are not promotion eligible. The PyDevices inventory check compares the
 generated vendor payload with the reviewed Phase 4 reachability partition; it
 does not rely on an old root `dist` directory. The upstream check validates
 that every reachable file has a reviewed classification against full upstream
@@ -107,13 +110,16 @@ The compatibility probe checks the protected board path, legacy graphics,
 keys, keypad, BMP, QOI, and scalar broker behavior without loading hardware.
 The inventory, upstream, vendor, and probe commands do not modify
 `src/lib/pydevices`, `dist`, or a release archive. The Phase 4 builder creates a
-separate, guarded comparison release under its requested output; its metadata
-is always research-only and the normal release inventory guard remains
-unchanged.
+separate, guarded comparison release under its requested output. It minifies
+the exact source runtime and uses the supplied pinned MicroPython 1.23
+`mpy-cross` to package all 71 modules for `xtensawin`; its metadata records the
+compiler hash and both source and packaged runtime identities. The artifact is
+always research-only. The promoted builder applies the same transformation but
+binds it to the source and packaged identities in the legacy release profile.
 
 CI builds the pinned MicroPython v1.23.0 Unix interpreter and `mpy-cross`, runs
-the host and compatibility suites, builds the release twice, and requires the
-two outputs to be byte-identical. For a CI-produced candidate, use the
+the host and compatibility suites, builds the promoted-vendor release twice,
+and requires the two outputs to be byte-identical. For a CI-produced candidate, use the
 `legacy-mp123-<full-commit-sha>` artifact from a successful `Legacy release CI`
 run whose head SHA matches the intended commit.
 

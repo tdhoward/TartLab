@@ -122,7 +122,7 @@ class PyDevicesCandidatePipelineTests(unittest.TestCase):
             "compatibility_adapter_files": 5,
             "dependency_files": 18,
             "mapped_equivalent_sources": 47,
-            "patch_files": 5,
+            "patch_files": 6,
             "pinned_repositories": 4,
             "retained_local_files": 1,
             "runtime_files": 71,
@@ -227,6 +227,49 @@ class PyDevicesCandidatePipelineTests(unittest.TestCase):
             module.write_text("VALUE = 2\n")
             with self.assertRaisesRegex(ValueError, "runtime mismatch"):
                 release.validate_research_vendor(provenance_path, runtime)
+
+    def test_release_profile_binds_exact_qualified_vendor_payload(self):
+        profile = json.loads(
+            (ROOT / "profiles/legacy-mp123.json").read_text())
+        promoted = profile["promoted_vendor"]
+        provenance = {
+            "profile": "legacy-mp123-candidate",
+            "lock_file": "vendor/pydevices-candidate.lock.json",
+            "runtime_identifier": (
+                "sha256:277bc307b4e20dc07afd61580e737800f639a161ac2a9a"
+                "341c4febef981fe23c"),
+            "selected_files": [{}] * 65,
+            "compatibility_files": [{}] * 6,
+        }
+        compilation = {
+            "compiler_version": (
+                "MicroPython v1.23.0; mpy-cross emitting mpy v6.3"),
+            "modules": 71,
+            "packaged_identifier": promoted["packaged_runtime_identifier"],
+            "target_arch": "xtensawin",
+        }
+        validated = release.validate_promoted_vendor(
+            profile, provenance, compilation,
+            promoted["packaged_runtime_identifier"], 71)
+        self.assertEqual(
+            validated["qualified_candidate"], "phase4-candidate9-6d930fd")
+
+        compilation["packaged_identifier"] = "sha256:" + "0" * 64
+        with self.assertRaisesRegex(ValueError, "compiled_identifier"):
+            release.validate_promoted_vendor(
+                profile, provenance, compilation,
+                promoted["packaged_runtime_identifier"], 71)
+
+    def test_normal_release_requires_promoted_vendor_builder(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            dist = root / "dist"
+            dist.mkdir()
+            with self.assertRaisesRegex(
+                    ValueError, "requires the promoted PyDevices release builder"):
+                release.build_release(
+                    dist, root / "release", "promotion-guard",
+                    require_promoted_vendor=True)
 
     def test_device_benchmark_is_micropython_compatible_source(self):
         compile(PYDEVICES_BENCHMARK_CODE, "<pydevices-benchmark>", "exec")

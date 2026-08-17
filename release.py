@@ -311,13 +311,55 @@ def validate_research_vendor(provenance_path: Path, runtime: Path):
     return provenance
 
 
+def validate_promoted_vendor(profile, provenance, compilation,
+                             packaged_identifier, packaged_files):
+    """Bind a generated runtime to the exact Phase 4 qualified payload."""
+
+    promoted = profile.get("promoted_vendor")
+    if not isinstance(promoted, dict):
+        raise ValueError("Release profile does not approve a promoted vendor")
+    expected = {
+        "profile": provenance.get("profile"),
+        "lock_file": provenance.get("lock_file"),
+        "source_runtime_identifier": provenance.get("runtime_identifier"),
+        "source_runtime_files": (
+            len(provenance.get("selected_files", [])) +
+            len(provenance.get("compatibility_files", []))),
+        "packaged_runtime_identifier": packaged_identifier,
+        "packaged_runtime_files": packaged_files,
+        "target_arch": compilation.get("target_arch"),
+    }
+    mismatches = [
+        name for name, actual in expected.items()
+        if promoted.get(name) != actual
+    ]
+    compiler_version = compilation.get("compiler_version", "")
+    for name in ("mpy_version", "mpy_format"):
+        if promoted.get(name) not in compiler_version:
+            mismatches.append(name)
+    if compilation.get("modules") != promoted.get("packaged_runtime_files"):
+        mismatches.append("compiled_modules")
+    if compilation.get("packaged_identifier") != packaged_identifier:
+        mismatches.append("compiled_identifier")
+    gate = promoted.get("physical_gate")
+    if not isinstance(gate, str) or not (ROOT / gate).is_file():
+        mismatches.append("physical_gate")
+    if mismatches:
+        raise ValueError(
+            "Generated vendor differs from the Phase 4 promoted payload: %s" %
+            ", ".join(sorted(set(mismatches))))
+    return promoted
+
+
 def build_release(
         dist: Path, output: Path, version: str, *, clean=False,
         profile_path: Path | None = None, packages_path: Path | None = None,
         source_epoch: int | None = None, allow_dirty=True,
         allow_toolchain_mismatch=True,
         research_vendor_provenance: Path | None = None,
-        research_vendor_source: Path | None = None):
+        research_vendor_source: Path | None = None,
+        promoted_vendor_compilation: dict | None = None,
+        require_promoted_vendor=False):
     dist = dist.resolve()
     output = ensure_safe_output(output, (ROOT, dist))
     if output.exists():
@@ -342,11 +384,16 @@ def build_release(
         raise ValueError(
             "Research vendor source requires provenance")
     if research_vendor_provenance is None:
+        if require_promoted_vendor and profile.get("promoted_vendor"):
+            raise ValueError(
+                "The legacy profile requires the promoted PyDevices release builder")
         check_pydevices_inventory(dist=dist)
     else:
         research_vendor = validate_research_vendor(
             research_vendor_provenance,
             research_vendor_source or dist / "lib/pydevices")
+    if promoted_vendor_compilation is not None and research_vendor is None:
+        raise ValueError("Promoted vendor compilation requires provenance")
     try:
         commit = _git_value("rev-parse", "HEAD")
         dirty = bool(_git_value("status", "--porcelain"))
@@ -440,21 +487,38 @@ def build_release(
         "identifier": inventory_identifier(file_inventory(dist / "lib/pydevices")),
         "deployed_baseline_identifier": vendor["deployed_legacy_mp123"]["identifier"],
     }
+    promoted_vendor = None
     if research_vendor is None:
         vendor_payload.update({
             "source_lock_identifier": vendor["identifier"],
             "lock_file": profile["vendor_lock"],
         })
     else:
+        packaged_inventory = file_inventory(dist / "lib/pydevices")
+        packaged_identifier = inventory_identifier(packaged_inventory)
+        if promoted_vendor_compilation is not None:
+            promoted_vendor = validate_promoted_vendor(
+                profile, research_vendor, promoted_vendor_compilation,
+                packaged_identifier, len(packaged_inventory))
         vendor_payload.update({
             "lock_file": research_vendor["lock_file"],
             "lock_sha256": research_vendor["lock_sha256"],
             "profile": research_vendor["profile"],
-            "promotion_status": "research-only",
+            "promotion_status": (
+                "promoted" if promoted_vendor is not None else "research-only"),
             "provenance_sha256": sha256_source_file(
                 Path(research_vendor_provenance)),
             "source_runtime_identifier": research_vendor["runtime_identifier"],
         })
+        if promoted_vendor is not None:
+            vendor_payload.update({
+                "compiler_sha256": promoted_vendor_compilation["compiler_sha256"],
+                "compiler_version": promoted_vendor_compilation["compiler_version"],
+                "packaged_runtime_identifier": packaged_identifier,
+                "physical_gate": promoted_vendor["physical_gate"],
+                "qualified_candidate": promoted_vendor["qualified_candidate"],
+                "target_arch": promoted_vendor_compilation["target_arch"],
+            })
 
     metadata = {
         "schema": 1,
@@ -490,8 +554,10 @@ def build_release(
         "baseline_comparison": baseline_comparison["counts"],
         "size_budgets": profile["size_budgets"],
     }
-    if research_vendor is not None:
+    if research_vendor is not None and promoted_vendor is None:
         metadata["artifact_status"] = "research-only-not-for-promotion"
+    elif research_vendor is None and profile.get("promoted_vendor"):
+        metadata["artifact_status"] = "historical-vendor-diagnostic"
     _check_size_budgets(metadata, profile)
     write_json(output / "build_metadata.json", metadata)
     checksums = {
@@ -526,7 +592,8 @@ def main():
         args.dist, args.output, args.version, clean=args.clean,
         profile_path=args.profile, packages_path=args.packages,
         source_epoch=args.source_date_epoch, allow_dirty=args.allow_dirty,
-        allow_toolchain_mismatch=args.allow_toolchain_mismatch)
+        allow_toolchain_mismatch=args.allow_toolchain_mismatch,
+        require_promoted_vendor=True)
     print(json.dumps(metadata, indent=2, sort_keys=True))
 
 

@@ -42,6 +42,9 @@ def main() -> None:
     metadata = read_json(args.release / "build_metadata.json")
     if metadata["tartlab_version"] != args.tag:
         raise ValueError("Release tag differs from build metadata version")
+    vendor_status = metadata.get("vendor_payload", {}).get("promotion_status")
+    if metadata.get("artifact_status") is not None or vendor_status != "promoted":
+        raise ValueError("Stable promotion requires the promoted PyDevices payload")
     if metadata["git_dirty"]:
         raise ValueError("A dirty build cannot be promoted")
     commit = subprocess.check_output(

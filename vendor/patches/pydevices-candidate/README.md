@@ -18,9 +18,12 @@ CircuitPython `cp` metadata argument that the selected MicroPython
 explicit constructor arguments. The native-framebuffer patch makes the
 MicroPython runtime prefer its built-in C `framebuf` as the base for the
 current extended `FrameBuffer`; desktop/package builds retain the bundled
-pure-Python fallback. The ST7796 patch restores the panel-qualified
+pure-Python fallback. The first ST7796 patch restores the panel-qualified
 RAM-continue solid-fill path without changing the generic `BusDisplay`
-behavior used by panels that require a fresh window per strip. The pinned
+behavior used by panels that require a fresh window per strip. The second
+ST7796 patch sends bounded 16 KiB chunks and fills its cached buffer without a
+temporary repeated-bytes allocation, removing both per-strip overhead and
+garbage-collection spikes observed on the physical board. The pinned
 MicroPython 1.23 SPI patch retains the constructor-configured ESP GPIO matrix
 while updating transfer parameters, matching the qualified legacy backend and
 avoiding pin reconfiguration on every command. The item 5 TartLab adapters are

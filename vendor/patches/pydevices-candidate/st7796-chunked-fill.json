@@ -1,0 +1,17 @@
+{
+  "operations": [
+    {
+      "after_sha256": "0ca3a26eb963a8facf68294d71a069630c281553c5050f6ba0dfb4329b3ff894",
+      "before_sha256": "4e17daaab053348ea01d0492f065ec32fe5596fd9a6972f956f4177664dfcfb9",
+      "path": "st7796.py",
+      "replacements": [
+        {
+          "count": 1,
+          "new": "    def _fill_strip(self, length_px, color_bytes):\n        \"\"\"Build the cached fill buffer without a repeated-bytes allocation.\"\"\"\n        bytes_per_pixel = len(color_bytes)\n        need = length_px * bytes_per_pixel\n        buf = self._fill_strip_buf\n        if buf is None or len(buf) < need:\n            grow = max(need, max(self._width, self._height) * bytes_per_pixel)\n            buf = bytearray(grow)\n            self._fill_strip_buf = buf\n            self._fill_strip_color = None\n            self._fill_strip_valid = 0\n        view = memoryview(buf)\n        if self._fill_strip_color != color_bytes or self._fill_strip_valid < need:\n            view[:bytes_per_pixel] = color_bytes\n            valid = bytes_per_pixel\n            while valid < need:\n                copy = min(valid, need - valid)\n                view[valid : valid + copy] = view[:copy]\n                valid += copy\n            self._fill_strip_color = color_bytes\n            self._fill_strip_valid = need\n        return view[:need]\n\n    def fill_rect(self, x, y, w, h, color):\n        \"\"\"Fill with bounded chunks over the ST7796 RAM-continue path.\"\"\"\n        color_bytes = (\n            (color & 0xFFFF).to_bytes(2, \"big\")\n            if self._auto_byteswap\n            else (color & 0xFFFF).to_bytes(2, \"little\")\n        )\n        remaining = w * h\n        chunk_pixels = min(remaining, 8192)\n        buf = self._fill_strip(chunk_pixels, color_bytes)\n        x1 = x + self.colstart\n        x2 = x1 + w - 1\n        y1 = y + self.rowstart\n        y2 = y1 + h - 1\n        self._set_window(x1, y1, x2, y2)\n        command = _RAMWR\n        while remaining:\n            pixels = min(remaining, chunk_pixels)\n            self.send_color(\n                command,\n                buf if pixels == chunk_pixels else buf[: pixels * 2],\n            )\n            command = _RAMCONT\n            remaining -= pixels\n        return (x, y, w, h)\n",
+          "old": "    def fill_rect(self, x, y, w, h, color):\n        \"\"\"Use the ST7796-supported RAM-continue path for solid fills.\"\"\"\n        color_bytes = (\n            (color & 0xFFFF).to_bytes(2, \"big\")\n            if self._auto_byteswap\n            else (color & 0xFFFF).to_bytes(2, \"little\")\n        )\n        x1 = x + self.colstart\n        x2 = x1 + w - 1\n        y1 = y + self.rowstart\n        y2 = y1 + h - 1\n        if h > w:\n            buf = self._fill_strip(h, color_bytes)\n            passes = w\n        else:\n            buf = self._fill_strip(w, color_bytes)\n            passes = h\n        self._set_window(x1, y1, x2, y2)\n        self.send(_RAMWR)\n        for unused in range(passes):\n            self.send_color(_RAMCONT, buf)\n        return (x, y, w, h)\n"
+        }
+      ]
+    }
+  ],
+  "schema": 1
+}

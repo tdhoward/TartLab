@@ -29,8 +29,10 @@ hashes, Python host compilation, dependency allowlists, licenses, provenance,
 deterministic runtime identifier, and size report. The candidate contains 65
 upstream files plus five compatibility adapters and the retained QOI reader.
 `tests/pydevices_candidate_compat.py` exercises the legacy import/API surface
-against the generated runtime. The output remains under ignored `build/vendor`
-and is not a legacy release input.
+against the generated runtime. The source output remains under ignored
+`build/vendor`; the promoted release builder accepts it only when both its
+source identity and resulting `mpy` payload identity match the physically
+qualified values in `profiles/legacy-mp123.json`.
 
 ## Tier 1: CPython virtual device
 
@@ -115,9 +117,10 @@ affected physical claims plus a boot/IDE sanity check.
 
 `PHASE3_HARDWARE.md` records the 2026-08-12 focused smoke for the platform
 abstraction. Its explicitly unobserved manual items are not release claims.
-`PHASE4_HARDWARE.md` records the 2026-08-16 generated-PyDevices comparison,
-including the measured regressions and manual/OTA cases that keep promotion
-closed. `tools/phase1_device.py boot-timing` and `pydevices-benchmark` provide
+`PHASE4_HARDWARE.md` records the 2026-08-16 and 2026-08-17 generated-PyDevices
+comparisons, including the accepted bounded regressions and completed
+touch/color, OTA, recovery, and fault cases that support the promoted vendor
+identity. `tools/phase1_device.py boot-timing` and `pydevices-benchmark` provide
 repeatable samples, but idle touch polls and successful driver calls are not
 human touch or visual assertions.
 

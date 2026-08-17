@@ -495,6 +495,10 @@
       "sha256": "ed07171c24503ed47f8e0f3bb959a63bb23d3b398332d9eafc3994dd8106a947"
     },
     {
+      "path": "patches/pydevices-candidate/st7796-chunked-fill.json",
+      "sha256": "31cc64cfa0cd482ee351f724d458ed7cab6a9e1faa61dc3aebace6ec0a425457"
+    },
+    {
       "path": "patches/pydevices-candidate/t-display-s3-pro-remove-cp.json",
       "sha256": "ab30c0065b0cbf8ba437bb0bfcca38bd62c4c046da719c10213b86aa4f0c8440"
     }
@@ -544,7 +548,7 @@
     "compatibility_adapter_files": 5,
     "dependency_files": 18,
     "mapped_equivalent_sources": 47,
-    "patch_files": 5,
+    "patch_files": 6,
     "pinned_repositories": 4,
     "retained_local_files": 1,
     "runtime_files": 71,

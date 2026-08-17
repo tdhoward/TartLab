@@ -35,6 +35,15 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Check out pinned MicroPython 1.23 source
+        uses: actions/checkout@v7
+        with:
+          repository: micropython/micropython
+          ref: a61c446c0b34e82aeb54b9770250d267656f2b7f
+          path: build/micropython-v1.23.0
+          fetch-depth: 1
+          persist-credentials: false
+
       - uses: actions/setup-python@v7
         with:
           python-version: ">=3.10 <3.15"
@@ -52,6 +61,14 @@ jobs:
           python -m pip install --require-hashes -r requirements-build.txt
           npm ci --prefix src/ide/www
           npm run build --prefix src/ide/www
+          make -C build/micropython-v1.23.0/mpy-cross -j2
+
+      - name: Build pinned promoted PyDevices source
+        run: >-
+          python tools/vendor_pydevices.py
+          --fetch
+          --output build/vendor/pydevices-candidate
+          --clean
 
       - name: Rebuild the hardware-tested candidate
         shell: bash
@@ -59,8 +76,8 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
-          python makedist.py --output build/promote/dist --clean --skip-web-build
-          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" python release.py --dist build/promote/dist --output build/promote/release --clean --version "$RELEASE_TAG"
+          python makedist.py --output build/promote-base/dist --clean --skip-web-build
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" python tools/build_promoted_release.py --base-dist build/promote-base/dist --candidate build/vendor/pydevices-candidate --output build/promote --version "$RELEASE_TAG" --mpy-cross build/micropython-v1.23.0/mpy-cross/build/mpy-cross --clean
           python tools/check_legacy_release.py --dist build/promote/dist --release build/promote/release
 
       - name: Bind physical evidence to the rebuilt release

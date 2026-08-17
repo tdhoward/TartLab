@@ -95,34 +95,42 @@ python -m pip install --require-hashes -r requirements-build.txt
 npm ci --prefix src/ide/www
 npm run build --prefix src/ide/www
 python makedist.py --output build/legacy/dist --clean --skip-web-build
-python release.py --dist build/legacy/dist --output build/legacy/release --clean --version vX.Y
-python tools/check_legacy_release.py --dist build/legacy/dist --release build/legacy/release
+python tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
+python tools/build_promoted_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/promoted --version vX.Y --mpy-cross path/to/v1.23.0/mpy-cross --clean
+python tools/check_legacy_release.py --dist build/promoted/dist --release build/promoted/release
 python tools/pydevices_upstream.py
 ```
 
-The separate Phase 4 migration candidate can be generated without changing the
-legacy release source:
+The promoted source input can also be generated independently without changing
+the historical checked-in tree:
 
 ```text
 python tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
 ```
 
-That candidate is pinned and reproducible. Its minimal legacy import/API
+That source candidate is pinned and reproducible. Its minimal legacy import/API
 adapters and retained QOI reader are validated on the host and by the pinned
-MicroPython 1.23 compatibility tier, but it remains research-only until the
-Phase 4 physical-device comparison and promotion gates are complete.
+MicroPython 1.23 compatibility tier. Phase 4 items 6 and 7 are complete: the
+normal legacy release path accepts only the exact physically qualified source
+and packaged-runtime identities recorded in `profiles/legacy-mp123.json`.
 
 For a physical comparison only, overlay the generated tree on an already-built
 legacy distribution with the guarded research builder:
 
 ```text
-python tools/build_phase4_test_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/phase4/candidate --version descriptive-research-version --clean
+python tools/build_phase4_test_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/phase4/candidate --version descriptive-research-version --mpy-cross path/to/v1.23.0/mpy-cross --clean
 ```
 
-The result is minified with the legacy toolchain and explicitly marked
-`research-only-not-for-promotion`. It cannot substitute for the normal legacy
-release path. The current physical findings and remaining gates are recorded in
-`tests/PHASE4_HARDWARE.md`.
+The result is minified, compiled with the pinned MicroPython 1.23 `mpy-cross`
+for the `xtensawin` target, and explicitly marked
+`research-only-not-for-promotion`. The builder records the compiler identity,
+source-runtime identity, and packaged bytecode identity. It cannot substitute
+for the normal legacy release path. The completed item 6 physical findings and
+the promotion decision are recorded in `tests/PHASE4_HARDWARE.md`.
+
+The promoted command requires a clean worktree and the pinned build toolchain. A direct
+`release.py` command cannot create a normal candidate from the historical
+checked-in PyDevices tree.
 
 `release.py` keeps `manifest.json` compatible with the deployed updater and
 adds deterministic USTAR archives, file/archive inventories, checksums, size

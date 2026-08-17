@@ -730,6 +730,7 @@ VERSION = %r
 FORCE_WRITE = %r
 SIGNAL_PACKAGE = %r
 SIGNAL_MARKER = %r
+LOW_SPACE = %r
 
 assets = [
     {'name': 'manifest.json', 'size': 1024,
@@ -747,21 +748,38 @@ async def forced_write_error(*unused_args, **unused_kwargs):
 def progress(message, step, total):
     print('FAULT_PROGRESS=%%d/%%d %%s' %% (step, total, message))
 
+original_check_for_update = updater.check_for_update
+original_download = updater.download_asset
+original_free_space = updater._free_space
+original_update_folder = updater.update_folder
+original_begin_update = updater.begin_update
 updater.check_for_update = local_release
+download_count = [0]
+async def counted_download(url, target_file):
+    download_count[0] += 1
+    return await original_download(url, target_file)
+updater.download_asset = counted_download
+if LOW_SPACE == 'pre':
+    updater._free_space = lambda: 0
+elif LOW_SPACE == 'post':
+    free_space_calls = [0]
+    def post_staging_low_space():
+        free_space_calls[0] += 1
+        return original_free_space() if free_space_calls[0] == 1 else 0
+    updater._free_space = post_staging_low_space
 if FORCE_WRITE:
     updater.update_folder = forced_write_error
 if SIGNAL_PACKAGE:
-    original_download = updater.download_asset
+    signaled_original_download = updater.download_asset
     async def signaled_download(url, target_file):
         if target_file.endswith('/' + SIGNAL_PACKAGE):
             from hdwconfig import display_drv
             display_drv.disable_auto_byteswap(False)
             display_drv.fill(0xffff)
             print('POWER_DOWNLOAD_SIGNAL=True')
-        return await original_download(url, target_file)
+        return await signaled_original_download(url, target_file)
     updater.download_asset = signaled_download
 if SIGNAL_MARKER:
-    original_begin_update = updater.begin_update
     def signaled_begin_update(*values):
         result = original_begin_update(*values)
         from hdwconfig import display_drv
@@ -776,7 +794,14 @@ if SIGNAL_MARKER:
 with open(updater.REPOS_FILE, 'r') as stream:
     repos = ujson.load(stream)
 target = next(item for item in repos['list'] if item.get('name') == 'TartLab')
-result = asyncio.run(updater.update_packages(target, progress))
+try:
+    result = asyncio.run(updater.update_packages(target, progress))
+finally:
+    updater.check_for_update = original_check_for_update
+    updater.download_asset = original_download
+    updater._free_space = original_free_space
+    updater.update_folder = original_update_folder
+    updater.begin_update = original_begin_update
 with open(updater.REPOS_FILE, 'r') as stream:
     committed = ujson.load(stream)
 try:
@@ -792,8 +817,10 @@ print('FAULT_RESULT=' + str(result))
 print('FAULT_COMMITTED=' + str(committed['list'][0].get('installed_version')))
 print('FAULT_MARKER_STATUS=' + str(marker.get('status') if marker else 'none'))
 print('FAULT_TARGET_KIND=' + str(target_kind))
+print('FAULT_DOWNLOADS=' + str(download_count[0]))
 ''' % (base_url, args.manifest, args.package, args.package_size,
-       args.version, args.force_write, args.signal_package, args.signal_marker)
+       args.version, args.force_write, args.signal_package, args.signal_marker,
+       args.low_space)
     repl = connect(args)
     try:
         output = repl.exec(code, max(args.timeout, 120))
@@ -881,13 +908,24 @@ if station.isconnected():
 def recovery_install(args):
     base_url = args.base_url.rstrip("/")
     code = r'''
-import sys, ujson, urequests, network
+import sys, ujson, urequests, network, time
 if '/recovery' not in sys.path:
     sys.path.insert(0, '/recovery')
 import recovery
 import recovery_update
 BASE = %r
 VERSION = %r
+SIGNAL_PACKAGE = %r
+
+def progress(message):
+    print('RECOVERY_PROGRESS=' + message)
+    if SIGNAL_PACKAGE and message == 'Installing ' + SIGNAL_PACKAGE:
+        from hdwconfig import display_drv
+        display_drv.disable_auto_byteswap(False)
+        display_drv.fill(0xffff)
+        print('RECOVERY_POWER_SIGNAL=' + SIGNAL_PACKAGE)
+        while True:
+            time.sleep_ms(250)
 
 station = network.WLAN(network.STA_IF)
 if not station.isconnected():
@@ -910,10 +948,9 @@ for package in manifest:
     })
 release = {'tag_name': VERSION, 'assets': assets}
 recovery_update._release = lambda unused_repo: release
-installed = recovery_update.update_to_latest(
-    lambda message: print('RECOVERY_PROGRESS=' + message))
+installed = recovery_update.update_to_latest(progress)
 print('RECOVERY_INSTALLED=' + str(installed))
-''' % (base_url, args.version)
+''' % (base_url, args.version, args.signal_package)
     repl = connect(args)
     try:
         output = repl.exec(code, max(args.timeout, 300))
@@ -1127,6 +1164,7 @@ def parser():
     fault_parser.add_argument("--force-write", action="store_true")
     fault_parser.add_argument("--signal-package")
     fault_parser.add_argument("--signal-marker", action="store_true")
+    fault_parser.add_argument("--low-space", choices=("pre", "post"))
     fault_parser.set_defaults(func=fault_update)
     wifi_parser = commands.add_parser("wifi-update")
     wifi_parser.add_argument("--credentials-file", type=Path, required=True)
@@ -1134,6 +1172,9 @@ def parser():
     recovery_parser = commands.add_parser("recovery-install")
     recovery_parser.add_argument("--base-url", required=True)
     recovery_parser.add_argument("--version", required=True)
+    recovery_parser.add_argument(
+        "--signal-package",
+        help="pause with a white display before installing this package")
     recovery_parser.set_defaults(func=recovery_install)
     commands.add_parser("recovery-resume").set_defaults(func=recovery_resume)
     serial_parser = commands.add_parser("serial-install")

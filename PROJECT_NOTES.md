@@ -569,11 +569,16 @@ or radio behavior.
 
 ### Phase 4: Migrate and prune PyDevices behind the abstraction
 
-Implementation status (2026-08-16): the import/payload inventory,
+Implementation status (2026-08-17): Phase 4 is implemented. The import/payload inventory,
 current-upstream equivalence audit, pinned candidate vendor pipeline, minimal
-legacy compatibility surface, guarded research release builder, and first
-physical comparison are implemented without changing the normal release vendor
-runtime. A conservative static analysis
+legacy compatibility surface, guarded research release builder, and Phase 4
+item 6 physical qualification are complete. Item 7 promotes the exact
+qualified source and packaged-runtime identities into the normal legacy CI and
+stable-tag rebuild paths. The checked-in historical tree remains an audited
+base/fallback input, but a direct normal `release.py` invocation rejects it.
+The promoted builder overlays the generated allowlisted runtime, compiles it to
+MicroPython 1.23 `xtensawin` bytecode, and fails on source or packaged identity
+drift. A conservative static analysis
 starts separately from the TartLab platform/IDE boundary, the default
 T-Display-S3 Pro adapter, and all shipped Python examples. It classifies 39 of
 the locked payload's 146 files as reachable (317,934 normalized source bytes)
@@ -606,26 +611,35 @@ as separate sources rather than upstream modifications. They preserve
 `graphics`, `bmp565`, `touch_keypad`, `eventsys.keys.Keys`, the protected
 T-Display-S3 Pro board path, and scalar legacy broker polling. Core TartLab
 continues to use only its existing platform boundary and legacy-compatible
-names. The generated runtime is now 71 files and 521,163 normalized source
+names. The generated runtime is now 71 files and 522,319 normalized source
 bytes, 49.7% of the historical snapshot's 1,049,292 bytes, with identifier
-`sha256:090f9bd96352cfd8730e1bf3448112129f12e9f4954efbf5feb237b639783984`.
-Five strict patches cover the MicroPython 1.23 parser, display constructor,
-native framebuffer selection, ST7796 fill behavior, and ESP32 SPI transfer
-configuration. The board adapter keeps touch application-polled instead of
+`sha256:277bc307b4e20dc07afd61580e737800f639a161ac2a9a341c4febef981fe23c`.
+Six strict patches cover the MicroPython 1.23 parser, display constructor,
+native framebuffer selection, two stages of ST7796 fill compatibility and
+performance work, and ESP32 SPI transfer configuration. The board adapter
+keeps touch application-polled instead of
 using the unsupported upstream timer keyword. The host probe covers the
 compatibility surface, and CI compiles all candidate sources and runs the probe
 with pinned MicroPython 1.23 host tools.
 
 `tools/build_phase4_test_release.py` overlays that exact runtime on a normal
-legacy distribution, applies the locked minifier, verifies source provenance,
-and marks both evidence and release metadata research-only. The normal release
-builder still requires the historical vendor inventory. The first physical
-comparison is recorded in `tests/PHASE4_HARDWARE.md`: the candidate halves the
-packaged PyDevices size and leaves 983,040 more filesystem bytes free, with
-only 0.7% less startup heap and near-parity full-frame blits. It also regresses
-healthy startup by 86.7% and solid fills by about 17%. Idle touch polling and a
-full verified recovery install passed, but no touch coordinates or visual color
-assertion were observed and the network OTA/fault matrix was not repeated.
+legacy distribution, applies the locked minifier, compiles all 71 modules with
+pinned MicroPython 1.23 `mpy-cross` for `xtensawin`, verifies source and
+packaged identities, and marks both evidence and release metadata
+research-only. `tools/build_promoted_release.py` uses the same transformation
+but additionally requires a clean worktree, the pinned release toolchain, and
+the exact item 6 identities recorded in the legacy profile. Normal CI builds
+that promoted path twice, and the stable-tag workflow rebuilds the same path
+before binding physical evidence. The completed comparison in
+`tests/PHASE4_HARDWARE.md` records a
+75.9% smaller PyDevices archive, 1,196,032 more free filesystem bytes, 0.9%
+less startup heap, solid fills about 20% faster than legacy, and full-frame
+blits about 9.8% slower. Steady healthy startup remains 13.7% slower and the
+startup-to-IDE proxy 22.9% slower; that bounded residual is explicitly accepted
+for the research migration gate. Human color and five-point touch checks,
+direct network OTA, corrupt/truncated/low-space/write containment, physical
+install interruption, offline recovery resume, repeated-health recovery, and
+protected-state preservation all passed.
 
 1. **Implemented:** inventory which modules from the current embedded
    `pydevices` tree TartLab imports through the reviewed static roots.
@@ -638,15 +652,16 @@ assertion were observed and the network OTA/fault matrix was not repeated.
    provenance, and size reporting. The generated tree remains research-only.
 5. **Implemented for the generated candidate:** build a minimal
    legacy-compatible payload without exposing upstream paths or APIs to core
-   TartLab code. The historical payload remains the release source until items
-   6 and 7 pass.
-6. **Partial; automated physical comparison completed 2026-08-16:** flash and
-   filesystem usage, startup heap, initialization timing, display transfer,
-   idle touch polling, verified recovery install, health commit, and protected
-   state are measured against the legacy payload. Resolve the startup/fill
-   regressions, observe real touch and color behavior, and repeat direct
-   OTA/recovery fault cases before closing this item.
-7. Promote the new vendor payload only after it passes the established legacy CI and physical-device OTA gates.
+   TartLab code.
+6. **Completed 2026-08-17:** the final Candidate 9 passed storage, heap,
+   steady-startup, display transfer, real touch/color, direct OTA, recovery
+   fault/resume, health commit, and protected-state checks on the qualified
+   board and firmware. The remaining bounded startup and blit regressions are
+   recorded and accepted for this research gate; they are not a promotion.
+7. **Implemented:** promote only the qualified source and packaged identities
+   through the normal reproducible CI and stable-tag release paths. The
+   candidate lock remains research-only input provenance; promotion authority
+   lives in the hardware-gated legacy release profile.
 
 ### Phase 5: Prototype modern LVGL firmware separately
 
