@@ -1,0 +1,255 @@
+{
+  "analysis": {
+    "builtin_module_precedence": [
+      "framebuf",
+      "micropython"
+    ],
+    "category_precedence": [
+      "core_startup_ide",
+      "t_display_s3_pro_adapter",
+      "shipped_examples"
+    ],
+    "flat_runtime_search_directories": [
+      "bus_drv",
+      "display_drv",
+      "touch_drv",
+      "add_ons"
+    ],
+    "kind": "conservative-static-import-reachability",
+    "limitations": [
+      "Imports in all conditional branches and function bodies count as reachable.",
+      "Imports assembled dynamically from runtime strings require an explicit root.",
+      "Non-Python resource use is not inferred by the import analysis.",
+      "Category file lists are exclusive; shared dependencies belong to the first category.",
+      "Unreachable files remain explicitly retained until a later reviewed pruning change."
+    ]
+  },
+  "categories": {
+    "core_startup_ide": {
+      "description": "Core platform and IDE display dependencies; hardware loading stops at the explicit hdwconfig boundary.",
+      "files": [
+        "graphics/__init__.py",
+        "graphics/_area.py",
+        "graphics/_draw.py",
+        "graphics/_files.py",
+        "graphics/_font.py",
+        "graphics/_font_8x14.py",
+        "graphics/_font_8x16.py",
+        "graphics/_font_8x8.py",
+        "graphics/_framebuf.py",
+        "graphics/_framebuf_plus.py",
+        "graphics/_shapes.py"
+      ],
+      "roots": [
+        "src/lib/tartlabutils/platform.py"
+      ],
+      "stop_modules": [
+        "hdwconfig"
+      ],
+      "summary": {
+        "expanded_source_bytes": 150827,
+        "files": 11,
+        "python_files": 11
+      }
+    },
+    "shipped_examples": {
+      "description": "Vendor dependencies imported by shipped student examples, excluding the separately inventoried hardware boundary.",
+      "files": [
+        "add_ons/bmp565.py",
+        "add_ons/displaybuf.py",
+        "add_ons/qoi_reader.py",
+        "add_ons/touch_keypad.py",
+        "eventsys/keys.py",
+        "palettes/__init__.py",
+        "palettes/_cube125.py",
+        "palettes/_cube27.py",
+        "palettes/_cube64.py",
+        "palettes/_cube8.py",
+        "palettes/_material_design.py",
+        "palettes/cube.py",
+        "palettes/material_design.py",
+        "palettes/wheel.py"
+      ],
+      "roots": [
+        "src/files/help/animation.py",
+        "src/files/help/calculator.py",
+        "src/files/help/display_bmp.py",
+        "src/files/help/display_qoi.py",
+        "src/files/help/drawingbasics.py",
+        "src/files/help/face.py",
+        "src/files/help/moire_fast.py",
+        "src/files/help/moire_slow.py",
+        "src/files/help/pybasics.py",
+        "src/files/help/snake.py",
+        "src/files/help/sprite.py",
+        "src/files/help/testris.py"
+      ],
+      "stop_modules": [
+        "hdwconfig"
+      ],
+      "summary": {
+        "expanded_source_bytes": 71038,
+        "files": 14,
+        "python_files": 14
+      }
+    },
+    "t_display_s3_pro_adapter": {
+      "description": "Default legacy board adapter and its conservative driver dependencies.",
+      "files": [
+        "add_ons/byteswap.py",
+        "add_ons/viper_tools.py",
+        "board_configs/t_display_s3_pro/board_config.py",
+        "bus_drv/spibus.py",
+        "display_drv/st7796.py",
+        "displaysys/__init__.py",
+        "displaysys/busdisplay.py",
+        "eventsys/__init__.py",
+        "eventsys/devices.py",
+        "multimer/__init__.py",
+        "multimer/_librt.py",
+        "multimer/_sdl2.py",
+        "multimer/_timerbase.py",
+        "touch_drv/cst226.py"
+      ],
+      "roots": [
+        "src/hdwconfig.py",
+        "src/configs/t_display_s3_pro.py"
+      ],
+      "stop_modules": [],
+      "summary": {
+        "expanded_source_bytes": 96069,
+        "files": 14,
+        "python_files": 14
+      }
+    }
+  },
+  "profile": "legacy-mp123",
+  "retained_unreachable_files": [
+    "add_ons/README.md",
+    "add_ons/adafruit_ticks.py",
+    "add_ons/color_setup.py",
+    "add_ons/console.py",
+    "add_ons/display_driver.py",
+    "add_ons/ezfont.py",
+    "add_ons/fonts/__init__.py",
+    "add_ons/fonts/compile_upload.sh",
+    "add_ons/fonts/vga1_16x16.py",
+    "add_ons/fonts/vga1_16x32.py",
+    "add_ons/fonts/vga1_8x16.py",
+    "add_ons/fonts/vga1_8x8.py",
+    "add_ons/fonts/vga1_bold_16x16.py",
+    "add_ons/fonts/vga1_bold_16x32.py",
+    "add_ons/fonts/vga2_16x16.py",
+    "add_ons/fonts/vga2_16x32.py",
+    "add_ons/fonts/vga2_8x16.py",
+    "add_ons/fonts/vga2_8x8.py",
+    "add_ons/fonts/vga2_bold_16x16.py",
+    "add_ons/fonts/vga2_bold_16x32.py",
+    "add_ons/framebuf.py",
+    "add_ons/hardware_setup.py",
+    "add_ons/keypins.py",
+    "add_ons/lv_timer.py",
+    "add_ons/lv_utils.py",
+    "add_ons/micropython.py",
+    "add_ons/pbm.py",
+    "add_ons/pdwidgets/__init__.py",
+    "add_ons/pdwidgets/_constants.py",
+    "add_ons/pdwidgets/_themes.py",
+    "add_ons/pdwidgets/console.py",
+    "add_ons/pdwidgets/icons/LICENSE",
+    "add_ons/pdwidgets/icons/README.md",
+    "add_ons/pdwidgets/icons/check_box_36dp.pbm",
+    "add_ons/pdwidgets/icons/check_box_outline_blank_36dp.pbm",
+    "add_ons/pdwidgets/icons/home_filled_36dp.pbm",
+    "add_ons/pdwidgets/icons/keyboard_arrow_down_18dp.pbm",
+    "add_ons/pdwidgets/icons/keyboard_arrow_down_36dp.pbm",
+    "add_ons/pdwidgets/icons/keyboard_arrow_left_18dp.pbm",
+    "add_ons/pdwidgets/icons/keyboard_arrow_left_36dp.pbm",
+    "add_ons/pdwidgets/icons/keyboard_arrow_right_18dp.pbm",
+    "add_ons/pdwidgets/icons/keyboard_arrow_right_36dp.pbm",
+    "add_ons/pdwidgets/icons/keyboard_arrow_up_18dp.pbm",
+    "add_ons/pdwidgets/icons/keyboard_arrow_up_36dp.pbm",
+    "add_ons/pdwidgets/icons/radio_button_checked_36dp.pbm",
+    "add_ons/pdwidgets/icons/radio_button_unchecked_36dp.pbm",
+    "add_ons/pdwidgets/icons/toggle_off_18dp.pbm",
+    "add_ons/pdwidgets/icons/toggle_off_36dp.pbm",
+    "add_ons/pdwidgets/icons/toggle_on_18dp.pbm",
+    "add_ons/pdwidgets/icons/toggle_on_36dp.pbm",
+    "add_ons/pdwidgets/pct.py",
+    "add_ons/png.py",
+    "add_ons/romfont.py",
+    "add_ons/tft_bitmap.py",
+    "add_ons/tft_config.py",
+    "add_ons/tft_text.py",
+    "add_ons/tft_write.py",
+    "add_ons/wifi.py",
+    "board_configs/bpi_centi_s3/board_config.py",
+    "board_configs/cp_esp32_pico_eyespi_ili9341/board_config.py",
+    "board_configs/diy_esp32_ili9341_xpt2046/board_config.py",
+    "board_configs/ili9341_eyespi_qtpy_esp32s3/board_config.py",
+    "board_configs/ili9341_eyespi_qtpy_rp2040/board_config.py",
+    "board_configs/ili9341_i80_rp2040/board_config.py",
+    "board_configs/ili9341_pico_uno/board_config.py",
+    "board_configs/m5stack_cores3/board_config.py",
+    "board_configs/odroid_go/board_config.py",
+    "board_configs/pico_lcd_1.8/board_config.py",
+    "board_configs/rp2040_touch_lcd_1.28/board_config.py",
+    "board_configs/seeed_gc9a01_on_qtpy_esp32s3/board_config.py",
+    "board_configs/seeed_gc9a01_on_qtpy_rp2040/board_config.py",
+    "board_configs/t_display_s3/board_config.py",
+    "board_configs/t_dongle_s3/board_config.py",
+    "board_configs/t_embed/board_config.py",
+    "board_configs/t_hmi/board_config.py",
+    "board_configs/t_qt_pro/board_config.py",
+    "board_configs/wt32sc01_plus/board_config.py",
+    "bus_drv/_rp2_wip.py",
+    "bus_drv/gpio_pin.py",
+    "bus_drv/i80bus.py",
+    "display_drv/gc9a01.py",
+    "display_drv/gc9d01.py",
+    "display_drv/hx8357.py",
+    "display_drv/ili9163.py",
+    "display_drv/ili9341.py",
+    "display_drv/ili9488.py",
+    "display_drv/st7701.py",
+    "display_drv/st7735.py",
+    "display_drv/st7735r.py",
+    "display_drv/st7735r_1.py",
+    "display_drv/st7789.py",
+    "display_drv/st7789vw.py",
+    "display_drv/st7796_test.py",
+    "displaysys/fbdisplay.py",
+    "displaysys/jndisplay.py",
+    "displaysys/pgdisplay.py",
+    "displaysys/psdisplay.py",
+    "displaysys/sdldisplay/__init__.py",
+    "displaysys/sdldisplay/_sdl2_lib/__init__.py",
+    "displaysys/sdldisplay/_sdl2_lib/_constants.py",
+    "displaysys/sdldisplay/_sdl2_lib/_cpython.py",
+    "displaysys/sdldisplay/_sdl2_lib/_micropython.py",
+    "touch_drv/chsc6x.py",
+    "touch_drv/cst8xx.py",
+    "touch_drv/ft6x36.py",
+    "touch_drv/gt911.py",
+    "touch_drv/xpt2046.py"
+  ],
+  "schema": 1,
+  "summary": {
+    "retained_unreachable": {
+      "expanded_source_bytes": 731358,
+      "files": 107,
+      "python_files": 86
+    },
+    "source_payload": {
+      "expanded_source_bytes": 1049292,
+      "files": 146,
+      "python_files": 125
+    },
+    "statically_reachable": {
+      "expanded_source_bytes": 317934,
+      "files": 39,
+      "python_files": 39
+    }
+  },
+  "vendor_source_identifier": "sha256:881d8740b62117975be763f8e291c215aaa3b70daaea34222abfd0e5da5b3cdd"
+}

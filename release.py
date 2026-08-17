@@ -22,6 +22,8 @@ from release_utils import (
     ensure_safe_output, file_inventory, inventory_identifier, read_json,
     sha256_file, sha256_source_file, write_json,
 )
+from pydevices_inventory import check_inventory as check_pydevices_inventory
+from pydevices_upstream import check_upstream_mapping
 from vendor_lock import check_lock
 
 
@@ -277,6 +279,8 @@ def build_release(
     profile = read_json(profile_path)
     packages = read_json(packages_path)
     vendor = check_lock()
+    check_pydevices_inventory(dist=dist)
+    check_upstream_mapping()
     try:
         commit = _git_value("rev-parse", "HEAD")
         dirty = bool(_git_value("status", "--porcelain"))

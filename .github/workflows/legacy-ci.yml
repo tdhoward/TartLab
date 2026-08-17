@@ -71,6 +71,9 @@ jobs:
           python makedist.py --output build/two/dist --clean --skip-web-build
           python release.py --dist build/two/dist --output build/two/release --clean --version "$BUILD_VERSION"
 
+      - name: Verify PyDevices import and payload inventory
+        run: python tools/pydevices_inventory.py --dist build/one/dist
+
       - name: Build pinned MicroPython 1.23 host tools
         shell: bash
         run: |
@@ -114,6 +117,9 @@ jobs:
 
       - name: Run Phase 2 host tests
         run: python -m unittest tests.test_phase2 -v
+
+      - name: Run Phase 4 vendor inventory and upstream mapping tests
+        run: python -m unittest tests.test_phase4 -v
 
       - name: Run virtual-device recovery tests
         run: python -m unittest tests.test_virtual_device -v

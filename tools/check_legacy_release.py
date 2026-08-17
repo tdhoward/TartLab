@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 import release as release_tools
+from pydevices_inventory import check_inventory as check_pydevices_inventory
+from pydevices_upstream import check_upstream_mapping
 from release_utils import file_inventory, read_json, sha256_file
 from vendor_lock import check_lock
 
@@ -99,6 +101,8 @@ def check(dist: Path, release_dir: Path) -> dict[str, object]:
     dist = dist.resolve()
     release_dir = release_dir.resolve()
     check_lock()
+    check_pydevices_inventory(dist=dist)
+    check_upstream_mapping()
     manifest = read_json(release_dir / "manifest.json")
     metadata = read_json(release_dir / "build_metadata.json")
     checksums = read_json(release_dir / "checksums.json")

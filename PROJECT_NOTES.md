@@ -269,17 +269,19 @@ The deployed capture quantifies the pruning opportunity: `/lib/pydevices` contai
 
 The upstream project has been reorganized into multiple repositories:
 
-- `PyDevices/pydisplay`: portable display, event, and timer core.
-- `PyDevices/micropython-hardware`: MicroPython/CircuitPython board configurations and hardware drivers that previously lived inside PyDisplay.
+- `PyDevices/pydisplay`: top-level integration, examples, documentation, and display utility modules.
+- `PyDevices/pydevices`: canonical display, event, timer, hardware-driver, and board-configuration packages. The former `PyDevices/micropython-hardware` URL redirects here.
 - `PyDevices/pygraphics`: graphics functionality now maintained as a sister package.
+- `PyDevices/palettes`: color palettes now maintained as a separate package.
 - `PyDevices/lv_micropython_cmod` and `PyDevices/lv_bindings`: LVGL integration for custom MicroPython builds.
 - `PyDevices/cmods`: optional workspace and scripts for building MicroPython with multiple native user C modules.
 
 Relevant upstream repositories:
 
 - <https://github.com/PyDevices/pydisplay>
-- <https://github.com/PyDevices/micropython-hardware>
+- <https://github.com/PyDevices/pydevices>
 - <https://github.com/PyDevices/pygraphics>
+- <https://github.com/PyDevices/palettes>
 - <https://github.com/PyDevices/lv_micropython_cmod>
 - <https://github.com/PyDevices/lv_bindings>
 - <https://github.com/PyDevices/cmods>
@@ -516,8 +518,8 @@ environment requires an approving reviewer.
 
 Implementation status (2026-08-12): three headless testing slices and a pinned
 MicroPython compatibility tier are in place. The CPython hardware-free suite
-contains 52 tests; CI also builds the MicroPython v1.23.0 Unix interpreter and
-cross-compiler from pinned commit
+contained 52 tests at this checkpoint; CI also builds the MicroPython v1.23.0
+Unix interpreter and cross-compiler from pinned commit
 `a61c446c0b34e82aeb54b9770250d267656f2b7f`.
 `tests/virtual_device.py` provides an isolated device-root filesystem,
 deterministic capacity reporting, a mutation journal, and abrupt power-loss
@@ -567,9 +569,35 @@ or radio behavior.
 
 ### Phase 4: Migrate and prune PyDevices behind the abstraction
 
-1. Inventory which modules from the current embedded `pydevices` tree TartLab actually imports at runtime.
-2. Identify the current upstream equivalents across `pydisplay`, `micropython-hardware`, and `pygraphics`.
-3. Confirm whether a maintained T-Display-S3 Pro board configuration exists upstream; otherwise port TartLab's working board configuration behind the TartLab platform contract.
+Implementation status (2026-08-16): the import/payload inventory and current
+upstream-equivalence audit are implemented without changing the vendor runtime.
+A conservative static analysis starts separately from the TartLab platform/IDE boundary, the default
+T-Display-S3 Pro adapter, and all shipped Python examples. It classifies 39 of
+the locked payload's 146 files as reachable (317,934 normalized source bytes)
+and explicitly records the remaining 107 files (731,358 bytes) as retained but
+not statically reachable. Conditional and function-local imports are included;
+runtime-string imports remain an explicit limitation. CI checks both the source
+analysis and the exact generated `dist/lib/pydevices` path set against
+`vendor/legacy-pydevices.imports.json`. No file has been pruned by this step.
+
+The reviewed `vendor/legacy-pydevices.upstream.json` pins four official
+upstream trees at full commits and maps all 39 reachable files. Thirty-eight
+have maintained equivalents; the TartLab-added QOI reader has none. The current
+split includes the separate `palettes` repository, and the former
+`micropython-hardware` URL now resolves to the canonical `pydevices` repository.
+No mapped file is a drop-in replacement for the legacy payload. A maintained
+T-Display-S3 Pro board configuration does exist at the audited `pydevices` pin,
+but it uses current `displaydev` and `eventsys` contracts rather than TartLab's
+legacy `displaysys`/`Broker` exports. These audit pins do not approve a source
+replacement or establish MicroPython 1.23 compatibility.
+
+1. **Implemented:** inventory which modules from the current embedded
+   `pydevices` tree TartLab imports through the reviewed static roots.
+2. **Implemented:** identify and pin the current upstream equivalents across
+   `pydisplay`, canonical `pydevices`, `pygraphics`, and `palettes`.
+3. **Confirmed:** a maintained T-Display-S3 Pro board configuration exists
+   upstream; choosing and implementing the compatibility adapter remains part
+   of the vendor-pipeline work.
 4. Create the pinned vendor lock/allowlist pipeline.
 5. Build a minimal legacy-compatible payload without exposing upstream paths or APIs to core TartLab code.
 6. Compare flash usage, RAM at startup, display initialization time, frame/update performance, touch behavior, and OTA recovery against the Phase 2 legacy baseline.

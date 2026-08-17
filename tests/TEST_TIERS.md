@@ -6,15 +6,28 @@ tests provide fast feedback, but they do not replace the physical release gate.
 ## Tier 0: build and static checks
 
 Run deterministic builds, source compilation, archive ownership, provenance,
-hash, and size-budget checks on every change. These checks require neither a
-virtual device nor physical hardware and run in `legacy-ci.yml`.
+hash, size-budget, and PyDevices import/payload inventory checks on every
+change. These checks require neither a virtual device nor physical hardware and
+run in `legacy-ci.yml`.
+
+`tools/pydevices_inventory.py` follows static imports from the core platform,
+the default T-Display-S3 Pro adapter, and every shipped Python example. Its
+reviewed allowlist partitions every locked vendor file into one reachable
+category or an explicitly retained-unreachable set. CI compares the generated
+`dist/lib/pydevices` tree with the same partition. This is a conservative static
+claim, not proof that every runtime-dependent import path has executed.
+
+`tools/pydevices_upstream.py` validates the separate current-upstream audit:
+full repository commits and license hashes, a unique classification for every
+reachable file, and the explicit finding that none is a drop-in legacy
+replacement. It performs no network fetch and does not change release content.
 
 ## Tier 1: CPython virtual device
 
 Run:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
 ```
 
 `tests/virtual_device.py` maps MicroPython-style absolute paths into an isolated

@@ -1,0 +1,527 @@
+{
+  "analysis": {
+    "compatibility_finding": "Every located equivalent has moved, renamed, or materially evolved; none is approved as a drop-in replacement for the MicroPython 1.23 legacy payload.",
+    "kind": "current-upstream-equivalence-audit",
+    "limitations": [
+      "Repository pins identify the trees reviewed for this audit; they are not an approved runtime vendor lock.",
+      "Equivalent means maintained lineage or replacement functionality, not source or API compatibility.",
+      "The search covered the four current official repositories needed by the reviewed reachable set.",
+      "MicroPython 1.23 import, memory, timing, display, touch, and OTA compatibility remains unverified."
+    ],
+    "reviewed_at": "2026-08-16"
+  },
+  "inventory_file": "vendor/legacy-pydevices.imports.json",
+  "mappings": [
+    {
+      "drop_in_compatible": false,
+      "local_path": "graphics/__init__.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/pygraphics/__init__.py",
+          "repository": "pygraphics"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "graphics/_area.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/pygraphics/_area.py",
+          "repository": "pygraphics"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "graphics/_draw.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/pygraphics/_draw.py",
+          "repository": "pygraphics"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "graphics/_files.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/pygraphics/_files.py",
+          "repository": "pygraphics"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "graphics/_font.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/pygraphics/_font.py",
+          "repository": "pygraphics"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "graphics/_font_8x14.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/pygraphics/_font_8x14.py",
+          "repository": "pygraphics"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "graphics/_font_8x16.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/pygraphics/_font_8x16.py",
+          "repository": "pygraphics"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "graphics/_font_8x8.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/pygraphics/_font_8x8.py",
+          "repository": "pygraphics"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "graphics/_framebuf.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/pygraphics/framebuf.py",
+          "repository": "pygraphics"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "graphics/_framebuf_plus.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/pygraphics/_framebuf_plus.py",
+          "repository": "pygraphics"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "graphics/_shapes.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/pygraphics/_shapes.py",
+          "repository": "pygraphics"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "add_ons/bmp565.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/pygraphics/_bmp565.py",
+          "repository": "pygraphics"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "add_ons/displaybuf.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "lib/utils/displaybuf.py",
+          "repository": "pydisplay"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "add_ons/qoi_reader.py",
+      "note": "No QOI reader path or source reference exists in any of the four pinned trees; this file was added in TartLab history after the original snapshot.",
+      "relationship": "no_current_equivalent",
+      "upstream": []
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "add_ons/touch_keypad.py",
+      "relationship": "restructured_evolved",
+      "upstream": [
+        {
+          "path": "lib/eventsys/touch_keypad.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "eventsys/keys.py",
+      "relationship": "restructured_evolved",
+      "upstream": [
+        {
+          "path": "lib/keys.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "palettes/__init__.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "lib/palettes/__init__.py",
+          "repository": "palettes"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "palettes/_cube125.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "lib/palettes/_cube125.py",
+          "repository": "palettes"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "palettes/_cube27.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "lib/palettes/_cube27.py",
+          "repository": "palettes"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "palettes/_cube64.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "lib/palettes/_cube64.py",
+          "repository": "palettes"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "palettes/_cube8.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "lib/palettes/_cube8.py",
+          "repository": "palettes"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "palettes/_material_design.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "lib/palettes/_material_design.py",
+          "repository": "palettes"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "palettes/cube.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "lib/palettes/cube.py",
+          "repository": "palettes"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "palettes/material_design.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "lib/palettes/material_design.py",
+          "repository": "palettes"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "palettes/wheel.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "lib/palettes/wheel.py",
+          "repository": "palettes"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "add_ons/byteswap.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "utils/byteswap.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "add_ons/viper_tools.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "utils/viper_tools.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "board_configs/t_display_s3_pro/board_config.py",
+      "note": "A maintained upstream board configuration exists, but it uses the current displaydev/eventsys contracts and is not compatible with TartLab's legacy Broker exports.",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "board_configs/busdisplay/spi/t-display-s3-pro/board_config.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "bus_drv/spibus.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "drivers/bus/spibus.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "display_drv/st7796.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "drivers/display/st7796.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "displaysys/__init__.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/displaydev/__init__.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "displaysys/busdisplay.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/displaydev/busdisplay.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "eventsys/__init__.py",
+      "relationship": "split_evolved",
+      "upstream": [
+        {
+          "path": "lib/events.py",
+          "repository": "pydevices"
+        },
+        {
+          "path": "lib/eventsys/__init__.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "eventsys/devices.py",
+      "note": "The legacy Broker and QueueDevice API no longer has a single-file equivalent; event definitions, devices, subscriptions, polling, and runtime ownership are separated.",
+      "relationship": "split_evolved",
+      "upstream": [
+        {
+          "path": "lib/eventsys/_device.py",
+          "repository": "pydevices"
+        },
+        {
+          "path": "lib/eventsys/_encoder.py",
+          "repository": "pydevices"
+        },
+        {
+          "path": "lib/eventsys/_host.py",
+          "repository": "pydevices"
+        },
+        {
+          "path": "lib/eventsys/_joystick.py",
+          "repository": "pydevices"
+        },
+        {
+          "path": "lib/eventsys/_keypad.py",
+          "repository": "pydevices"
+        },
+        {
+          "path": "lib/eventsys/_runtime.py",
+          "repository": "pydevices"
+        },
+        {
+          "path": "lib/eventsys/_touch.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "multimer/__init__.py",
+      "relationship": "split_evolved",
+      "upstream": [
+        {
+          "path": "lib/multimer/__init__.py",
+          "repository": "pydevices"
+        },
+        {
+          "path": "lib/multimer/_select.py",
+          "repository": "pydevices"
+        },
+        {
+          "path": "lib/multimer/_timer.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "multimer/_librt.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "lib/multimer/_backends/librt.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "multimer/_sdl2.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "lib/multimer/_backends/sdl2.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "multimer/_timerbase.py",
+      "relationship": "renamed_evolved",
+      "upstream": [
+        {
+          "path": "lib/multimer/_core.py",
+          "repository": "pydevices"
+        }
+      ]
+    },
+    {
+      "drop_in_compatible": false,
+      "local_path": "touch_drv/cst226.py",
+      "relationship": "moved_evolved",
+      "upstream": [
+        {
+          "path": "drivers/touch/cst226.py",
+          "repository": "pydevices"
+        }
+      ]
+    }
+  ],
+  "repositories": {
+    "palettes": {
+      "checkout_directory": "palettes",
+      "commit": "069e97dbc4c090873b871b1be8b5d44ca4cc4e8e",
+      "commit_date": "2026-08-14T00:17:25-05:00",
+      "license": "MIT",
+      "license_canonical_sha256": "2f3dc1c15a2c76b3b4cc9f01c981cec4b6a79aa707448b5d129ef029f8295d0f",
+      "license_path": "LICENSE",
+      "url": "https://github.com/PyDevices/palettes"
+    },
+    "pydevices": {
+      "checkout_directory": "pydevices",
+      "commit": "7561eee626f976d041a240423686fe0f3e11d52a",
+      "commit_date": "2026-08-14T05:19:03-05:00",
+      "license": "MIT",
+      "license_canonical_sha256": "2b6c8774df3dfa5168e89db688b22b88ef7c012b71a6a9b9f917ca56e16b0843",
+      "license_path": "LICENSE",
+      "redirected_from": "https://github.com/PyDevices/micropython-hardware",
+      "url": "https://github.com/PyDevices/pydevices"
+    },
+    "pydisplay": {
+      "checkout_directory": "pydisplay",
+      "commit": "e6c863ad6806cea8d0818406065776fd35b6dd94",
+      "commit_date": "2026-08-14T05:24:49-05:00",
+      "license": "MIT",
+      "license_canonical_sha256": "2f3dc1c15a2c76b3b4cc9f01c981cec4b6a79aa707448b5d129ef029f8295d0f",
+      "license_path": "LICENSE",
+      "url": "https://github.com/PyDevices/pydisplay"
+    },
+    "pygraphics": {
+      "checkout_directory": "pygraphics",
+      "commit": "cc98eef93e645dc30ca3288f94a7e9e2f3ef3f71",
+      "commit_date": "2026-08-14T00:17:36-05:00",
+      "license": "MIT",
+      "license_canonical_sha256": "2b6c8774df3dfa5168e89db688b22b88ef7c012b71a6a9b9f917ca56e16b0843",
+      "license_path": "LICENSE",
+      "url": "https://github.com/PyDevices/pygraphics"
+    }
+  },
+  "runtime_replacement_approved": false,
+  "schema": 1,
+  "summary": {
+    "drop_in_compatible_files": 0,
+    "mapped_files": 38,
+    "pinned_repositories": 4,
+    "reviewed_reachable_files": 39,
+    "without_current_equivalent": 1
+  }
+}

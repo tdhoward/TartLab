@@ -45,7 +45,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements-build.txt
 npm ci --prefix src/ide/www
 npm run build --prefix src/ide/www
-.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
 ```
 
 On Linux or macOS, use `.venv/bin/python` in place of
@@ -69,7 +69,7 @@ npm run build --prefix src/ide/www
 Run the hardware-free test suite with:
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
 ```
 
 The exact tier boundaries and the optional local Tier 2 command are documented
@@ -86,11 +86,17 @@ build, run:
 .\.venv\Scripts\python.exe makedist.py --output build/legacy/dist --clean --skip-web-build
 .\.venv\Scripts\python.exe release.py --dist build/legacy/dist --output build/legacy/release --clean --version local-development-check
 .\.venv\Scripts\python.exe tools/check_legacy_release.py --dist build/legacy/dist --release build/legacy/release
+.\.venv\Scripts\python.exe tools/pydevices_inventory.py --dist build/legacy/dist
+.\.venv\Scripts\python.exe tools/pydevices_upstream.py
 ```
 
 `release.py` requires a clean Git worktree for a normal candidate. The
 `--allow-dirty` option is available for local diagnostics, but artifacts built
-that way are not promotion eligible.
+that way are not promotion eligible. The PyDevices inventory check compares the
+generated vendor payload with the reviewed Phase 4 reachability partition; it
+does not rely on an old root `dist` directory. The upstream check validates
+that every reachable file has a reviewed classification against full upstream
+commit pins; it neither fetches sources nor changes the runtime payload.
 
 CI builds the pinned MicroPython v1.23.0 Unix interpreter and `mpy-cross`, runs
 the host and compatibility suites, builds the release twice, and requires the

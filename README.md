@@ -97,6 +97,7 @@ npm run build --prefix src/ide/www
 python makedist.py --output build/legacy/dist --clean --skip-web-build
 python release.py --dist build/legacy/dist --output build/legacy/release --clean --version vX.Y
 python tools/check_legacy_release.py --dist build/legacy/dist --release build/legacy/release
+python tools/pydevices_upstream.py
 ```
 
 `release.py` keeps `manifest.json` compatible with the deployed updater and
@@ -117,15 +118,16 @@ TartLab separates fast host checks from physical-device qualification. Run the
 complete implemented hardware-free suite with:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
 ```
 
 The suite covers deterministic releases, the captured legacy layout, OTA and
-recovery fault handling, a virtual device filesystem, startup mode routing, and
-headless IDE initialization. CI additionally compiles the generated runtime and
-executes its platform-independent compatibility probe with pinned MicroPython
-v1.23.0 host tools. The exact tier boundaries, local Tier 2 command, and current
-limitations are documented in
+recovery fault handling, a virtual device filesystem, startup mode routing,
+headless IDE initialization, and the reviewed PyDevices import/payload
+inventory. CI additionally compiles the generated runtime, verifies the built
+vendor payload against that allowlist, and executes its platform-independent
+compatibility probe with pinned MicroPython v1.23.0 host tools. The exact tier
+boundaries, local Tier 2 command, and current limitations are documented in
 [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md). Passing host tests does not replace
 the applicable physical smoke or release-qualification gate.
 
