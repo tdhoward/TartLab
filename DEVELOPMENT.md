@@ -88,6 +88,7 @@ build, run:
 .\.venv\Scripts\python.exe tools/check_legacy_release.py --dist build/legacy/dist --release build/legacy/release
 .\.venv\Scripts\python.exe tools/pydevices_inventory.py --dist build/legacy/dist
 .\.venv\Scripts\python.exe tools/pydevices_upstream.py
+.\.venv\Scripts\python.exe tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
 ```
 
 `release.py` requires a clean Git worktree for a normal candidate. The
@@ -96,7 +97,10 @@ that way are not promotion eligible. The PyDevices inventory check compares the
 generated vendor payload with the reviewed Phase 4 reachability partition; it
 does not rely on an old root `dist` directory. The upstream check validates
 that every reachable file has a reviewed classification against full upstream
-commit pins; it neither fetches sources nor changes the runtime payload.
+commit pins; it neither fetches sources nor changes the runtime payload. The
+candidate vendor command fetches only those pins, selects the explicit
+allowlist, and emits provenance and size reports under ignored `build/vendor`.
+It does not modify `src/lib/pydevices`, `dist`, or a release archive.
 
 CI builds the pinned MicroPython v1.23.0 Unix interpreter and `mpy-cross`, runs
 the host and compatibility suites, builds the release twice, and requires the

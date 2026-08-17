@@ -24,6 +24,7 @@ from release_utils import (
 )
 from pydevices_inventory import check_inventory as check_pydevices_inventory
 from pydevices_upstream import check_upstream_mapping
+from vendor_pydevices import check_vendor_lock as check_pydevices_candidate_lock
 from vendor_lock import check_lock
 
 
@@ -281,6 +282,7 @@ def build_release(
     vendor = check_lock()
     check_pydevices_inventory(dist=dist)
     check_upstream_mapping()
+    check_pydevices_candidate_lock()
     try:
         commit = _git_value("rev-parse", "HEAD")
         dirty = bool(_git_value("status", "--porcelain"))

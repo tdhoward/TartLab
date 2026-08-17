@@ -100,6 +100,16 @@ python tools/check_legacy_release.py --dist build/legacy/dist --release build/le
 python tools/pydevices_upstream.py
 ```
 
+The separate Phase 4 migration candidate can be generated without changing the
+legacy release source:
+
+```text
+python tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
+```
+
+That candidate is pinned and reproducible but remains research-only until its
+compatibility adapters and physical-device gates are complete.
+
 `release.py` keeps `manifest.json` compatible with the deployed updater and
 adds deterministic USTAR archives, file/archive inventories, checksums, size
 budgets, firmware compatibility, Git/build identity, and the locked legacy

@@ -91,3 +91,44 @@ These are research pins, not a runtime vendor lock or authorization to replace
 or prune the historical payload. Phase 4 must still define and validate the
 legacy compatibility adapters and generated allowlist before changing release
 contents.
+
+## Phase 4 generated candidate pipeline
+
+`pydevices-candidate.lock.json` is the noninteractive, pinned allowlist for the
+next migration stage. It cross-checks all four repository pins and all 47
+audited equivalent source paths against `legacy-pydevices.upstream.json`, then
+adds 18 explicit dependency files. There are no globs: all 65 source and
+destination paths are reviewed individually.
+
+`tools/vendor_pydevices.py` reads file and license content from the pinned git
+objects, so checkout line-ending settings cannot change its output. It compiles
+every selected Python file with the host parser, requires the exact reviewed
+sets of external and dynamic import sources, and generates:
+
+- `runtime/`: the 65-file native-layout candidate;
+- `licenses/`: the reviewed MIT license from each repository;
+- `provenance.json`: repository, source, destination, patch, content-hash, and
+  runtime-identifier records; and
+- `size-report.json`: totals grouped by repository and runtime top-level path.
+
+Build from already-pinned local checkouts:
+
+```text
+python tools/vendor_pydevices.py --checkout-root build/upstream-audit --output build/vendor/pydevices-candidate --clean
+```
+
+Or let the tool fetch only the locked commits into a temporary build workspace:
+
+```text
+python tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
+```
+
+Compatibility changes must be strict JSON patch manifests under
+`patches/pydevices-candidate`. Each operation pins its complete input and output
+hashes and exact replacement counts. The lock currently approves zero patches;
+item 5 will introduce only the legacy adapters proven necessary.
+
+At the current pins the generated runtime is 65 files and 510,846 normalized
+source bytes. Its status is `research-only`: it omits TartLab's QOI reader, has
+not passed MicroPython 1.23 or physical-device behavior gates, and is not read by
+`makedist.py`. The checked-in historical payload remains the release source.

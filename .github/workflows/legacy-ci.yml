@@ -74,6 +74,13 @@ jobs:
       - name: Verify PyDevices import and payload inventory
         run: python tools/pydevices_inventory.py --dist build/one/dist
 
+      - name: Build pinned PyDevices migration candidate
+        run: >-
+          python tools/vendor_pydevices.py
+          --fetch
+          --output build/vendor/pydevices-candidate
+          --clean
+
       - name: Build pinned MicroPython 1.23 host tools
         shell: bash
         run: |

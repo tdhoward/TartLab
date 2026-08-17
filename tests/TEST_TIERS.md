@@ -22,6 +22,13 @@ full repository commits and license hashes, a unique classification for every
 reachable file, and the explicit finding that none is a drop-in legacy
 replacement. It performs no network fetch and does not change release content.
 
+`tools/vendor_pydevices.py` builds the separately pinned migration candidate
+from exact git objects and an explicit source/destination allowlist. Tier 0
+checks its pin agreement, audited-source coverage, patch hashes, Python
+host compilation, dependency allowlists, licenses, provenance, deterministic
+runtime identifier, and size report. The output remains under ignored
+`build/vendor` and is not a legacy release input.
+
 ## Tier 1: CPython virtual device
 
 Run:

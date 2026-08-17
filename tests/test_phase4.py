@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -12,6 +13,12 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from pydevices_inventory import check_inventory, distribution_paths
 from pydevices_upstream import check_upstream_mapping, validate_mapping
+from vendor_pydevices import (
+    apply_patch_manifest,
+    audit_runtime_imports,
+    check_vendor_lock,
+    validate_vendor_lock,
+)
 
 
 class PyDevicesImportInventoryTests(unittest.TestCase):
@@ -100,6 +107,71 @@ class PyDevicesUpstreamMappingTests(unittest.TestCase):
             (ROOT / "vendor/legacy-pydevices.imports.json").read_text())
         with self.assertRaisesRegex(ValueError, "duplicate local paths"):
             validate_mapping(invalid, inventory)
+
+
+class PyDevicesCandidatePipelineTests(unittest.TestCase):
+    def test_candidate_lock_is_explicit_and_not_promotion_approved(self):
+        lock = check_vendor_lock()
+        self.assertEqual(lock["promotion_status"], "research-only")
+        self.assertEqual(lock["summary"], {
+            "dependency_files": 18,
+            "mapped_equivalent_sources": 47,
+            "patch_files": 0,
+            "pinned_repositories": 4,
+            "selected_source_files": 65,
+        })
+        destinations = {item["destination"] for item in lock["files"]}
+        self.assertIn("board_config.py", destinations)
+        self.assertIn("board_peripherals.py", destinations)
+        self.assertNotIn("qoi_reader.py", destinations)
+
+    def test_candidate_lock_rejects_missing_audited_source(self):
+        lock = check_vendor_lock()
+        invalid = copy.deepcopy(lock)
+        invalid["files"].pop(0)
+        invalid["summary"]["mapped_equivalent_sources"] -= 1
+        invalid["summary"]["selected_source_files"] -= 1
+        mapping = check_upstream_mapping()
+        with self.assertRaisesRegex(
+                ValueError, "mapped-equivalent coverage mismatch"):
+            validate_vendor_lock(invalid, mapping)
+
+    def test_runtime_import_audit_rejects_unapproved_dependency(self):
+        with tempfile.TemporaryDirectory() as temp:
+            runtime = Path(temp)
+            (runtime / "module.py").write_text("import unreviewed_dependency\n")
+            with self.assertRaisesRegex(
+                    ValueError, "external import allowlist mismatch"):
+                audit_runtime_imports(runtime, [], [])
+
+    def test_patch_manifest_requires_exact_preimage_and_result(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = root / "runtime"
+            runtime.mkdir()
+            target = runtime / "module.py"
+            before = b"VALUE = 1\n"
+            after = b"VALUE = 2\n"
+            target.write_bytes(before)
+            patch = {
+                "operations": [{
+                    "after_sha256": hashlib.sha256(after).hexdigest(),
+                    "before_sha256": hashlib.sha256(before).hexdigest(),
+                    "path": "module.py",
+                    "replacements": [{
+                        "count": 1,
+                        "new": "VALUE = 2",
+                        "old": "VALUE = 1",
+                    }],
+                }],
+                "schema": 1,
+            }
+            patch_path = root / "compat.patch.json"
+            patch_path.write_text(json.dumps(patch))
+            apply_patch_manifest(patch_path, runtime, {"module.py"})
+            self.assertEqual(target.read_bytes(), after)
+            with self.assertRaisesRegex(ValueError, "preimage mismatch"):
+                apply_patch_manifest(patch_path, runtime, {"module.py"})
 
 
 if __name__ == "__main__":

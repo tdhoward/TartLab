@@ -569,9 +569,10 @@ or radio behavior.
 
 ### Phase 4: Migrate and prune PyDevices behind the abstraction
 
-Implementation status (2026-08-16): the import/payload inventory and current
-upstream-equivalence audit are implemented without changing the vendor runtime.
-A conservative static analysis starts separately from the TartLab platform/IDE boundary, the default
+Implementation status (2026-08-16): the import/payload inventory,
+current-upstream equivalence audit, and pinned candidate vendor pipeline are
+implemented without changing the vendor runtime. A conservative static analysis
+starts separately from the TartLab platform/IDE boundary, the default
 T-Display-S3 Pro adapter, and all shipped Python examples. It classifies 39 of
 the locked payload's 146 files as reachable (317,934 normalized source bytes)
 and explicitly records the remaining 107 files (731,358 bytes) as retained but
@@ -591,14 +592,27 @@ but it uses current `displaydev` and `eventsys` contracts rather than TartLab's
 legacy `displaysys`/`Broker` exports. These audit pins do not approve a source
 replacement or establish MicroPython 1.23 compatibility.
 
+The candidate lock selects all 47 unique upstream sources referenced by that
+mapping plus 18 explicit dependencies. The noninteractive vendor tool reads
+content from exact git objects, preserves all four licenses, applies only
+hash-pinned strict patch manifests, host-compiles selected Python sources,
+enforces the reviewed external/dynamic-import sets, and emits deterministic
+provenance and size reports. Two independent local generations produced the same complete
+71-file output inventory and the same 65-file runtime identifier. The unpatched
+runtime is 510,846 normalized source bytes, 48.7% of the historical snapshot's
+1,049,292 bytes. This is a planning comparison, not a flash-savings claim:
+current APIs remain incompatible, TartLab's QOI reader is absent, and neither
+MicroPython 1.23 runtime behavior nor physical hardware behavior is established.
+
 1. **Implemented:** inventory which modules from the current embedded
    `pydevices` tree TartLab imports through the reviewed static roots.
 2. **Implemented:** identify and pin the current upstream equivalents across
    `pydisplay`, canonical `pydevices`, `pygraphics`, and `palettes`.
 3. **Confirmed:** a maintained T-Display-S3 Pro board configuration exists
-   upstream; choosing and implementing the compatibility adapter remains part
-   of the vendor-pipeline work.
-4. Create the pinned vendor lock/allowlist pipeline.
+   upstream; choosing and implementing the compatibility adapter remains item 5.
+4. **Implemented:** create the pinned, explicit vendor lock/allowlist pipeline
+   with license retention, strict patch support, dependency gates, deterministic
+   provenance, and size reporting. The generated tree remains research-only.
 5. Build a minimal legacy-compatible payload without exposing upstream paths or APIs to core TartLab code.
 6. Compare flash usage, RAM at startup, display initialization time, frame/update performance, touch behavior, and OTA recovery against the Phase 2 legacy baseline.
 7. Promote the new vendor payload only after it passes the established legacy CI and physical-device OTA gates.

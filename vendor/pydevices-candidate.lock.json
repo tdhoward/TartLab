@@ -1,0 +1,487 @@
+{
+  "allowed_dynamic_import_sources": [
+    "displaydev/__init__.py",
+    "multimer/__init__.py",
+    "multimer/_asyncio_loader.py",
+    "pygraphics/__init__.py",
+    "pygraphics/_font.py"
+  ],
+  "allowed_external_imports": [
+    "__main__",
+    "_asyncio",
+    "_thread",
+    "array",
+    "asyncio",
+    "atexit",
+    "bluetooth",
+    "collections",
+    "ctypes",
+    "digitalio",
+    "ffi",
+    "framebuf",
+    "gc",
+    "js",
+    "machine",
+    "micropython",
+    "network",
+    "numpy",
+    "os",
+    "pygame",
+    "pyscript",
+    "select",
+    "signal",
+    "struct",
+    "supervisor",
+    "sys",
+    "threading",
+    "time",
+    "traceback",
+    "uasyncio",
+    "uctypes",
+    "ulab",
+    "usdl2",
+    "uwin32"
+  ],
+  "files": [
+    {
+      "destination": "displaybuf.py",
+      "repository": "pydisplay",
+      "role": "mapped-equivalent",
+      "source": "lib/utils/displaybuf.py"
+    },
+    {
+      "destination": "pygraphics/__init__.py",
+      "repository": "pygraphics",
+      "role": "mapped-equivalent",
+      "source": "lib/pygraphics/__init__.py"
+    },
+    {
+      "destination": "pygraphics/_area.py",
+      "repository": "pygraphics",
+      "role": "mapped-equivalent",
+      "source": "lib/pygraphics/_area.py"
+    },
+    {
+      "destination": "pygraphics/_blit_hooks.py",
+      "repository": "pygraphics",
+      "role": "dependency",
+      "source": "lib/pygraphics/_blit_hooks.py"
+    },
+    {
+      "destination": "pygraphics/_bmp565.py",
+      "repository": "pygraphics",
+      "role": "mapped-equivalent",
+      "source": "lib/pygraphics/_bmp565.py"
+    },
+    {
+      "destination": "pygraphics/_clip.py",
+      "repository": "pygraphics",
+      "role": "dependency",
+      "source": "lib/pygraphics/_clip.py"
+    },
+    {
+      "destination": "pygraphics/_draw.py",
+      "repository": "pygraphics",
+      "role": "mapped-equivalent",
+      "source": "lib/pygraphics/_draw.py"
+    },
+    {
+      "destination": "pygraphics/_files.py",
+      "repository": "pygraphics",
+      "role": "mapped-equivalent",
+      "source": "lib/pygraphics/_files.py"
+    },
+    {
+      "destination": "pygraphics/_font.py",
+      "repository": "pygraphics",
+      "role": "mapped-equivalent",
+      "source": "lib/pygraphics/_font.py"
+    },
+    {
+      "destination": "pygraphics/_font_8x14.py",
+      "repository": "pygraphics",
+      "role": "mapped-equivalent",
+      "source": "lib/pygraphics/_font_8x14.py"
+    },
+    {
+      "destination": "pygraphics/_font_8x16.py",
+      "repository": "pygraphics",
+      "role": "mapped-equivalent",
+      "source": "lib/pygraphics/_font_8x16.py"
+    },
+    {
+      "destination": "pygraphics/_font_8x8.py",
+      "repository": "pygraphics",
+      "role": "mapped-equivalent",
+      "source": "lib/pygraphics/_font_8x8.py"
+    },
+    {
+      "destination": "pygraphics/_framebuf_plus.py",
+      "repository": "pygraphics",
+      "role": "mapped-equivalent",
+      "source": "lib/pygraphics/_framebuf_plus.py"
+    },
+    {
+      "destination": "pygraphics/_shapes.py",
+      "repository": "pygraphics",
+      "role": "mapped-equivalent",
+      "source": "lib/pygraphics/_shapes.py"
+    },
+    {
+      "destination": "pygraphics/_trig.py",
+      "repository": "pygraphics",
+      "role": "dependency",
+      "source": "lib/pygraphics/_trig.py"
+    },
+    {
+      "destination": "pygraphics/framebuf.py",
+      "repository": "pygraphics",
+      "role": "mapped-equivalent",
+      "source": "lib/pygraphics/framebuf.py"
+    },
+    {
+      "destination": "palettes/__init__.py",
+      "repository": "palettes",
+      "role": "mapped-equivalent",
+      "source": "lib/palettes/__init__.py"
+    },
+    {
+      "destination": "palettes/_cube125.py",
+      "repository": "palettes",
+      "role": "mapped-equivalent",
+      "source": "lib/palettes/_cube125.py"
+    },
+    {
+      "destination": "palettes/_cube27.py",
+      "repository": "palettes",
+      "role": "mapped-equivalent",
+      "source": "lib/palettes/_cube27.py"
+    },
+    {
+      "destination": "palettes/_cube64.py",
+      "repository": "palettes",
+      "role": "mapped-equivalent",
+      "source": "lib/palettes/_cube64.py"
+    },
+    {
+      "destination": "palettes/_cube8.py",
+      "repository": "palettes",
+      "role": "mapped-equivalent",
+      "source": "lib/palettes/_cube8.py"
+    },
+    {
+      "destination": "palettes/_material_design.py",
+      "repository": "palettes",
+      "role": "mapped-equivalent",
+      "source": "lib/palettes/_material_design.py"
+    },
+    {
+      "destination": "palettes/cube.py",
+      "repository": "palettes",
+      "role": "mapped-equivalent",
+      "source": "lib/palettes/cube.py"
+    },
+    {
+      "destination": "palettes/material_design.py",
+      "repository": "palettes",
+      "role": "mapped-equivalent",
+      "source": "lib/palettes/material_design.py"
+    },
+    {
+      "destination": "palettes/wheel.py",
+      "repository": "palettes",
+      "role": "mapped-equivalent",
+      "source": "lib/palettes/wheel.py"
+    },
+    {
+      "destination": "byteswap.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "utils/byteswap.py"
+    },
+    {
+      "destination": "viper_tools.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "utils/viper_tools.py"
+    },
+    {
+      "destination": "board_config.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "board_configs/busdisplay/spi/t-display-s3-pro/board_config.py"
+    },
+    {
+      "destination": "board_peripherals.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "board_configs/busdisplay/spi/t-display-s3-pro/board_peripherals.py"
+    },
+    {
+      "destination": "boarddev.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "drivers/boarddev.py"
+    },
+    {
+      "destination": "battery_adc.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "drivers/power/battery_adc.py"
+    },
+    {
+      "destination": "sdcard.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "drivers/storage/sdcard.py"
+    },
+    {
+      "destination": "spibus.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "drivers/bus/spibus.py"
+    },
+    {
+      "destination": "st7796.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "drivers/display/st7796.py"
+    },
+    {
+      "destination": "cst226.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "drivers/touch/cst226.py"
+    },
+    {
+      "destination": "displaydev/__init__.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/displaydev/__init__.py"
+    },
+    {
+      "destination": "displaydev/busdisplay.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/displaydev/busdisplay.py"
+    },
+    {
+      "destination": "events.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/events.py"
+    },
+    {
+      "destination": "keys.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/keys.py"
+    },
+    {
+      "destination": "eventsys/__init__.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/eventsys/__init__.py"
+    },
+    {
+      "destination": "eventsys/_capabilities.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "lib/eventsys/_capabilities.py"
+    },
+    {
+      "destination": "eventsys/_device.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/eventsys/_device.py"
+    },
+    {
+      "destination": "eventsys/_encoder.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/eventsys/_encoder.py"
+    },
+    {
+      "destination": "eventsys/_host.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/eventsys/_host.py"
+    },
+    {
+      "destination": "eventsys/_joystick.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/eventsys/_joystick.py"
+    },
+    {
+      "destination": "eventsys/_keypad.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/eventsys/_keypad.py"
+    },
+    {
+      "destination": "eventsys/_runtime.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/eventsys/_runtime.py"
+    },
+    {
+      "destination": "eventsys/_touch.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/eventsys/_touch.py"
+    },
+    {
+      "destination": "eventsys/touch_keypad.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/eventsys/touch_keypad.py"
+    },
+    {
+      "destination": "multimer/__init__.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/multimer/__init__.py"
+    },
+    {
+      "destination": "multimer/_async_timer.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "lib/multimer/_async_timer.py"
+    },
+    {
+      "destination": "multimer/_asyncio_loader.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "lib/multimer/_asyncio_loader.py"
+    },
+    {
+      "destination": "multimer/_core.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/multimer/_core.py"
+    },
+    {
+      "destination": "multimer/_mpasyncio.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "lib/multimer/_mpasyncio.py"
+    },
+    {
+      "destination": "multimer/_schedule.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "lib/multimer/_schedule.py"
+    },
+    {
+      "destination": "multimer/_select.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/multimer/_select.py"
+    },
+    {
+      "destination": "multimer/_ticks.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "lib/multimer/_ticks.py"
+    },
+    {
+      "destination": "multimer/_timer.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/multimer/_timer.py"
+    },
+    {
+      "destination": "multimer/asyncio_compat.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "lib/multimer/asyncio_compat.py"
+    },
+    {
+      "destination": "multimer/_backends/__init__.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "lib/multimer/_backends/__init__.py"
+    },
+    {
+      "destination": "multimer/_backends/librt.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/multimer/_backends/librt.py"
+    },
+    {
+      "destination": "multimer/_backends/polling.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "lib/multimer/_backends/polling.py"
+    },
+    {
+      "destination": "multimer/_backends/sdl2.py",
+      "repository": "pydevices",
+      "role": "mapped-equivalent",
+      "source": "lib/multimer/_backends/sdl2.py"
+    },
+    {
+      "destination": "multimer/_backends/threading.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "lib/multimer/_backends/threading.py"
+    },
+    {
+      "destination": "multimer/_backends/win32.py",
+      "repository": "pydevices",
+      "role": "dependency",
+      "source": "lib/multimer/_backends/win32.py"
+    }
+  ],
+  "patches": [],
+  "profile": "legacy-mp123-candidate",
+  "promotion_status": "research-only",
+  "repositories": {
+    "palettes": {
+      "checkout_directory": "palettes",
+      "commit": "069e97dbc4c090873b871b1be8b5d44ca4cc4e8e",
+      "commit_date": "2026-08-14T00:17:25-05:00",
+      "license": "MIT",
+      "license_canonical_sha256": "2f3dc1c15a2c76b3b4cc9f01c981cec4b6a79aa707448b5d129ef029f8295d0f",
+      "license_path": "LICENSE",
+      "url": "https://github.com/PyDevices/palettes"
+    },
+    "pydevices": {
+      "checkout_directory": "pydevices",
+      "commit": "7561eee626f976d041a240423686fe0f3e11d52a",
+      "commit_date": "2026-08-14T05:19:03-05:00",
+      "license": "MIT",
+      "license_canonical_sha256": "2b6c8774df3dfa5168e89db688b22b88ef7c012b71a6a9b9f917ca56e16b0843",
+      "license_path": "LICENSE",
+      "url": "https://github.com/PyDevices/pydevices"
+    },
+    "pydisplay": {
+      "checkout_directory": "pydisplay",
+      "commit": "e6c863ad6806cea8d0818406065776fd35b6dd94",
+      "commit_date": "2026-08-14T05:24:49-05:00",
+      "license": "MIT",
+      "license_canonical_sha256": "2f3dc1c15a2c76b3b4cc9f01c981cec4b6a79aa707448b5d129ef029f8295d0f",
+      "license_path": "LICENSE",
+      "url": "https://github.com/PyDevices/pydisplay"
+    },
+    "pygraphics": {
+      "checkout_directory": "pygraphics",
+      "commit": "cc98eef93e645dc30ca3288f94a7e9e2f3ef3f71",
+      "commit_date": "2026-08-14T00:17:36-05:00",
+      "license": "MIT",
+      "license_canonical_sha256": "2b6c8774df3dfa5168e89db688b22b88ef7c012b71a6a9b9f917ca56e16b0843",
+      "license_path": "LICENSE",
+      "url": "https://github.com/PyDevices/pygraphics"
+    }
+  },
+  "schema": 1,
+  "summary": {
+    "dependency_files": 18,
+    "mapped_equivalent_sources": 47,
+    "patch_files": 0,
+    "pinned_repositories": 4,
+    "selected_source_files": 65
+  },
+  "upstream_mapping": "vendor/legacy-pydevices.upstream.json"
+}
