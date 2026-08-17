@@ -24,7 +24,6 @@ from release_utils import (
     file_inventory,
     inventory_identifier,
     read_json,
-    sha256_file,
     sha256_source_file,
     write_json,
 )
@@ -36,6 +35,7 @@ LOCK = ROOT / "vendor/pydevices-candidate.lock.json"
 UPSTREAM_MAPPING = ROOT / "vendor/legacy-pydevices.upstream.json"
 IMPORT_INVENTORY = ROOT / "vendor/legacy-pydevices.imports.json"
 FILE_ROLES = {"dependency", "mapped-equivalent"}
+COMPATIBILITY_ROLES = {"compatibility-adapter", "retained-local"}
 
 
 def _safe_relative(value: object, label: str) -> str:
@@ -147,10 +147,66 @@ def validate_vendor_lock(
             or external != sorted(set(external))
             or not all(isinstance(name, str) and name for name in external)):
         raise ValueError("allowed_external_imports must be sorted and unique")
+
+    compatibility_license = lock.get("compatibility_license")
+    if not isinstance(compatibility_license, dict):
+        raise ValueError("candidate must pin its compatibility license")
+    license_source = _safe_relative(
+        compatibility_license.get("source"), "compatibility license source")
+    license_destination = _safe_relative(
+        compatibility_license.get("destination"),
+        "compatibility license destination")
+    license_hash = compatibility_license.get("sha256")
+    if (not isinstance(license_hash, str) or len(license_hash) != 64
+            or any(char not in "0123456789abcdef" for char in license_hash)):
+        raise ValueError("candidate compatibility license must pin a SHA-256")
+    compatibility_license_path = ROOT / license_source
+    if (not compatibility_license_path.is_file()
+            or sha256_source_file(compatibility_license_path) != license_hash):
+        raise ValueError("candidate compatibility license content mismatch")
+
     dynamic = lock.get("allowed_dynamic_import_sources")
+    compatibility_files = lock.get("compatibility_files")
+    if not isinstance(compatibility_files, list) or not compatibility_files:
+        raise ValueError("candidate must contain explicit compatibility files")
+    compatibility_sources = []
+    compatibility_destinations = []
+    compatibility_roles = []
+    for item in compatibility_files:
+        if not isinstance(item, dict):
+            raise ValueError("candidate compatibility file must be an object")
+        source = _safe_relative(
+            item.get("source"), "candidate compatibility source")
+        destination = _safe_relative(
+            item.get("destination"), "candidate compatibility destination")
+        role = item.get("role")
+        if role not in COMPATIBILITY_ROLES:
+            raise ValueError(
+                "unsupported compatibility role for %s" % destination)
+        expected_hash = item.get("sha256")
+        if (not isinstance(expected_hash, str) or len(expected_hash) != 64
+                or any(char not in "0123456789abcdef" for char in expected_hash)):
+            raise ValueError(
+                "candidate compatibility file must pin a SHA-256")
+        source_path = lock_root / source
+        if (not source_path.is_file()
+                or sha256_source_file(source_path) != expected_hash):
+            raise ValueError(
+                "candidate compatibility content mismatch: %s" % source)
+        compatibility_sources.append(source)
+        compatibility_destinations.append(destination)
+        compatibility_roles.append(role)
+    if len(compatibility_sources) != len(set(compatibility_sources)):
+        raise ValueError("candidate contains duplicate compatibility sources")
+    if len(compatibility_destinations) != len(set(compatibility_destinations)):
+        raise ValueError("candidate contains duplicate compatibility destinations")
+    if set(destinations) & set(compatibility_destinations):
+        raise ValueError("upstream and compatibility destinations overlap")
+
+    runtime_destinations = destinations + compatibility_destinations
     if (not isinstance(dynamic, list)
             or dynamic != sorted(set(dynamic))
-            or not all(path in destinations for path in dynamic)):
+            or not all(path in runtime_destinations for path in dynamic)):
         raise ValueError(
             "allowed_dynamic_import_sources must be sorted selected destinations")
 
@@ -167,17 +223,22 @@ def validate_vendor_lock(
                 or any(char not in "0123456789abcdef" for char in expected_hash)):
             raise ValueError("candidate patch must pin a SHA-256")
         patch_path = lock_root / path
-        if not patch_path.is_file() or sha256_file(patch_path) != expected_hash:
+        if (not patch_path.is_file()
+                or sha256_source_file(patch_path) != expected_hash):
             raise ValueError("candidate patch content mismatch: %s" % path)
         patch_paths.append(path)
     if len(patch_paths) != len(set(patch_paths)):
         raise ValueError("candidate patch list contains duplicate paths")
 
     expected_summary = {
+        "compatibility_adapter_files": compatibility_roles.count(
+            "compatibility-adapter"),
         "dependency_files": len(dependency_sources),
         "mapped_equivalent_sources": len(mapped_sources),
         "patch_files": len(patches),
         "pinned_repositories": len(repositories),
+        "retained_local_files": compatibility_roles.count("retained-local"),
+        "runtime_files": len(runtime_destinations),
         "selected_source_files": len(files),
     }
     if lock.get("summary") != expected_summary:
@@ -379,13 +440,24 @@ def _size_report(
         lock: dict[str, object], runtime_root: Path, licenses_root: Path,
 ) -> dict[str, object]:
     by_repository = defaultdict(lambda: {"bytes": 0, "files": 0})
+    by_role = defaultdict(lambda: {"bytes": 0, "files": 0})
     by_top_level = defaultdict(lambda: {"bytes": 0, "files": 0})
-    for item in lock["files"]:
+    sized_files = [
+        (item, item["repository"])
+        for item in lock["files"]
+    ] + [
+        (item, "tartlab-compatibility")
+        for item in lock["compatibility_files"]
+    ]
+    for item, origin in sized_files:
         path = runtime_root / item["destination"]
         size = len(canonical_source_bytes(path))
-        repository = by_repository[item["repository"]]
+        repository = by_repository[origin]
         repository["bytes"] += size
         repository["files"] += 1
+        role = by_role[item["role"]]
+        role["bytes"] += size
+        role["files"] += 1
         top = PurePosixPath(item["destination"]).parts[0]
         group = by_top_level[top]
         group["bytes"] += size
@@ -401,6 +473,7 @@ def _size_report(
         },
         "runtime": {
             "by_repository": dict(sorted(by_repository.items())),
+            "by_role": dict(sorted(by_role.items())),
             "by_top_level": dict(sorted(by_top_level.items())),
             "expanded_bytes": sum(item["size"] for item in runtime_inventory),
             "files": len(runtime_inventory),
@@ -437,6 +510,20 @@ def _build_from_checkouts(
             "source_sha256": _sha256_bytes(data),
         })
 
+    compatibility_records = []
+    for item in lock["compatibility_files"]:
+        source = lock_path.parent / item["source"]
+        data = canonical_source_bytes(source)
+        destination = runtime_root / item["destination"]
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(data)
+        compatibility_records.append({
+            "destination": item["destination"],
+            "role": item["role"],
+            "source": source.relative_to(ROOT).as_posix(),
+            "source_sha256": _sha256_bytes(data),
+        })
+
     license_records = []
     for name, repository in lock["repositories"].items():
         data = _git(
@@ -453,7 +540,24 @@ def _build_from_checkouts(
             "source": repository["license_path"],
         })
 
-    allowed_destinations = {item["destination"] for item in lock["files"]}
+    compatibility_license = lock["compatibility_license"]
+    license_source = ROOT / compatibility_license["source"]
+    data = canonical_source_bytes(license_source)
+    destination = licenses_root / compatibility_license["destination"]
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(data)
+    license_records.append({
+        "canonical_sha256": _sha256_bytes(data),
+        "destination": destination.relative_to(staging).as_posix(),
+        "repository": "tartlab-compatibility",
+        "source": compatibility_license["source"],
+    })
+
+    # Patches are reserved for pinned upstream sources. TartLab compatibility
+    # files must be reviewed and re-hashed directly instead of patched in place.
+    allowed_destinations = {
+        item["destination"] for item in lock["files"]
+    }
     patch_records = []
     for patch in lock["patches"]:
         patch_path = lock_path.parent / patch["path"]
@@ -472,7 +576,7 @@ def _build_from_checkouts(
         item["path"]: item for item in file_inventory(
             runtime_root, normalize_source_text=True)
     }
-    for record in source_records:
+    for record in source_records + compatibility_records:
         output = output_by_destination[record["destination"]]
         record["output_sha256"] = output["sha256"]
         record["output_size"] = output["size"]
@@ -480,6 +584,7 @@ def _build_from_checkouts(
     sizes = _size_report(lock, runtime_root, licenses_root)
     write_json(staging / "size-report.json", sizes)
     provenance = {
+        "compatibility_files": compatibility_records,
         "import_audit": import_audit,
         "licenses": license_records,
         "lock_file": lock_path.relative_to(ROOT).as_posix(),

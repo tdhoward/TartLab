@@ -570,8 +570,9 @@ or radio behavior.
 ### Phase 4: Migrate and prune PyDevices behind the abstraction
 
 Implementation status (2026-08-16): the import/payload inventory,
-current-upstream equivalence audit, and pinned candidate vendor pipeline are
-implemented without changing the vendor runtime. A conservative static analysis
+current-upstream equivalence audit, pinned candidate vendor pipeline, and
+minimal legacy compatibility surface are implemented without changing the
+release vendor runtime. A conservative static analysis
 starts separately from the TartLab platform/IDE boundary, the default
 T-Display-S3 Pro adapter, and all shipped Python examples. It classifies 39 of
 the locked payload's 146 files as reachable (317,934 normalized source bytes)
@@ -594,26 +595,40 @@ replacement or establish MicroPython 1.23 compatibility.
 
 The candidate lock selects all 47 unique upstream sources referenced by that
 mapping plus 18 explicit dependencies. The noninteractive vendor tool reads
-content from exact git objects, preserves all four licenses, applies only
-hash-pinned strict patch manifests, host-compiles selected Python sources,
+content from exact git objects, preserves all four upstream licenses, applies
+only hash-pinned strict patch manifests, host-compiles selected Python sources,
 enforces the reviewed external/dynamic-import sets, and emits deterministic
-provenance and size reports. Two independent local generations produced the same complete
-71-file output inventory and the same 65-file runtime identifier. The unpatched
-runtime is 510,846 normalized source bytes, 48.7% of the historical snapshot's
-1,049,292 bytes. This is a planning comparison, not a flash-savings claim:
-current APIs remain incompatible, TartLab's QOI reader is absent, and neither
-MicroPython 1.23 runtime behavior nor physical hardware behavior is established.
+provenance and size reports.
+
+Item 5 adds five hash-pinned TartLab adapters and the retained local QOI reader
+as separate sources rather than upstream modifications. They preserve
+`graphics`, `bmp565`, `touch_keypad`, `eventsys.keys.Keys`, the protected
+T-Display-S3 Pro board path, and scalar legacy broker polling. Core TartLab
+continues to use only its existing platform boundary and legacy-compatible
+names. The generated runtime
+is now 71 files and 520,663 normalized source bytes, 49.6% of the historical
+snapshot's 1,049,292 bytes, with identifier
+`sha256:b2bf1e8233924b76344368518dab0ea2e6ff1c8cc1ec0c48075034769b09d3c1`.
+One strict parser-only patch replaces adjacent formatted string literals that
+MicroPython 1.23 rejects without changing display behavior. The host probe
+covers the compatibility surface, and CI compiles all candidate sources and
+runs the probe with pinned MicroPython 1.23 host tools. This is a
+planning comparison, not a flash-savings or hardware claim: the candidate is
+not a release input and physical behavior remains item 6.
 
 1. **Implemented:** inventory which modules from the current embedded
    `pydevices` tree TartLab imports through the reviewed static roots.
 2. **Implemented:** identify and pin the current upstream equivalents across
    `pydisplay`, canonical `pydevices`, `pygraphics`, and `palettes`.
 3. **Confirmed:** a maintained T-Display-S3 Pro board configuration exists
-   upstream; choosing and implementing the compatibility adapter remains item 5.
+   upstream; the compatibility adapter is implemented by item 5.
 4. **Implemented:** create the pinned, explicit vendor lock/allowlist pipeline
    with license retention, strict patch support, dependency gates, deterministic
    provenance, and size reporting. The generated tree remains research-only.
-5. Build a minimal legacy-compatible payload without exposing upstream paths or APIs to core TartLab code.
+5. **Implemented for the generated candidate:** build a minimal
+   legacy-compatible payload without exposing upstream paths or APIs to core
+   TartLab code. The historical payload remains the release source until items
+   6 and 7 pass.
 6. Compare flash usage, RAM at startup, display initialization time, frame/update performance, touch behavior, and OTA recovery against the Phase 2 legacy baseline.
 7. Promote the new vendor payload only after it passes the established legacy CI and physical-device OTA gates.
 

@@ -107,8 +107,10 @@ legacy release source:
 python tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
 ```
 
-That candidate is pinned and reproducible but remains research-only until its
-compatibility adapters and physical-device gates are complete.
+That candidate is pinned and reproducible. Its minimal legacy import/API
+adapters and retained QOI reader are validated on the host and by the pinned
+MicroPython 1.23 compatibility tier, but it remains research-only until the
+Phase 4 physical-device comparison and promotion gates are complete.
 
 `release.py` keeps `manifest.json` compatible with the deployed updater and
 adds deterministic USTAR archives, file/archive inventories, checksums, size

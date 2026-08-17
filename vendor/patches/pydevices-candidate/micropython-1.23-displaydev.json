@@ -1,0 +1,17 @@
+{
+  "operations": [
+    {
+      "after_sha256": "e54c7c307c37c1ef8b1d1d212692cc5acbba13e99edb5034bf15aa77fcb2fc8a",
+      "before_sha256": "c0d547af3505b12f43b12841a87c4507835de3bede73da54b29d717d2bbbd137",
+      "path": "displaydev/__init__.py",
+      "replacements": [
+        {
+          "count": 1,
+          "new": "                print(\n                    \"{}: requires_byteswap = True (byteswap={})\".format(\n                        self.__class__.__name__, _BYTESWAP_BACKEND))\n                if _BYTESWAP_BACKEND == \"pure_python\":\n                    print(\n                        \"{}: warning: slow byteswap fallback; install \"\n                        \"utils/byteswap (GitHub MIP) for viper/numpy swap\".format(\n                            self.__class__.__name__))",
+          "old": "                print(\n                    f\"{self.__class__.__name__}: requires_byteswap = True\"\n                    f\" (byteswap={_BYTESWAP_BACKEND})\"\n                )\n                if _BYTESWAP_BACKEND == \"pure_python\":\n                    print(\n                        f\"{self.__class__.__name__}: warning: slow byteswap fallback; \"\n                        \"install utils/byteswap (GitHub MIP) for viper/numpy swap\"\n                    )"
+        }
+      ]
+    }
+  ],
+  "schema": 1
+}

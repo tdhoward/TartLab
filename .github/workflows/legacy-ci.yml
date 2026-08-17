@@ -81,6 +81,12 @@ jobs:
           --output build/vendor/pydevices-candidate
           --clean
 
+      - name: Probe PyDevices candidate compatibility surface
+        run: >-
+          python -B tests/pydevices_candidate_compat.py
+          build/vendor/pydevices-candidate/runtime
+          src/files/assets/test.qoi
+
       - name: Build pinned MicroPython 1.23 host tools
         shell: bash
         run: |
@@ -94,6 +100,7 @@ jobs:
           --micropython build/micropython-v1.23.0/ports/unix/build-standard/micropython
           --mpy-cross build/micropython-v1.23.0/mpy-cross/build/mpy-cross
           --dist build/one/dist
+          --candidate-runtime build/vendor/pydevices-candidate/runtime
 
       - name: Test Phase 1 state migration
         run: python -m unittest tests.test_phase1.StateTests -v

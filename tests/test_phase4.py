@@ -114,16 +114,32 @@ class PyDevicesCandidatePipelineTests(unittest.TestCase):
         lock = check_vendor_lock()
         self.assertEqual(lock["promotion_status"], "research-only")
         self.assertEqual(lock["summary"], {
+            "compatibility_adapter_files": 5,
             "dependency_files": 18,
             "mapped_equivalent_sources": 47,
-            "patch_files": 0,
+            "patch_files": 1,
             "pinned_repositories": 4,
+            "retained_local_files": 1,
+            "runtime_files": 71,
             "selected_source_files": 65,
         })
         destinations = {item["destination"] for item in lock["files"]}
         self.assertIn("board_config.py", destinations)
         self.assertIn("board_peripherals.py", destinations)
         self.assertNotIn("qoi_reader.py", destinations)
+        compatibility = {
+            item["destination"]: item["role"]
+            for item in lock["compatibility_files"]
+        }
+        self.assertEqual(compatibility, {
+            "bmp565.py": "compatibility-adapter",
+            "board_configs/t_display_s3_pro/board_config.py":
+                "compatibility-adapter",
+            "eventsys/keys.py": "compatibility-adapter",
+            "graphics/__init__.py": "compatibility-adapter",
+            "qoi_reader.py": "retained-local",
+            "touch_keypad.py": "compatibility-adapter",
+        })
 
     def test_candidate_lock_rejects_missing_audited_source(self):
         lock = check_vendor_lock()

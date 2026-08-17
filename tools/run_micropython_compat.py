@@ -70,6 +70,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dist", default="build/one/dist",
                         help="generated runtime distribution to compile")
     parser.add_argument(
+        "--candidate-runtime",
+        default="build/vendor/pydevices-candidate/runtime",
+        help="generated Phase 4 PyDevices runtime to compile and probe")
+    parser.add_argument(
         "--target-arch", default="xtensawin",
         help="mpy-cross native emitter architecture (default: xtensawin)")
     return parser.parse_args()
@@ -83,6 +87,10 @@ def main() -> None:
     if not dist.is_dir():
         raise FileNotFoundError(
             "Generated distribution not found: %s" % dist)
+    candidate_runtime = (ROOT / args.candidate_runtime).resolve()
+    if not candidate_runtime.is_dir():
+        raise FileNotFoundError(
+            "Generated PyDevices candidate not found: %s" % candidate_runtime)
 
     micropython_version = require_version(
         micropython, ["-c", "import sys; print(sys.version)"], "MicroPython")
@@ -92,6 +100,9 @@ def main() -> None:
         temporary = Path(temp)
         compiled = compile_distribution(
             mpy_cross, dist, temporary / "compiled", args.target_arch)
+        candidate_compiled = compile_distribution(
+            mpy_cross, candidate_runtime,
+            temporary / "candidate-compiled", args.target_arch)
         device = temporary / "device"
         device.mkdir()
         probe = run([
@@ -100,14 +111,26 @@ def main() -> None:
             str(ROOT),
             str(device),
         ]).stdout.strip()
+        candidate_probe = run([
+            micropython,
+            str(ROOT / "tests/pydevices_candidate_compat.py"),
+            str(candidate_runtime),
+            str(ROOT / "src/files/assets/test.qoi"),
+        ]).stdout.strip()
 
     if "MICROPYTHON_COMPAT_OK" not in probe:
         raise RuntimeError("Compatibility probe did not report success:\n" + probe)
+    if "PYDEVICES_CANDIDATE_COMPAT_OK" not in candidate_probe:
+        raise RuntimeError(
+            "PyDevices candidate probe did not report success:\n"
+            + candidate_probe)
     print("MicroPython:", micropython_version)
     print("mpy-cross:", cross_version)
     print("Target architecture:", args.target_arch)
     print("Compiled runtime modules:", compiled)
+    print("Compiled PyDevices candidate modules:", candidate_compiled)
     print(probe)
+    print(candidate_probe)
 
 
 if __name__ == "__main__":

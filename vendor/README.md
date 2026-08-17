@@ -87,26 +87,36 @@ license hash without fetching from the network:
 python tools/pydevices_upstream.py --checkout-root build/upstream-audit
 ```
 
-These are research pins, not a runtime vendor lock or authorization to replace
-or prune the historical payload. Phase 4 must still define and validate the
-legacy compatibility adapters and generated allowlist before changing release
-contents.
+These audit pins alone are not a runtime vendor lock or authorization to replace
+or prune the historical payload. The generated candidate below defines the
+separate runtime allowlist and compatibility surface; physical comparison and
+promotion gates still precede any release-content change.
 
 ## Phase 4 generated candidate pipeline
 
 `pydevices-candidate.lock.json` is the noninteractive, pinned allowlist for the
 next migration stage. It cross-checks all four repository pins and all 47
 audited equivalent source paths against `legacy-pydevices.upstream.json`, then
-adds 18 explicit dependency files. There are no globs: all 65 source and
-destination paths are reviewed individually.
+adds 18 explicit dependency files. There are no globs: all 65 upstream source
+and destination paths are reviewed individually.
+
+The lock separately pins five TartLab-owned compatibility adapters and the
+retained local QOI reader under `compatibility/pydevices-candidate`. They expose
+the legacy names used by the TartLab platform boundary and shipped examples
+without changing upstream sources: `graphics`, `bmp565`, `touch_keypad`,
+`eventsys.keys.Keys`, and the protected
+`board_configs.t_display_s3_pro.board_config` path. The board adapter translates
+the current `eventsys.Runtime` list-based polling contract back to the scalar
+legacy `broker.poll()` result. The candidate also retains TartLab's GPL license
+alongside the four upstream MIT licenses.
 
 `tools/vendor_pydevices.py` reads file and license content from the pinned git
 objects, so checkout line-ending settings cannot change its output. It compiles
 every selected Python file with the host parser, requires the exact reviewed
 sets of external and dynamic import sources, and generates:
 
-- `runtime/`: the 65-file native-layout candidate;
-- `licenses/`: the reviewed MIT license from each repository;
+- `runtime/`: the 71-file native-layout candidate;
+- `licenses/`: four reviewed upstream MIT licenses and TartLab's GPL license;
 - `provenance.json`: repository, source, destination, patch, content-hash, and
   runtime-identifier records; and
 - `size-report.json`: totals grouped by repository and runtime top-level path.
@@ -123,12 +133,20 @@ Or let the tool fetch only the locked commits into a temporary build workspace:
 python tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
 ```
 
-Compatibility changes must be strict JSON patch manifests under
+Changes to selected upstream files must be strict JSON patch manifests under
 `patches/pydevices-candidate`. Each operation pins its complete input and output
-hashes and exact replacement counts. The lock currently approves zero patches;
-item 5 will introduce only the legacy adapters proven necessary.
+hashes and exact replacement counts. The lock approves one parser-only patch
+that replaces adjacent formatted string literals rejected by MicroPython 1.23;
+it does not change display behavior. TartLab compatibility files remain
+separate, source- and hash-pinned inputs rather than patches disguised as
+upstream code.
 
-At the current pins the generated runtime is 65 files and 510,846 normalized
-source bytes. Its status is `research-only`: it omits TartLab's QOI reader, has
-not passed MicroPython 1.23 or physical-device behavior gates, and is not read by
-`makedist.py`. The checked-in historical payload remains the release source.
+At the current pins the generated runtime is 71 files and 520,663 normalized
+source bytes, with runtime identifier
+`sha256:b2bf1e8233924b76344368518dab0ea2e6ff1c8cc1ec0c48075034769b09d3c1`.
+`tests/pydevices_candidate_compat.py` checks the legacy surface without board
+hardware, and the pinned MicroPython 1.23 tier compiles every candidate module
+for the ESP32 `xtensawin` emitter before running the same probe. Its status
+remains `research-only`: physical-device performance, touch, display, memory,
+and OTA comparisons are item 6, and `makedist.py` does not read this candidate.
+The checked-in historical payload remains the release source.

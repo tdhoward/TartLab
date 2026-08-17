@@ -24,10 +24,13 @@ replacement. It performs no network fetch and does not change release content.
 
 `tools/vendor_pydevices.py` builds the separately pinned migration candidate
 from exact git objects and an explicit source/destination allowlist. Tier 0
-checks its pin agreement, audited-source coverage, patch hashes, Python
-host compilation, dependency allowlists, licenses, provenance, deterministic
-runtime identifier, and size report. The output remains under ignored
-`build/vendor` and is not a legacy release input.
+checks its pin agreement, audited-source coverage, patch and TartLab adapter
+hashes, Python host compilation, dependency allowlists, licenses, provenance,
+deterministic runtime identifier, and size report. The candidate contains 65
+upstream files plus five compatibility adapters and the retained QOI reader.
+`tests/pydevices_candidate_compat.py` exercises the legacy import/API surface
+against the generated runtime. The output remains under ignored `build/vendor`
+and is not a legacy release input.
 
 ## Tier 1: CPython virtual device
 
@@ -79,8 +82,9 @@ CI checks out MicroPython v1.23.0 at commit
 `a61c446c0b34e82aeb54b9770250d267656f2b7f` and builds its Unix interpreter and
 `mpy-cross`. `tools/run_micropython_compat.py` verifies both tool versions,
 compiles every Python module in the generated legacy distribution for the
-ESP32 port's `xtensawin` native emitter, and runs
-`tests/micropython_compat.py` with the pinned interpreter.
+ESP32 port's `xtensawin` native emitter, compiles every generated Phase 4
+candidate module for the same target, and runs `tests/micropython_compat.py`
+plus `tests/pydevices_candidate_compat.py` with the pinned interpreter.
 
 The runtime probe executes the real state/layout migration, early boot recovery
 decisions, recovery manifest/path/hash helpers, and legacy platform adapter. It
@@ -92,7 +96,7 @@ filesystem API differences that CPython may accept.
 After building the pinned tools and a distribution, the direct command is:
 
 ```text
-python tools/run_micropython_compat.py --micropython PATH/TO/micropython --mpy-cross PATH/TO/mpy-cross --dist build/one/dist
+python tools/run_micropython_compat.py --micropython PATH/TO/micropython --mpy-cross PATH/TO/mpy-cross --dist build/one/dist --candidate-runtime build/vendor/pydevices-candidate/runtime
 ```
 
 The Unix port still uses host storage and platform stubs. It does not emulate

@@ -89,6 +89,7 @@ build, run:
 .\.venv\Scripts\python.exe tools/pydevices_inventory.py --dist build/legacy/dist
 .\.venv\Scripts\python.exe tools/pydevices_upstream.py
 .\.venv\Scripts\python.exe tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
+.\.venv\Scripts\python.exe -B tests/pydevices_candidate_compat.py build/vendor/pydevices-candidate/runtime src/files/assets/test.qoi
 ```
 
 `release.py` requires a clean Git worktree for a normal candidate. The
@@ -99,8 +100,11 @@ does not rely on an old root `dist` directory. The upstream check validates
 that every reachable file has a reviewed classification against full upstream
 commit pins; it neither fetches sources nor changes the runtime payload. The
 candidate vendor command fetches only those pins, selects the explicit
-allowlist, and emits provenance and size reports under ignored `build/vendor`.
-It does not modify `src/lib/pydevices`, `dist`, or a release archive.
+upstream allowlist, adds the separately hash-pinned TartLab compatibility
+surface, and emits provenance and size reports under ignored `build/vendor`.
+The compatibility probe checks the protected board path, legacy graphics,
+keys, keypad, BMP, QOI, and scalar broker behavior without loading hardware.
+Neither command modifies `src/lib/pydevices`, `dist`, or a release archive.
 
 CI builds the pinned MicroPython v1.23.0 Unix interpreter and `mpy-cross`, runs
 the host and compatibility suites, builds the release twice, and requires the

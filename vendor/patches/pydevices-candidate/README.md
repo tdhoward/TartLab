@@ -10,6 +10,8 @@ SHA-256 values, and contains exact text replacements with an expected match
 count. The vendor tool rejects fuzzy matches, unselected paths, stale hashes,
 and unexpected dependencies introduced by a patch.
 
-No compatibility patch is approved yet. Item 5 will add only the adapters
-required by the MicroPython 1.23 legacy profile and will keep them separate from
-the upstream source selection.
+The approved MicroPython 1.23 displaydev patch changes only adjacent formatted
+string literals that the pinned parser rejects; preimage and result hashes pin
+the complete upstream file. The item 5 TartLab adapters are hash-pinned source
+inputs under `vendor/compatibility/pydevices-candidate`, so they remain separate
+from both upstream selection and upstream modifications.

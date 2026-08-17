@@ -42,6 +42,49 @@
     "usdl2",
     "uwin32"
   ],
+  "compatibility_files": [
+    {
+      "destination": "bmp565.py",
+      "role": "compatibility-adapter",
+      "sha256": "362b5f9bf42b0372bba799832f245ae40f8ad29bb55c6b8442f73c4c0f64f56d",
+      "source": "compatibility/pydevices-candidate/bmp565.py"
+    },
+    {
+      "destination": "board_configs/t_display_s3_pro/board_config.py",
+      "role": "compatibility-adapter",
+      "sha256": "62eadbcadaaf636040dfd4256e19a0718a99b2e61e87391bba6bffe2e6c4898b",
+      "source": "compatibility/pydevices-candidate/board_configs/t_display_s3_pro/board_config.py"
+    },
+    {
+      "destination": "eventsys/keys.py",
+      "role": "compatibility-adapter",
+      "sha256": "4955b1dc9fa0928ea989a798d8c1c226d73b6e67e614c42487e5ce586686653e",
+      "source": "compatibility/pydevices-candidate/eventsys/keys.py"
+    },
+    {
+      "destination": "graphics/__init__.py",
+      "role": "compatibility-adapter",
+      "sha256": "6016152e7131f35b3bc99e58403f523f8aef25251a6abedbf2d5ace8cb2a5a53",
+      "source": "compatibility/pydevices-candidate/graphics/__init__.py"
+    },
+    {
+      "destination": "qoi_reader.py",
+      "role": "retained-local",
+      "sha256": "2747fa9257cb38d28a87b0a97c54fef44196e45b2fe281dd33d19e8d23df0c68",
+      "source": "compatibility/pydevices-candidate/qoi_reader.py"
+    },
+    {
+      "destination": "touch_keypad.py",
+      "role": "compatibility-adapter",
+      "sha256": "7a67e9bb7a5d70da8390fefc26c8ccf247c36625ae8747c428667d76e2a4a615",
+      "source": "compatibility/pydevices-candidate/touch_keypad.py"
+    }
+  ],
+  "compatibility_license": {
+    "destination": "tartlab-compatibility/LICENSE",
+    "sha256": "605e9047a563c5c8396ffb18232aa4304ec56586aee537c45064c6fb425e44ad",
+    "source": "LICENSE"
+  },
   "files": [
     {
       "destination": "displaybuf.py",
@@ -434,7 +477,12 @@
       "source": "lib/multimer/_backends/win32.py"
     }
   ],
-  "patches": [],
+  "patches": [
+    {
+      "path": "patches/pydevices-candidate/micropython-1.23-displaydev.json",
+      "sha256": "de73a9ee8da396ff774a5d718549506263e3d7c12a8e766f701a1e62d859e408"
+    }
+  ],
   "profile": "legacy-mp123-candidate",
   "promotion_status": "research-only",
   "repositories": {
@@ -477,10 +525,13 @@
   },
   "schema": 1,
   "summary": {
+    "compatibility_adapter_files": 5,
     "dependency_files": 18,
     "mapped_equivalent_sources": 47,
-    "patch_files": 0,
+    "patch_files": 1,
     "pinned_repositories": 4,
+    "retained_local_files": 1,
+    "runtime_files": 71,
     "selected_source_files": 65
   },
   "upstream_mapping": "vendor/legacy-pydevices.upstream.json"
