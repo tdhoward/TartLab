@@ -281,6 +281,70 @@ for name, color in [('RED', 0xF800), ('GREEN', 0x07E0), ('BLUE', 0x001F), ('WHIT
 '''
 
 
+PYDEVICES_BENCHMARK_CODE = r'''
+import gc, os, time, ujson
+from hdwconfig import display_drv, touch_drv
+
+def class_name(value):
+    value_type = type(value)
+    return getattr(value_type, '__module__', '') + '.' + getattr(value_type, '__name__', '')
+
+def timed(call, count):
+    values = []
+    for unused in range(count):
+        start = time.ticks_us()
+        call()
+        values.append(time.ticks_diff(time.ticks_us(), start))
+    return values
+
+display_drv.rotation = 90
+display_drv.disable_auto_byteswap(False)
+width, height = display_drv.width, display_drv.height
+gc.collect()
+heap_before_buffer = gc.mem_free()
+colors = [0x0000, 0xF800, 0x07E0, 0x001F, 0xFFFF, 0x0000]
+color_index = [0]
+def fill_next():
+    display_drv.fill(colors[color_index[0]])
+    color_index[0] = (color_index[0] + 1) % len(colors)
+fill_us = timed(fill_next, len(colors))
+buffer = bytearray(width * height * 2)
+gc.collect()
+heap_with_buffer = gc.mem_free()
+blit_us = timed(lambda: display_drv.blit_rect(buffer, 0, 0, width, height), 6)
+touch_us = []
+touch_results = []
+for unused in range(20):
+    start = time.ticks_us()
+    value = touch_drv.get_point()
+    touch_us.append(time.ticks_diff(time.ticks_us(), start))
+    if value:
+        touch_results.append(value)
+    time.sleep_ms(10)
+del buffer
+gc.collect()
+filesystem = os.statvfs('/')
+result = {
+    'display_class': class_name(display_drv),
+    'touch_class': class_name(touch_drv),
+    'width': width,
+    'height': height,
+    'color_depth': display_drv.color_depth,
+    'requires_byteswap': display_drv.requires_byteswap,
+    'fill_us': fill_us,
+    'full_frame_blit_us': blit_us,
+    'touch_poll_us': touch_us,
+    'touch_results': touch_results,
+    'heap_before_buffer': heap_before_buffer,
+    'heap_with_buffer': heap_with_buffer,
+    'heap_after': gc.mem_free(),
+    'filesystem_free_bytes': filesystem[0] * filesystem[3],
+}
+display_drv.fill(0)
+print('PYDEVICES_BENCHMARK=' + ujson.dumps(result))
+'''
+
+
 def connect(args):
     repl = RawRepl(args.port, args.baudrate, args.timeout)
     try:
@@ -394,6 +458,93 @@ def color_test(args):
     finally:
         repl.close()
     sys.stdout.buffer.write(output)
+
+
+def pydevices_benchmark(args):
+    repl = connect(args)
+    try:
+        output = repl.exec(PYDEVICES_BENCHMARK_CODE, 60)
+    finally:
+        repl.close()
+    sys.stdout.buffer.write(output)
+
+
+def boot_timing(args):
+    repl = connect(args)
+    markers = (
+        b"System startup",
+        b"Starting IDE",
+        b"Scanning for WiFi networks...",
+        b"HEALTHY mode=IDE",
+    )
+    found = {}
+    captured = bytearray()
+    started = time.monotonic()
+    port = None
+    try:
+        repl.serial.write(b"import machine\nmachine.reset()\n\x04")
+        repl.close()
+        repl = None
+        deadline = started + args.timeout
+        while len(found) < len(markers) and time.monotonic() < deadline:
+            if port is None:
+                try:
+                    port = serial.Serial(
+                        args.port, args.baudrate, timeout=0.1,
+                        write_timeout=2, dsrdtr=False, rtscts=False)
+                except serial.SerialException:
+                    time.sleep(0.05)
+                    continue
+            try:
+                waiting = port.in_waiting
+                chunk = port.read(waiting or 1)
+            except serial.SerialException:
+                port.close()
+                port = None
+                time.sleep(0.05)
+                continue
+            if not chunk:
+                continue
+            captured.extend(chunk)
+            elapsed_ms = round((time.monotonic() - started) * 1000)
+            for marker in markers:
+                if marker not in found and marker in captured:
+                    found[marker] = elapsed_ms
+    finally:
+        if repl is not None:
+            repl.close()
+        if port is not None:
+            port.close()
+    if len(found) != len(markers):
+        missing = [marker.decode() for marker in markers if marker not in found]
+        raise TimeoutError("Boot markers not observed: %r" % missing)
+    print(json.dumps({
+        "reset_to_system_startup_ms": found[markers[0]],
+        "reset_to_ide_start_ms": found[markers[1]],
+        "reset_to_wifi_scan_ms": found[markers[2]],
+        "reset_to_ide_healthy_ms": found[markers[3]],
+    }, indent=2))
+
+
+def interrupt_trace(args):
+    port = serial.Serial(
+        args.port, args.baudrate, timeout=0.1, write_timeout=2,
+        dsrdtr=False, rtscts=False)
+    captured = bytearray()
+    try:
+        port.reset_input_buffer()
+        port.write(b"\x03")
+        deadline = time.monotonic() + args.timeout
+        while time.monotonic() < deadline:
+            waiting = port.in_waiting
+            chunk = port.read(waiting or 1)
+            if chunk:
+                captured.extend(chunk)
+                if b">>> " in captured or b"raw REPL" in captured:
+                    break
+    finally:
+        port.close()
+    sys.stdout.write(captured.decode("utf-8", "replace"))
 
 
 def preflight(args):
@@ -956,6 +1107,10 @@ def parser():
     commands.add_parser("display-touch").set_defaults(func=display_touch)
     commands.add_parser("button-watch").set_defaults(func=button_watch)
     commands.add_parser("color-test").set_defaults(func=color_test)
+    commands.add_parser("pydevices-benchmark").set_defaults(
+        func=pydevices_benchmark)
+    commands.add_parser("boot-timing").set_defaults(func=boot_timing)
+    commands.add_parser("interrupt-trace").set_defaults(func=interrupt_trace)
     preflight_parser = commands.add_parser("preflight")
     preflight_parser.add_argument("--base-url", required=True)
     preflight_parser.set_defaults(func=preflight)

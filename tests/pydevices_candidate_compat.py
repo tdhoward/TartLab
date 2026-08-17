@@ -88,11 +88,16 @@ class FakeRuntime:
         self.touch_dev = "touch"
         self._pending = [event]
         self.calls = []
+        self.add_touch_args = None
 
     def poll(self):
         pending = self._pending
         self._pending = []
         return pending
+
+    def add_touch(self, read, *, display=None, touch_rotation_table=None):
+        self.add_touch_args = (read, display, touch_rotation_table)
+        return self.touch_dev
 
     def subscribe(self, callback, event_types=None, device_types=None):
         self.calls.append(("subscribe", callback, event_types, device_types))
@@ -119,10 +124,7 @@ def probe_board_adapter():
     fake_runtime = FakeRuntime(event)
 
     class RuntimeFactory:
-        @classmethod
-        def from_board_config(cls, board):
-            check(board is fake_board,
-                  "board adapter did not pass the current board to Runtime")
+        def __new__(cls):
             return fake_runtime
 
     class Board:
@@ -155,6 +157,11 @@ def probe_board_adapter():
           "legacy touch export did not use the current board")
     check(legacy.touch_dev == "touch",
           "legacy touch device export did not use the current runtime")
+    check(fake_runtime.add_touch_args == (
+        fake_board.touch_read,
+        fake_board.display_drv,
+        fake_board.touch_rotation_table,
+    ), "legacy adapter did not create an application-polled touch device")
     check(legacy.broker.poll() is event,
           "legacy broker did not convert runtime lists to scalar events")
     legacy.broker.quit()

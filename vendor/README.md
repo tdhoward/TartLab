@@ -135,18 +135,25 @@ python tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candida
 
 Changes to selected upstream files must be strict JSON patch manifests under
 `patches/pydevices-candidate`. Each operation pins its complete input and output
-hashes and exact replacement counts. The lock approves one parser-only patch
-that replaces adjacent formatted string literals rejected by MicroPython 1.23;
-it does not change display behavior. TartLab compatibility files remain
-separate, source- and hash-pinned inputs rather than patches disguised as
-upstream code.
+hashes and exact replacement counts. The five approved patches cover the
+MicroPython 1.23 parser, the selected display constructor contract, native
+framebuffer selection, ST7796 solid fills, and ESP32 SPI transfer
+configuration. TartLab compatibility files remain separate, source- and
+hash-pinned inputs rather than patches disguised as upstream code.
 
-At the current pins the generated runtime is 71 files and 520,663 normalized
+At the current pins the generated runtime is 71 files and 521,163 normalized
 source bytes, with runtime identifier
-`sha256:b2bf1e8233924b76344368518dab0ea2e6ff1c8cc1ec0c48075034769b09d3c1`.
+`sha256:090f9bd96352cfd8730e1bf3448112129f12e9f4954efbf5feb237b639783984`.
 `tests/pydevices_candidate_compat.py` checks the legacy surface without board
 hardware, and the pinned MicroPython 1.23 tier compiles every candidate module
-for the ESP32 `xtensawin` emitter before running the same probe. Its status
-remains `research-only`: physical-device performance, touch, display, memory,
-and OTA comparisons are item 6, and `makedist.py` does not read this candidate.
-The checked-in historical payload remains the release source.
+for the ESP32 `xtensawin` emitter before running the same probe.
+
+`tools/build_phase4_test_release.py` can produce an exact hardware-comparison
+artifact from a normal legacy distribution and a generated candidate. It
+verifies the source provenance, applies the locked Python minifier, and marks
+the artifact `research-only-not-for-promotion`; the ordinary release path still
+rejects a non-legacy vendor inventory. `tests/PHASE4_HARDWARE.md` records the
+first physical result. Storage and full-frame transfer results are promising,
+but startup and solid-fill regressions plus unobserved touch/color and OTA fault
+cases keep item 6 partial. The checked-in historical payload remains the
+release source.

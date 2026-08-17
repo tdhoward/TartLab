@@ -1,0 +1,22 @@
+{
+  "operations": [
+    {
+      "after_sha256": "ade065ab9205e77f6acd90e32bea73c8ef16f06fe82a88be854f4acd59ef4048",
+      "before_sha256": "751edcc6c28894707075148467e3329ec54ad188aed400389c2805487e89972f",
+      "path": "pygraphics/_framebuf_plus.py",
+      "replacements": [
+        {
+          "count": 1,
+          "new": "import sys\n\nfrom . import _font, _shapes\n",
+          "old": "from . import _font, _shapes\n"
+        },
+        {
+          "count": 1,
+          "new": "try:\n    if sys.implementation.name == \"micropython\":\n        raise ImportError\n    # Local submodule:",
+          "old": "try:\n    # Local submodule:"
+        }
+      ]
+    }
+  ],
+  "schema": 1
+}

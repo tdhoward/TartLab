@@ -115,6 +115,11 @@ affected physical claims plus a boot/IDE sanity check.
 
 `PHASE3_HARDWARE.md` records the 2026-08-12 focused smoke for the platform
 abstraction. Its explicitly unobserved manual items are not release claims.
+`PHASE4_HARDWARE.md` records the 2026-08-16 generated-PyDevices comparison,
+including the measured regressions and manual/OTA cases that keep promotion
+closed. `tools/phase1_device.py boot-timing` and `pydevices-benchmark` provide
+repeatable samples, but idle touch polls and successful driver calls are not
+human touch or visual assertions.
 
 ## Tier 4: physical release qualification
 

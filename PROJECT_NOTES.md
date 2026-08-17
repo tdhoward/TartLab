@@ -570,9 +570,10 @@ or radio behavior.
 ### Phase 4: Migrate and prune PyDevices behind the abstraction
 
 Implementation status (2026-08-16): the import/payload inventory,
-current-upstream equivalence audit, pinned candidate vendor pipeline, and
-minimal legacy compatibility surface are implemented without changing the
-release vendor runtime. A conservative static analysis
+current-upstream equivalence audit, pinned candidate vendor pipeline, minimal
+legacy compatibility surface, guarded research release builder, and first
+physical comparison are implemented without changing the normal release vendor
+runtime. A conservative static analysis
 starts separately from the TartLab platform/IDE boundary, the default
 T-Display-S3 Pro adapter, and all shipped Python examples. It classifies 39 of
 the locked payload's 146 files as reachable (317,934 normalized source bytes)
@@ -605,16 +606,26 @@ as separate sources rather than upstream modifications. They preserve
 `graphics`, `bmp565`, `touch_keypad`, `eventsys.keys.Keys`, the protected
 T-Display-S3 Pro board path, and scalar legacy broker polling. Core TartLab
 continues to use only its existing platform boundary and legacy-compatible
-names. The generated runtime
-is now 71 files and 520,663 normalized source bytes, 49.6% of the historical
-snapshot's 1,049,292 bytes, with identifier
-`sha256:b2bf1e8233924b76344368518dab0ea2e6ff1c8cc1ec0c48075034769b09d3c1`.
-One strict parser-only patch replaces adjacent formatted string literals that
-MicroPython 1.23 rejects without changing display behavior. The host probe
-covers the compatibility surface, and CI compiles all candidate sources and
-runs the probe with pinned MicroPython 1.23 host tools. This is a
-planning comparison, not a flash-savings or hardware claim: the candidate is
-not a release input and physical behavior remains item 6.
+names. The generated runtime is now 71 files and 521,163 normalized source
+bytes, 49.7% of the historical snapshot's 1,049,292 bytes, with identifier
+`sha256:090f9bd96352cfd8730e1bf3448112129f12e9f4954efbf5feb237b639783984`.
+Five strict patches cover the MicroPython 1.23 parser, display constructor,
+native framebuffer selection, ST7796 fill behavior, and ESP32 SPI transfer
+configuration. The board adapter keeps touch application-polled instead of
+using the unsupported upstream timer keyword. The host probe covers the
+compatibility surface, and CI compiles all candidate sources and runs the probe
+with pinned MicroPython 1.23 host tools.
+
+`tools/build_phase4_test_release.py` overlays that exact runtime on a normal
+legacy distribution, applies the locked minifier, verifies source provenance,
+and marks both evidence and release metadata research-only. The normal release
+builder still requires the historical vendor inventory. The first physical
+comparison is recorded in `tests/PHASE4_HARDWARE.md`: the candidate halves the
+packaged PyDevices size and leaves 983,040 more filesystem bytes free, with
+only 0.7% less startup heap and near-parity full-frame blits. It also regresses
+healthy startup by 86.7% and solid fills by about 17%. Idle touch polling and a
+full verified recovery install passed, but no touch coordinates or visual color
+assertion were observed and the network OTA/fault matrix was not repeated.
 
 1. **Implemented:** inventory which modules from the current embedded
    `pydevices` tree TartLab imports through the reviewed static roots.
@@ -629,7 +640,12 @@ not a release input and physical behavior remains item 6.
    legacy-compatible payload without exposing upstream paths or APIs to core
    TartLab code. The historical payload remains the release source until items
    6 and 7 pass.
-6. Compare flash usage, RAM at startup, display initialization time, frame/update performance, touch behavior, and OTA recovery against the Phase 2 legacy baseline.
+6. **Partial; automated physical comparison completed 2026-08-16:** flash and
+   filesystem usage, startup heap, initialization timing, display transfer,
+   idle touch polling, verified recovery install, health commit, and protected
+   state are measured against the legacy payload. Resolve the startup/fill
+   regressions, observe real touch and color behavior, and repeat direct
+   OTA/recovery fault cases before closing this item.
 7. Promote the new vendor payload only after it passes the established legacy CI and physical-device OTA gates.
 
 ### Phase 5: Prototype modern LVGL firmware separately

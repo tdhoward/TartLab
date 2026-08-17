@@ -52,7 +52,7 @@
     {
       "destination": "board_configs/t_display_s3_pro/board_config.py",
       "role": "compatibility-adapter",
-      "sha256": "62eadbcadaaf636040dfd4256e19a0718a99b2e61e87391bba6bffe2e6c4898b",
+      "sha256": "348a49f8922038bf1d2fbea96829f3042caf477459d5f9502f3a27ffd64e0ba7",
       "source": "compatibility/pydevices-candidate/board_configs/t_display_s3_pro/board_config.py"
     },
     {
@@ -481,6 +481,22 @@
     {
       "path": "patches/pydevices-candidate/micropython-1.23-displaydev.json",
       "sha256": "de73a9ee8da396ff774a5d718549506263e3d7c12a8e766f701a1e62d859e408"
+    },
+    {
+      "path": "patches/pydevices-candidate/micropython-1.23-spibus-init.json",
+      "sha256": "12fc38a5dfec956f6cc6595049aabdecf90e87f47af16dd992ea750b25d4a7a5"
+    },
+    {
+      "path": "patches/pydevices-candidate/micropython-native-framebuf.json",
+      "sha256": "c2f16995ff5d37ad406a7711355febba6586e9faf42ec54a71dcd02fd424b19f"
+    },
+    {
+      "path": "patches/pydevices-candidate/st7796-ram-continue-fill.json",
+      "sha256": "ed07171c24503ed47f8e0f3bb959a63bb23d3b398332d9eafc3994dd8106a947"
+    },
+    {
+      "path": "patches/pydevices-candidate/t-display-s3-pro-remove-cp.json",
+      "sha256": "ab30c0065b0cbf8ba437bb0bfcca38bd62c4c046da719c10213b86aa4f0c8440"
     }
   ],
   "profile": "legacy-mp123-candidate",
@@ -528,7 +544,7 @@
     "compatibility_adapter_files": 5,
     "dependency_files": 18,
     "mapped_equivalent_sources": 47,
-    "patch_files": 1,
+    "patch_files": 5,
     "pinned_repositories": 4,
     "retained_local_files": 1,
     "runtime_files": 71,

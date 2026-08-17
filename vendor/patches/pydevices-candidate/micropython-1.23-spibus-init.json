@@ -1,0 +1,17 @@
+{
+  "operations": [
+    {
+      "after_sha256": "8206e0e14b3cbaff38715bf34d22bb88f9bdfb86339380961db0b08926c7a543",
+      "before_sha256": "a59798eb9a03294dc86df21578f3bd6f643cdb6d673c57b5eed1e639e4c04b3a",
+      "path": "spibus.py",
+      "replacements": [
+        {
+          "count": 1,
+          "new": "            # The pinned MicroPython 1.23 ESP32 port retains the configured\r\n            # GPIO matrix when SPI.init updates transfer parameters.\r\n",
+          "old": "            if self._sck is not None and sys.platform.startswith(\"esp\"):\r\n                init_kw[\"sck\"] = self._sck\r\n                init_kw[\"mosi\"] = self._mosi\r\n                init_kw[\"miso\"] = self._miso\r\n"
+        }
+      ]
+    }
+  ],
+  "schema": 1
+}

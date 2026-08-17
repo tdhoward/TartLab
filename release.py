@@ -259,11 +259,65 @@ def _baseline_comparison(dist_inventory, profile):
     }
 
 
+def validate_research_vendor(provenance_path: Path, runtime: Path):
+    """Validate an exact generated vendor tree for a research-only release."""
+
+    provenance_path = provenance_path.resolve()
+    runtime = runtime.resolve()
+    provenance = read_json(provenance_path)
+    if provenance.get("promotion_status") != "research-only":
+        raise ValueError("Research vendor provenance must remain research-only")
+    if provenance.get("profile") != "legacy-mp123-candidate":
+        raise ValueError("Unexpected research vendor profile")
+    lock_file = provenance.get("lock_file")
+    if lock_file != "vendor/pydevices-candidate.lock.json":
+        raise ValueError("Unexpected research vendor lock file")
+    lock_path = ROOT / lock_file
+    if provenance.get("lock_sha256") != sha256_source_file(lock_path):
+        raise ValueError("Research vendor lock hash mismatch")
+
+    records = (
+        list(provenance.get("selected_files", [])) +
+        list(provenance.get("compatibility_files", []))
+    )
+    expected = {}
+    for record in records:
+        destination = record.get("destination")
+        if (not isinstance(destination, str) or not destination or
+                Path(destination).is_absolute() or ".." in Path(destination).parts):
+            raise ValueError("Unsafe research vendor destination: %r" % destination)
+        if destination in expected:
+            raise ValueError("Duplicate research vendor destination: " + destination)
+        expected[destination] = {
+            "path": destination,
+            "size": record.get("output_size"),
+            "sha256": record.get("output_sha256"),
+        }
+
+    actual_inventory = file_inventory(runtime, normalize_source_text=True)
+    actual = {item["path"]: item for item in actual_inventory}
+    if actual != expected:
+        missing = sorted(set(expected).difference(actual))
+        unexpected = sorted(set(actual).difference(expected))
+        changed = sorted(
+            path for path in set(actual).intersection(expected)
+            if actual[path] != expected[path])
+        raise ValueError(
+            "Research vendor runtime mismatch: missing=%r unexpected=%r changed=%r" %
+            (missing, unexpected, changed))
+    identifier = inventory_identifier(actual_inventory)
+    if identifier != provenance.get("runtime_identifier"):
+        raise ValueError("Research vendor runtime identifier mismatch")
+    return provenance
+
+
 def build_release(
         dist: Path, output: Path, version: str, *, clean=False,
         profile_path: Path | None = None, packages_path: Path | None = None,
         source_epoch: int | None = None, allow_dirty=True,
-        allow_toolchain_mismatch=True):
+        allow_toolchain_mismatch=True,
+        research_vendor_provenance: Path | None = None,
+        research_vendor_source: Path | None = None):
     dist = dist.resolve()
     output = ensure_safe_output(output, (ROOT, dist))
     if output.exists():
@@ -280,9 +334,19 @@ def build_release(
     profile = read_json(profile_path)
     packages = read_json(packages_path)
     vendor = check_lock()
-    check_pydevices_inventory(dist=dist)
     check_upstream_mapping()
     check_pydevices_candidate_lock()
+    research_vendor = None
+    if (research_vendor_provenance is None and
+            research_vendor_source is not None):
+        raise ValueError(
+            "Research vendor source requires provenance")
+    if research_vendor_provenance is None:
+        check_pydevices_inventory(dist=dist)
+    else:
+        research_vendor = validate_research_vendor(
+            research_vendor_provenance,
+            research_vendor_source or dist / "lib/pydevices")
     try:
         commit = _git_value("rev-parse", "HEAD")
         dirty = bool(_git_value("status", "--porcelain"))
@@ -356,13 +420,42 @@ def build_release(
     write_json(output / "dist_inventory.json", dist_inventory)
     baseline_comparison = _baseline_comparison(dist_inventory, profile)
     if baseline_comparison["removed"]:
-        raise ValueError(
-            "Clean build dropped files from the deployed legacy inventory: %s" %
-            baseline_comparison["removed"][0])
+        if research_vendor is None:
+            raise ValueError(
+                "Clean build dropped files from the deployed legacy inventory: %s" %
+                baseline_comparison["removed"][0])
+        unexpected_removed = [
+            path for path in baseline_comparison["removed"]
+            if not path.startswith("lib/pydevices/")
+        ]
+        if unexpected_removed:
+            raise ValueError(
+                "Research build dropped a non-vendor legacy file: %s" %
+                unexpected_removed[0])
     write_json(output / "baseline_comparison.json", baseline_comparison)
     actual_toolchain = _actual_toolchain()
     if not allow_toolchain_mismatch:
         _check_toolchain(profile["build_toolchain"], actual_toolchain)
+    vendor_payload = {
+        "identifier": inventory_identifier(file_inventory(dist / "lib/pydevices")),
+        "deployed_baseline_identifier": vendor["deployed_legacy_mp123"]["identifier"],
+    }
+    if research_vendor is None:
+        vendor_payload.update({
+            "source_lock_identifier": vendor["identifier"],
+            "lock_file": profile["vendor_lock"],
+        })
+    else:
+        vendor_payload.update({
+            "lock_file": research_vendor["lock_file"],
+            "lock_sha256": research_vendor["lock_sha256"],
+            "profile": research_vendor["profile"],
+            "promotion_status": "research-only",
+            "provenance_sha256": sha256_source_file(
+                Path(research_vendor_provenance)),
+            "source_runtime_identifier": research_vendor["runtime_identifier"],
+        })
+
     metadata = {
         "schema": 1,
         "tartlab_version": version,
@@ -374,12 +467,7 @@ def build_release(
         "build_timestamp_basis": "SOURCE_DATE_EPOCH",
         "source_date_epoch": epoch,
         "firmware_compatibility": profile["firmware_compatibility"],
-        "vendor_payload": {
-            "identifier": inventory_identifier(file_inventory(dist / "lib/pydevices")),
-            "source_lock_identifier": vendor["identifier"],
-            "deployed_baseline_identifier": vendor["deployed_legacy_mp123"]["identifier"],
-            "lock_file": profile["vendor_lock"],
-        },
+        "vendor_payload": vendor_payload,
         "inputs": {
             "package_map_sha256": sha256_source_file(packages_path),
             "profile_sha256": sha256_source_file(profile_path),
@@ -402,6 +490,8 @@ def build_release(
         "baseline_comparison": baseline_comparison["counts"],
         "size_budgets": profile["size_budgets"],
     }
+    if research_vendor is not None:
+        metadata["artifact_status"] = "research-only-not-for-promotion"
     _check_size_budgets(metadata, profile)
     write_json(output / "build_metadata.json", metadata)
     checksums = {

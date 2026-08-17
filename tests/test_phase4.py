@@ -20,6 +20,11 @@ from vendor_pydevices import (
     validate_vendor_lock,
 )
 
+sys.path.insert(0, str(ROOT))
+import release
+from release_utils import file_inventory, inventory_identifier, sha256_source_file
+from phase1_device import PYDEVICES_BENCHMARK_CODE
+
 
 class PyDevicesImportInventoryTests(unittest.TestCase):
     def test_reviewed_static_inventory_matches_source_and_vendor_lock(self):
@@ -117,7 +122,7 @@ class PyDevicesCandidatePipelineTests(unittest.TestCase):
             "compatibility_adapter_files": 5,
             "dependency_files": 18,
             "mapped_equivalent_sources": 47,
-            "patch_files": 1,
+            "patch_files": 5,
             "pinned_repositories": 4,
             "retained_local_files": 1,
             "runtime_files": 71,
@@ -188,6 +193,44 @@ class PyDevicesCandidatePipelineTests(unittest.TestCase):
             self.assertEqual(target.read_bytes(), after)
             with self.assertRaisesRegex(ValueError, "preimage mismatch"):
                 apply_patch_manifest(patch_path, runtime, {"module.py"})
+
+    def test_research_vendor_validation_binds_exact_runtime(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = root / "runtime"
+            runtime.mkdir()
+            module = runtime / "driver.py"
+            module.write_text("VALUE = 1\n")
+            inventory = file_inventory(runtime, normalize_source_text=True)
+            item = inventory[0]
+            provenance = {
+                "schema": 1,
+                "profile": "legacy-mp123-candidate",
+                "promotion_status": "research-only",
+                "lock_file": "vendor/pydevices-candidate.lock.json",
+                "lock_sha256": sha256_source_file(
+                    ROOT / "vendor/pydevices-candidate.lock.json"),
+                "runtime_identifier": inventory_identifier(inventory),
+                "selected_files": [{
+                    "destination": item["path"],
+                    "output_sha256": item["sha256"],
+                    "output_size": item["size"],
+                }],
+                "compatibility_files": [],
+            }
+            provenance_path = root / "provenance.json"
+            provenance_path.write_text(json.dumps(provenance))
+            validated = release.validate_research_vendor(
+                provenance_path, runtime)
+            self.assertEqual(validated["promotion_status"], "research-only")
+
+            module.write_text("VALUE = 2\n")
+            with self.assertRaisesRegex(ValueError, "runtime mismatch"):
+                release.validate_research_vendor(provenance_path, runtime)
+
+    def test_device_benchmark_is_micropython_compatible_source(self):
+        compile(PYDEVICES_BENCHMARK_CODE, "<pydevices-benchmark>", "exec")
+        self.assertIn("PYDEVICES_BENCHMARK=", PYDEVICES_BENCHMARK_CODE)
 
 
 if __name__ == "__main__":

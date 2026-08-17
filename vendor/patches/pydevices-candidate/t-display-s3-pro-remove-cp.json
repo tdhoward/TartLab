@@ -1,0 +1,17 @@
+{
+  "operations": [
+    {
+      "after_sha256": "062bf344a9a8466d0eddb82689886827591c4ef092f1d46898c0fdde3def1dcf",
+      "before_sha256": "6b42301cb82264e901587ebbd8aa8d9d02629943389f2f5c7242cc0271ebfbe1",
+      "path": "board_config.py",
+      "replacements": [
+        {
+          "count": 1,
+          "new": "",
+          "old": "    cp={\n        \"width\": 222,\n        \"height\": 480,\n        \"colstart\": 49,\n        \"rowstart\": 0,\n        \"rotation\": 0,\n        \"mirrored\": False,\n        \"color_depth\": 16,\n        \"bgr\": True,\n        \"reverse_bytes_in_word\": True,\n        \"invert\": True,\n        \"brightness\": 1.0,\n        \"backlight_pin\": \"board.GP48\",\n        \"backlight_on_high\": True,\n        \"reset_high\": False,\n    },\n"
+        }
+      ]
+    }
+  ],
+  "schema": 1
+}

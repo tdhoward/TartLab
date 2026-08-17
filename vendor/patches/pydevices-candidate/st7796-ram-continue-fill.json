@@ -1,0 +1,22 @@
+{
+  "operations": [
+    {
+      "after_sha256": "4e17daaab053348ea01d0492f065ec32fe5596fd9a6972f956f4177664dfcfb9",
+      "before_sha256": "93467d0e38cc3047ecfa9b9f369e5e578a725dc4a8014326953eb92734c81b00",
+      "path": "st7796.py",
+      "replacements": [
+        {
+          "count": 1,
+          "new": "_DISPON = const(0x29)\n_RAMWR = const(0x2C)\n_RAMCONT = const(0x3C)\n",
+          "old": "_DISPON = const(0x29)\n"
+        },
+        {
+          "count": 1,
+          "new": "    def __init__(self, bus, **kwargs):\n        super().__init__(bus, **kwargs)\n\n    def fill_rect(self, x, y, w, h, color):\n        \"\"\"Use the ST7796-supported RAM-continue path for solid fills.\"\"\"\n        color_bytes = (\n            (color & 0xFFFF).to_bytes(2, \"big\")\n            if self._auto_byteswap\n            else (color & 0xFFFF).to_bytes(2, \"little\")\n        )\n        x1 = x + self.colstart\n        x2 = x1 + w - 1\n        y1 = y + self.rowstart\n        y2 = y1 + h - 1\n        if h > w:\n            buf = self._fill_strip(h, color_bytes)\n            passes = w\n        else:\n            buf = self._fill_strip(w, color_bytes)\n            passes = h\n        self._set_window(x1, y1, x2, y2)\n        self.send(_RAMWR)\n        for unused in range(passes):\n            self.send_color(_RAMCONT, buf)\n        return (x, y, w, h)\n\n    def init(self):\n",
+          "old": "    def __init__(self, bus, **kwargs):\n        super().__init__(bus, **kwargs)\n\n    def init(self):\n"
+        }
+      ]
+    }
+  ],
+  "schema": 1
+}

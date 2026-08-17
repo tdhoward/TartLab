@@ -90,6 +90,7 @@ build, run:
 .\.venv\Scripts\python.exe tools/pydevices_upstream.py
 .\.venv\Scripts\python.exe tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
 .\.venv\Scripts\python.exe -B tests/pydevices_candidate_compat.py build/vendor/pydevices-candidate/runtime src/files/assets/test.qoi
+.\.venv\Scripts\python.exe tools/build_phase4_test_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/phase4/candidate --version descriptive-research-version --clean
 ```
 
 `release.py` requires a clean Git worktree for a normal candidate. The
@@ -104,7 +105,11 @@ upstream allowlist, adds the separately hash-pinned TartLab compatibility
 surface, and emits provenance and size reports under ignored `build/vendor`.
 The compatibility probe checks the protected board path, legacy graphics,
 keys, keypad, BMP, QOI, and scalar broker behavior without loading hardware.
-Neither command modifies `src/lib/pydevices`, `dist`, or a release archive.
+The inventory, upstream, vendor, and probe commands do not modify
+`src/lib/pydevices`, `dist`, or a release archive. The Phase 4 builder creates a
+separate, guarded comparison release under its requested output; its metadata
+is always research-only and the normal release inventory guard remains
+unchanged.
 
 CI builds the pinned MicroPython v1.23.0 Unix interpreter and `mpy-cross`, runs
 the host and compatibility suites, builds the release twice, and requires the
@@ -189,6 +194,17 @@ To stage an extracted CI candidate over serial:
 
 The acknowledged serial transfer can take several minutes. Keep the board
 powered and do not open the port from another program.
+
+For repeatable Phase 4 timing samples after a healthy boot, use:
+
+```powershell
+.\.venv\Scripts\python.exe tools/phase1_device.py --port COMx --timeout 75 boot-timing
+.\.venv\Scripts\python.exe tools/phase1_device.py --port COMx --timeout 75 pydevices-benchmark
+```
+
+The benchmark changes the display while it measures fills and frame writes.
+It records idle touch polls but cannot replace a person checking displayed
+colors and touching known screen locations.
 
 ## Generated, private, and device-local data
 

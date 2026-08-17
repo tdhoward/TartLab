@@ -112,6 +112,18 @@ adapters and retained QOI reader are validated on the host and by the pinned
 MicroPython 1.23 compatibility tier, but it remains research-only until the
 Phase 4 physical-device comparison and promotion gates are complete.
 
+For a physical comparison only, overlay the generated tree on an already-built
+legacy distribution with the guarded research builder:
+
+```text
+python tools/build_phase4_test_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/phase4/candidate --version descriptive-research-version --clean
+```
+
+The result is minified with the legacy toolchain and explicitly marked
+`research-only-not-for-promotion`. It cannot substitute for the normal legacy
+release path. The current physical findings and remaining gates are recorded in
+`tests/PHASE4_HARDWARE.md`.
+
 `release.py` keeps `manifest.json` compatible with the deployed updater and
 adds deterministic USTAR archives, file/archive inventories, checksums, size
 budgets, firmware compatibility, Git/build identity, and the locked legacy

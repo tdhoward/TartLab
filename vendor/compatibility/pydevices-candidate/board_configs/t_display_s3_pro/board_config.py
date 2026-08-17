@@ -46,9 +46,13 @@ i2c = _board.i2c
 touch_drv = getattr(_board, "touch", None)
 touch_read_func = getattr(_board, "touch_read", None)
 touch_rotation_table = getattr(_board, "touch_rotation_table", None)
-runtime = eventsys.Runtime.from_board_config(_board)
+runtime = eventsys.Runtime()
+touch_dev = runtime.add_touch(
+    touch_read_func,
+    display=display_drv,
+    touch_rotation_table=touch_rotation_table,
+)
 broker = LegacyBroker(runtime)
-touch_dev = runtime.touch_dev
 
 __all__ = (
     "display_bus", "display_drv", "i2c", "touch_drv", "touch_read_func",
