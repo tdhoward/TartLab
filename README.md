@@ -43,7 +43,7 @@ usable.
 ![TartLab in action](images/screenshots/TartLab_ss2.png)
 
 ## Installation
- 1. Install a bin file from [MicroPython](https://micropython.org/) on the embedded device.  Sometimes there are special builds of MicroPython that are specific to your device, in which case you should use those.  For the deployed T-Display-S3/T-Display-S3 Pro compatibility baseline, use MicroPython 1.23.0 with octal PSRAM support: `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin` from the [ESP32_GENERIC_S3 port.](https://www.micropython.org/download/ESP32_GENERIC_S3/)  Do not substitute the non-SPIRAM or quad-SPIRAM variant for these devices.
+ 1. Install a bin file from [MicroPython](https://micropython.org/) on the embedded device.  Sometimes there are special builds of MicroPython that are specific to your device, in which case you should use those.  For the deployed T-Display-S3/T-Display-S3 Pro compatibility baseline, use MicroPython 1.23.0 with octal PSRAM support: `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin` from the [ESP32_GENERIC_S3 port.](https://www.micropython.org/download/ESP32_GENERIC_S3/)  Do not substitute the non-SPIRAM or quad-SPIRAM variant for these devices. The exact qualified image and an experimental MicroPython 1.27.0 LVGL image are archived under [`firmware`](firmware/README.md) with checksummed manifests; the LVGL image is not yet a qualified replacement for the legacy baseline.
  2. Before first provisioning, edit `src/hdwconfig.py` to point to one of the
     available modules in `src/configs` for your device. The default is the
     LilyGO T-Display-S3 Pro. After first boot, TartLab migrates the selection to
@@ -157,7 +157,8 @@ The suite covers deterministic releases, the captured legacy layout, OTA and
 recovery fault handling, a virtual device filesystem, startup mode routing,
 headless IDE initialization, and the reviewed PyDevices import/payload
 inventory. CI additionally compiles the generated runtime, verifies the built
-vendor payload against that allowlist, and executes its platform-independent
+vendor payload against that allowlist, verifies the tracked firmware binaries
+against their manifests, and executes its platform-independent
 compatibility probe with pinned MicroPython v1.23.0 host tools. The exact tier
 boundaries, local Tier 2 command, and current limitations are documented in
 [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md). Passing host tests does not replace

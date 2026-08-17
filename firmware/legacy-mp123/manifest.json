@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "profile": "legacy-mp123",
+  "qualification": "physically-qualified-legacy-baseline",
+  "artifact": {
+    "file": "ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin",
+    "size": 1631424,
+    "sha256": "41a750a8f047224e3e0a7544a626338c252407df420e2b94dcb0d2dad9793212"
+  },
+  "target": {
+    "platform": "esp32",
+    "chip": "ESP32-S3",
+    "board": "ESP32_GENERIC_S3",
+    "board_variant": "SPIRAM_OCT",
+    "spiram": "octal",
+    "flash_size_bytes": 8388608,
+    "flash_mode": "dio",
+    "image_format": "combined-esp-image",
+    "flash_offset": "0x0"
+  },
+  "runtime": {
+    "implementation": "MicroPython",
+    "version": "1.23.0",
+    "python_language_version": "3.4.0",
+    "sys_version": "3.4.0; MicroPython v1.23.0 on 2024-06-02",
+    "micropython_commit": "a61c446c0b34e82aeb54b9770250d267656f2b7f",
+    "embedded_build_identity": "MicroPython-1.23.0-xtensa-IDFv5.0.4-with-newlib4.1.0",
+    "lvgl_built_in": false
+  },
+  "provenance": {
+    "kind": "official-micropython-release",
+    "source_repository": "https://github.com/micropython/micropython",
+    "release": "v1.23.0",
+    "download_page": "https://micropython.org/download/ESP32_GENERIC_S3/",
+    "image_build_date": "2024-06-02"
+  }
+}

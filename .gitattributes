@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Flashable firmware images must never be line-ending normalized or text-diffed.
+*.bin binary

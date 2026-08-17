@@ -665,6 +665,13 @@ protected-state preservation all passed.
 
 ### Phase 5: Prototype modern LVGL firmware separately
 
+A locally built MicroPython 1.27.0/LVGL combined image is archived under
+`firmware/lvgl-modern/1.27.0` with an exact artifact hash and measured runtime
+identity. It remains experimental: the build reported a dirty MicroPython tree,
+and the LVGL repository commit, source diff, exact build command, LVGL version,
+and toolchain were not captured. Archiving the artifact therefore does not yet
+satisfy the reproducible-build or hardware-qualification items below.
+
 1. Pin a MicroPython version and the required PyDevices LVGL repositories.
 2. Produce a reproducible firmware build for one reference device.
 3. Verify hard reset, soft reset, repeated import/deinit, Wi-Fi AP mode, IDE server operation, touch input, and application switching.

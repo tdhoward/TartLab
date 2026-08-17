@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "profile": "lvgl-modern",
+  "qualification": "experimental-unqualified",
+  "artifact": {
+    "file": "lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-v1.27.0-20251223.bin",
+    "size": 2985488,
+    "sha256": "2c7918ed2c4b7dafb3ee2a359ac511229fbbea4a11721e5ccc91d45ab852762a"
+  },
+  "target": {
+    "platform": "esp32",
+    "chip": "ESP32-S3",
+    "board": "ESP32_GENERIC_S3",
+    "board_variant": "SPIRAM_OCT",
+    "spiram": "octal",
+    "flash_size_bytes": 16777216,
+    "flash_mode": "dio",
+    "image_format": "combined-esp-image",
+    "flash_offset": "0x0"
+  },
+  "runtime": {
+    "implementation": "MicroPython",
+    "version": "1.27.0",
+    "python_language_version": "3.4.0",
+    "sys_version": "3.4.0; MicroPython 78ff170de9-dirty on 2025-12-23",
+    "sys_implementation_version": [
+      1,
+      27,
+      0,
+      ""
+    ],
+    "micropython_commit": "78ff170de9e32c79db6e64d3e33d2bd60002bdcd",
+    "micropython_source_tree_dirty": true,
+    "embedded_build_identity": "MicroPython-1.27.0-xtensa-IDFfcae3288-with-newlib4.3.0",
+    "lvgl_built_in": true,
+    "lvgl_version": null
+  },
+  "provenance": {
+    "kind": "local-custom-build",
+    "source_repository": "https://github.com/lvgl-micropython/lvgl_micropython",
+    "source_commit": null,
+    "build_date": "2025-12-23",
+    "build_command": null,
+    "build_host": null,
+    "reproducible_from_recorded_provenance": false,
+    "missing": [
+      "lvgl_micropython source commit",
+      "dirty source diff",
+      "exact build command",
+      "LVGL version",
+      "build host and compiler versions"
+    ]
+  }
+}

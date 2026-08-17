@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "profile": "lvgl-modern",
+  "status": "experimental-unqualified",
+  "firmware_compatibility": {
+    "implementation": "MicroPython",
+    "version": "1.27.0",
+    "image": "lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-v1.27.0-20251223.bin",
+    "sha256": "2c7918ed2c4b7dafb3ee2a359ac511229fbbea4a11721e5ccc91d45ab852762a",
+    "spiram": "octal",
+    "flash_size_bytes": 16777216,
+    "lvgl_built_in": true,
+    "manifest": "firmware/lvgl-modern/1.27.0/manifest.json"
+  },
+  "runtime_identity": {
+    "sys_version": "3.4.0; MicroPython 78ff170de9-dirty on 2025-12-23",
+    "sys_implementation_version": [
+      1,
+      27,
+      0,
+      ""
+    ]
+  },
+  "release_channel": null,
+  "release_builder": null,
+  "hardware_qualification": null
+}

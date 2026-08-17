@@ -27,6 +27,21 @@ Windows is recommended when controlling a board over USB serial. WSL or another
 Linux environment is optional for running the Tier 2 MicroPython Unix
 compatibility test locally; CI already runs that tier on Ubuntu.
 
+## Firmware artifact integrity
+
+Flashable images live under [`firmware`](firmware/README.md), outside the
+filesystem release pipeline. Verify their exact byte sizes and SHA-256 digests
+before hardware work or a commit that touches them:
+
+```powershell
+.\.venv\Scripts\python.exe tools/check_firmware_artifacts.py
+```
+
+The `legacy-mp123` artifact is the physically qualified baseline. The
+`lvgl-modern` profile and its MicroPython 1.27.0 image remain experimental and
+must not be presented as a stable migration target until their missing build
+provenance and hardware qualification are completed.
+
 ## Clean checkout and bootstrap
 
 The commands below use the current `ArchitectureOverhaul` development branch.

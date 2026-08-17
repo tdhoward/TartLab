@@ -6,7 +6,8 @@
     "version": "1.23.0",
     "image": "ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin",
     "sha256": "41a750a8f047224e3e0a7544a626338c252407df420e2b94dcb0d2dad9793212",
-    "spiram": "octal"
+    "spiram": "octal",
+    "manifest": "firmware/legacy-mp123/manifest.json"
   },
   "vendor_lock": "vendor/legacy-pydevices.lock.json",
   "promoted_vendor": {

@@ -63,6 +63,9 @@ jobs:
       - name: Verify vendored payload provenance
         run: python tools/vendor_lock.py
 
+      - name: Verify tracked firmware artifacts
+        run: python tools/check_firmware_artifacts.py
+
       - name: Build historical base distributions twice from clean outputs
         shell: bash
         run: |
