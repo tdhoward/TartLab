@@ -314,8 +314,11 @@ Rules:
 Target:
 
 - A recent, explicitly pinned MicroPython version.
-- LVGL and selected native user C modules compiled or frozen into firmware.
-- Faster native display/bus paths where supported.
+- LVGL plus a DMA-capable native display bus compiled into firmware.
+- One native panel transport shared by an LVGL UI renderer and a direct
+  framebuffer/dirty-rectangle renderer for games.
+- Native framebuffer operations, reusable transfer buffers, and asynchronous
+  completion where the target port supports them.
 
 Rules:
 
@@ -323,6 +326,15 @@ Rules:
 - TartLab must detect capabilities rather than assume them from a board name alone.
 - The filesystem application package should still be independently OTA-updatable.
 - A firmware-specific TartLab package may be produced when unavoidable, but common application logic should remain shared.
+- LVGL must not be the only way to draw. Games must have a supported direct
+  surface API that does not require Python per-pixel loops or a full-screen
+  refresh after every small change.
+- LVGL and the direct renderer must not drive the panel concurrently. TartLab
+  owns mode transitions, waits for pending DMA, and restores or invalidates the UI
+  when returning from a game.
+- No application may depend directly on private binding or display-driver
+  attributes. Firmware-specific details belong behind the TartLab platform
+  boundary.
 
 ### Critical migration limitation
 
@@ -346,9 +358,13 @@ A possible contract could expose:
 
 ```python
 platform.display
+platform.ui
+platform.surface
 platform.input
 platform.ide_button_pin
 platform.capabilities
+platform.enter_ui()
+platform.enter_game()
 platform.deinit()
 ```
 
@@ -356,7 +372,52 @@ Keep the contract deliberately small. Board-specific code may import PyDisplay i
 
 This isolates TartLab from future PyDisplay path and API changes and makes legacy and LVGL backends selectable behind the same interface.
 
-### 2. Replace the hand-maintained PyDevices snapshot with a reproducible vendor pipeline
+### 2. Separate rendering policy from the native panel transport
+
+The managed modern profile is deliberately dual-mode rather than LVGL-only:
+
+- **UI mode:** LVGL owns its partial draw buffers, task handler, input devices,
+  invalidation, and display flush callbacks. Use this mode for the TartLab IDE,
+  settings, menus, text, controls, and UI-oriented student applications.
+- **Game mode:** a TartLab direct surface owns the panel and exposes a small,
+  stable `blit_rect`, `fill_rect`, `wait`, width, and height contract. Use this
+  mode for sprite, scrolling, framebuffer, and other frame-paced workloads.
+
+Both modes must use the same native display transport. A mode switch must stop
+or pause the current renderer, finish outstanding transfers, transfer bus
+ownership, and perform the redraw needed by the destination renderer. Do not
+initialize two independent panel drivers or allow an LVGL refresh callback to
+race a game transfer.
+
+On the T-Display-S3 Pro, a 480 x 222 RGB565 frame is 213,120 bytes. At the
+configured 60 MHz SPI clock, the wire alone needs approximately 28.4 ms for a
+full frame, for an absolute ceiling of about 35 full-screen frames per second
+before command, scheduling, rendering, or memory overhead. Consequently the
+modern graphics design must prioritize:
+
+1. Dirty rectangles and partial refresh.
+2. DMA and overlap between transfer and rendering.
+3. Reusable buffers and allocation-free steady-state frame loops.
+4. Native framebuffer/LVGL drawing and preconverted RGB565 assets.
+5. Avoiding runtime byte swaps, scaling, and color conversion where possible.
+
+The initial Phase 5 reference should use
+`lvgl-micropython/lvgl_micropython`, whose `lcd_bus` path exposes DMA-capable
+buffer allocation and transfer-completion callbacks. This is a performance
+baseline, not a production selection. Compare it with the modular PyDevices
+`lvgl-micropython` plus `displayif` build on the same board and workloads.
+PyDevices remains attractive for API portability, but its current native SPI
+interface ultimately performs synchronous `machine.SPI.write()` calls and must
+demonstrate equivalent throughput and render/transfer overlap before it is
+chosen for the performance-first profile.
+
+The first reference firmware's native panel driver is LVGL-oriented and does
+not expose TartLab's direct-surface contract. Add a small supported TartLab
+adapter or an upstream public API for direct transfers; do not build the game
+backend around private `_data_bus`, `_set_memory_location`, or LVGL driver
+fields.
+
+### 3. Replace the hand-maintained PyDevices snapshot with a reproducible vendor pipeline
 
 Do not use a git submodule alone. A submodule pins a repository but does not solve pruning, multi-repository dependencies, path adaptation, or payload reporting.
 
@@ -375,7 +436,7 @@ Create a noninteractive vendor tool driven by a checked-in lock/manifest file. I
 
 Prefer an allowlist over a growing exclusion list. New upstream demos or fonts should not silently enter device releases.
 
-### 3. Make local files structurally impossible to overwrite
+### 4. Make local files structurally impossible to overwrite
 
 Define update ownership by top-level directory. For example:
 
@@ -392,7 +453,7 @@ For already deployed layouts, add a one-time migration that copies the existing 
 
 Before any layout migration, back up and explicitly migrate the current `/settings.json`, `/repos.json`, `/logs`, `/files/user`, generated `/app.py` selection, and hardware selection. Prefer replacing mutable `/app.py` with a fixed system launcher that reads a validated selected-app value from preserved state. Do not copy captured Wi-Fi credentials into repository fixtures while developing or testing the migration.
 
-### 4. Harden OTA updates
+### 5. Harden OTA updates
 
 Evolve the release manifest to include at least:
 
@@ -431,7 +492,7 @@ Use a staged update flow:
 
 True atomic directory replacement may not be available on every MicroPython filesystem, so design the algorithm around the guarantees actually provided by the target filesystems. At minimum, preserve a bootable recovery path that does not depend on the package currently being replaced.
 
-### 5. Generate version information during the build
+### 6. Generate version information during the build
 
 Remove the manually maintained `v0.13` default from `main.py`. Generate a small build metadata module or JSON file containing:
 
@@ -443,7 +504,7 @@ Remove the manually maintained `v0.13` default from `main.py`. Generate a small 
 
 Initialize or repair `repos.json` from that metadata. Update installed-version state only after a successful update health check.
 
-### 6. Make build and release tooling CI-friendly
+### 7. Make build and release tooling CI-friendly
 
 Refactor scripts into callable functions plus a command-line interface with explicit flags such as:
 
@@ -670,14 +731,50 @@ A locally built MicroPython 1.27.0/LVGL combined image is archived under
 identity. It remains experimental: the build reported a dirty MicroPython tree,
 and the LVGL repository commit, source diff, exact build command, LVGL version,
 and toolchain were not captured. Archiving the artifact therefore does not yet
-satisfy the reproducible-build or hardware-qualification items below.
+satisfy the reproducible-build or hardware-qualification items below. It also
+does not prove that TartLab used that image's native `lcd_bus`; an LVGL module
+present in firmware provides no acceleration while TartLab continues to flush
+through the pure-Python PyDisplay bus.
 
-1. Pin a MicroPython version and the required PyDevices LVGL repositories.
-2. Produce a reproducible firmware build for one reference device.
-3. Verify hard reset, soft reset, repeated import/deinit, Wi-Fi AP mode, IDE server operation, touch input, and application switching.
-4. Measure whether native buses/LVGL materially improve the workloads TartLab needs.
-5. Keep the existing legacy release channel unchanged during this experiment.
-6. Only after successful hardware testing, define how new devices are provisioned and how adults migrate old ones.
+The Phase 5 objective is a performance-first dual-renderer firmware, not merely
+a firmware on which `import lvgl` succeeds. The first reproducible reference
+should be based on `lvgl-micropython/lvgl_micropython`, because TartLab has
+already built it successfully and its ESP32 `lcd_bus` path provides the most
+promising current DMA/double-buffer baseline. A PyDevices `lvgl-micropython` +
+`displayif` build remains a required comparison rather than the default winner.
+
+1. Pin MicroPython, LVGL, ESP-IDF, the binding repository, every submodule, and
+   the host toolchain; record a clean source state and exact build command.
+2. Produce reproducible reference firmware for the T-Display-S3 Pro with LVGL,
+   its ST7796 panel driver, touch support, native SPI transport, DMA-capable
+   buffers, and transfer-completion signaling.
+3. Implement TartLab UI and game rendering adapters behind the platform
+   boundary. UI mode uses LVGL; game mode exposes a public direct surface and
+   explicit display-ownership transitions.
+4. Verify hard reset, soft reset, repeated initialization/deinitialization,
+   UI-to-game-to-UI transitions, Wi-Fi AP mode, IDE server operation, touch
+   input, application switching, and recovery after an application exception.
+5. Benchmark both firmware families on identical clocks, buffers, panel
+   orientation, assets, and instrumentation. At minimum record:
+
+   - raw RGB565 full-frame transfer and achieved throughput;
+   - 10%, 25%, and 50% dirty-region transfers;
+   - solid fills, sprite movement over a static background, and scrolling;
+   - LVGL widget and animation workloads;
+   - render time, transfer time, overlap, total frame time, missed frame
+      deadlines, CPU availability for the IDE/network stack, and heap stability;
+   - steady-state allocation count and behavior across repeated mode switches.
+
+6. Test partial refresh first. Treat full-screen FPS as a wire-limited metric,
+   not as the only graphics score, and do not claim a speedup from LVGL merely
+   being compiled into the firmware.
+7. Keep the existing legacy release channel unchanged during the experiment.
+   Sunset it only after a qualified modern image, an adult/admin provisioning
+   path, and a documented support window exist.
+8. Select the production firmware only after the benchmark and lifecycle gates
+   pass. If the first repository wins, maintain a pinned public direct-surface
+   adapter; if PyDevices wins, require its native bus to meet the same DMA,
+   overlap, and soft-reset requirements.
 
 ### Phase 6: Mature release security and promotion
 
@@ -695,7 +792,7 @@ Every significant platform or dependency change should cover:
 |---|---|
 | MicroPython 1.23.0 octal-SPIRAM (`ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin`), T-Display-S3 Pro | Boot, display, touch, PSRAM availability, AP mode, IDE, edit/save/run app, switch modes, OTA update, five-log rotation |
 | Modern generic MicroPython without LVGL | Same behavior, confirms the pure-Python path remains portable without replacing the 1.23.0 legacy baseline |
-| Pinned LVGL-enabled firmware | Boot and soft reset, display/touch, AP/IDE, app mode, update, native-driver behavior |
+| Pinned LVGL-enabled firmware | Boot and soft reset, display/touch, AP/IDE, LVGL UI, direct game rendering, UI/game ownership transitions, native DMA behavior, update and recovery |
 | First boot without settings | Create defaults safely, reach the IDE, and preserve a recovery route |
 | Update from existing deployed layout | Preserve hardware selection, selected app, settings, logs, release state, and user applications |
 | Direct update from every supported historical layout | One user action reaches the current stable release; all ordered internal migrations resume safely without requiring intermediate releases |
@@ -715,6 +812,14 @@ An AI agent working on TartLab must follow these rules:
 - Do not assume that firmware can be changed through the existing file updater.
 - Do not claim legacy compatibility without testing the exact `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin` image on physical hardware and confirming PSRAM availability.
 - Do not make LVGL mandatory for the legacy profile.
+- Do not equate `import lvgl` with accelerated TartLab graphics; verify that the
+  selected native bus and renderer are actually active.
+- Do not allow LVGL and a direct game renderer to own the panel concurrently.
+- Do not build the direct game surface on private upstream driver attributes;
+  add and pin a supported adapter/API.
+- Do not claim a graphics speedup without reporting region size, render time,
+  transfer time, total frame time, display clock, buffering mode, and firmware
+  identity.
 - Do not replace a local hardware selector, calibration file, selected-app value or generated launcher, student project, settings file, or recovery state with a repository default.
 - Do not copy an entire PyDevices repository into the device image.
 - Do not track upstream `main` without a pinned commit and test results.
@@ -747,6 +852,9 @@ is no longer undecided: `/device` is the authoritative protected location.
 7. The oldest deployed TartLab version/layout included in the direct-to-latest
    compatibility window and the administrator process for devices older than
    that floor.
+8. The measured winner of the first-repository `lcd_bus` and PyDevices
+   `displayif` modern-firmware comparison, including who maintains TartLab's
+   public direct-surface adapter.
 
 ## Near-term definition of success
 
@@ -759,3 +867,11 @@ The next architectural milestone should not be “TartLab runs on the newest PyD
 > hardware configuration, selected application, user programs, settings, logs,
 > recovery capability, or future OTA access; and the same TartLab hardware API
 > can later select an LVGL-enabled backend on separately provisioned firmware.
+
+The corresponding modern milestone is:
+
+> A reproducible, pinned firmware gives TartLab exclusive, lifecycle-safe
+> ownership of one native display transport; LVGL drives the IDE and normal UI,
+> a supported direct surface drives frame-paced games, both paths pass measured
+> partial-refresh, DMA, mode-transition, soft-reset, network, and heap gates,
+> and adults can provision or migrate devices without weakening recovery.

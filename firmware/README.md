@@ -20,7 +20,18 @@ python tools/check_firmware_artifacts.py
   legacy baseline in `profiles/legacy-mp123.json`.
 - `lvgl-modern/1.27.0` contains a locally built MicroPython 1.27.0 image with
   LVGL built in. It is an experimental artifact and has not passed TartLab's
-  modern-firmware hardware qualification gate.
+  modern-firmware hardware qualification gate. Its presence proves only that
+  LVGL was built into that binary; the recorded provenance does not show an
+  exact reproducible build or prove that TartLab used the native `lcd_bus`
+  display path.
+
+The intended future modern profile is performance-first and dual-renderer. One
+native DMA-capable display transport must serve LVGL UI mode and a mutually
+exclusive direct framebuffer/dirty-rectangle game mode. The first reproducible
+reference will evaluate `lvgl-micropython/lvgl_micropython` and its ESP32
+`lcd_bus`; a PyDevices `lvgl-micropython` + `displayif` image will be benchmarked
+on the same board before a production base is selected. Neither repository's
+unqualified `main` build is a TartLab release artifact.
 
 Both tracked files are combined ESP32 images intended for offset `0x0`. Erase
 the device before changing between firmware layouts. Confirm the target board,

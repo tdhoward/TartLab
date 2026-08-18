@@ -42,6 +42,40 @@ The `legacy-mp123` artifact is the physically qualified baseline. The
 must not be presented as a stable migration target until their missing build
 provenance and hardware qualification are completed.
 
+## Modern graphics development direction
+
+The modern target is not an LVGL-only replacement for the legacy framebuffer
+path. It must contain one DMA-capable native panel transport with two mutually
+exclusive TartLab rendering modes:
+
+- LVGL UI mode for the IDE, menus, controls, text, and UI-oriented apps.
+- A direct framebuffer/dirty-rectangle surface for games and frame-paced
+  animation.
+
+TartLab owns transitions between the modes. A transition must stop or pause the
+current renderer, wait for outstanding display transfers, transfer ownership,
+and redraw/invalidate the destination renderer. Do not let an LVGL flush race a
+direct game transfer, and do not use private upstream driver fields as the game
+API.
+
+Use `lvgl-micropython/lvgl_micropython` and its ESP32 `lcd_bus` as the first
+reproducible performance reference. Compare it on identical hardware with a
+PyDevices `lvgl-micropython` + `displayif` build before selecting the production
+firmware. The comparison must report full-frame and partial-region throughput,
+sprite/scroll and LVGL animation frame times, render/transfer overlap, missed
+deadlines, heap stability, soft-reset behavior, and CPU availability while the
+IDE/network services remain active.
+
+For the 480 x 222 RGB565 panel, one frame is 213,120 bytes. A 60 MHz SPI link
+needs approximately 28.4 ms merely to put those bytes on the wire, so the
+theoretical full-screen ceiling is about 35 FPS before any other overhead.
+Prioritize dirty rectangles, DMA/double buffering, native draw operations,
+preconverted RGB565 assets, and allocation-free steady-state loops. LVGL being
+present in firmware is not evidence that TartLab is using an accelerated path.
+
+The complete rationale and Phase 5 gate are recorded in
+[`PROJECT_NOTES.md`](PROJECT_NOTES.md#phase-5-prototype-modern-lvgl-firmware-separately).
+
 ## Clean checkout and bootstrap
 
 The commands below use the current `ArchitectureOverhaul` development branch.
