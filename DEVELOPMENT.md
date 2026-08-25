@@ -76,6 +76,41 @@ present in firmware is not evidence that TartLab is using an accelerated path.
 The complete rationale and Phase 5 gate are recorded in
 [`PROJECT_NOTES.md`](PROJECT_NOTES.md#phase-5-prototype-modern-lvgl-firmware-separately).
 
+### Pinned Phase 5 reference
+
+The first reference recipe is machine-checked separately from the archived,
+unqualified 2025 binary. It pins the complete direct gitlink set at the selected
+`lvgl_micropython` commit, the T-Display-S3 Pro build arguments, and the
+Linux/amd64 manifest digest of Espressif's ESP-IDF 5.5.1 container. Docker is
+required only to execute the firmware build, not for normal TartLab development.
+
+From the repository root, validate the lock, create a detached clean checkout,
+and inspect or run the exact container command with:
+
+```powershell
+.\.venv\Scripts\python.exe tools/modern_firmware.py check
+.\.venv\Scripts\python.exe tools/modern_firmware.py checkout --source build/phase5/lvgl-micropython
+.\.venv\Scripts\python.exe tools/modern_firmware.py check --source build/phase5/lvgl-micropython
+.\.venv\Scripts\python.exe tools/modern_firmware.py command --source build/phase5/lvgl-micropython
+.\.venv\Scripts\python.exe tools/modern_firmware.py build --source build/phase5/lvgl-micropython
+```
+
+`checkout` refuses to reuse a destination, and `build` refuses a wrong commit or
+dirty source tree. The build command does not contain `deploy` or a serial port,
+so it cannot flash a connected board. Its output remains an unqualified research
+artifact. The pinned upstream tree contains the ST7796 display driver but no
+CST226 input driver, so TartLab supplies the separately reviewed, hash-bound
+`firmware/lvgl-modern/drivers/cst226.py` adapter through the public upstream
+pointer and native I2C APIs. The build wrapper also fixes the application
+partition at 4 MiB and bridges the official ESP-IDF container's Python
+environment to the path expected by the pinned upstream merger.
+
+The archived Phase 5 output was reproduced byte-for-byte from two independent
+clean checkouts. It remains unqualified until the runtime and physical checks
+listed in `firmware/lvgl-modern/reference/provenance.json` pass. Run `build`
+only on a fresh checkout; the upstream build initializes submodules and modifies
+generated source state as part of compilation.
+
 ## Clean checkout and bootstrap
 
 The commands below use the current `ArchitectureOverhaul` development branch.

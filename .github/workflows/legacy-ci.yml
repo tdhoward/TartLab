@@ -66,6 +66,9 @@ jobs:
       - name: Verify tracked firmware artifacts
         run: python tools/check_firmware_artifacts.py
 
+      - name: Verify pinned modern firmware reference recipe
+        run: python tools/modern_firmware.py check
+
       - name: Build historical base distributions twice from clean outputs
         shell: bash
         run: |
@@ -141,6 +144,9 @@ jobs:
 
       - name: Run Phase 4 vendor inventory and upstream mapping tests
         run: python -m unittest tests.test_phase4 -v
+
+      - name: Run Phase 5 reference lock tests
+        run: python -m unittest tests.test_phase5 -v
 
       - name: Run virtual-device recovery tests
         run: python -m unittest tests.test_virtual_device -v

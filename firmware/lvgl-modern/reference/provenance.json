@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "profile": "lvgl-modern-reference",
+  "qualification": "experimental-unqualified",
+  "artifact": {
+    "file": "lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",
+    "size": 2964048,
+    "sha256": "172fb43b08c046e8a90b03caa9ecb1c15af6360f5f589d9b9ef86f31972be6f6",
+    "image_format": "combined-esp-image",
+    "flash_offset": "0x0"
+  },
+  "build_evidence": {
+    "date": "2026-08-24",
+    "independent_clean_checkouts": 2,
+    "byte_identical": true,
+    "clean_source_verified_before_each_build": true,
+    "source_commit": "d2d26467fa4cb9e99e569d899709043d086f7a6f",
+    "container_manifest_digest": "sha256:cbc2e2ec2afee95f1cfa14acfa3bb6cc69a51816537fe0234f4429e71a881066",
+    "source_date_epoch": "1782211759",
+    "successful_build_durations_seconds": [
+      1193.3,
+      1175.9
+    ]
+  },
+  "runtime_sources": {
+    "micropython_version": "1.27.0",
+    "micropython_commit": "78ff170de9e32c79db6e64d3e33d2bd60002bdcd",
+    "lvgl_version": "9.4.0",
+    "lvgl_commit": "c016f72d4c125098287be5e83c0f1abed4706ee5",
+    "esp_idf_version": "5.5.1",
+    "esp_idf_commit": "fcae32885b0296b32044cb99ecbdc50d98dddb83"
+  },
+  "target": {
+    "chip": "ESP32-S3",
+    "board": "ESP32_GENERIC_S3",
+    "board_variant": "SPIRAM_OCT",
+    "flash_size_bytes": 16777216,
+    "flash_mode": "dio",
+    "application_size": 2898512,
+    "application_partition_size": 4194304,
+    "filesystem_partition_size": 12517376
+  },
+  "frozen_drivers": {
+    "display": "st7796",
+    "input": "cst226",
+    "cst226_source_sha256": "3a3dcba8d4b009c19ad6ac9864d1081244eb5abad825d600788520fad27bf696"
+  },
+  "remaining_gates": [
+    "hard-reset and soft-reset runtime identity",
+    "physical ST7796 display initialization and color/orientation check",
+    "physical CST226 touch and calibration check",
+    "native DMA and transfer-completion runtime probe",
+    "public direct-surface API",
+    "exclusive UI/game renderer ownership transitions",
+    "network, IDE, heap, and benchmark matrix"
+  ]
+}

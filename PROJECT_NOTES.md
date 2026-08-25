@@ -743,11 +743,36 @@ already built it successfully and its ESP32 `lcd_bus` path provides the most
 promising current DMA/double-buffer baseline. A PyDevices `lvgl-micropython` +
 `displayif` build remains a required comparison rather than the default winner.
 
-1. Pin MicroPython, LVGL, ESP-IDF, the binding repository, every submodule, and
-   the host toolchain; record a clean source state and exact build command.
-2. Produce reproducible reference firmware for the T-Display-S3 Pro with LVGL,
-   its ST7796 panel driver, touch support, native SPI transport, DMA-capable
-   buffers, and transfer-completion signaling.
+Phase 5 item 1 implementation status (2026-08-24):
+`firmware/lvgl-modern/reference.lock.json` now pins the outer binding commit,
+all five of its direct gitlinks, MicroPython 1.27.0, LVGL 9.4.0, ESP-IDF 5.5.1,
+the exact T-Display-S3 Pro target arguments, and a Linux/amd64 ESP-IDF container
+manifest digest. `tools/modern_firmware.py` validates the lock, verifies an
+exact clean detached checkout and its gitlinks, and generates or executes a
+non-flashing digest-pinned Docker build. This completes the source/toolchain
+lock and clean-input recipe without retrofitting provenance onto the archived
+dirty-tree binary.
+
+Phase 5 item 2 implementation status (2026-08-24): TartLab now supplies a
+hash-bound CST226 driver through the pinned upstream public `PointerDriver` and
+native I2C device APIs. The fixed recipe freezes that driver and ST7796 support,
+builds the native `lcd_bus`/LVGL firmware with a 4 MiB application partition,
+and bridges the official container's Python environment to the path expected by
+the upstream merger. Two independent clean checkouts produced byte-identical
+2,964,048-byte combined images with SHA-256
+`172fb43b08c046e8a90b03caa9ecb1c15af6360f5f589d9b9ef86f31972be6f6`.
+The binary and provenance are archived under `firmware/lvgl-modern/reference`.
+This completes the reproducible host-build portion of item 2; physical display,
+touch, DMA/completion, reset, network, and lifecycle behavior remain item 4
+qualification work. The public direct game surface remains item 3.
+
+1. **Implemented for the first reference:** pin MicroPython, LVGL, ESP-IDF, the
+   binding repository, every direct submodule, and the host toolchain; require a
+   clean source state and record the exact non-flashing build command.
+2. **Implemented and reproducible; physical runtime qualification pending:**
+   produce reference firmware for the T-Display-S3 Pro with LVGL, its ST7796
+   panel driver, CST226 support, native SPI transport, DMA-capable buffers, and
+   transfer-completion signaling.
 3. Implement TartLab UI and game rendering adapters behind the platform
    boundary. UI mode uses LVGL; game mode exposes a public direct surface and
    explicit display-ownership transitions.

@@ -23,5 +23,12 @@
   },
   "release_channel": null,
   "release_builder": null,
-  "hardware_qualification": null
+  "hardware_qualification": null,
+  "reference_candidate": {
+    "status": "research-only-reproducible-unqualified",
+    "artifact": "firmware/lvgl-modern/reference/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",
+    "sha256": "172fb43b08c046e8a90b03caa9ecb1c15af6360f5f589d9b9ef86f31972be6f6",
+    "lock": "firmware/lvgl-modern/reference.lock.json",
+    "provenance": "firmware/lvgl-modern/reference/provenance.json"
+  }
 }

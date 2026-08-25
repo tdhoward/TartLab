@@ -150,7 +150,7 @@ TartLab separates fast host checks from physical-device qualification. Run the
 complete implemented hardware-free suite with:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
 ```
 
 The suite covers deterministic releases, the captured legacy layout, OTA and

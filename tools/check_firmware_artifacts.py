@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 import sys
 
+from modern_firmware import check_lock as check_modern_firmware_lock
+
 
 ROOT = Path(__file__).resolve().parents[1]
 FIRMWARE = ROOT / "firmware"
@@ -101,12 +103,20 @@ def main() -> int:
     errors = []
     for manifest in manifests:
         errors.extend(check_manifest(manifest))
+    modern_lock = FIRMWARE / "lvgl-modern/reference.lock.json"
+    modern_count = 0
+    if modern_lock.is_file():
+        try:
+            check_modern_firmware_lock(modern_lock)
+            modern_count = 1
+        except ValueError as exc:
+            errors.append(f"{modern_lock.relative_to(ROOT)}: {exc}")
     if errors:
         for error in errors:
             print(error, file=sys.stderr)
         return 1
 
-    print(f"Verified {len(manifests)} firmware artifacts")
+    print(f"Verified {len(manifests) + modern_count} firmware artifacts")
     return 0
 
 

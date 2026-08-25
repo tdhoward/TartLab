@@ -34,12 +34,18 @@ against the generated runtime. The source output remains under ignored
 source identity and resulting `mpy` payload identity match the physically
 qualified values in `profiles/legacy-mp123.json`.
 
+`tools/modern_firmware.py check` validates the separate Phase 5 reference lock:
+the binding commit, ESP32 submodule graph, target arguments, reviewed local
+inputs, manifest digest of the Linux/amd64 ESP-IDF build container, archived
+artifact hash, and two-clean-build provenance. CI does not rebuild the large
+firmware image and this tier makes no modern-hardware claim.
+
 ## Tier 1: CPython virtual device
 
 Run:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
 ```
 
 `tests/virtual_device.py` maps MicroPython-style absolute paths into an isolated
