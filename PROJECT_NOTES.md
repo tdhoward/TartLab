@@ -764,7 +764,22 @@ the upstream merger. Two independent clean checkouts produced byte-identical
 The binary and provenance are archived under `firmware/lvgl-modern/reference`.
 This completes the reproducible host-build portion of item 2; physical display,
 touch, DMA/completion, reset, network, and lifecycle behavior remain item 4
-qualification work. The public direct game surface remains item 3.
+qualification work.
+
+Phase 5 item 3 implementation status (2026-08-24): the explicit modern
+T-Display-S3 Pro configuration now constructs the pinned native `lcd_bus`,
+ST7796, CST226, dual DMA buffers, LVGL task handler, and TartLab platform
+adapter. IDE status rendering uses LVGL widgets. Game mode exposes a public
+logical 480 x 222 `RGB565_BE` dirty-rectangle surface with native DMA buffer
+allocation, synchronous or explicitly awaited asynchronous writes, bounds and
+buffer-size checks, and no upstream private fields in its public API. A single
+completion-callback multiplexer pauses LVGL and input, drains the final UI
+flush, transfers exclusive ownership to the game surface, then drains game DMA,
+reenables LVGL/input, invalidates the UI, and forces its redraw on return. The
+legacy platform implements the same mode-entry boundary as no-ops and retains
+its existing renderer. Host tests cover ownership, completion, unsafe buffer
+reuse, transfer parameters, and redraw behavior. Physical color/orientation,
+touch, DMA timing, reset, and lifecycle behavior remain item 4 qualification.
 
 1. **Implemented for the first reference:** pin MicroPython, LVGL, ESP-IDF, the
    binding repository, every direct submodule, and the host toolchain; require a
@@ -773,9 +788,10 @@ qualification work. The public direct game surface remains item 3.
    produce reference firmware for the T-Display-S3 Pro with LVGL, its ST7796
    panel driver, CST226 support, native SPI transport, DMA-capable buffers, and
    transfer-completion signaling.
-3. Implement TartLab UI and game rendering adapters behind the platform
-   boundary. UI mode uses LVGL; game mode exposes a public direct surface and
-   explicit display-ownership transitions.
+3. **Implemented; physical runtime qualification pending:** implement TartLab
+   UI and game rendering adapters behind the platform boundary. UI mode uses
+   LVGL; game mode exposes a public direct surface and explicit
+   display-ownership transitions.
 4. Verify hard reset, soft reset, repeated initialization/deinitialization,
    UI-to-game-to-UI transitions, Wi-Fi AP mode, IDE server operation, touch
    input, application switching, and recovery after an application exception.

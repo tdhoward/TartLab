@@ -105,6 +105,25 @@ pointer and native I2C APIs. The build wrapper also fixes the application
 partition at 4 MiB and bridges the official ESP-IDF container's Python
 environment to the path expected by the pinned upstream merger.
 
+The Phase 5 application adapter is selected explicitly; it does not alter the
+qualified legacy board configuration. On an experimental modern device,
+`/hdwconfig.py` selects it with:
+
+```python
+from t_display_s3_pro_modern import *
+```
+
+IDE mode then uses the LVGL status view. App startup calls the platform's game
+mode transition; app code obtains the 480 x 222 direct surface from
+`get_platform().game_surface` (or from the idempotent `enter_game_mode()` call).
+Its `write(buffer, x, y, width, height)` API accepts big-endian,
+panel-wire-order RGB565 data. Reusable native DMA memory comes from
+`allocate_buffer(width, height)`. A write waits for completion by default;
+callers opting into `wait=False` must not touch or release the buffer until
+`surface.wait()` returns. `get_platform().enter_ui_mode()` performs the inverse
+drain-and-redraw transition. These adapters are host-tested but remain
+hardware-unqualified until Phase 5 item 4.
+
 The archived Phase 5 output was reproduced byte-for-byte from two independent
 clean checkouts. It remains unqualified until the runtime and physical checks
 listed in `firmware/lvgl-modern/reference/provenance.json` pass. Run `build`

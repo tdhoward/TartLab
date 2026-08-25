@@ -231,8 +231,26 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
     present = gate.get("present_in_reference")
     _require(isinstance(present, list) and "cst226-input-driver" in present,
              "the reference must record its reviewed CST226 driver")
-    _require("public-direct-surface-api" in missing,
-             "the absent direct surface must remain an explicit gate")
+    payload = gate.get("present_in_application_payload")
+    _require(isinstance(payload, list)
+             and "public-direct-surface-api" in payload
+             and "exclusive-ui-game-ownership-transitions" in payload,
+             "the application payload must record its Phase 5 item 3 adapters")
+    _require("public-direct-surface-api" not in missing
+             and "exclusive-ui-game-ownership-transitions" not in missing,
+             "implemented item 3 adapters cannot remain missing gates")
+    _require("hardware-benchmark-results" in missing,
+             "hardware benchmarks must remain an explicit gate")
+    profile = load_lock(ROOT / "profiles/lvgl-modern.json")
+    adapter = profile.get("application_adapter", {})
+    adapter_inputs = adapter.get("inputs", [])
+    _require(isinstance(adapter_inputs, list) and len(adapter_inputs) == 2,
+             "Phase 5 item 3 adapter inputs are not locked")
+    for item in adapter_inputs:
+        path = ROOT / item.get("path", "")
+        _require(path.is_file(), f"application adapter input is missing: {path}")
+        _require(item.get("sha256") == sha256_file(path),
+                 f"{item.get('path')}: application adapter hash mismatch")
 
     result = lock.get("result")
     _require(isinstance(result, dict), "reproducible build result is missing")

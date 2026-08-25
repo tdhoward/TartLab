@@ -189,6 +189,21 @@ class LegacyPlatform:
             return NullIDEView()
         return LegacyIDEView(self.display)
 
+    def enter_ui_mode(self):
+        """Legacy firmware has one renderer, so ownership is already implicit."""
+
+    def enter_game_mode(self):
+        """Return the deployed direct display through the common boundary."""
+        return self.display
+
+    def clear_display(self):
+        if self.display is not None:
+            self.display.fill(0)
+
+    def show_error(self):
+        if self.display is not None:
+            self.display.fill(0xF800)
+
     def set_brightness(self, value):
         if self.display is not None and hasattr(self.display, "brightness"):
             self.display.brightness = value
@@ -219,5 +234,14 @@ def set_platform(platform):
 def get_platform():
     global _current_platform
     if _current_platform is None:
-        _current_platform = LegacyPlatform()
+        # Both explicit modern configs and historical hdwconfig modules live
+        # behind /configs.  LegacyPlatform repeats this idempotently before it
+        # imports any remaining flat PyDevices modules.
+        configure_legacy_paths()
+        import hdwconfig as hardware
+        factory = getattr(hardware, "create_platform", None)
+        if factory is None:
+            _current_platform = LegacyPlatform(hardware=hardware)
+        else:
+            _current_platform = factory()
     return _current_platform

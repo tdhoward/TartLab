@@ -30,5 +30,23 @@
     "sha256": "172fb43b08c046e8a90b03caa9ecb1c15af6360f5f589d9b9ef86f31972be6f6",
     "lock": "firmware/lvgl-modern/reference.lock.json",
     "provenance": "firmware/lvgl-modern/reference/provenance.json"
+  },
+  "application_adapter": {
+    "status": "implemented-hardware-unqualified",
+    "platform": "src/lib/tartlabutils/modern.py",
+    "board_config": "src/configs/t_display_s3_pro_modern.py",
+    "ui_renderer": "LVGL 9",
+    "game_surface": "RGB565_BE dirty rectangles",
+    "ownership": "exclusive completion-signaled UI/game transitions",
+    "inputs": [
+      {
+        "path": "src/lib/tartlabutils/modern.py",
+        "sha256": "97d7aabb1a058ccd0067d7f86928dc32555da05ed6f6cac62346b046ae6fb03f"
+      },
+      {
+        "path": "src/configs/t_display_s3_pro_modern.py",
+        "sha256": "e3344b1209898de687d1439670b1c7756520c74d4265f7c1f3b838393c08d982"
+      }
+    ]
   }
 }

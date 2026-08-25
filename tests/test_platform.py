@@ -137,6 +137,22 @@ class PlatformContractTests(unittest.TestCase):
         finally:
             self.platform_module.set_platform(None)
 
+    def test_explicit_hardware_factory_selects_modern_platform(self):
+        selected = object()
+        hardware = types.ModuleType("hdwconfig")
+        hardware.create_platform = lambda: selected
+        previous = sys.modules.get("hdwconfig")
+        self.platform_module.set_platform(None)
+        sys.modules["hdwconfig"] = hardware
+        try:
+            self.assertIs(self.platform_module.get_platform(), selected)
+        finally:
+            self.platform_module.set_platform(None)
+            if previous is None:
+                sys.modules.pop("hdwconfig", None)
+            else:
+                sys.modules["hdwconfig"] = previous
+
     def test_legacy_ide_view_preserves_rendering_operations(self):
         framebuffers = []
         gradients = []

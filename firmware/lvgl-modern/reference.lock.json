@@ -135,9 +135,11 @@
       "transfer-completion-callback",
       "repeatable-artifact-build"
     ],
-    "required_before_hardware_qualification": [
+    "present_in_application_payload": [
       "public-direct-surface-api",
-      "exclusive-ui-game-ownership-transitions",
+      "exclusive-ui-game-ownership-transitions"
+    ],
+    "required_before_hardware_qualification": [
       "hardware-benchmark-results"
     ]
   },

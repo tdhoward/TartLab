@@ -63,7 +63,10 @@ def run(platform=None, start_ide=None, start_app=None, start_recovery=None):
         else:
             set_platform(platform)
         display = platform.display
-        if display is not None:
+        clear_display = getattr(platform, "clear_display", None)
+        if clear_display is not None:
+            clear_display()
+        elif display is not None:
             display.fill(0)
 
         try:
@@ -77,12 +80,18 @@ def run(platform=None, start_ide=None, start_app=None, start_recovery=None):
             (start_recovery or _recovery)("startup_mode")
         elif start_mode == "IDE":
             log("Starting IDE")
+            enter_ui_mode = getattr(platform, "enter_ui_mode", None)
+            if enter_ui_mode is not None:
+                enter_ui_mode()
             if start_ide is None:
                 import ide
                 start_ide = ide.main
             start_ide()
         else:
             log("Starting APP")
+            enter_game_mode = getattr(platform, "enter_game_mode", None)
+            if enter_game_mode is not None:
+                enter_game_mode()
             if start_app is None:
                 from tartlabutils.launcher import launch_selected_app
                 start_app = launch_selected_app
@@ -93,7 +102,13 @@ def run(platform=None, start_ide=None, start_app=None, start_recovery=None):
             mark_boot_failed(error)
         except Exception:
             sys.print_exception(error)
-        if display is not None:
+        show_error = getattr(platform, "show_error", None)
+        if show_error is not None:
+            try:
+                show_error()
+            except Exception:
+                pass
+        elif display is not None:
             try:
                 display.fill(0xF800)
             except Exception:

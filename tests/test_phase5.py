@@ -14,6 +14,14 @@ sys.path.insert(0, str(ROOT / "tools"))
 from modern_firmware import check_lock, docker_command, validate_lock
 
 
+def load_modern_rendering():
+    path = ROOT / "src/lib/tartlabutils/modern.py"
+    spec = importlib.util.spec_from_file_location("phase5_modern", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 class FakePointerDriver:
     PRESSED = 1
     RELEASED = 0
@@ -86,15 +94,18 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
         self.assertEqual(container["platform"], "linux/amd64")
         self.assertTrue(container["manifest_digest"].startswith("sha256:"))
 
-    def test_reference_remains_unqualified_and_explicit_about_missing_gates(self):
+    def test_reference_remains_unqualified_with_item3_adapters_present(self):
         lock = check_lock()
         self.assertEqual(
             lock["status"], "research-only-reproducible-unqualified")
         missing = lock["capability_gate"][
             "required_before_hardware_qualification"]
         present = lock["capability_gate"]["present_in_reference"]
+        payload = lock["capability_gate"]["present_in_application_payload"]
         self.assertIn("cst226-input-driver", present)
-        self.assertIn("public-direct-surface-api", missing)
+        self.assertIn("public-direct-surface-api", payload)
+        self.assertIn("exclusive-ui-game-ownership-transitions", payload)
+        self.assertNotIn("public-direct-surface-api", missing)
         self.assertIn("hardware-benchmark-results", missing)
         result = lock["result"]
         self.assertTrue(result["byte_identical"])
@@ -148,6 +159,16 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
                 rendered = json.dumps(data, indent=2, sort_keys=False) + "\n"
                 self.assertEqual(path.read_text(encoding="utf-8"), rendered)
 
+    def test_item3_application_adapter_sources_are_hash_bound(self):
+        check_lock()
+        profile = json.loads(
+            (ROOT / "profiles/lvgl-modern.json").read_text(encoding="utf-8"))
+        inputs = profile["application_adapter"]["inputs"]
+        self.assertEqual({item["path"] for item in inputs}, {
+            "src/lib/tartlabutils/modern.py",
+            "src/configs/t_display_s3_pro_modern.py",
+        })
+
 
 class CST226ReferenceDriverTests(unittest.TestCase):
     def test_initialization_checks_identity_and_configures_polling(self):
@@ -178,6 +199,321 @@ class CST226ReferenceDriverTests(unittest.TestCase):
         module = load_cst226_driver()
         with self.assertRaisesRegex(RuntimeError, "CST226 not detected"):
             module.CST226(FakeI2CDevice(chip_id=0x1234))
+
+
+class FakeModernBus:
+    def __init__(self):
+        self.callback = None
+        self.auto_complete = True
+        self.transfers = []
+        self.allocations = []
+        self.freed = []
+
+    def register_callback(self, callback):
+        self.callback = callback
+
+    def tx_color(self, *values):
+        self.transfers.append(values)
+        if self.auto_complete:
+            self.complete()
+
+    def complete(self):
+        if self.callback is not None:
+            self.callback()
+
+    def allocate_framebuffer(self, size, flags):
+        self.allocations.append((size, flags))
+        return bytearray(size)
+
+    def free_framebuffer(self, buffer):
+        self.freed.append(buffer)
+
+
+class FakeModernPanel:
+    def __init__(self):
+        self.params = []
+
+    def set_params(self, command, params=None):
+        self.params.append((command, bytes(params or b"")))
+
+
+class FakeLVDisplay:
+    def __init__(self, bus):
+        self.bus = bus
+        self.events = []
+        self.flush_ready_calls = 0
+        self.rotation = 1
+
+    def get_horizontal_resolution(self):
+        return 480
+
+    def get_vertical_resolution(self):
+        return 222
+
+    def get_rotation(self):
+        return self.rotation
+
+    def add_event_cb(self, callback, event, user_data):
+        self.events.append((callback, event, user_data))
+
+    def begin_flush(self):
+        for callback, unused_event, unused_data in self.events:
+            callback(None)
+
+    def flush_ready(self):
+        self.flush_ready_calls += 1
+
+
+class FakeLVScreen:
+    def __init__(self):
+        self.invalidations = 0
+
+    def invalidate(self):
+        self.invalidations += 1
+
+
+class FakeModernLVGL:
+    EVENT = types.SimpleNamespace(FLUSH_START=91)
+
+    def __init__(self, display, bus):
+        self.display = display
+        self.bus = bus
+        self.screen = FakeLVScreen()
+        self.refreshes = 0
+
+    def refr_now(self, display):
+        self.refreshes += 1
+        display.begin_flush()
+        self.bus.complete()
+
+    def screen_active(self):
+        return self.screen
+
+
+class FakeTaskHandler:
+    def __init__(self):
+        self.disables = 0
+        self.enables = 0
+
+    def disable(self):
+        self.disables += 1
+
+    def enable(self):
+        self.enables += 1
+
+
+class FakeModernInput:
+    def __init__(self):
+        self.enabled = []
+
+    def enable(self, enabled):
+        self.enabled.append(enabled)
+
+
+class ModernRenderingAdapterTests(unittest.TestCase):
+    def prepare(self):
+        module = load_modern_rendering()
+        bus = FakeModernBus()
+        panel = FakeModernPanel()
+        lv_display = FakeLVDisplay(bus)
+        lvgl = FakeModernLVGL(lv_display, bus)
+        tasks = FakeTaskHandler()
+        pointer = FakeModernInput()
+        controller = module.ModernDisplayController(
+            bus, panel, lv_display, lvgl, tasks, pointer,
+            offset_y=49, allocation_flags=3)
+        return module, bus, panel, lv_display, lvgl, tasks, pointer, controller
+
+    def test_ui_to_game_to_ui_transition_drains_and_redraws(self):
+        (module, unused_bus, unused_panel, lv_display, lvgl, tasks,
+         pointer, controller) = self.prepare()
+
+        surface = controller.acquire_game()
+        self.assertIs(surface, controller.surface)
+        self.assertEqual(controller.owner, module.GAME_OWNER)
+        self.assertEqual(tasks.disables, 1)
+        self.assertEqual(pointer.enabled, [False])
+        self.assertEqual(lv_display.flush_ready_calls, 1)
+
+        controller.acquire_ui()
+        self.assertEqual(controller.owner, module.UI_OWNER)
+        self.assertEqual(tasks.enables, 1)
+        self.assertEqual(pointer.enabled, [False, True])
+        self.assertEqual(lvgl.screen.invalidations, 1)
+        self.assertEqual(lv_display.flush_ready_calls, 2)
+
+    def test_failed_game_transition_restores_ui_task_and_input(self):
+        (module, unused_bus, unused_panel, unused_lv_display, lvgl, tasks,
+         pointer, controller) = self.prepare()
+
+        def fail_refresh(unused_display):
+            raise RuntimeError("synthetic refresh failure")
+
+        lvgl.refr_now = fail_refresh
+        with self.assertRaisesRegex(RuntimeError, "synthetic refresh failure"):
+            controller.acquire_game()
+        self.assertEqual(controller.owner, module.UI_OWNER)
+        self.assertEqual(tasks.disables, 1)
+        self.assertEqual(tasks.enables, 1)
+        self.assertEqual(pointer.enabled, [False, True])
+
+    def test_direct_surface_uses_public_panel_and_native_bus_apis(self):
+        (unused_module, bus, panel, unused_lv_display, unused_lvgl,
+         unused_tasks, unused_pointer, controller) = self.prepare()
+        surface = controller.acquire_game()
+        bus.transfers.clear()
+        panel.params.clear()
+
+        pixels = bytes(range(24))
+        surface.write(pixels, 7, 11, 4, 3)
+
+        self.assertEqual(panel.params, [
+            (0x2A, b"\x00\x07\x00\x0a"),
+            (0x2B, b"\x00\x3c\x00\x3e"),
+        ])
+        self.assertEqual(bus.transfers, [
+            (0x2C, pixels, 7, 60, 10, 62, 1, True),
+        ])
+        self.assertFalse(surface.busy)
+
+    def test_async_direct_transfer_blocks_reuse_until_completion(self):
+        (module, bus, unused_panel, unused_lv_display, unused_lvgl,
+         unused_tasks, unused_pointer, controller) = self.prepare()
+        surface = controller.acquire_game()
+        bus.auto_complete = False
+        pixels = bytearray(8)
+
+        surface.write(pixels, 0, 0, 2, 2, wait=False)
+        self.assertTrue(surface.busy)
+        with self.assertRaises(module.DisplayOwnershipError):
+            surface.write(pixels, 0, 0, 2, 2, wait=False)
+        bus.complete()
+        self.assertFalse(surface.busy)
+
+    def test_direct_surface_rejects_wrong_owner_bounds_and_size(self):
+        (module, unused_bus, unused_panel, unused_lv_display, unused_lvgl,
+         unused_tasks, unused_pointer, controller) = self.prepare()
+        surface = controller.surface
+        with self.assertRaises(module.DisplayOwnershipError):
+            surface.write(bytearray(2), 0, 0, 1, 1)
+        controller.acquire_game()
+        with self.assertRaisesRegex(ValueError, "outside"):
+            surface.write(bytearray(2), 480, 0, 1, 1)
+        with self.assertRaisesRegex(ValueError, "expected 8"):
+            surface.write(bytearray(2), 0, 0, 2, 2)
+
+    def test_direct_buffer_allocation_is_explicit_and_reusable(self):
+        (unused_module, bus, unused_panel, unused_lv_display, unused_lvgl,
+         unused_tasks, unused_pointer, controller) = self.prepare()
+        surface = controller.acquire_game()
+        buffer = surface.allocate_buffer(8, 5)
+        self.assertEqual(len(buffer), 80)
+        self.assertEqual(bus.allocations, [(80, 3)])
+        surface.free_buffer(buffer)
+        self.assertEqual(bus.freed, [buffer])
+
+    def test_pinned_board_factory_uses_native_dual_dma_and_swapped_lvgl(self):
+        module = load_modern_rendering()
+        bus = FakeModernBus()
+        display = FakeLVDisplay(bus)
+        screen = FakeLVScreen()
+        panels = []
+        pointers = []
+        spi_calls = []
+
+        class Panel(FakeModernPanel):
+            def __init__(self, **kwargs):
+                super().__init__()
+                self.options = kwargs
+                self.events = []
+                panels.append(self)
+
+            def reset(self):
+                self.events.append("reset")
+
+            def init(self):
+                self.events.append("init")
+
+            def set_color_inversion(self, value):
+                self.events.append(("invert", value))
+
+            def set_rotation(self, value):
+                self.events.append(("rotation", value))
+
+            def set_backlight(self, value):
+                self.events.append(("backlight", value))
+
+        class Pointer(FakeModernInput):
+            def __init__(self, device, **kwargs):
+                super().__init__()
+                self.device = device
+                self.options = kwargs
+                pointers.append(self)
+
+        class I2CBus:
+            def __init__(self, **kwargs):
+                self.options = kwargs
+
+        class I2CDevice:
+            def __init__(self, **kwargs):
+                self.options = kwargs
+
+        class Handler(FakeTaskHandler):
+            pass
+
+        lvgl = types.ModuleType("lvgl")
+        lvgl.COLOR_FORMAT = types.SimpleNamespace(
+            RGB565_SWAPPED="rgb565-swapped")
+        lvgl.DISPLAY_ROTATION = types.SimpleNamespace(_90=1)
+        lvgl.EVENT = types.SimpleNamespace(FLUSH_START=91)
+        lvgl.display_get_default = lambda: display
+        lvgl.screen_active = lambda: screen
+        lvgl.refr_now = lambda unused: None
+
+        machine = types.ModuleType("machine")
+        machine.SPI = types.SimpleNamespace(Bus=lambda **kwargs: (
+            spi_calls.append(kwargs), "native-spi")[1])
+        lcd_bus = types.ModuleType("lcd_bus")
+        lcd_bus.MEMORY_INTERNAL = 1
+        lcd_bus.MEMORY_DMA = 2
+        lcd_bus.SPIBus = lambda **kwargs: bus
+        st7796 = types.ModuleType("st7796")
+        st7796.STATE_LOW = 0
+        st7796.STATE_PWM = -1
+        st7796.BYTE_ORDER_BGR = 8
+        st7796.ST7796 = Panel
+        cst226 = types.ModuleType("cst226")
+        cst226.I2C_ADDR = 0x5A
+        cst226.BITS = 8
+        cst226.CST226 = Pointer
+        i2c = types.ModuleType("i2c")
+        i2c.I2C = types.SimpleNamespace(Bus=I2CBus, Device=I2CDevice)
+        task_handler = types.ModuleType("task_handler")
+        task_handler.TaskHandler = Handler
+
+        with mock.patch.dict(sys.modules, {
+            "cst226": cst226,
+            "i2c": i2c,
+            "lcd_bus": lcd_bus,
+            "lvgl": lvgl,
+            "machine": machine,
+            "st7796": st7796,
+            "task_handler": task_handler,
+        }):
+            platform = module.create_t_display_s3_pro_platform()
+
+        self.assertEqual(spi_calls, [
+            {"host": 1, "mosi": 17, "miso": 8, "sck": 18}])
+        self.assertEqual(bus.allocations[:2], [(23040, 3), (23040, 3)])
+        self.assertEqual(panels[0].options["color_space"], "rgb565-swapped")
+        self.assertFalse(panels[0].options["rgb565_byte_swap"])
+        self.assertEqual(
+            (panels[0].options["offset_x"], panels[0].options["offset_y"]),
+            (0, 49))
+        self.assertEqual(pointers[0].options, {
+            "reset_pin": 13, "interrupt_pin": 21, "startup_rotation": 1})
+        self.assertEqual((platform.width, platform.height), (480, 222))
+        self.assertTrue(platform.capabilities["exclusive_display_ownership"])
 
 
 if __name__ == "__main__":

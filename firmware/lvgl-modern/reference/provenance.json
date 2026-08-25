@@ -50,8 +50,6 @@
     "physical ST7796 display initialization and color/orientation check",
     "physical CST226 touch and calibration check",
     "native DMA and transfer-completion runtime probe",
-    "public direct-surface API",
-    "exclusive UI/game renderer ownership transitions",
     "network, IDE, heap, and benchmark matrix"
   ]
 }

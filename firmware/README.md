@@ -48,8 +48,11 @@ The reference was built independently from two clean checkouts. Both combined
 images were 2,964,048 bytes with SHA-256
 `172fb43b08c046e8a90b03caa9ecb1c15af6360f5f589d9b9ef86f31972be6f6`.
 It freezes ST7796 and CST226 drivers and uses the native `lcd_bus` build, but it
-remains `research-only-reproducible-unqualified`: no physical display, touch,
-DMA, reset, network, or benchmark claim follows from successful compilation.
+remains `research-only-reproducible-unqualified`. TartLab's checked-in
+application payload now supplies the Phase 5 direct RGB565 surface and
+exclusive LVGL/game ownership adapter, but no physical display, touch, DMA,
+reset, network, or benchmark claim follows from host tests or successful
+firmware compilation.
 It is not recovered provenance for the archived 2025 binary and is not a
 release-channel input.
 
