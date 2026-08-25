@@ -57,7 +57,8 @@ class DirectRGB565Surface:
     color_format = "RGB565_BE"
 
     def __init__(self, controller, bus, panel, width, height,
-                 offset_x=0, offset_y=0, allocation_flags=None):
+                 offset_x=0, offset_y=0, allocation_flags=None,
+                 buffer_allocator=None, buffer_free=None):
         self._controller = controller
         self._bus = bus
         self._panel = panel
@@ -66,6 +67,8 @@ class DirectRGB565Surface:
         self._offset_x = offset_x
         self._offset_y = offset_y
         self._allocation_flags = allocation_flags
+        self._buffer_allocator = buffer_allocator
+        self._buffer_free = buffer_free
         self._params = bytearray(4)
         self._params_view = memoryview(self._params)
 
@@ -128,7 +131,9 @@ class DirectRGB565Surface:
             raise ValueError("width and height must be positive")
         if self._allocation_flags is None:
             return bytearray(size)
-        buffer = self._bus.allocate_framebuffer(size, self._allocation_flags)
+        if self._buffer_allocator is None:
+            raise RuntimeError("native direct-buffer allocator is unavailable")
+        buffer = self._buffer_allocator(size, self._allocation_flags)
         if buffer is None:
             raise MemoryError("unable to allocate direct RGB565 buffer")
         return buffer
@@ -137,7 +142,7 @@ class DirectRGB565Surface:
         """Release a buffer returned by :meth:`allocate_buffer`."""
         if self._allocation_flags is not None:
             self.wait()
-            self._bus.free_framebuffer(buffer)
+            self._buffer_free(buffer)
 
 
 class ModernDisplayController:
@@ -145,7 +150,8 @@ class ModernDisplayController:
 
     def __init__(self, bus, panel, lv_display, lvgl, task_handler,
                  input_device=None, width=None, height=None,
-                 offset_x=0, offset_y=0, allocation_flags=None):
+                 offset_x=0, offset_y=0, allocation_flags=None,
+                 buffer_allocator=None, buffer_free=None):
         self._bus = bus
         self._panel = panel
         self._lv_display = lv_display
@@ -162,7 +168,7 @@ class ModernDisplayController:
             height = lv_display.get_vertical_resolution()
         self.surface = DirectRGB565Surface(
             self, bus, panel, width, height, offset_x, offset_y,
-            allocation_flags)
+            allocation_flags, buffer_allocator, buffer_free)
 
         # lcd_bus has one completion callback.  TartLab multiplexes that public
         # callback so an LVGL flush and a direct transfer cannot race.
@@ -250,6 +256,7 @@ class ModernDisplayController:
             self._task_handler.enable()
             self._task_paused = False
         self._lvgl.refr_now(self._lv_display)
+        self.wait_for_transfer(timeout_ms)
 
 
 class ModernIDEView:
@@ -318,6 +325,7 @@ class ModernPlatform:
         self._button = None
         self._network_module = network_module
         self._lvgl = lvgl or controller._lvgl
+        self._deinitialized = False
         self.capabilities = {
             "display": True,
             "touch": input_device is not None,
@@ -393,11 +401,34 @@ class ModernPlatform:
         time.sleep(seconds)
 
     def deinit(self):
+        if self._deinitialized:
+            return
         self.controller.wait_for_transfer()
         self._task_handler_deinit()
+
+        # The upstream Python wrappers retain displays and input devices in
+        # class-level registries.  Bus teardown alone therefore leaves LVGL
+        # objects alive across same-runtime reinitialization.  Delete the
+        # native input first, then invoke the display wrapper's own finalizer,
+        # which removes it from the registry and releases the LVGL display.
+        if self.input is not None:
+            self.input.enable(False)
+            indev = getattr(self.input, "_indev_drv", None)
+            delete = getattr(indev, "delete", None)
+            if delete is not None:
+                delete()
+            registry = getattr(self.input.__class__, "_indevs", None)
+            if registry is not None and self.input in registry:
+                registry.remove(self.input)
+
+        finalize_display = getattr(self.display, "__del__", None)
+        if finalize_display is not None:
+            finalize_display()
+
         deinit = getattr(self._bus(), "deinit", None)
         if deinit is not None:
             deinit()
+        self._deinitialized = True
 
     def _task_handler_deinit(self):
         deinit = getattr(self.controller._task_handler, "deinit", None)
@@ -453,15 +484,17 @@ def create_t_display_s3_pro_platform():
         bus=i2c_bus, dev_id=cst226.I2C_ADDR, reg_bits=cst226.BITS)
     pointer = cst226.CST226(
         touch_device, reset_pin=13, interrupt_pin=21,
-        startup_rotation=lv.DISPLAY_ROTATION._90)
+        startup_rotation=lv.DISPLAY_ROTATION._270)
 
-    panel.set_rotation(lv.DISPLAY_ROTATION._90)
+    panel.set_rotation(lv.DISPLAY_ROTATION._270)
     panel.set_backlight(100)
     handler = task_handler.TaskHandler()
     lv_display = lv.display_get_default()
     controller = ModernDisplayController(
         bus, panel, lv_display, lv, handler, pointer,
         width=480, height=222, offset_x=0, offset_y=49,
-        allocation_flags=flags)
+        allocation_flags=flags,
+        buffer_allocator=lcd_bus.allocate_buffer,
+        buffer_free=lcd_bus.free_buffer)
     return ModernPlatform(
         controller, panel, pointer, ide_button_pin=12, lvgl=lv)

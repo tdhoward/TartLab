@@ -84,7 +84,8 @@
     "width": 480,
     "height": 222,
     "color_format": "RGB565",
-    "touch_controller": "CST226"
+    "touch_controller": "CST226",
+    "repl": "USB_SERIAL_JTAG"
   },
   "build": {
     "environment": {
@@ -101,9 +102,9 @@
       "BOARD_VARIANT=SPIRAM_OCT",
       "--flash-size=16",
       "--partition-size=4194304",
-      "--enable-uart-repl=y",
+      "--enable-uart-repl=n",
       "--enable-cdc-repl=n",
-      "--enable-jtag-repl=n",
+      "--enable-jtag-repl=y",
       "DISPLAY=st7796",
       "INDEV=/tartlab/firmware/lvgl-modern/drivers/cst226.py",
       "clean"
@@ -114,12 +115,12 @@
       {
         "path": "firmware/lvgl-modern/container_prepare.py",
         "container_path": "/tartlab/firmware/lvgl-modern/container_prepare.py",
-        "sha256": "a817006010e8be152476896daa6bd77333f32cb76b1d1f972aab8ee49bf4a1ce"
+        "sha256": "9a960dc7a62adf3db6a37828bbf75d5addf2b4597653bcd6395b4336aaf3755b"
       },
       {
         "path": "firmware/lvgl-modern/drivers/cst226.py",
         "container_path": "/tartlab/firmware/lvgl-modern/drivers/cst226.py",
-        "sha256": "3a3dcba8d4b009c19ad6ac9864d1081244eb5abad825d600788520fad27bf696"
+        "sha256": "886bc8ad6efad48f1e02a4afb8e7e511159429cd0d4f305dd23e15b78022cc75"
       }
     ],
     "native_transport": "lcd_bus.SPIBus",
@@ -133,7 +134,8 @@
       "cst226-input-driver",
       "dma-capable-buffer-allocation",
       "transfer-completion-callback",
-      "repeatable-artifact-build"
+      "native-usb-repl",
+      "clean-candidate-build"
     ],
     "present_in_application_payload": [
       "public-direct-surface-api",
@@ -146,12 +148,12 @@
   "result": {
     "qualification": "experimental-unqualified",
     "artifact": "firmware/lvgl-modern/reference/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",
-    "size": 2964048,
-    "sha256": "172fb43b08c046e8a90b03caa9ecb1c15af6360f5f589d9b9ef86f31972be6f6",
+    "size": 2978512,
+    "sha256": "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab",
     "provenance": "firmware/lvgl-modern/reference/provenance.json",
     "independent_clean_builds": 2,
     "byte_identical": true,
-    "application_size": 2898512,
+    "application_size": 2912976,
     "application_partition_size": 4194304,
     "filesystem_partition_size": 12517376
   }

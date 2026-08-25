@@ -130,6 +130,13 @@ identity. `tools/phase1_device.py boot-timing` and `pydevices-benchmark` provide
 repeatable samples, but idle touch polls and successful driver calls are not
 human touch or visual assertions.
 
+`PHASE5_HARDWARE.md` is the separate modern-firmware lifecycle gate.
+`tools/phase5_device.py` records runtime/module identity, native dirty-transfer
+completion, renderer ownership transitions, heap behavior, repeated
+initialization, and touch samples. Its automated output does not replace the
+required human color, orientation, touch-region, browser, and recovery
+observations.
+
 ## Tier 4: physical release qualification
 
 Before stable promotion, run the complete applicable hardware gate in

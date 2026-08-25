@@ -758,13 +758,18 @@ hash-bound CST226 driver through the pinned upstream public `PointerDriver` and
 native I2C device APIs. The fixed recipe freezes that driver and ST7796 support,
 builds the native `lcd_bus`/LVGL firmware with a 4 MiB application partition,
 and bridges the official container's Python environment to the path expected by
-the upstream merger. Two independent clean checkouts produced byte-identical
-2,964,048-byte combined images with SHA-256
-`172fb43b08c046e8a90b03caa9ecb1c15af6360f5f589d9b9ef86f31972be6f6`.
+the upstream merger. The first reproducible recipe used UART-only REPL and was
+rejected during item 4 provisioning because the target is connected through
+native USB. A USB Serial/JTAG revision was reproduced from two clean checkouts,
+then physical testing found a mixed-width CST226 identity bug and the upstream
+bus's two-framebuffer allocation limit. The current recipe fixes the touch
+transaction and adds an explicit capability-bound application buffer API. Two
+independent clean checkouts produce the same 2,978,512-byte checkpoint with
+SHA-256
+`187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`;
+the second image is byte-identical to the archived reference.
 The binary and provenance are archived under `firmware/lvgl-modern/reference`.
-This completes the reproducible host-build portion of item 2; physical display,
-touch, DMA/completion, reset, network, and lifecycle behavior remain item 4
-qualification work.
+This completes the reproducible host-build portion of item 2.
 
 Phase 5 item 3 implementation status (2026-08-24): the explicit modern
 T-Display-S3 Pro configuration now constructs the pinned native `lcd_bus`,
@@ -778,21 +783,39 @@ flush, transfers exclusive ownership to the game surface, then drains game DMA,
 reenables LVGL/input, invalidates the UI, and forces its redraw on return. The
 legacy platform implements the same mode-entry boundary as no-ops and retains
 its existing renderer. Host tests cover ownership, completion, unsafe buffer
-reuse, transfer parameters, and redraw behavior. Physical color/orientation,
-touch, DMA timing, reset, and lifecycle behavior remain item 4 qualification.
+reuse, transfer parameters, and redraw behavior. Item 4 physically verified
+the adapter on the exact reference checkpoint.
+
+Phase 5 item 4 implementation status (2026-08-25): the exact reference
+checkpoint passed the recorded physical lifecycle gate on the T-Display-S3 Pro
+PCB v1.1. Hard and soft reset, five same-runtime init/deinit cycles, two
+25-cycle UI/game/UI runs, color and orientation, five-point touch, fallback AP
+and browser IDE, physical APP selection, APP-to-IDE return, error recovery, and
+final healthy UI all passed. Testing corrected panel/touch rotation, upstream
+display/input registry teardown, return-to-UI DMA draining, and the APP health
+timer fallback required on ESP32 when virtual `machine.Timer(-1)` is
+unsupported. A captured spontaneous reset was an explicit brownout; changing
+to a known-good USB path then passed a five-minute passive reset capture. The
+backlight read 100 percent duty, a gamma A/B was inconclusive, and normal
+brightness returned without retaining a gamma change. Exact commands,
+observations, and limitations are recorded in `tests/PHASE5_HARDWARE.md`.
+This completes item 4 for the checkpoint but does not qualify or promote it.
+The reproducibility gate is also complete; item 5 comparative benchmarks are
+the remaining gate.
 
 1. **Implemented for the first reference:** pin MicroPython, LVGL, ESP-IDF, the
    binding repository, every direct submodule, and the host toolchain; require a
    clean source state and record the exact non-flashing build command.
-2. **Implemented and reproducible; physical runtime qualification pending:**
+2. **Implemented and reproducible:**
    produce reference firmware for the T-Display-S3 Pro with LVGL, its ST7796
    panel driver, CST226 support, native SPI transport, DMA-capable buffers, and
    transfer-completion signaling.
-3. **Implemented; physical runtime qualification pending:** implement TartLab
+3. **Implemented and physically verified:** implement TartLab
    UI and game rendering adapters behind the platform boundary. UI mode uses
    LVGL; game mode exposes a public direct surface and explicit
    display-ownership transitions.
-4. Verify hard reset, soft reset, repeated initialization/deinitialization,
+4. **Completed for the exact reference checkpoint:** verify hard reset, soft
+   reset, repeated initialization/deinitialization,
    UI-to-game-to-UI transitions, Wi-Fi AP mode, IDE server operation, touch
    input, application switching, and recovery after an application exception.
 5. Benchmark both firmware families on identical clocks, buffers, panel

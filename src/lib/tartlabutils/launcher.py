@@ -6,6 +6,7 @@ from .state import get_selected_app
 
 
 _health_timer = None
+_HEALTH_TIMER_IDS = (-1, 3)
 
 
 def _healthy_callback(unused):
@@ -32,12 +33,22 @@ def _timer_callback(unused):
 
 def _arm_health_check():
     global _health_timer
-    try:
-        from machine import Timer
-        _health_timer = Timer(-1)
-        _health_timer.init(period=3000, mode=Timer.ONE_SHOT, callback=_timer_callback)
-    except Exception:
-        _health_timer = None
+    from machine import Timer
+    for timer_id in _HEALTH_TIMER_IDS:
+        timer = None
+        try:
+            timer = Timer(timer_id)
+            timer.init(
+                period=3000, mode=Timer.ONE_SHOT, callback=_timer_callback)
+            _health_timer = timer
+            return
+        except Exception:
+            if timer is not None:
+                try:
+                    timer.deinit()
+                except Exception:
+                    pass
+    _health_timer = None
 
 
 def _cancel_health_check():

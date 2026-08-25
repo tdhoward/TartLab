@@ -44,15 +44,19 @@ binary with:
 python tools/modern_firmware.py check
 ```
 
-The reference was built independently from two clean checkouts. Both combined
-images were 2,964,048 bytes with SHA-256
-`172fb43b08c046e8a90b03caa9ecb1c15af6360f5f589d9b9ef86f31972be6f6`.
-It freezes ST7796 and CST226 drivers and uses the native `lcd_bus` build, but it
+Two independent clean checkouts produced byte-identical copies of the current
+2,978,512-byte hardware checkpoint, with SHA-256
+`187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`.
+It freezes ST7796 and CST226 drivers, uses the native `lcd_bus` build, and
+exposes the REPL through the board's native USB Serial/JTAG interface, but it
 remains `research-only-reproducible-unqualified`. TartLab's checked-in
 application payload now supplies the Phase 5 direct RGB565 surface and
-exclusive LVGL/game ownership adapter, but no physical display, touch, DMA,
-reset, network, or benchmark claim follows from host tests or successful
-firmware compilation.
+exclusive LVGL/game ownership adapter. The exact checkpoint has now
+passed the Phase 5 item 4 physical display, touch, DMA ownership, reset,
+network/IDE, application-switch, and error-recovery observations recorded in
+`tests/PHASE5_HARDWARE.md`. That evidence applies only to this board and exact
+checkpoint. The remaining comparative benchmark gate prevents qualification
+or promotion of the firmware.
 It is not recovered provenance for the archived 2025 binary and is not a
 release-channel input.
 

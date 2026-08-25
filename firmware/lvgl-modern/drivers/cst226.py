@@ -69,7 +69,13 @@ class CST226(pointer_framework.PointerDriver):
     def _check_identity(self):
         self._tx_buf[0] = _CHIP_ID_COMMAND >> 8
         self._tx_buf[1] = _CHIP_ID_COMMAND & 0xFF
-        self._device.write_readinto(self._tx_mv[:2], self._rx_mv[:4])
+        # CST226 mixes a two-byte identity command with one-byte status and
+        # control registers.  I2C.Device.write_readinto() uses the device's
+        # fixed register width, so an 8-bit device silently drops 0x04 here.
+        # Use the same raw write-then-read transaction as the physically
+        # qualified legacy driver for this one mixed-width command.
+        self._device.write(self._tx_mv[:2])
+        self._device.read(buf=self._rx_mv[:4])
         chip_id = (self._rx_buf[3] << 8) | self._rx_buf[2]
         if chip_id != _CHIP_ID:
             raise RuntimeError(

@@ -39,9 +39,9 @@ REQUIRED_BUILD_ARGUMENTS = {
     "BOARD_VARIANT=SPIRAM_OCT",
     "--flash-size=16",
     "--partition-size=4194304",
-    "--enable-uart-repl=y",
+    "--enable-uart-repl=n",
     "--enable-cdc-repl=n",
-    "--enable-jtag-repl=n",
+    "--enable-jtag-repl=y",
     "DISPLAY=st7796",
     "clean",
 }
@@ -160,6 +160,8 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
              "T-Display-S3 Pro reference uses quad flash")
     _require(target.get("psram_bus") == "octal",
              "T-Display-S3 Pro reference uses octal PSRAM")
+    _require(target.get("repl") == "USB_SERIAL_JTAG",
+             "T-Display-S3 Pro reference must expose its native USB REPL")
 
     build = lock.get("build")
     _require(isinstance(build, dict), "build must be an object")
@@ -173,6 +175,15 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
              "build must invoke the pinned repository's make.py")
     _require(REQUIRED_BUILD_ARGUMENTS.issubset(command),
              "build command is missing a required target argument")
+    repl_arguments = [
+        item for item in command
+        if item.startswith("--enable-") and "-repl=" in item
+    ]
+    _require(repl_arguments == [
+        "--enable-uart-repl=n",
+        "--enable-cdc-repl=n",
+        "--enable-jtag-repl=y",
+    ], "reference build must enable only the native USB Serial/JTAG REPL")
     _require("deploy" not in command, "reference builds must never auto-flash")
     _require(not any(item.startswith("PORT=") for item in command),
              "reference builds must not name a serial port")
@@ -231,6 +242,8 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
     present = gate.get("present_in_reference")
     _require(isinstance(present, list) and "cst226-input-driver" in present,
              "the reference must record its reviewed CST226 driver")
+    _require("native-usb-repl" in present,
+             "the reference must remain provisionable over native USB")
     payload = gate.get("present_in_application_payload")
     _require(isinstance(payload, list)
              and "public-direct-surface-api" in payload
@@ -239,8 +252,8 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
     _require("public-direct-surface-api" not in missing
              and "exclusive-ui-game-ownership-transitions" not in missing,
              "implemented item 3 adapters cannot remain missing gates")
-    _require("hardware-benchmark-results" in missing,
-             "hardware benchmarks must remain an explicit gate")
+    _require(missing == ["hardware-benchmark-results"],
+             "hardware benchmarks must be the only remaining gate")
     profile = load_lock(ROOT / "profiles/lvgl-modern.json")
     adapter = profile.get("application_adapter", {})
     adapter_inputs = adapter.get("inputs", [])
@@ -278,6 +291,16 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
     _require(evidence.get("independent_clean_checkouts") == 2
              and evidence.get("byte_identical") is True,
              "reference provenance lacks repeatability evidence")
+    durations = evidence.get("successful_build_durations_seconds")
+    _require(isinstance(durations, list) and len(durations) == 2
+             and all(isinstance(item, (int, float)) and item > 0
+                     for item in durations),
+             "reference provenance must time both successful clean builds")
+    _require(
+        provenance.get("remaining_gates") ==
+        ["comparative hardware benchmark matrix"],
+        "comparative hardware benchmarks must be the only remaining gate",
+    )
 
     profile = load_lock(ROOT / "profiles/lvgl-modern.json")
     candidate = profile.get("reference_candidate", {})

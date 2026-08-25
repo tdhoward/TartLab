@@ -27,7 +27,7 @@
   "reference_candidate": {
     "status": "research-only-reproducible-unqualified",
     "artifact": "firmware/lvgl-modern/reference/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",
-    "sha256": "172fb43b08c046e8a90b03caa9ecb1c15af6360f5f589d9b9ef86f31972be6f6",
+    "sha256": "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab",
     "lock": "firmware/lvgl-modern/reference.lock.json",
     "provenance": "firmware/lvgl-modern/reference/provenance.json"
   },
@@ -41,7 +41,7 @@
     "inputs": [
       {
         "path": "src/lib/tartlabutils/modern.py",
-        "sha256": "97d7aabb1a058ccd0067d7f86928dc32555da05ed6f6cac62346b046ae6fb03f"
+        "sha256": "e495a873326bd08f787b994e59c62acbde58a8de40674471c337c17adc525ad7"
       },
       {
         "path": "src/configs/t_display_s3_pro_modern.py",

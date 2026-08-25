@@ -78,7 +78,6 @@ class PlatformContractTests(unittest.TestCase):
             "backlight": True,
             "network": True,
         })
-
         platform.deinit()
         self.assertTrue(display.deinitialized)
         self.assertTrue(pointer.deinitialized)
@@ -220,6 +219,79 @@ class PlatformContractTests(unittest.TestCase):
         self.assertTrue(any(item[1] == "Installing" for item in text_operations))
         self.assertGreaterEqual(len(display.blits), 7)
         self.assertEqual(len(gradients), 1)
+
+
+class LauncherHealthTimerTests(unittest.TestCase):
+    def test_esp32_hardware_timer_fallback_marks_health_and_releases_timer(self):
+        package_name = "launcher_health_test"
+        package = types.ModuleType(package_name)
+        package.__path__ = []
+        bootstate = types.ModuleType(package_name + ".bootstate")
+        healthy = []
+        bootstate.mark_boot_healthy = lambda mode: healthy.append(mode) or False
+        miscutils = types.ModuleType(package_name + ".miscutils")
+        logs = []
+        miscutils.log = logs.append
+        state = types.ModuleType(package_name + ".state")
+        state.get_selected_app = lambda: "hello.py"
+
+        timers = []
+
+        class Timer:
+            ONE_SHOT = 7
+
+            def __init__(self, timer_id):
+                if timer_id == -1:
+                    raise ValueError("virtual timer unsupported")
+                self.timer_id = timer_id
+                self.deinit_calls = 0
+                timers.append(self)
+
+            def init(self, **kwargs):
+                self.options = kwargs
+
+            def deinit(self):
+                self.deinit_calls += 1
+
+        machine = types.ModuleType("machine")
+        machine.Timer = Timer
+        micropython = types.ModuleType("micropython")
+        micropython.schedule = lambda callback, value: callback(value)
+        saved = {name: sys.modules.get(name) for name in (
+            package_name, package_name + ".bootstate",
+            package_name + ".miscutils", package_name + ".state",
+            "machine", "micropython")}
+        sys.modules.update({
+            package_name: package,
+            package_name + ".bootstate": bootstate,
+            package_name + ".miscutils": miscutils,
+            package_name + ".state": state,
+            "machine": machine,
+            "micropython": micropython,
+        })
+        try:
+            launcher = load_module(
+                package_name + ".launcher",
+                ROOT / "src/lib/tartlabutils/launcher.py")
+            launcher._arm_health_check()
+            self.assertEqual(timers[0].timer_id, 3)
+            self.assertEqual(timers[0].options["period"], 3000)
+            self.assertEqual(timers[0].options["mode"], Timer.ONE_SHOT)
+
+            timers[0].options["callback"](timers[0])
+
+            self.assertEqual(healthy, ["APP"])
+            self.assertEqual(logs, [
+                "HEALTHY mode=APP update_committed=False"])
+            self.assertEqual(timers[0].deinit_calls, 1)
+            self.assertIsNone(launcher._health_timer)
+        finally:
+            sys.modules.pop(package_name + ".launcher", None)
+            for name, previous in saved.items():
+                if previous is None:
+                    sys.modules.pop(name, None)
+                else:
+                    sys.modules[name] = previous
 
 
 class HeadlessStartupTests(unittest.TestCase):

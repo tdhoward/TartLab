@@ -39,6 +39,14 @@ class FakeI2CDevice:
     def write(self, data):
         self.writes.append(bytes(data))
 
+    def read(self, num_bytes=None, buf=None):
+        if self.writes[-1] != b"\xD2\x04":
+            raise AssertionError("identity read did not follow D2 04 command")
+        target = buf if buf is not None else bytearray(num_bytes)
+        target[:] = bytes((0, 0, self.chip_id & 0xFF,
+                           self.chip_id >> 8))
+        return target if buf is None else None
+
     def write_readinto(self, write_data, read_data):
         command = bytes(write_data)
         if command == b"\xD2\x04":
@@ -94,7 +102,7 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
         self.assertEqual(container["platform"], "linux/amd64")
         self.assertTrue(container["manifest_digest"].startswith("sha256:"))
 
-    def test_reference_remains_unqualified_with_item3_adapters_present(self):
+    def test_reference_is_reproducible_but_remains_unqualified(self):
         lock = check_lock()
         self.assertEqual(
             lock["status"], "research-only-reproducible-unqualified")
@@ -106,14 +114,16 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
         self.assertIn("public-direct-surface-api", payload)
         self.assertIn("exclusive-ui-game-ownership-transitions", payload)
         self.assertNotIn("public-direct-surface-api", missing)
-        self.assertIn("hardware-benchmark-results", missing)
+        self.assertEqual(missing, ["hardware-benchmark-results"])
         result = lock["result"]
         self.assertTrue(result["byte_identical"])
         self.assertEqual(result["independent_clean_builds"], 2)
         self.assertEqual(
             result["sha256"],
-            "172fb43b08c046e8a90b03caa9ecb1c15af6360f5f589d9b9ef86f31972be6f6",
+            "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab",
         )
+        self.assertEqual(lock["target"]["repl"], "USB_SERIAL_JTAG")
+        self.assertIn("native-usb-repl", present)
 
     def test_lock_rejects_a_moving_source_ref(self):
         lock = check_lock()
@@ -139,6 +149,9 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
         self.assertIn("SOURCE_DATE_EPOCH=1782211759", command)
         self.assertIn("DISPLAY=st7796", command)
         self.assertIn("--partition-size=4194304", command)
+        self.assertIn("--enable-uart-repl=n", command)
+        self.assertIn("--enable-cdc-repl=n", command)
+        self.assertIn("--enable-jtag-repl=y", command)
         self.assertIn(
             "INDEV=/tartlab/firmware/lvgl-modern/drivers/cst226.py", command)
         self.assertIn(
@@ -178,6 +191,7 @@ class CST226ReferenceDriverTests(unittest.TestCase):
         self.assertEqual(driver.pointer_options["startup_rotation"], 0)
         self.assertEqual(device.writes, [
             b"\xD1\x0E",
+            b"\xD2\x04",
             b"\xFE\x01",
             b"\xFA\x00",
             b"\xEC\x00",
@@ -208,6 +222,7 @@ class FakeModernBus:
         self.transfers = []
         self.allocations = []
         self.freed = []
+        self.deinit_calls = 0
 
     def register_callback(self, callback):
         self.callback = callback
@@ -227,6 +242,9 @@ class FakeModernBus:
 
     def free_framebuffer(self, buffer):
         self.freed.append(buffer)
+
+    def deinit(self):
+        self.deinit_calls += 1
 
 
 class FakeModernPanel:
@@ -321,7 +339,9 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         pointer = FakeModernInput()
         controller = module.ModernDisplayController(
             bus, panel, lv_display, lvgl, tasks, pointer,
-            offset_y=49, allocation_flags=3)
+            offset_y=49, allocation_flags=3,
+            buffer_allocator=bus.allocate_framebuffer,
+            buffer_free=bus.free_framebuffer)
         return module, bus, panel, lv_display, lvgl, tasks, pointer, controller
 
     def test_ui_to_game_to_ui_transition_drains_and_redraws(self):
@@ -412,6 +432,46 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         surface.free_buffer(buffer)
         self.assertEqual(bus.freed, [buffer])
 
+    def test_platform_deinit_releases_registered_native_objects_once(self):
+        (module, bus, unused_panel, unused_lv_display, unused_lvgl,
+         unused_tasks, unused_pointer, controller) = self.prepare()
+
+        class NativeInput:
+            def __init__(self):
+                self.delete_calls = 0
+
+            def delete(self):
+                self.delete_calls += 1
+
+        class Input(FakeModernInput):
+            _indevs = []
+
+            def __init__(self):
+                super().__init__()
+                self._indev_drv = NativeInput()
+                self._indevs.append(self)
+
+        class Panel(FakeModernPanel):
+            def __init__(self):
+                super().__init__()
+                self.finalize_calls = 0
+
+            def __del__(self):
+                self.finalize_calls += 1
+
+        pointer = Input()
+        panel = Panel()
+        platform = module.ModernPlatform(controller, panel, pointer)
+
+        platform.deinit()
+        platform.deinit()
+
+        self.assertEqual(pointer.enabled, [False])
+        self.assertEqual(pointer._indev_drv.delete_calls, 1)
+        self.assertEqual(pointer._indevs, [])
+        self.assertEqual(panel.finalize_calls, 1)
+        self.assertEqual(bus.deinit_calls, 1)
+
     def test_pinned_board_factory_uses_native_dual_dma_and_swapped_lvgl(self):
         module = load_modern_rendering()
         bus = FakeModernBus()
@@ -464,7 +524,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         lvgl = types.ModuleType("lvgl")
         lvgl.COLOR_FORMAT = types.SimpleNamespace(
             RGB565_SWAPPED="rgb565-swapped")
-        lvgl.DISPLAY_ROTATION = types.SimpleNamespace(_90=1)
+        lvgl.DISPLAY_ROTATION = types.SimpleNamespace(_90=1, _270=3)
         lvgl.EVENT = types.SimpleNamespace(FLUSH_START=91)
         lvgl.display_get_default = lambda: display
         lvgl.screen_active = lambda: screen
@@ -477,6 +537,8 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         lcd_bus.MEMORY_INTERNAL = 1
         lcd_bus.MEMORY_DMA = 2
         lcd_bus.SPIBus = lambda **kwargs: bus
+        lcd_bus.allocate_buffer = bus.allocate_framebuffer
+        lcd_bus.free_buffer = bus.free_framebuffer
         st7796 = types.ModuleType("st7796")
         st7796.STATE_LOW = 0
         st7796.STATE_PWM = -1
@@ -511,7 +573,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             (panels[0].options["offset_x"], panels[0].options["offset_y"]),
             (0, 49))
         self.assertEqual(pointers[0].options, {
-            "reset_pin": 13, "interrupt_pin": 21, "startup_rotation": 1})
+            "reset_pin": 13, "interrupt_pin": 21, "startup_rotation": 3})
         self.assertEqual((platform.width, platform.height), (480, 222))
         self.assertTrue(platform.capabilities["exclusive_display_ownership"])
 
