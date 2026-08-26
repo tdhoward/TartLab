@@ -149,7 +149,9 @@ jobs:
         run: python -m unittest tests.test_phase5 -v
 
       - name: Validate Phase 6 release-authenticity policy
-        run: python tools/check_release_authenticity.py
+        run: |
+          python tools/check_release_authenticity.py
+          python tools/check_modern_release_authenticity.py
 
       - name: Run Phase 6 release-security tests
         run: python -m unittest tests.test_phase6 -v
@@ -182,7 +184,7 @@ jobs:
           retention-days: 30
 
   lvgl-modern-reference:
-    name: LVGL modern research profile
+    name: LVGL modern promotion-gated candidate
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -211,10 +213,18 @@ jobs:
 
       - name: Set deterministic build identity
         shell: bash
-        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+        run: |
+          echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" == modern-v* ]]; then
+            echo "MODERN_BUILD_VERSION=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          else
+            echo "MODERN_BUILD_VERSION=modern-v0.0.0" >> "$GITHUB_ENV"
+          fi
 
-      - name: Verify modern reference and non-promotion policy
-        run: python tools/check_modern_profile.py
+      - name: Verify modern reference and gated release policy
+        run: |
+          python tools/check_modern_profile.py
+          python tools/check_modern_release_authenticity.py
 
       - name: Build modern filesystem twice from clean outputs
         shell: bash
@@ -227,6 +237,21 @@ jobs:
           python tools/check_modern_profile.py
           --dist build/modern-one/dist
           --compare-dist build/modern-two/dist
+
+      - name: Build isolated modern release candidates twice
+        shell: bash
+        run: |
+          python tools/build_modern_release.py --dist build/modern-one/dist --output build/modern-one/release --version "$MODERN_BUILD_VERSION" --clean
+          python tools/build_modern_release.py --dist build/modern-two/dist --output build/modern-two/release --version "$MODERN_BUILD_VERSION" --clean
+          python tools/compare_releases.py build/modern-one/release build/modern-two/release
+
+      - name: Validate modern release and provisioning preflight
+        run: >-
+          python tools/check_modern_release.py
+          --release build/modern-one/release
+          --dist build/modern-one/dist
+          --runtime-profile lvgl-modern
+          --firmware-sha256 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
 
       - name: Run shared filesystem, recovery, platform, and modern-renderer tests
         run: >-
@@ -244,3 +269,12 @@ jobs:
 
       - name: Check patch whitespace
         run: git diff --check
+
+      - name: Publish promotion-gated modern candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: lvgl-modern-${{ github.sha }}
+          path: build/modern-one/release/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 30

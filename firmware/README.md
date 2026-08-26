@@ -4,7 +4,7 @@ This directory archives the exact flashable firmware images used by TartLab's
 runtime profiles. Firmware images are separate from TartLab filesystem release
 packages: the on-device updater installs files but does not replace firmware.
 Firmware installation is therefore an adult provisioning or migration task.
-Legacy device releases remain in `tdhoward/TartLab`; any future published modern
+Legacy device releases remain in `tdhoward/TartLab`; any published modern
 firmware and its compatible filesystem releases belong in the separate
 `tdhoward/TartLab-modern-releases` feed. Do not attach a modern image to a legacy
 GitHub Release, because deployed updaters cannot distinguish the profiles and
@@ -30,15 +30,15 @@ python tools/check_firmware_artifacts.py
   modern-firmware hardware qualification gate. Its presence proves only that
   LVGL was built into that binary; the recorded provenance does not show an
   exact reproducible build or prove that TartLab used the native `lcd_bus`
-  display path.
+  display path. It remains historical research input and is not the firmware
+  identity accepted by the modern release manifest.
 
-The intended future modern profile is performance-first and dual-renderer. One
+The selected modern profile is performance-first and dual-renderer. One
 native DMA-capable display transport must serve LVGL UI mode and a mutually
-exclusive direct framebuffer/dirty-rectangle game mode. The first reproducible
-reference will evaluate `lvgl-micropython/lvgl_micropython` and its ESP32
-`lcd_bus`; a PyDevices `lvgl-micropython` + `displayif` image will be benchmarked
-on the same board before a production base is selected. Neither repository's
-unqualified `main` build is a TartLab release artifact.
+exclusive direct framebuffer/dirty-rectangle game mode. The reproducible
+`lvgl-micropython/lvgl_micropython` reference and the PyDevices comparison were
+benchmarked on the same board before selecting the reference stack. Neither
+repository's unqualified `main` build is a TartLab release artifact.
 
 The Phase 5 reference's complete ESP32 source graph, target arguments, local
 CST226 adapter, and Linux/amd64 ESP-IDF container image are pinned in
@@ -59,13 +59,14 @@ application payload supplies the Phase 5 direct RGB565 surface and exclusive
 LVGL/game ownership adapter. The exact checkpoint passed the Phase 5 item 4
 physical display, touch, DMA ownership, reset, network/IDE,
 application-switch, and error-recovery observations in
-`tests/PHASE5_HARDWARE.md`, followed by the Phase 5 item 5 legacy/modern
-comparison in `tests/PHASE5_BENCHMARKS.md`. That evidence applies only to this
-board, checkpoint, and hash-bound adapter. It does not select or promote the
-firmware; the alternative modern stack, adult provisioning, migration, and
-release gates remain open.
-It is not recovered provenance for the archived 2025 binary and is not a
-release-channel input.
+`tests/PHASE5_HARDWARE.md`, followed by the Phase 5 legacy/modern and
+alternative-stack comparisons in `tests/PHASE5_BENCHMARKS.md` and
+`tests/PHASE5_PYDEVICES.md`. That evidence applies only to this board,
+checkpoint, and hash-bound adapter. The comparison selected this reference as
+the exact firmware compatibility identity for the promotion-gated modern
+builder. Adult provisioning, migration, support-window, OTA/recovery, and final
+release gates remain open. This evidence is not recovered provenance for the
+archived 2025 binary.
 
 All tracked files are combined ESP32 images intended for offset `0x0`. Erase
 the device before changing between firmware layouts. Confirm the target board,

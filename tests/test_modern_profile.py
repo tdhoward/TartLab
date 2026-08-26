@@ -1,4 +1,4 @@
-"""Host checks for the modern research-profile CI gate."""
+"""Host checks for the modern promotion-gated CI profile."""
 
 from __future__ import annotations
 
@@ -22,17 +22,24 @@ class ModernProfileTests(unittest.TestCase):
         self.profile = json.loads(
             (ROOT / "profiles/lvgl-modern.json").read_text(encoding="utf-8"))
 
-    def test_checked_in_profile_is_a_non_promotable_research_input(self):
+    def test_checked_in_profile_has_an_isolated_gated_release_path(self):
         result = check()
         self.assertEqual(result, {
             "profile": "lvgl-modern",
-            "artifact_status": "research-only-not-for-promotion",
+            "artifact_status": "promotion-gated-not-released",
+            "release_repository": "tdhoward/TartLab-modern-releases",
         })
 
-    def test_profile_rejects_a_release_channel(self):
+    def test_profile_rejects_the_legacy_release_channel(self):
         profile = copy.deepcopy(self.profile)
-        profile["release_channel"] = "stable"
-        with self.assertRaisesRegex(ValueError, "release channel"):
+        profile["release_channel"]["repository"] = "tdhoward/TartLab"
+        with self.assertRaisesRegex(ValueError, "isolated repository"):
+            validate_profile(profile)
+
+    def test_profile_remains_unqualified_for_release(self):
+        profile = copy.deepcopy(self.profile)
+        profile["hardware_qualification"] = "complete"
+        with self.assertRaisesRegex(ValueError, "must not claim"):
             validate_profile(profile)
 
     def test_profile_rejects_an_unpinned_adapter_change(self):

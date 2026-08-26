@@ -924,15 +924,12 @@ migration, support-window, and release-pipeline work continues in Phase 6.
 
 ### Phase 6: Mature release security and promotion
 
-1. **Implemented for the current research checkpoint:** extend the established
-   CI filesystem/recovery/platform test coverage to the modern firmware profile
-   without creating a modern release builder. The `lvgl-modern-reference` CI
-   job validates the firmware/adapter lock and explicit non-promotion policy,
-   builds the common TartLab filesystem twice, compares every generated file,
-   compiles its Python sources, and runs the shared host test matrix. It emits
-   no release artifact. A future production profile must replace this policy
-   only after the provisioning, migration, recovery, and profile-specific
-   physical gates are complete.
+1. **Implemented, then extended by item 4:** the modern CI profile first gained
+   the established filesystem/recovery/platform coverage without a release
+   builder. It still builds the common TartLab filesystem twice, compares every
+   generated file, compiles its Python sources, and runs the shared host matrix.
+   Item 4 now additionally produces a separate promotion-gated modern candidate;
+   a CI artifact is not a deployment or a claim of production qualification.
 2. **Implemented for the stable legacy promotion path:** authenticate every TAR
    and JSON release asset, including the manifest, build metadata, checksums,
    and physical-gate attestation, with SLSA provenance signed by GitHub's
@@ -948,12 +945,18 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    repository as a promotion-policy input and fail closed if a workflow targets
    the other profile's repository. Do not publish modern firmware or filesystem
    assets beside a legacy release.
-4. Implement a separate modern release builder and protected promotion workflow
-   targeting `tdhoward/TartLab-modern-releases`. Its versioned manifest must
-   declare the modern runtime profile and exact compatible firmware identity;
-   the modern updater or adult provisioning tool must reject mismatches before
-   changing active files. Do not change the legacy top-level `manifest.json`
-   list schema required by v0.13.
+4. **Implemented as a promotion-gated path:** the deterministic
+   `tools/build_modern_release.py` builder and protected
+   `promote-modern-release.yml` workflow target only
+   `tdhoward/TartLab-modern-releases`. The new object-form
+   `modern-manifest.json` has its own schema version and binds the
+   `lvgl-modern` runtime profile to the exact selected firmware SHA-256, lock,
+   provenance, and runtime sources. `tools/check_modern_release.py` is a
+   read-only adult-provisioning preflight that rejects profile and firmware
+   mismatches before mutation. The legacy top-level `manifest.json` list schema
+   is unchanged. Promotion still requires the remaining migration, recovery,
+   support-window, and profile-specific physical gates below; this item does
+   not declare a production modern release.
 5. Publish versioned firmware, filesystem packages, source/vendor provenance,
    compatibility declarations, and migration instructions from CI to the
    appropriate profile repository. Firmware remains an adult-provisioning

@@ -1,9 +1,9 @@
-"""Check the non-promotable modern TartLab filesystem profile.
+"""Check the promotion-gated modern TartLab filesystem profile.
 
-The LVGL reference firmware is a hardware-qualified research checkpoint, not a
-release channel.  This checker gives it the same deterministic filesystem and
-source-compatibility coverage as the legacy release path while making that
-non-promotion boundary explicit.
+The selected LVGL firmware remains short of production qualification, but its
+separate release channel and builder are now defined.  This checker binds that
+gated release path to the exact Phase 5 firmware and keeps it isolated from the
+legacy device feed.
 """
 
 from __future__ import annotations
@@ -48,18 +48,56 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def validate_profile(profile: dict[str, Any]) -> None:
-    """Ensure the profile stays limited to the qualified research reference."""
+    """Ensure the profile is exact, isolated, and still promotion gated."""
 
-    if profile.get("schema") != 1 or profile.get("profile") != "lvgl-modern":
+    if profile.get("schema") != 2 or profile.get("profile") != "lvgl-modern":
         raise ValueError("unexpected modern profile identity")
-    if profile.get("status") != "experimental-unqualified":
-        raise ValueError("modern profile must remain experimental and unqualified")
-    if profile.get("release_channel") is not None:
-        raise ValueError("modern profile must not define a release channel")
-    if profile.get("release_builder") is not None:
-        raise ValueError("modern profile must not define a release builder")
+    if profile.get("status") != "promotion-gated-unreleased":
+        raise ValueError("modern profile must remain promotion gated and unreleased")
     if profile.get("hardware_qualification") is not None:
         raise ValueError("modern profile must not claim release qualification")
+
+    channel = profile.get("release_channel")
+    if not isinstance(channel, dict):
+        raise ValueError("modern profile has no isolated release channel")
+    if channel.get("repository") != "tdhoward/TartLab-modern-releases":
+        raise ValueError("modern release channel must use the isolated repository")
+    if channel.get("manifest") != "modern-manifest.json":
+        raise ValueError("modern release channel has an unexpected manifest")
+    if channel.get("legacy_repository") != "tdhoward/TartLab" or \
+            channel.get("legacy_feed_allowed") is not False:
+        raise ValueError("modern release channel permits the legacy feed")
+
+    builder = profile.get("release_builder")
+    expected_builder = {
+        "tool": "tools/build_modern_release.py",
+        "manifest_schema": 1,
+        "validator": "tools/check_modern_release.py",
+        "provisioning_preflight": "tools/check_modern_release.py",
+    }
+    if builder != expected_builder:
+        raise ValueError("modern release builder contract is incomplete")
+    gates = profile.get("promotion_gates")
+    if not isinstance(gates, list) or not gates:
+        raise ValueError("modern release promotion gates are missing")
+
+    firmware = profile.get("firmware_compatibility")
+    if not isinstance(firmware, dict):
+        raise ValueError("modern firmware compatibility is missing")
+    firmware_expected = {
+        "artifact": (
+            "firmware/lvgl-modern/reference/"
+            "lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin"),
+        "sha256": "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab",
+        "lock": "firmware/lvgl-modern/reference.lock.json",
+        "provenance": "firmware/lvgl-modern/reference/provenance.json",
+    }
+    for key, value in firmware_expected.items():
+        if firmware.get(key) != value:
+            raise ValueError(f"modern compatible firmware has unexpected {key}")
+    artifact = ROOT / firmware["artifact"]
+    if not artifact.is_file() or sha256_file(artifact) != firmware["sha256"]:
+        raise ValueError("modern compatible firmware artifact hash mismatch")
 
     candidate = profile.get("reference_candidate")
     if not isinstance(candidate, dict):
@@ -135,7 +173,8 @@ def check(profile_path: Path = DEFAULT_PROFILE, dist: Path | None = None,
     validate_profile(load_json(profile_path))
     result: dict[str, object] = {
         "profile": "lvgl-modern",
-        "artifact_status": "research-only-not-for-promotion",
+        "artifact_status": "promotion-gated-not-released",
+        "release_repository": "tdhoward/TartLab-modern-releases",
     }
     if dist is not None:
         inventory = distribution_inventory(dist)

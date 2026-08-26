@@ -83,8 +83,8 @@ do not start "Check for updates" again while an update is being resumed.
 
 Deployed MicroPython 1.23.0 devices read GitHub Releases from
 `tdhoward/TartLab`, so that release feed is permanently reserved for the
-`legacy-mp123` profile. Future `lvgl-modern` devices will be provisioned to read
-the separate `tdhoward/TartLab-modern-releases` feed. Modern releases and
+`legacy-mp123` profile. `lvgl-modern` devices will be provisioned to read the
+separate `tdhoward/TartLab-modern-releases` feed. Modern releases and
 firmware images must not be attached to a release in the legacy repository:
 the deployed updater cannot distinguish profiles, and it cannot replace
 MicroPython firmware.
@@ -150,8 +150,8 @@ Pull requests and pushes run the same build twice and require byte-identical
 release directories. CI artifacts are candidates only. Stable promotion is a
 separate reviewed workflow gated by the physical-device checklist in
 `tests/PHASE2_HARDWARE.md` and the protected `legacy-release` GitHub
-environment. It publishes only legacy assets to `tdhoward/TartLab`; modern
-promotion will use a separate protected workflow and
+environment. It publishes only legacy assets to `tdhoward/TartLab`; the
+promotion-gated modern path has its own protected workflow targeting
 `tdhoward/TartLab-modern-releases`. The legacy workflow authenticates every
 published TAR and JSON asset with SLSA build provenance signed by GitHub's
 keyless Sigstore service and publishes the verification bundle with the release. See

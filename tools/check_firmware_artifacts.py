@@ -1,4 +1,4 @@
-"""Verify tracked firmware binaries against their neighboring manifests."""
+"""Verify tracked firmware binaries against manifests and modern build locks."""
 
 from __future__ import annotations
 
@@ -79,18 +79,24 @@ def check_manifest(manifest_path: Path) -> list[str]:
         return errors
 
     manifest_reference = manifest_path.relative_to(ROOT).as_posix()
-    expected_profile_values = {
-        "image": filename,
-        "sha256": actual_hash,
-        "manifest": manifest_reference,
-    }
-    for key, expected in expected_profile_values.items():
-        actual = compatibility.get(key)
-        if actual != expected:
-            errors.append(
-                f"{profile_path.relative_to(ROOT)}: {key} is {actual!r}, "
-                f"expected {expected!r}"
-            )
+    if "manifest" in compatibility:
+        expected_profile_values = {
+            "image": filename,
+            "sha256": actual_hash,
+            "manifest": manifest_reference,
+        }
+        for key, expected in expected_profile_values.items():
+            actual = compatibility.get(key)
+            if actual != expected:
+                errors.append(
+                    f"{profile_path.relative_to(ROOT)}: {key} is {actual!r}, "
+                    f"expected {expected!r}"
+                )
+    elif "artifact" not in compatibility:
+        errors.append(
+            f"{profile_path.relative_to(ROOT)}: firmware compatibility must "
+            "select a manifest or a locked artifact"
+        )
     return errors
 
 

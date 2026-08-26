@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "mechanism": "github-artifact-attestation",
+  "source_repository": "tdhoward/TartLab",
+  "target_repository": "tdhoward/TartLab-modern-releases",
+  "signer_workflow": "tdhoward/TartLab/.github/workflows/promote-modern-release.yml",
+  "predicate_type": "https://slsa.dev/provenance/v1",
+  "action": {
+    "repository": "actions/attest",
+    "version": "v4.2.1",
+    "commit": "508db95dd578ae2727ebd6217d5ba78e4fbda05d"
+  },
+  "release_subjects": [
+    "*.tar",
+    "*.json"
+  ],
+  "bundle_asset": "release-attestation.sigstore.json",
+  "scope": {
+    "release_profile": "lvgl-modern",
+    "manifest": "modern-manifest.json",
+    "legacy_repository_allowed": false,
+    "on_device_enforcement": false,
+    "adult_provisioning_preflight": "tools/check_modern_release.py"
+  }
+}

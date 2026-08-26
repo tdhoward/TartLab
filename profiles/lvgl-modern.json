@@ -1,29 +1,48 @@
 {
-  "schema": 1,
+  "schema": 2,
   "profile": "lvgl-modern",
-  "status": "experimental-unqualified",
+  "status": "promotion-gated-unreleased",
   "firmware_compatibility": {
     "implementation": "MicroPython",
     "version": "1.27.0",
-    "image": "lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-v1.27.0-20251223.bin",
-    "sha256": "2c7918ed2c4b7dafb3ee2a359ac511229fbbea4a11721e5ccc91d45ab852762a",
+    "image": "lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",
+    "artifact": "firmware/lvgl-modern/reference/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",
+    "sha256": "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab",
+    "image_format": "combined-esp-image",
+    "flash_offset": "0x0",
     "spiram": "octal",
     "flash_size_bytes": 16777216,
     "lvgl_built_in": true,
-    "manifest": "firmware/lvgl-modern/1.27.0/manifest.json"
+    "lock": "firmware/lvgl-modern/reference.lock.json",
+    "provenance": "firmware/lvgl-modern/reference/provenance.json"
   },
   "runtime_identity": {
-    "sys_version": "3.4.0; MicroPython 78ff170de9-dirty on 2025-12-23",
-    "sys_implementation_version": [
-      1,
-      27,
-      0,
-      ""
-    ]
+    "micropython_version": "1.27.0",
+    "micropython_commit": "78ff170de9e32c79db6e64d3e33d2bd60002bdcd",
+    "lvgl_version": "9.4.0",
+    "lvgl_commit": "c016f72d4c125098287be5e83c0f1abed4706ee5",
+    "esp_idf_version": "5.5.1",
+    "esp_idf_commit": "fcae32885b0296b32044cb99ecbdc50d98dddb83"
   },
-  "release_channel": null,
-  "release_builder": null,
+  "release_channel": {
+    "repository": "tdhoward/TartLab-modern-releases",
+    "manifest": "modern-manifest.json",
+    "legacy_repository": "tdhoward/TartLab",
+    "legacy_feed_allowed": false
+  },
+  "release_builder": {
+    "tool": "tools/build_modern_release.py",
+    "manifest_schema": 1,
+    "validator": "tools/check_modern_release.py",
+    "provisioning_preflight": "tools/check_modern_release.py"
+  },
   "hardware_qualification": null,
+  "promotion_gates": [
+    "adult-provisioning-and-migration",
+    "profile-specific-ota-and-recovery",
+    "release-pipeline-qualification",
+    "support-window"
+  ],
   "reference_candidate": {
     "status": "research-only-reproducible-hardware-qualified",
     "artifact": "firmware/lvgl-modern/reference/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",

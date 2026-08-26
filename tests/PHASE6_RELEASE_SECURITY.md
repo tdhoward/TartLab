@@ -37,6 +37,42 @@ certificates. On-device authenticity, or an adult-admin provisioning tool that
 enforces this policy before installation, remains part of the provisioning and
 migration work required before modern-profile promotion.
 
+## Modern promotion-gated path
+
+The separate modern builder emits `modern-manifest.json`, never the legacy
+`manifest.json`. Its versioned object schema declares the isolated
+`tdhoward/TartLab-modern-releases` channel, the `lvgl-modern` runtime profile,
+and the exact compatible firmware artifact, SHA-256, build lock, provenance,
+and runtime source identities. Build metadata continues to list the remaining
+promotion gates, so creating or uploading a CI candidate does not claim that
+the modern profile is production-qualified.
+
+Before an adult provisioning or migration tool changes a device, run the
+read-only preflight with the identity observed from that device:
+
+```text
+python tools/check_modern_release.py --release path/to/release --runtime-profile lvgl-modern --firmware-sha256 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
+```
+
+The preflight fails closed on a runtime-profile or firmware-hash mismatch and
+performs no mutation. The protected `modern-release` environment rebuilds the
+candidate twice, requires byte identity, repeats this preflight, binds the
+candidate to physical evidence, authenticates every TAR/JSON asset with the
+commit-pinned attestation action, and publishes with a target-repository token.
+`profiles/modern-release-authenticity.json` statically locks the source and
+target repositories, signer workflow, manifest, profile, and preflight.
+
+After downloading every modern release asset, verify the source tag and signed
+bundle with:
+
+```text
+python tools/check_modern_release_authenticity.py --release path/to/release --source-ref refs/tags/modern-vX.Y.Z --execute
+```
+
+This is release machinery, not release authorization. Adult provisioning and
+migration, modern OTA/recovery qualification, the support window, and the final
+profile-specific physical gate remain incomplete.
+
 ## Release-channel isolation
 
 `tdhoward/TartLab` GitHub Releases are the immutable discovery feed stored on
@@ -46,12 +82,11 @@ inequality; it does not understand profile names, tag prefixes, compatibility
 declarations, or alternate manifest filenames. Some devices may also have
 prerelease updates enabled.
 
-Future `lvgl-modern` promotion must use a separate protected workflow that
-publishes only to `tdhoward/TartLab-modern-releases`. Its policy must bind the
-source repository and workflow identity, target release repository, profile,
-firmware identity, and hardware evidence. Provisioning records the modern feed
-explicitly, and the modern installer must reject a profile or firmware mismatch
-before changing active files.
+`lvgl-modern` promotion uses a separate protected workflow that publishes only
+to `tdhoward/TartLab-modern-releases`. Its policy binds the source repository
+and workflow identity, target release repository, profile, firmware identity,
+and hardware evidence. Provisioning must record the modern feed explicitly and
+invoke the checked preflight before changing active files.
 
 Modern firmware images and modern filesystem packages must not be attached to a
 GitHub Release in `tdhoward/TartLab`, even under different filenames. Besides
