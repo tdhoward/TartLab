@@ -857,6 +857,32 @@ research reference; it does not select or promote a production firmware.
    adapter; if PyDevices wins, require its native bus to meet the same DMA,
    overlap, and soft-reset requirements.
 
+Phase 5 required-comparison status (2026-08-26): the separately pinned
+PyDevices cmods + displayif stack now has a minimal, non-flashing build recipe,
+a public TartLab platform adapter, and two independent clean builds that produce
+the same 3,603,344-byte combined image with SHA-256
+`f9d374cc1bc9ea5a4dc9726682bc74eba9bba8c53c958a21be14011da3858295`.
+The candidate and provenance are archived under
+`firmware/lvgl-modern/pydevices-reference`. Its native C SPI transport is
+blocking and supplies neither a completion callback nor render/transfer
+overlap, so it cannot satisfy item 8's DMA/overlap requirement at the pinned
+checkpoint. Physical lifecycle and same-matrix benchmark observations are
+recorded separately in `tests/PHASE5_PYDEVICES.md`.
+
+The physical same-matrix comparison is now complete. The alternative was
+slower in every measured median (1.170x to 1.853x across the locked raw and
+rendered workloads), took 2.186x as long for the UI/game/UI switch, exposed
+zero transfer-time CPU headroom versus 66.243 percent for the reference, and
+confirmed zero render/transfer overlap. Its hard reset, soft reset, repeated
+teardown, ownership transitions, fallback AP, HTTP server, and healthy IDE
+path worked; the complete human touch and APP/error observations were not
+repeated after the candidate had already failed the mandatory transport and
+benchmark gates. The first `lvgl_micropython`/`lcd_bus` repository therefore
+wins the Phase 5 stack selection and TartLab retains its pinned public direct
+surface. This is a research selection, not a production promotion; the legacy
+release channel remains unchanged pending the item 7 provisioning, migration,
+support-window, and release-pipeline gates.
+
 ### Phase 6: Mature release security and promotion
 
 1. Extend the established legacy test matrix and CI pipeline to the modern firmware profile rather than creating a separate release process.

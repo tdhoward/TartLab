@@ -1,0 +1,241 @@
+{
+  "schema": 1,
+  "profile": "pydevices-modern-comparison",
+  "status": "research-only-reproducible-candidate",
+  "sources": [
+    {
+      "name": "cmods",
+      "layout": "cmods",
+      "repository": "https://github.com/PyDevices/cmods.git",
+      "commit": "018f97cd7636c6f796a0aaadc3b52cfdfd8f3dec",
+      "commit_date": "2026-08-24T22:08:08-05:00",
+      "license": "MIT"
+    },
+    {
+      "name": "displayif",
+      "layout": "displayif",
+      "repository": "https://github.com/PyDevices/displayif.git",
+      "commit": "f19ecb906adfb197a0a3251c9051a85ba1c660df",
+      "commit_date": "2026-08-21T02:11:42-05:00",
+      "license": "MIT"
+    },
+    {
+      "name": "lvgl-micropython",
+      "layout": "lvgl-micropython",
+      "repository": "https://github.com/PyDevices/lv_micropython_cmod.git",
+      "commit": "74a93137043259e9945ed83a7dd73909970d2ce6",
+      "commit_date": "2026-08-24T23:21:51-05:00",
+      "license": "MIT"
+    },
+    {
+      "name": "lvgl-bindings",
+      "layout": "lvgl-bindings",
+      "repository": "https://github.com/PyDevices/lv_bindings.git",
+      "commit": "72996eb72d55674205198553647bef66d1faf39c",
+      "commit_date": "2026-08-24T23:33:24-05:00",
+      "license": "MIT",
+      "submodules": [
+        {
+          "path": "lvgl",
+          "repository": "https://github.com/lvgl/lvgl.git",
+          "commit": "85aa60d18b3d5e5588d7b247abf90198f07c8a63",
+          "version": "9.5.0"
+        }
+      ]
+    },
+    {
+      "name": "micropython",
+      "layout": "micropython",
+      "repository": "https://github.com/micropython/micropython.git",
+      "commit": "78ff170de9e32c79db6e64d3e33d2bd60002bdcd",
+      "commit_date": "2025-12-10T01:44:16+11:00",
+      "version": "1.27.0",
+      "license": "MIT",
+      "required_submodules": [
+        {
+          "path": "lib/berkeley-db-1.xx",
+          "commit": "0f3bb6947c2f57233916dccd7bb425d7bf86e5a6"
+        },
+        {
+          "path": "lib/mbedtls",
+          "commit": "107ea89daaefb9867ea9121002fbbdf926780e98"
+        },
+        {
+          "path": "lib/micropython-lib",
+          "commit": "6ae440a8a144233e6e703f6759b7e7a0afaa37a4"
+        },
+        {
+          "path": "lib/tinyusb",
+          "commit": "aa0fc2e08f1c2dd6f026a431e8989357fbb4c5bf"
+        }
+      ]
+    },
+    {
+      "name": "pydevices",
+      "layout": "pydevices",
+      "repository": "https://github.com/PyDevices/pydevices.git",
+      "commit": "f6199fcc981ee0efe7939934bf8f99d59632bf73",
+      "commit_date": "2026-08-25T03:49:22-05:00",
+      "license": "MIT"
+    }
+  ],
+  "toolchain": {
+    "container": {
+      "repository": "espressif/idf",
+      "documented_tag": "v5.5.1",
+      "platform": "linux/amd64",
+      "index_digest": "sha256:dfa2d076c796769c07c155eba6c672b9f395aec943b2ba3701b73379b5f9e884",
+      "manifest_digest": "sha256:cbc2e2ec2afee95f1cfa14acfa3bb6cc69a51816537fe0234f4429e71a881066"
+    },
+    "esp_idf_version": "5.5.1",
+    "esp_idf_commit": "fcae32885b0296b32044cb99ecbdc50d98dddb83"
+  },
+  "target": {
+    "board": "TARTLAB_T_DISPLAY_S3_PRO",
+    "flash_size_mb": 16,
+    "application_partition_size": 4194304,
+    "flash_bus": "quad",
+    "psram_bus": "octal",
+    "cpu_hz": 240000000,
+    "display_spi_hz": 60000000,
+    "panel": "ST7796",
+    "width": 480,
+    "height": 222,
+    "color_format": "RGB565",
+    "touch_controller": "CST226",
+    "repl": "USB_SERIAL_JTAG"
+  },
+  "build": {
+    "environment": {
+      "LC_ALL": "C.UTF-8",
+      "MP_AUTOSIZE": "0",
+      "PYTHONHASHSEED": "0",
+      "SOURCE_DATE_EPOCH": "1787647762",
+      "TZ": "UTC"
+    },
+    "container_wrapper": "/tartlab/firmware/lvgl-modern/pydevices/container_build.py",
+    "command": [
+      "python3",
+      "/tartlab/firmware/lvgl-modern/pydevices/container_build.py"
+    ],
+    "artifact": "micropython/ports/esp32/build-TARTLAB_T_DISPLAY_S3_PRO/firmware.bin",
+    "local_inputs": [
+      {
+        "path": "firmware/lvgl-modern/pydevices/container_build.py",
+        "sha256": "29c8f70286be77f7973a8db9ebeece324537cff746728465624b6d49830b42a0"
+      },
+      {
+        "path": "firmware/lvgl-modern/pydevices/patches/displayif-mperrno.patch",
+        "sha256": "f2fc3a9f3df50ac305abf5dc80f14697e0e491a8f36f55d6ae5b4fdc84829d2a"
+      },
+      {
+        "path": "firmware/lvgl-modern/pydevices/manifest-user.py",
+        "sha256": "de6a26d886f5000320bf6a9ecc4c03678225ce79df9597c3037f58e694311885"
+      },
+      {
+        "path": "firmware/lvgl-modern/pydevices/board/mpconfigboard.cmake",
+        "sha256": "e46438ec4ed7a10472f765d48834e51b7a741ec39cab36b89e78e3b512d730ad"
+      },
+      {
+        "path": "firmware/lvgl-modern/pydevices/board/mpconfigboard.h",
+        "sha256": "db68a39f6002b5d13c6b0c883ae109f3f65829999621339600ea1211a71447e2"
+      },
+      {
+        "path": "firmware/lvgl-modern/pydevices/board/sdkconfig.board",
+        "sha256": "b30a42af1b11ac131897c14799f6e576097777f9711041077044516eac19162f"
+      },
+      {
+        "path": "firmware/lvgl-modern/pydevices/board/partitions-16MiB.csv",
+        "sha256": "578fb6ce55ae816cfbb21d0d753bc1d52925d69c1ad012000b88bead9b880a38"
+      }
+    ],
+    "frozen_runtime": [
+      "appdev",
+      "displaydev",
+      "multimer",
+      "events.py",
+      "keys.py",
+      "st7796.py",
+      "cst226.py",
+      "display_driver.py",
+      "fs_driver.py"
+    ],
+    "whole_pydevices_repository_frozen": false,
+    "compatibility_overlays": [
+      {
+        "source": "displayif",
+        "patch": "firmware/lvgl-modern/pydevices/patches/displayif-mperrno.patch",
+        "reason": "Add the missing public MicroPython errno header required by the pinned ESP32-S3 QSPI translation unit; no upstream MicroPython source is modified"
+      }
+    ]
+  },
+  "transport": {
+    "provider": "displayif",
+    "module": "spibus",
+    "implementation": "native-C-wrapper-over-machine.SPI",
+    "blocking": true,
+    "dma_completion_callback": false,
+    "render_transfer_overlap_expected": false
+  },
+  "application_adapter": {
+    "selection": "from t_display_s3_pro_pydevices_modern import *",
+    "inputs": [
+      {
+        "path": "src/lib/tartlabutils/pydevices_modern.py",
+        "sha256": "4d6f41d8465b66df48816ca73f85b621804c87428b8c91bd00bc089cd5e68787"
+      },
+      {
+        "path": "src/configs/t_display_s3_pro_pydevices_modern.py",
+        "sha256": "82a07d8df0e5426b48bf567fbe955ae71aaa89114aee77f6f4d7f7b5243dca80"
+      }
+    ],
+    "public_surface": "480x222 RGB565_BE synchronous dirty rectangles",
+    "exclusive_ui_game_ownership": true,
+    "uses_upstream_private_display_fields": false
+  },
+  "capability_gate": {
+    "present": [
+      "lvgl",
+      "displayif-native-spi-module",
+      "st7796-panel-driver",
+      "cst226-input-driver",
+      "native-usb-repl",
+      "public-direct-surface-api",
+      "exclusive-ui-game-ownership-transitions",
+      "idempotent-upstream-display-lifecycle"
+    ],
+    "known_absent": [
+      "asynchronous-display-transfer",
+      "dma-completion-callback",
+      "render-transfer-overlap"
+    ],
+    "required_before_selection": [
+      "complete-physical-lifecycle-gate",
+      "asynchronous-display-transfer",
+      "render-transfer-overlap"
+    ]
+  },
+  "result": {
+    "qualification": "research-only-reproducible-candidate",
+    "artifact": "firmware/lvgl-modern/pydevices-reference/pydevices-displayif-phase5-comparison.bin",
+    "size": 3603344,
+    "sha256": "f9d374cc1bc9ea5a4dc9726682bc74eba9bba8c53c958a21be14011da3858295",
+    "provenance": "firmware/lvgl-modern/pydevices-reference/provenance.json",
+    "independent_clean_builds": 2,
+    "byte_identical": true,
+    "application_size": 3537808,
+    "application_partition_size": 4194304,
+    "application_partition_free": 656496,
+    "filesystem_partition_size": 12517376,
+    "hardware_benchmark_evidence": {
+      "path": "tests/PHASE5_PYDEVICES.md",
+      "sha256": "3e1b764aa644dac435f312d054e5bf396c218eccff0d40b6f4cd753d604c4279"
+    }
+  },
+  "production_selection": {
+    "status": "not-selected",
+    "comparison_outcome": "lcd_bus-reference-wins",
+    "legacy_release_channel": "unchanged",
+    "reason": "The alternative is reproducible and benchmarked but slower in every measured median; its synchronous transport exposes no transfer-time CPU headroom or render-transfer overlap, and the complete human lifecycle gate was not repeated after rejection"
+  }
+}

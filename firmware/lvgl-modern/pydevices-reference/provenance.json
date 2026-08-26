@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "profile": "pydevices-modern-comparison",
+  "qualification": "research-only-reproducible-candidate",
+  "artifact": {
+    "file": "pydevices-displayif-phase5-comparison.bin",
+    "size": 3603344,
+    "sha256": "f9d374cc1bc9ea5a4dc9726682bc74eba9bba8c53c958a21be14011da3858295",
+    "image_format": "combined-esp-image",
+    "flash_offset": "0x0"
+  },
+  "build_evidence": {
+    "date": "2026-08-26",
+    "independent_clean_checkouts": 2,
+    "byte_identical": true,
+    "clean_source_verified_before_each_build": true,
+    "clean_source_verified_after_each_build": true,
+    "container_manifest_digest": "sha256:cbc2e2ec2afee95f1cfa14acfa3bb6cc69a51816537fe0234f4429e71a881066",
+    "source_date_epoch": "1787647762"
+  },
+  "runtime_sources": {
+    "micropython_version": "1.27.0",
+    "micropython_commit": "78ff170de9e32c79db6e64d3e33d2bd60002bdcd",
+    "lvgl_version": "9.5.0",
+    "lvgl_commit": "85aa60d18b3d5e5588d7b247abf90198f07c8a63",
+    "cmods_commit": "018f97cd7636c6f796a0aaadc3b52cfdfd8f3dec",
+    "displayif_commit": "f19ecb906adfb197a0a3251c9051a85ba1c660df",
+    "lvgl_micropython_cmod_commit": "74a93137043259e9945ed83a7dd73909970d2ce6",
+    "lvgl_bindings_commit": "72996eb72d55674205198553647bef66d1faf39c",
+    "pydevices_commit": "f6199fcc981ee0efe7939934bf8f99d59632bf73",
+    "esp_idf_version": "5.5.1",
+    "esp_idf_commit": "fcae32885b0296b32044cb99ecbdc50d98dddb83"
+  },
+  "target": {
+    "chip": "ESP32-S3",
+    "board": "TARTLAB_T_DISPLAY_S3_PRO",
+    "repl": "USB_SERIAL_JTAG",
+    "flash_size_bytes": 16777216,
+    "flash_mode": "dio",
+    "application_size": 3537808,
+    "application_partition_size": 4194304,
+    "application_partition_free": 656496,
+    "filesystem_partition_size": 12517376
+  },
+  "transport": {
+    "provider": "displayif",
+    "module": "spibus",
+    "implementation": "native-C-wrapper-over-machine.SPI",
+    "blocking": true,
+    "dma_completion_callback": false,
+    "render_transfer_overlap": false
+  },
+  "remaining_gates": [
+    "complete-physical-lifecycle-gate",
+    "asynchronous-display-transfer",
+    "render-transfer-overlap"
+  ],
+  "physical_evidence": {
+    "date": "2026-08-26",
+    "board": "LilyGO T-Display-S3 Pro PCB v1.1",
+    "automated_lifecycle": [
+      "hard-reset",
+      "soft-reset",
+      "five-init-deinit-cycles",
+      "twenty-five-ui-game-ui-cycles",
+      "fallback-ap",
+      "http-server",
+      "healthy-ide"
+    ],
+    "human_gates_not_repeated_after_rejection": [
+      "five-point-touch-observation",
+      "physical-app-and-error-switch"
+    ],
+    "reference_restored_healthy": true
+  },
+  "benchmark_evidence": {
+    "matrix_validated": true,
+    "reference_profile": "lvgl-modern-reference",
+    "candidate_slower_in_every_measured_median": true,
+    "raw_transfer_median_candidate_over_reference": {
+      "dirty_10": 1.446774,
+      "dirty_25": 1.170253,
+      "dirty_50": 1.179454,
+      "full": 1.27382
+    },
+    "rendered_total_median_candidate_over_reference": {
+      "solid_fills": 1.26888,
+      "sprite": 1.481529,
+      "scroll": 1.853364,
+      "ui_widgets": 1.604651
+    },
+    "mode_switch_median_candidate_over_reference": 2.185793,
+    "cpu_availability_percent": {
+      "reference": 66.243,
+      "candidate": 0.0
+    },
+    "candidate_render_transfer_overlap_us": 0,
+    "evidence_document": {
+      "path": "tests/PHASE5_PYDEVICES.md",
+      "sha256": "3e1b764aa644dac435f312d054e5bf396c218eccff0d40b6f4cd753d604c4279"
+    }
+  },
+  "production_selection": {
+    "status": "not-selected",
+    "comparison_outcome": "lcd_bus-reference-wins",
+    "legacy_release_channel": "unchanged",
+    "limitation": "The pinned displayif SPI transport is synchronous and cannot meet the reference stack's asynchronous transfer-overlap gate."
+  }
+}

@@ -36,7 +36,10 @@ result = {
 }
 
 modules = {}
-for name in ("lvgl", "lcd_bus", "st7796", "cst226", "i2c", "task_handler"):
+for name in (
+    "lvgl", "lcd_bus", "st7796", "cst226", "i2c", "task_handler",
+    "appdev", "displaydev", "spibus",
+):
     try:
         module = __import__(name)
         modules[name] = True
@@ -183,11 +186,23 @@ samples = []
 started = time.ticks_ms()
 last = None
 while time.ticks_diff(time.ticks_ms(), started) < duration_ms:
-    value = pointer._get_coords()
-    if value is not None:
-        state, raw_x, raw_y = value
-        logical_x, logical_y = pointer._calc_coords(raw_x, raw_y)
-        sample = (raw_x, raw_y, logical_x, logical_y)
+    if hasattr(pointer, "_get_coords"):
+        value = pointer._get_coords()
+        if value is not None:
+            state, raw_x, raw_y = value
+            logical_x, logical_y = pointer._calc_coords(raw_x, raw_y)
+            sample = (raw_x, raw_y, logical_x, logical_y)
+        else:
+            sample = None
+    else:
+        touch_device = platform.app.touch_dev
+        touch_device.poll()
+        if touch_device.points:
+            logical_x, logical_y = touch_device.points[0][:2]
+            sample = (None, None, logical_x, logical_y)
+        else:
+            sample = None
+    if sample is not None:
         if sample != last:
             samples.append(sample)
             last = sample

@@ -152,6 +152,26 @@ overlap, deadline misses, a CPU-headroom proxy, GC bytes, and repeated mode
 switches. See `tests/PHASE5_BENCHMARKS.md` for the exact results and the limits
 on interpreting live network availability and allocation counts.
 
+### Phase 5 PyDevices/displayif comparison
+
+The separately pinned alternative is a reproducible, physically benchmarked,
+research-only rejected candidate. Validate its source graph, archived result,
+and hash-bound evidence with:
+
+```powershell
+.\.venv\Scripts\python.exe tools/pydevices_modern_firmware.py check --source-root build/phase5-second
+.\.venv\Scripts\python.exe -m unittest tests.test_phase5_pydevices -v
+```
+
+Its explicit application profile is selected with
+`from t_display_s3_pro_pydevices_modern import *`. The adapter exposes the same
+logical 480 x 222 `RGB565_BE` dirty-rectangle surface and ownership transitions,
+but displayif's current SPI write is blocking. Its capability map therefore
+reports no asynchronous direct transfer or render/transfer overlap. See
+`tests/PHASE5_PYDEVICES.md` for reproducibility, hardware-gate, and selection
+evidence. The first `lvgl_micropython`/`lcd_bus` repository wins the Phase 5
+stack selection; this does not promote it or change the legacy release channel.
+
 ## Clean checkout and bootstrap
 
 The commands below use the current `ArchitectureOverhaul` development branch.

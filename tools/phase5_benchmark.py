@@ -28,7 +28,7 @@ except ImportError:  # Allow import as ``tools.phase5_benchmark`` in tests.
 
 MARKER = "PHASE5_BENCHMARK"
 SCHEMA = 1
-PROFILES = ("legacy", "modern")
+PROFILES = ("legacy", "modern", "pydevices")
 
 
 DEVICE_BENCHMARK_TEMPLATE = r'''
@@ -87,7 +87,9 @@ def network_state():
 platform = get_platform()
 capabilities = platform.capabilities
 modern = bool(capabilities.get('direct_rgb565', False))
-profile = 'modern' if modern else 'legacy'
+profile = capabilities.get(
+    'phase5_benchmark_profile', 'modern' if modern else 'legacy')
+async_direct = bool(capabilities.get('async_direct_rgb565', modern))
 
 def enter_game_mode():
     method = getattr(platform, 'enter_game_mode', None)
@@ -104,7 +106,8 @@ surface = enter_game_mode()
 if modern:
     width = surface.width
     height = surface.height
-    pipeline_buffer_storage = 'native-internal-dma'
+    pipeline_buffer_storage = capabilities.get(
+        'direct_buffer_storage', 'native-internal-dma')
 else:
     surface.rotation = 90
     surface.disable_auto_byteswap(False)
@@ -198,7 +201,8 @@ def pipeline(buffer_a, buffer_b, x, y, width_value, height_value,
     for index in range(SAMPLES):
         started = ticks()
         submitted = ticks()
-        transfer(current, x, y, width_value, height_value, wait=not modern)
+        transfer(current, x, y, width_value, height_value,
+                 wait=not async_direct)
         submission_us.append(elapsed(submitted))
         rendered = ticks()
         render_next(following, current, index + 1)
@@ -210,7 +214,7 @@ def pipeline(buffer_a, buffer_b, x, y, width_value, height_value,
         wait_us.append(wait_time)
         total = elapsed(started)
         total_us.append(total)
-        if modern:
+        if async_direct:
             hidden = baseline_median - wait_time
             if hidden < 0:
                 hidden = 0
@@ -231,7 +235,8 @@ def pipeline(buffer_a, buffer_b, x, y, width_value, height_value,
         'missed_deadlines': sum(1 for value in total_us
                                 if value > deadline_us),
         'overlap_method': ('sync-transfer-baseline-minus-post-render-wait'
-                           if modern else 'unsupported-synchronous-transfer'),
+                           if async_direct else
+                           'unsupported-synchronous-transfer'),
     }
 
 gc.collect()
@@ -397,7 +402,7 @@ fill_from(transport_view, black)
 cpu_value = 1
 cpu_iterations = 0
 started = ticks()
-if modern:
+if async_direct:
     offset_y = 0
     while offset_y < height:
         rows = min(TRANSPORT_ROWS, height - offset_y)
@@ -442,10 +447,14 @@ if modern:
     # The pinned task handler services LVGL from a background MicroPython
     # thread.  Pause it while raw-REPL benchmark code drives LVGL explicitly;
     # concurrent calls into LVGL are unsupported and can reset the runtime.
-    platform.controller._task_handler.disable()
-    platform.controller._task_paused = True
-    if platform.input is not None:
-        platform.input.enable(False)
+    pause_ui = getattr(platform, 'pause_ui_for_benchmark', None)
+    if pause_ui is not None:
+        pause_ui()
+    else:
+        platform.controller._task_handler.disable()
+        platform.controller._task_paused = True
+        if platform.input is not None:
+            platform.input.enable(False)
 view = platform.create_ide_view()
 view.show_startup('PHASE5')
 ui_mutation_us = []
@@ -518,10 +527,14 @@ else:
     }
 
 if modern:
-    if platform.input is not None:
-        platform.input.enable(True)
-    platform.controller._task_handler.enable()
-    platform.controller._task_paused = False
+    resume_ui = getattr(platform, 'resume_ui_after_benchmark', None)
+    if resume_ui is not None:
+        resume_ui()
+    else:
+        if platform.input is not None:
+            platform.input.enable(True)
+        platform.controller._task_handler.enable()
+        platform.controller._task_paused = False
 
 # Preallocate one 10 percent strip, then record GC bytes and timings across the
 # exact UI/game/UI boundary.  No benchmark-owned allocation occurs in the
@@ -588,6 +601,7 @@ result = {
         'pipeline_buffer_count': 2,
         'raw_buffer_storage': pipeline_buffer_storage,
         'pipeline_buffer_storage': pipeline_buffer_storage,
+        'direct_transfer_async': async_direct,
         'samples': SAMPLES,
         'mode_switches': SWITCHES,
         'asset_sha256': asset_sha256,
@@ -644,7 +658,8 @@ def validate_result(result: dict, expected_profile: str | None = None) -> None:
         raise ValueError("unsupported Phase 5 benchmark schema")
     profile = result.get("profile")
     if profile not in PROFILES:
-        raise ValueError("benchmark profile must be legacy or modern")
+        raise ValueError(
+            "benchmark profile must be legacy, modern, or pydevices")
     if expected_profile is not None and profile != expected_profile:
         raise ValueError(
             f"connected device is {profile}, expected {expected_profile}")
@@ -783,27 +798,89 @@ def summarize_result(result: dict) -> dict:
 def validate_comparable(legacy: dict, modern: dict) -> None:
     validate_result(legacy, "legacy")
     validate_result(modern, "modern")
+    _validate_same_matrix(legacy, modern)
+
+
+def _validate_same_matrix(left: dict, right: dict) -> None:
     locked_keys = (
         "logical_width", "logical_height", "color_format",
         "full_frame_bytes", "transport_rows", "raw_transport_buffer_count",
         "pipeline_buffer_count", "samples", "mode_switches", "asset_sha256",
     )
     for key in locked_keys:
-        if legacy["matrix"].get(key) != modern["matrix"].get(key):
+        if left["matrix"].get(key) != right["matrix"].get(key):
             raise ValueError(f"benchmark matrix differs for {key}")
     for key in ("machine_frequency_hz", "configured_display_spi_hz"):
-        if legacy["runtime"].get(key) != modern["runtime"].get(key):
+        if left["runtime"].get(key) != right["runtime"].get(key):
             raise ValueError(f"benchmark clocks differ for {key}")
-    for name in legacy["raw_transfers"]:
+    for name in left["raw_transfers"]:
         for key in ("width", "height", "coverage_percent", "bytes",
                     "deadline_us", "asset_sha256", "submission"):
-            if (legacy["raw_transfers"][name].get(key) !=
-                    modern["raw_transfers"][name].get(key)):
+            if (left["raw_transfers"][name].get(key) !=
+                    right["raw_transfers"][name].get(key)):
                 raise ValueError(f"benchmark region differs for {name}.{key}")
-    if legacy["sprite"]["asset_sha256"] != modern["sprite"]["asset_sha256"]:
+    if left["sprite"]["asset_sha256"] != right["sprite"]["asset_sha256"]:
         raise ValueError("sprite assets differ")
-    if legacy["scroll"]["asset_sha256"] != modern["scroll"]["asset_sha256"]:
+    if left["scroll"]["asset_sha256"] != right["scroll"]["asset_sha256"]:
         raise ValueError("scroll assets differ")
+
+
+def alternative_comparison(reference: dict, alternative: dict) -> dict:
+    """Compare the two modern stacks without relabeling either as production."""
+    validate_result(reference, "modern")
+    validate_result(alternative, "pydevices")
+    _validate_same_matrix(reference, alternative)
+    summaries = {
+        "lcd_bus_reference": summarize_result(reference),
+        "pydevices_displayif": summarize_result(alternative),
+    }
+    ratios = {"raw_transfer_median_pydevices_over_reference": {}}
+    for name in reference["raw_transfers"]:
+        reference_median = statistics.median(
+            reference["raw_transfers"][name]["transfer_us"])
+        alternative_median = statistics.median(
+            alternative["raw_transfers"][name]["transfer_us"])
+        ratios["raw_transfer_median_pydevices_over_reference"][name] = round(
+            alternative_median / reference_median, 6)
+    for name in ("solid_fills", "sprite", "scroll", "ui_widgets"):
+        reference_median = statistics.median(
+            reference[name]["total_frame_us"])
+        alternative_median = statistics.median(
+            alternative[name]["total_frame_us"])
+        ratios[name + "_total_median_pydevices_over_reference"] = round(
+            alternative_median / reference_median, 6)
+    ratios["mode_switch_median_pydevices_over_reference"] = round(
+        statistics.median(alternative["mode_switches"]["total_us"]) /
+        statistics.median(reference["mode_switches"]["total_us"]),
+        6,
+    )
+    return {
+        "schema": SCHEMA,
+        "kind": "phase5-modern-stack-comparison",
+        "matrix_validated": True,
+        "production_selected": False,
+        "profiles": summaries,
+        "ratios": ratios,
+        "transport_observation": {
+            "lcd_bus_reference_async": reference["matrix"].get(
+                "direct_transfer_async", True),
+            "pydevices_displayif_async": alternative["matrix"].get(
+                "direct_transfer_async", False),
+            "lcd_bus_reference_cpu_availability_percent": round(
+                reference["cpu_availability"]["iterations_during_transfer"] /
+                reference["cpu_availability"][
+                    "baseline_iterations_same_interval"] * 100,
+                3,
+            ),
+            "pydevices_displayif_cpu_availability_percent": round(
+                alternative["cpu_availability"][
+                    "iterations_during_transfer"] /
+                alternative["cpu_availability"][
+                    "baseline_iterations_same_interval"] * 100,
+                3,
+            ),
+        },
+    }
 
 
 def comparison(legacy: dict, modern: dict) -> dict:
@@ -878,6 +955,19 @@ def compare(args: argparse.Namespace) -> None:
     print(rendered, end="")
 
 
+def compare_alternative(args: argparse.Namespace) -> None:
+    reference = json.loads(args.reference.read_text(encoding="utf-8"))
+    alternative = json.loads(args.alternative.read_text(encoding="utf-8"))
+    result = alternative_comparison(reference, alternative)
+    rendered = json.dumps(result, indent=2, sort_keys=True) + "\n"
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(rendered, encoding="utf-8")
+        print(f"Alternative comparison written to {args.output}",
+              file=sys.stderr)
+    print(rendered, end="")
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     commands = result.add_subparsers(dest="command", required=True)
@@ -897,6 +987,12 @@ def parser() -> argparse.ArgumentParser:
     compare_parser.add_argument("--modern", type=Path, required=True)
     compare_parser.add_argument("--output", type=Path)
     compare_parser.set_defaults(func=compare)
+
+    alternative_parser = commands.add_parser("compare-alternative")
+    alternative_parser.add_argument("--reference", type=Path, required=True)
+    alternative_parser.add_argument("--alternative", type=Path, required=True)
+    alternative_parser.add_argument("--output", type=Path)
+    alternative_parser.set_defaults(func=compare_alternative)
     return result
 
 

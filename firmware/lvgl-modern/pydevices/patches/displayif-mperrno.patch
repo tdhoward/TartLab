@@ -1,0 +1,12 @@
+diff --git a/src/ports/esp32/mod_qspibus.c b/src/ports/esp32/mod_qspibus.c
+index 77ac408..cf635d9 100644
+--- a/src/ports/esp32/mod_qspibus.c
++++ b/src/ports/esp32/mod_qspibus.c
+@@ -7,6 +7,7 @@
+ 
+ #include "py/runtime.h"
+ #include "py/obj.h"
++#include "py/mperrno.h"
+ #include "displayif/soft_reset.h"
+ #include "displayif_esp32_pins.h"
+ 
