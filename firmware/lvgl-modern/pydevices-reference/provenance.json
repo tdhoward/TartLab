@@ -97,7 +97,7 @@
     "candidate_render_transfer_overlap_us": 0,
     "evidence_document": {
       "path": "tests/PHASE5_PYDEVICES.md",
-      "sha256": "3e1b764aa644dac435f312d054e5bf396c218eccff0d40b6f4cd753d604c4279"
+      "sha256": "949d020160a1d3b6da2f0dba23bc669a09f40a3ab2c8f2c9f0baec06e771b1e7"
     }
   },
   "production_selection": {

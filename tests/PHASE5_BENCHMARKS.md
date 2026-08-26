@@ -149,9 +149,10 @@ application adapter. The modern profile wins every measured median and
 demonstrates meaningful partial-refresh and CPU-overlap advantages. It is now
 hardware-qualified as a research reference, not selected for production.
 
-Production selection remains closed. Full-frame and solid-fill workloads miss
+Production promotion remains closed. Full-frame and solid-fill workloads miss
 30 FPS, a 50% dirty update misses 60 FPS, UI redraw outliers remain, the CPU
-measurement is not live network latency, and the required PyDevices
-`lvgl-micropython` plus `displayif` comparison has not been built or run. Adult
-provisioning, migration, support-window, and release-pipeline work also remains
-outside this item. The legacy release channel is unchanged.
+measurement is not live network latency. The subsequently completed PyDevices
+`lvgl-micropython` plus `displayif` comparison is recorded in
+`tests/PHASE5_PYDEVICES.md`; it confirmed this reference as the Phase 5 research
+selection. Adult provisioning, migration, support-window, and release-pipeline
+work remains in Phase 6. The legacy release channel is unchanged.

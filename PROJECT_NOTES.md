@@ -879,9 +879,9 @@ path worked; the complete human touch and APP/error observations were not
 repeated after the candidate had already failed the mandatory transport and
 benchmark gates. The first `lvgl_micropython`/`lcd_bus` repository therefore
 wins the Phase 5 stack selection and TartLab retains its pinned public direct
-surface. This is a research selection, not a production promotion; the legacy
-release channel remains unchanged pending the item 7 provisioning, migration,
-support-window, and release-pipeline gates.
+surface. This completes the Phase 5 research selection; it is not a production
+promotion. The legacy release channel remains unchanged while provisioning,
+migration, support-window, and release-pipeline work continues in Phase 6.
 
 ### Phase 6: Mature release security and promotion
 

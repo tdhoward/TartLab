@@ -75,9 +75,9 @@ inputs.
 - [x] Normal boot initialized display and touch, created the fallback AP,
   started the HTTP server on port 80, and logged
   `HEALTHY mode=IDE update_committed=False`.
-- [ ] A new five-point human touch observation and physical APP/error switch
-  were not run. Those gates remain required if a future displayif revision is
-  reconsidered for selection.
+- **Not run by design:** a new five-point human touch observation and physical
+  APP/error switch. Those gates remain required if a future displayif revision
+  is reconsidered for selection.
 - [x] The same Phase 5 benchmark matrix completed and validated against the
   exact `lcd_bus` reference result.
 - [x] Both original selectors and the exact qualified research-reference

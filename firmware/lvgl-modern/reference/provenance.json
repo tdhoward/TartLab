@@ -57,7 +57,7 @@
     {
       "gate": "comparative-benchmarks",
       "path": "tests/PHASE5_BENCHMARKS.md",
-      "sha256": "d1115d044aec9b33c2f8555710dc9a23ff509dbf72050417026059b2327bcaa6"
+      "sha256": "cd66e3c937b5e8eccc48fd1239908eff7f6b875aad10f84a4f1a57d417218794"
     }
   ],
   "remaining_gates": [],

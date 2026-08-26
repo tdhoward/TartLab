@@ -38,9 +38,11 @@ before hardware work or a commit that touches them:
 ```
 
 The `legacy-mp123` artifact is the physically qualified baseline. The
-`lvgl-modern` profile and its MicroPython 1.27.0 image remain experimental and
-must not be presented as a stable migration target until their missing build
-provenance and hardware qualification are completed.
+`lvgl-modern` profile remains experimental and must not be presented as a
+stable migration target. Its exact Phase 5 reference now has reproducible-build
+and hardware evidence, and the completed alternative-stack comparison selected
+it as the basis for future modern-firmware work. Production promotion still
+requires an adult-admin migration path and the Phase 6 release gates.
 
 ## Modern graphics development direction
 
