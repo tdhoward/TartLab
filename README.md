@@ -74,12 +74,20 @@ TartLab is updated every so often to include more examples, fix bugs, and make
 improvements. If the device is connected to an internet-linked WiFi access
 point, you can check for updates through the TartLab interface. Click on the
 gear icon, and select "Check for updates". One update takes the device directly
-to the latest stable release; you do not need to find or install intermediate
-versions. TartLab may perform several internal migration steps or automatic
-restarts as part of that one update. During the update process, it is best to
-have the device plugged in to make sure it stays on. Wait until the update
-process is complete before doing anything else in TartLab, and do not start
-"Check for updates" again while an update is being resumed.
+to the latest stable release for its runtime profile; you do not need to find or
+install intermediate versions. TartLab may perform several internal migration
+steps or automatic restarts as part of that one update. During the update
+process, it is best to have the device plugged in to make sure it stays on. Wait
+until the update process is complete before doing anything else in TartLab, and
+do not start "Check for updates" again while an update is being resumed.
+
+Deployed MicroPython 1.23.0 devices read GitHub Releases from
+`tdhoward/TartLab`, so that release feed is permanently reserved for the
+`legacy-mp123` profile. Future `lvgl-modern` devices will be provisioned to read
+the separate `tdhoward/TartLab-modern-releases` feed. Modern releases and
+firmware images must not be attached to a release in the legacy repository:
+the deployed updater cannot distinguish profiles, and it cannot replace
+MicroPython firmware.
 
 ## Reproducible legacy releases
 
@@ -142,9 +150,11 @@ Pull requests and pushes run the same build twice and require byte-identical
 release directories. CI artifacts are candidates only. Stable promotion is a
 separate reviewed workflow gated by the physical-device checklist in
 `tests/PHASE2_HARDWARE.md` and the protected `legacy-release` GitHub
-environment. That workflow authenticates every published TAR and JSON asset
-with SLSA build provenance signed by GitHub's keyless Sigstore service and
-publishes the verification bundle with the release. See
+environment. It publishes only legacy assets to `tdhoward/TartLab`; modern
+promotion will use a separate protected workflow and
+`tdhoward/TartLab-modern-releases`. The legacy workflow authenticates every
+published TAR and JSON asset with SLSA build provenance signed by GitHub's
+keyless Sigstore service and publishes the verification bundle with the release. See
 `tests/PHASE6_RELEASE_SECURITY.md` for the strict repository/workflow verification
 command and the current on-device limitation.
 

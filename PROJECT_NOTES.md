@@ -71,6 +71,37 @@ Consequences:
   partially update it or instruct a classroom user to hunt down intermediate
   GitHub releases.
 
+#### Profile-scoped release repositories
+
+Release discovery must remain isolated by runtime profile. Untouched v0.13
+devices have `tdhoward/TartLab` stored in `/repos.json` and treat the first
+suitable GitHub Release with a different tag as an update. They do not
+understand runtime profiles, version ordering, tag prefixes, or alternate
+manifest names. Consequently:
+
+- GitHub Releases in `tdhoward/TartLab` are permanently reserved for the
+  `legacy-mp123` deployment channel. Every published stable release there must
+  remain directly consumable by the oldest supported legacy updater.
+- Future `lvgl-modern` releases must be published through the separate
+  `tdhoward/TartLab-modern-releases` repository. Modern provisioning records
+  that release repository explicitly; a filesystem package must not silently
+  change a device from one profile's feed to the other.
+- A tag prefix, modern-only asset name, or GitHub prerelease is not a security
+  boundary. Some deployed devices allow prerelease updates, while any
+  non-draft stable release in `tdhoward/TartLab` is visible to the default
+  legacy updater.
+- CI workflow artifacts and draft releases are test inputs, not deployment
+  channels. Promotion is the explicit act that publishes to the appropriate
+  profile repository.
+- Do not attach modern firmware images or modern filesystem packages to a
+  legacy GitHub Release. The v0.13 updater counts every release asset during its
+  free-space check even when the legacy manifest does not reference that asset,
+  and the filesystem updater cannot flash firmware.
+
+The TartLab source may remain in this repository; the split applies to the
+GitHub Release feeds consumed by devices and to the profile-specific promotion
+authority.
+
 ### 2. Continue supporting deployed MicroPython 1.23.0 devices
 
 Existing TartLab deployments use the generic ESP32-S3 MicroPython 1.23.0 image `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin`. This is the octal-SPIRAM build required to use the T-Display-S3/T-Display-S3 Pro's octal PSRAM. New TartLab releases must continue to run on that exact legacy baseline until an explicit migration policy says otherwise; compatibility with another 1.23.0 build or a newer generic build is not a substitute.
@@ -229,7 +260,10 @@ release; it has no user-visible version-by-version progression. This matches the
 intended product experience, but it also means every newly published stable
 release inherits the compatibility obligation described above. In particular,
 an untouched v0.13 device begins with the v0.13 updater, so the latest stable
-release must preserve a bootstrap path that updater can consume.
+release in `tdhoward/TartLab` must preserve a bootstrap path that updater can
+consume. It selects by GitHub release status and tag inequality, not semantic
+version or profile, so modern publication must use
+`tdhoward/TartLab-modern-releases` rather than sharing this feed.
 
 Historical v0.13 weaknesses:
 
@@ -247,6 +281,10 @@ record the implemented protections and remaining release decisions.
 - The `rootfiles` package includes the device-generated `/app.py` selection and device-specific `/hdwconfig.py`, so an otherwise successful OTA can silently reset local behavior.
 - A reset, power loss, write failure, or extraction error can leave a partially replaced installation with no automatic rollback.
 - Free-space checking is based mainly on release asset sizes and a small fixed buffer; it does not model all staging, extraction, backup, and filesystem-overhead requirements.
+- The free-space check sums every asset attached to the selected GitHub Release,
+  including firmware, provenance, or profile-specific files that the manifest
+  does not request. A combined legacy/modern release can therefore block a
+  legacy update before manifest validation.
 - The captured installation matches the local `dist`, but both omit `test.qoi`, `display_qoi.py`, and `qoi_reader.py` that are present in `src`. Without generated build metadata, it is not possible to distinguish a deliberately older payload from a stale build directory.
 
 ### Embedded PyDevices snapshot
@@ -460,6 +498,7 @@ Evolve the release manifest to include at least:
 - Manifest schema version.
 - TartLab version.
 - Release channel/stability and the rule for selecting the latest stable release.
+- Release repository and immutable runtime-profile identity.
 - Supported source versions, layout/schema versions, and compatibility floor.
 - Ordered internal migration identifiers and target schema version.
 - Supported MicroPython version range or runtime profile.
@@ -903,9 +942,26 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    tag ref, and GitHub-hosted runner. This authenticates publisher/workflow
    provenance without a long-lived signing secret; device-side enforcement
    remains part of the provisioning and migration design.
-3. Publish versioned firmware, filesystem packages, source/vendor provenance, compatibility declarations, and migration instructions from CI.
-4. Test both clean provisioning and adult-admin migration from the legacy firmware, including failure and recovery paths.
-5. Require successful profile-specific hardware, OTA, and recovery tests before any artifact is promoted to its deployment channel.
+3. **Decided release topology:** reserve GitHub Releases in
+   `tdhoward/TartLab` for `legacy-mp123`, and publish future `lvgl-modern`
+   releases only through `tdhoward/TartLab-modern-releases`. Treat the target
+   repository as a promotion-policy input and fail closed if a workflow targets
+   the other profile's repository. Do not publish modern firmware or filesystem
+   assets beside a legacy release.
+4. Implement a separate modern release builder and protected promotion workflow
+   targeting `tdhoward/TartLab-modern-releases`. Its versioned manifest must
+   declare the modern runtime profile and exact compatible firmware identity;
+   the modern updater or adult provisioning tool must reject mismatches before
+   changing active files. Do not change the legacy top-level `manifest.json`
+   list schema required by v0.13.
+5. Publish versioned firmware, filesystem packages, source/vendor provenance,
+   compatibility declarations, and migration instructions from CI to the
+   appropriate profile repository. Firmware remains an adult-provisioning
+   artifact, not an on-device filesystem update.
+6. Test both clean provisioning and adult-admin migration from the legacy
+   firmware, including failure and recovery paths.
+7. Require successful profile-specific hardware, OTA, recovery, and release-feed
+   isolation tests before any artifact is promoted to its deployment channel.
 
 ## Minimum test matrix
 
@@ -955,6 +1011,12 @@ An AI agent working on TartLab must follow these rules:
 - Do not publish a latest stable release that the oldest supported deployed
   updater cannot enter. Retain a compatible bootstrap/recovery path or reject
   the source version safely before changing active files.
+- Do not publish modern releases or attach modern firmware/filesystem artifacts
+  to GitHub Releases in `tdhoward/TartLab`; that feed is reserved for
+  `legacy-mp123` devices.
+- Do not point a modern promotion workflow anywhere except
+  `tdhoward/TartLab-modern-releases`, and require its manifest to fail closed on
+  runtime-profile and firmware-identity mismatches.
 - Prefer small compatibility adapters over widespread imports of unstable upstream internals.
 - Preserve upstream licenses and record the exact source of vendored code.
 - Treat filesystem captures, `/settings.json`, and diagnostic bundles as sensitive because settings contain plaintext Wi-Fi credentials.
@@ -964,7 +1026,9 @@ An AI agent working on TartLab must follow these rules:
 
 Before the migration is considered complete, the project owner should make
 explicit decisions about the following items. The local configuration directory
-is no longer undecided: `/device` is the authoritative protected location.
+is no longer undecided: `/device` is the authoritative protected location. The
+release topology is also decided: `tdhoward/TartLab` is the legacy feed and
+`tdhoward/TartLab-modern-releases` is the modern feed.
 
 1. The minimum set of boards supported by each release.
 2. How long the exact MicroPython 1.23.0 octal-SPIRAM compatibility profile will be maintained.
@@ -976,10 +1040,14 @@ is no longer undecided: `/device` is the authoritative protected location.
    strict repository/signer-workflow verification. The signed bundle is shipped
    with each release; on-device enforcement remains a separate provisioning
    decision.
-7. The oldest deployed TartLab version/layout included in the direct-to-latest
+7. **Decided for release-channel isolation:** reserve `tdhoward/TartLab`
+   GitHub Releases for `legacy-mp123`; publish `lvgl-modern` only through
+   `tdhoward/TartLab-modern-releases`; never combine modern firmware or modern
+   filesystem assets with the legacy-visible release asset set.
+8. The oldest deployed TartLab version/layout included in the direct-to-latest
    compatibility window and the administrator process for devices older than
    that floor.
-8. The measured winner of the first-repository `lcd_bus` and PyDevices
+9. The measured winner of the first-repository `lcd_bus` and PyDevices
    `displayif` modern-firmware comparison, including who maintains TartLab's
    public direct-surface adapter.
 
@@ -1001,4 +1069,6 @@ The corresponding modern milestone is:
 > ownership of one native display transport; LVGL drives the IDE and normal UI,
 > a supported direct surface drives frame-paced games, both paths pass measured
 > partial-refresh, DMA, mode-transition, soft-reset, network, and heap gates,
-> and adults can provision or migrate devices without weakening recovery.
+> adults can provision or migrate devices without weakening recovery, and its
+> profile-checked filesystem releases are promoted only through
+> `tdhoward/TartLab-modern-releases` without becoming visible to legacy devices.

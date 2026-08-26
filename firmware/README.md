@@ -4,6 +4,11 @@ This directory archives the exact flashable firmware images used by TartLab's
 runtime profiles. Firmware images are separate from TartLab filesystem release
 packages: the on-device updater installs files but does not replace firmware.
 Firmware installation is therefore an adult provisioning or migration task.
+Legacy device releases remain in `tdhoward/TartLab`; any future published modern
+firmware and its compatible filesystem releases belong in the separate
+`tdhoward/TartLab-modern-releases` feed. Do not attach a modern image to a legacy
+GitHub Release, because deployed updaters cannot distinguish the profiles and
+count every attached asset in their filesystem free-space check.
 
 Profile artifacts have a neighboring `manifest.json` containing their byte
 size, SHA-256 digest, target, runtime identity, qualification state, and known

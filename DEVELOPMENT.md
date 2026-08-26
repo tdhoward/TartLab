@@ -42,7 +42,10 @@ The `legacy-mp123` artifact is the physically qualified baseline. The
 stable migration target. Its exact Phase 5 reference now has reproducible-build
 and hardware evidence, and the completed alternative-stack comparison selected
 it as the basis for future modern-firmware work. Production promotion still
-requires an adult-admin migration path and the Phase 6 release gates.
+requires an adult-admin migration path and the Phase 6 release gates. When
+qualified, modern releases will be published through
+`tdhoward/TartLab-modern-releases`; they must never be published as GitHub
+Releases in the legacy-visible `tdhoward/TartLab` repository.
 
 ## Modern graphics development direction
 
@@ -387,6 +390,22 @@ ships the signed bundle for verification. Run
 `python tools/check_release_authenticity.py` for the static policy gate; see
 [`tests/PHASE6_RELEASE_SECURITY.md`](tests/PHASE6_RELEASE_SECURITY.md) for
 consumer verification and scope.
+
+The release repository is part of the compatibility boundary:
+
+- `tdhoward/TartLab` GitHub Releases are reserved for `legacy-mp123`. Untouched
+  v0.13 devices query this repository and cannot filter releases by runtime
+  profile or tag prefix.
+- Future `lvgl-modern` releases belong only in
+  `tdhoward/TartLab-modern-releases`, using a separate protected promotion
+  workflow and explicit modern firmware/profile compatibility checks.
+- Do not attach modern firmware images or modern filesystem packages to a
+  legacy release. The deployed updater counts all attached assets for its
+  free-space decision even if `manifest.json` does not reference them, and it
+  cannot flash firmware.
+- A GitHub Actions artifact, plain source tag, or draft release is not a device
+  deployment. Publishing a non-draft GitHub Release to either profile repository
+  is a reviewed promotion action.
 
 See [`PROJECT_NOTES.md`](PROJECT_NOTES.md) for the current architecture roadmap
 and next implementation task. Do not infer release status or a development

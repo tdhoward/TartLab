@@ -48,7 +48,9 @@ research input, checks the hash-bound modern adapter, builds the ordinary
 TartLab filesystem twice, compares every output file, and compiles each
 generated Python source. This is deliberately a shared CI coverage path, not a
 modern release builder or a claim that firmware can be delivered through the
-legacy OTA updater.
+legacy OTA updater. A future modern builder and promotion gate must target only
+`tdhoward/TartLab-modern-releases`; `tdhoward/TartLab` GitHub Releases remain
+reserved for the `legacy-mp123` profile.
 
 ## Tier 1: CPython virtual device
 
@@ -159,7 +161,10 @@ service-headroom proxy rather than live browser latency.
 Before stable promotion, run the complete applicable hardware gate in
 `PHASE2_HARDWARE.md` on the exact pinned firmware. This tier remains responsible
 for PSRAM, GPIO, display byte order, touch calibration, Wi-Fi/AP behavior,
-actual flash and reset behavior, and a real direct OTA/recovery cycle.
+actual flash and reset behavior, a real direct OTA/recovery cycle, and confirming
+that the candidate targets only its profile's release repository. Legacy
+promotion targets `tdhoward/TartLab`; future modern promotion targets
+`tdhoward/TartLab-modern-releases`.
 
 Passing Tiers 0–2 means the candidate is ready for hardware testing. It does not
 mean the legacy hardware profile is release-qualified.
