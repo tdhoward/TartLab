@@ -42,12 +42,20 @@ benchmark evidence hashes. CI does not rebuild the large firmware image or
 repeat the physical work; this tier validates the recorded claim rather than
 creating a new hardware claim.
 
+`tools/check_modern_profile.py` is the corresponding filesystem-profile gate.
+It verifies that the current `lvgl-modern` profile remains a non-promotable
+research input, checks the hash-bound modern adapter, builds the ordinary
+TartLab filesystem twice, compares every output file, and compiles each
+generated Python source. This is deliberately a shared CI coverage path, not a
+modern release builder or a claim that firmware can be delivered through the
+legacy OTA updater.
+
 ## Tier 1: CPython virtual device
 
 Run:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_profile tests.test_phase6 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
 ```
 
 `tests/virtual_device.py` maps MicroPython-style absolute paths into an isolated

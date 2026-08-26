@@ -1,4 +1,4 @@
-name: Legacy release CI
+name: TartLab profile CI
 
 on:
   push:
@@ -148,6 +148,12 @@ jobs:
       - name: Run Phase 5 reference lock tests
         run: python -m unittest tests.test_phase5 -v
 
+      - name: Validate Phase 6 release-authenticity policy
+        run: python tools/check_release_authenticity.py
+
+      - name: Run Phase 6 release-security tests
+        run: python -m unittest tests.test_phase6 -v
+
       - name: Run virtual-device recovery tests
         run: python -m unittest tests.test_virtual_device -v
 
@@ -174,3 +180,67 @@ jobs:
           compression-level: 0
           if-no-files-found: error
           retention-days: 30
+
+  lvgl-modern-reference:
+    name: LVGL modern research profile
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ">=3.10 <3.15"
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: src/ide/www/package.json
+          cache: npm
+          cache-dependency-path: src/ide/www/package-lock.json
+
+      - name: Install pinned build dependencies
+        run: python -m pip install --require-hashes -r requirements-build.txt
+
+      - name: Build web application from lockfile
+        run: npm ci --prefix src/ide/www && npm run build --prefix src/ide/www
+
+      - name: Set deterministic build identity
+        shell: bash
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
+      - name: Verify modern reference and non-promotion policy
+        run: python tools/check_modern_profile.py
+
+      - name: Build modern filesystem twice from clean outputs
+        shell: bash
+        run: |
+          python makedist.py --output build/modern-one/dist --clean --skip-web-build
+          python makedist.py --output build/modern-two/dist --clean --skip-web-build
+
+      - name: Verify deterministic modern filesystem and adapter inputs
+        run: >-
+          python tools/check_modern_profile.py
+          --dist build/modern-one/dist
+          --compare-dist build/modern-two/dist
+
+      - name: Run shared filesystem, recovery, platform, and modern-renderer tests
+        run: >-
+          python -m unittest
+          tests.test_phase1
+          tests.test_phase2
+          tests.test_phase4
+          tests.test_phase5
+          tests.test_modern_profile
+          tests.test_phase6
+          tests.test_virtual_device
+          tests.test_platform
+          tests.test_headless_ide
+          -v
+
+      - name: Check patch whitespace
+        run: git diff --check

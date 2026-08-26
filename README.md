@@ -142,7 +142,11 @@ Pull requests and pushes run the same build twice and require byte-identical
 release directories. CI artifacts are candidates only. Stable promotion is a
 separate reviewed workflow gated by the physical-device checklist in
 `tests/PHASE2_HARDWARE.md` and the protected `legacy-release` GitHub
-environment.
+environment. That workflow authenticates every published TAR and JSON asset
+with SLSA build provenance signed by GitHub's keyless Sigstore service and
+publishes the verification bundle with the release. See
+`tests/PHASE6_RELEASE_SECURITY.md` for the strict repository/workflow verification
+command and the current on-device limitation.
 
 ## Testing
 

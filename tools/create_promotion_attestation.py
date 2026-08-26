@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import os
 from pathlib import Path
 import re
 import subprocess
 import sys
 
 from release_utils import read_json, sha256_file, write_json
+from check_release_authenticity import validate_ci_identity
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,6 +58,8 @@ def main() -> None:
         raise ValueError("Checked-out commit does not match the requested stable tag")
     if metadata["git_commit"] != commit:
         raise ValueError("Release metadata commit differs from checked-out tag")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        validate_ci_identity(args.tag, commit)
 
     attestation = {
         "schema": 1,
@@ -66,7 +70,7 @@ def main() -> None:
         "hardware_evidence_sha256": evidence_hash,
         "hardware_evidence_reference": args.hardware_evidence_reference,
         "promoted_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "github_run_id": __import__("os").environ.get("GITHUB_RUN_ID"),
+        "github_run_id": os.environ.get("GITHUB_RUN_ID"),
     }
     write_json(args.output, attestation)
     print("Promotion attestation created for %s" % args.tag)

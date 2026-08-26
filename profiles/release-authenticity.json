@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "mechanism": "github-artifact-attestation",
+  "repository": "tdhoward/TartLab",
+  "signer_workflow": "tdhoward/TartLab/.github/workflows/promote-legacy-release.yml",
+  "predicate_type": "https://slsa.dev/provenance/v1",
+  "action": {
+    "repository": "actions/attest",
+    "version": "v4.2.1",
+    "commit": "508db95dd578ae2727ebd6217d5ba78e4fbda05d"
+  },
+  "release_subjects": [
+    "*.tar",
+    "*.json"
+  ],
+  "bundle_asset": "release-attestation.sigstore.json",
+  "scope": {
+    "release_profiles": [
+      "legacy-mp123"
+    ],
+    "modern_profile": "research-only-not-for-promotion",
+    "on_device_enforcement": false
+  }
+}

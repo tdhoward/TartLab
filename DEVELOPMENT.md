@@ -381,7 +381,12 @@ hardware outcomes are recorded in the `tests/PHASE*_HARDWARE.md` documents.
 CI artifacts are candidates, not stable releases. Stable promotion remains a
 separate reviewed workflow gated by the physical qualification record in
 [`tests/PHASE2_HARDWARE.md`](tests/PHASE2_HARDWARE.md) and the protected
-`legacy-release` GitHub environment.
+`legacy-release` GitHub environment. The promotion workflow authenticates all
+published TAR and JSON assets with commit-pinned GitHub/Sigstore provenance and
+ships the signed bundle for verification. Run
+`python tools/check_release_authenticity.py` for the static policy gate; see
+[`tests/PHASE6_RELEASE_SECURITY.md`](tests/PHASE6_RELEASE_SECURITY.md) for
+consumer verification and scope.
 
 See [`PROJECT_NOTES.md`](PROJECT_NOTES.md) for the current architecture roadmap
 and next implementation task. Do not infer release status or a development

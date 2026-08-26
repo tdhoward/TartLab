@@ -885,8 +885,24 @@ migration, support-window, and release-pipeline work continues in Phase 6.
 
 ### Phase 6: Mature release security and promotion
 
-1. Extend the established legacy test matrix and CI pipeline to the modern firmware profile rather than creating a separate release process.
-2. Build signed or otherwise authenticated release metadata; SHA-256 verifies integrity but, by itself, does not establish publisher authenticity.
+1. **Implemented for the current research checkpoint:** extend the established
+   CI filesystem/recovery/platform test coverage to the modern firmware profile
+   without creating a modern release builder. The `lvgl-modern-reference` CI
+   job validates the firmware/adapter lock and explicit non-promotion policy,
+   builds the common TartLab filesystem twice, compares every generated file,
+   compiles its Python sources, and runs the shared host test matrix. It emits
+   no release artifact. A future production profile must replace this policy
+   only after the provisioning, migration, recovery, and profile-specific
+   physical gates are complete.
+2. **Implemented for the stable legacy promotion path:** authenticate every TAR
+   and JSON release asset, including the manifest, build metadata, checksums,
+   and physical-gate attestation, with SLSA provenance signed by GitHub's
+   keyless Sigstore service. The protected promotion workflow uses a
+   commit-pinned first-party action and publishes its signed bundle. Verification
+   pins the `tdhoward/TartLab` repository, the promotion workflow, predicate,
+   tag ref, and GitHub-hosted runner. This authenticates publisher/workflow
+   provenance without a long-lived signing secret; device-side enforcement
+   remains part of the provisioning and migration design.
 3. Publish versioned firmware, filesystem packages, source/vendor provenance, compatibility declarations, and migration instructions from CI.
 4. Test both clean provisioning and adult-admin migration from the legacy firmware, including failure and recovery paths.
 5. Require successful profile-specific hardware, OTA, and recovery tests before any artifact is promoted to its deployment channel.
@@ -955,7 +971,11 @@ is no longer undecided: `/device` is the authoritative protected location.
 3. Whether TartLab will maintain its own T-Display-S3 Pro board adapter or contribute/consume an upstream one.
 4. The approved firmware provisioning method for LVGL-capable devices.
 5. The amount of flash space reserved for staging, recovery, and rollback.
-6. Whether release authenticity will use signatures, a pinned public key, or another mechanism beyond hashes delivered in the same GitHub release.
+6. **Decided for CI-published releases:** use GitHub Artifact Attestations with
+   short-lived Sigstore certificates, a commit-pinned attestation action, and
+   strict repository/signer-workflow verification. The signed bundle is shipped
+   with each release; on-device enforcement remains a separate provisioning
+   decision.
 7. The oldest deployed TartLab version/layout included in the direct-to-latest
    compatibility window and the administrator process for devices older than
    that floor.
