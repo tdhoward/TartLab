@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from modern_firmware import check_lock, docker_command, validate_lock
+from phase5_benchmark import device_program, sample_summary, validate_result
 
 
 def load_modern_rendering():
@@ -102,10 +103,11 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
         self.assertEqual(container["platform"], "linux/amd64")
         self.assertTrue(container["manifest_digest"].startswith("sha256:"))
 
-    def test_reference_is_reproducible_but_remains_unqualified(self):
+    def test_reference_is_reproducible_and_hardware_qualified(self):
         lock = check_lock()
         self.assertEqual(
-            lock["status"], "research-only-reproducible-unqualified")
+            lock["status"],
+            "research-only-reproducible-hardware-qualified")
         missing = lock["capability_gate"][
             "required_before_hardware_qualification"]
         present = lock["capability_gate"]["present_in_reference"]
@@ -114,7 +116,12 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
         self.assertIn("public-direct-surface-api", payload)
         self.assertIn("exclusive-ui-game-ownership-transitions", payload)
         self.assertNotIn("public-direct-surface-api", missing)
-        self.assertEqual(missing, ["hardware-benchmark-results"])
+        self.assertEqual(missing, [])
+        self.assertEqual(
+            [item["gate"] for item in lock["capability_gate"][
+                "hardware_evidence"]],
+            ["lifecycle", "comparative-benchmarks"],
+        )
         result = lock["result"]
         self.assertTrue(result["byte_identical"])
         self.assertEqual(result["independent_clean_builds"], 2)
@@ -576,6 +583,114 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             "reset_pin": 13, "interrupt_pin": 21, "startup_rotation": 3})
         self.assertEqual((platform.width, platform.height), (480, 222))
         self.assertTrue(platform.capabilities["exclusive_display_ownership"])
+
+    def test_modern_ide_progress_supports_binding_without_anim_enum(self):
+        module = load_modern_rendering()
+
+        class Widget:
+            def set_style_bg_color(self, *unused):
+                pass
+
+            def set_style_border_width(self, *unused):
+                pass
+
+            def set_style_border_color(self, *unused):
+                pass
+
+            def set_text(self, *unused):
+                pass
+
+            def align(self, *unused):
+                pass
+
+        class Bar(Widget):
+            def __init__(self):
+                self.values = []
+
+            def set_range(self, *unused):
+                pass
+
+            def set_size(self, *unused):
+                pass
+
+            def set_value(self, value, animation):
+                self.values.append((value, animation))
+
+        bar = Bar()
+        lvgl = types.SimpleNamespace(
+            ALIGN=types.SimpleNamespace(
+                BOTTOM_MID=1, TOP_MID=2, CENTER=3),
+            obj=Widget,
+            label=lambda unused_parent: Widget(),
+            bar=lambda unused_parent: bar,
+            color_hex=lambda value: value,
+            screen_load=lambda unused_screen: None,
+        )
+        controller = types.SimpleNamespace(acquire_ui=lambda: None)
+
+        view = module.ModernIDEView(controller, lvgl)
+        view.show_update_progress("TEST", 1, 3)
+
+        self.assertEqual(bar.values, [(1, False)])
+
+
+class Phase5BenchmarkHarnessTests(unittest.TestCase):
+    def test_device_program_is_micropython_compatible_source(self):
+        source = device_program(3, 2)
+        compile(source, "<phase5-benchmark>", "exec")
+        self.assertIn("SAMPLES = 3", source)
+        self.assertIn("SWITCHES = 2", source)
+        self.assertNotIn("__SAMPLES__", source)
+
+    def test_benchmark_result_locks_geometry_clock_and_regions(self):
+        result = {
+            "schema": 1,
+            "profile": "modern",
+            "runtime": {"configured_display_spi_hz": 60_000_000},
+            "matrix": {
+                "logical_width": 480,
+                "logical_height": 222,
+                "full_frame_bytes": 213_120,
+                "color_format": "RGB565_BE_symmetric_test_assets",
+                "transport_rows": 24,
+                "raw_transport_buffer_count": 1,
+                "pipeline_buffer_count": 2,
+                "samples": 3,
+                "mode_switches": 2,
+                "raw_buffer_storage": "native-internal-dma",
+                "pipeline_buffer_storage": "native-internal-dma",
+            },
+            "raw_transfers": {
+                "full": {"width": 480, "height": 222,
+                         "coverage_percent": 100,
+                         "submission":
+                         "ten-24-row-or-final-shorter-transfers"},
+                "dirty_50": {"width": 240, "height": 222,
+                             "coverage_percent": 50,
+                             "submission":
+                             "two-240x111-dirty-rectangle-transfers"},
+                "dirty_25": {"width": 120, "height": 222,
+                             "coverage_percent": 25,
+                             "submission": "one-dirty-rectangle-transfer"},
+                "dirty_10": {"width": 48, "height": 222,
+                             "coverage_percent": 10,
+                             "submission": "one-dirty-rectangle-transfer"},
+            },
+        }
+        validate_result(result, "modern")
+        invalid = copy.deepcopy(result)
+        invalid["raw_transfers"]["dirty_10"]["width"] = 47
+        with self.assertRaisesRegex(ValueError, "dirty_10"):
+            validate_result(invalid)
+
+    def test_sample_summary_reports_median_and_interpolated_p95(self):
+        self.assertEqual(sample_summary([10, 20, 30, 40]), {
+            "samples": 4,
+            "minimum": 10,
+            "median": 25.0,
+            "p95": 38.5,
+            "maximum": 40,
+        })
 
 
 if __name__ == "__main__":

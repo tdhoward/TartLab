@@ -277,6 +277,8 @@ class ModernIDEView:
         self._hostname = lvgl.label(self._screen)
         self._status = lvgl.label(self._screen)
         self._progress = lvgl.bar(self._screen)
+        animation = getattr(lvgl, "ANIM", None)
+        self._animation_off = getattr(animation, "OFF", False)
         self._progress.set_range(0, 1)
         self._progress.set_size(420, 20)
         self._progress.align(lvgl.ALIGN.BOTTOM_MID, 0, -8)
@@ -306,7 +308,7 @@ class ModernIDEView:
             self._status, "%s  Step %s of %s" % (status, step, steps),
             self._lv.ALIGN.BOTTOM_MID, -36)
         self._progress.set_range(0, steps + 1)
-        self._progress.set_value(step, self._lv.ANIM.OFF)
+        self._progress.set_value(step, self._animation_off)
 
 
 class ModernPlatform:

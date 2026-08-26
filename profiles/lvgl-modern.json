@@ -25,14 +25,14 @@
   "release_builder": null,
   "hardware_qualification": null,
   "reference_candidate": {
-    "status": "research-only-reproducible-unqualified",
+    "status": "research-only-reproducible-hardware-qualified",
     "artifact": "firmware/lvgl-modern/reference/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",
     "sha256": "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab",
     "lock": "firmware/lvgl-modern/reference.lock.json",
     "provenance": "firmware/lvgl-modern/reference/provenance.json"
   },
   "application_adapter": {
-    "status": "implemented-hardware-unqualified",
+    "status": "implemented-hardware-qualified",
     "platform": "src/lib/tartlabutils/modern.py",
     "board_config": "src/configs/t_display_s3_pro_modern.py",
     "ui_renderer": "LVGL 9",
@@ -41,7 +41,7 @@
     "inputs": [
       {
         "path": "src/lib/tartlabutils/modern.py",
-        "sha256": "e495a873326bd08f787b994e59c62acbde58a8de40674471c337c17adc525ad7"
+        "sha256": "bca6731673279a8a1914886fd9fe6f99b40705b233497659154fc03617c372cc"
       },
       {
         "path": "src/configs/t_display_s3_pro_modern.py",

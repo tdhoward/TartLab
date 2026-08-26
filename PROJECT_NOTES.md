@@ -800,8 +800,24 @@ backlight read 100 percent duty, a gamma A/B was inconclusive, and normal
 brightness returned without retaining a gamma change. Exact commands,
 observations, and limitations are recorded in `tests/PHASE5_HARDWARE.md`.
 This completes item 4 for the checkpoint but does not qualify or promote it.
-The reproducibility gate is also complete; item 5 comparative benchmarks are
-the remaining gate.
+The reproducibility gate is also complete.
+
+Phase 5 item 5 implementation status (2026-08-25): the qualified legacy
+MicroPython 1.23/Candidate 9 family and the exact modern checkpoint were run on
+the same PCB at 240 MHz CPU and 60 MHz display SPI through the locked
+`tools/phase5_benchmark.py` matrix. Modern median transfers were 37.9%, 38.1%,
+37.7%, and 29.9% faster for 10%, 25%, 50%, and full-frame updates. It was 29.2%
+faster for solid fills, 14.3% faster for the small sprite, 48.5% faster for
+scrolling, and 91.4% faster for TartLab's progress-widget workload. Its DMA
+path exposed 66.2% of baseline CPU work during a complete display update,
+versus zero for the synchronous legacy call. Both profiles lost only 336 heap
+bytes across 25 collected mode-switch samples and made zero harness-owned
+steady-state allocations. Benchmarking found and corrected the pinned LVGL
+binding's missing `ANIM` enum by using its public boolean argument. Exact
+geometry, buffer/tile constraints, render/transfer/overlap timings, deadlines,
+animation evidence, limitations, and repeat commands are recorded in
+`tests/PHASE5_BENCHMARKS.md`. This hardware-qualifies the checkpoint as a
+research reference; it does not select or promote a production firmware.
 
 1. **Implemented for the first reference:** pin MicroPython, LVGL, ESP-IDF, the
    binding repository, every direct submodule, and the host toolchain; require a
@@ -818,7 +834,8 @@ the remaining gate.
    reset, repeated initialization/deinitialization,
    UI-to-game-to-UI transitions, Wi-Fi AP mode, IDE server operation, touch
    input, application switching, and recovery after an application exception.
-5. Benchmark both firmware families on identical clocks, buffers, panel
+5. **Completed for the exact legacy and modern checkpoints:** benchmark both
+   firmware families on identical clocks, buffer geometry/counts, panel
    orientation, assets, and instrumentation. At minimum record:
 
    - raw RGB565 full-frame transfer and achieved throughput;

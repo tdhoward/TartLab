@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "profile": "lvgl-modern-reference",
-  "status": "research-only-reproducible-unqualified",
+  "status": "research-only-reproducible-hardware-qualified",
   "source": {
     "repository": "https://github.com/lvgl-micropython/lvgl_micropython.git",
     "commit": "d2d26467fa4cb9e99e569d899709043d086f7a6f",
@@ -141,12 +141,22 @@
       "public-direct-surface-api",
       "exclusive-ui-game-ownership-transitions"
     ],
-    "required_before_hardware_qualification": [
-      "hardware-benchmark-results"
-    ]
+    "hardware_evidence": [
+      {
+        "gate": "lifecycle",
+        "path": "tests/PHASE5_HARDWARE.md",
+        "sha256": "48a253d45a8f79da1dbc1f6376023e2043358a30b5dcbb35ca1b6dc8dc2493f5"
+      },
+      {
+        "gate": "comparative-benchmarks",
+        "path": "tests/PHASE5_BENCHMARKS.md",
+        "sha256": "d1115d044aec9b33c2f8555710dc9a23ff509dbf72050417026059b2327bcaa6"
+      }
+    ],
+    "required_before_hardware_qualification": []
   },
   "result": {
-    "qualification": "experimental-unqualified",
+    "qualification": "experimental-hardware-qualified",
     "artifact": "firmware/lvgl-modern/reference/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",
     "size": 2978512,
     "sha256": "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab",

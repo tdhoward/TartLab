@@ -207,5 +207,8 @@ pinned source graph completed the non-flashing container build in 906.7
 seconds. Its combined image is byte-for-byte identical to the archived
 checkpoint: 2,978,512 bytes with SHA-256
 `187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`.
-This closes the independent-reproduction gate. Item 5 comparative benchmarks
-remain before the modern firmware can be qualified or promoted.
+This closes the independent-reproduction gate. The subsequent item 5 session
+completed the comparative benchmark gate in `tests/PHASE5_BENCHMARKS.md` with a
+single LVGL boolean-enum compatibility correction to the hash-bound
+application adapter. That later evidence hardware-qualifies the exact research
+reference; it does not promote it.

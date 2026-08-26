@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "profile": "lvgl-modern-reference",
-  "qualification": "experimental-unqualified",
+  "qualification": "experimental-hardware-qualified",
   "artifact": {
     "file": "lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",
     "size": 2978512,
@@ -48,7 +48,26 @@
     "lcd_bus_extension": "module-level capability-bound buffer allocation",
     "container_prepare_sha256": "9a960dc7a62adf3db6a37828bbf75d5addf2b4597653bcd6395b4336aaf3755b"
   },
-  "remaining_gates": [
-    "comparative hardware benchmark matrix"
-  ]
+  "hardware_evidence": [
+    {
+      "gate": "lifecycle",
+      "path": "tests/PHASE5_HARDWARE.md",
+      "sha256": "48a253d45a8f79da1dbc1f6376023e2043358a30b5dcbb35ca1b6dc8dc2493f5"
+    },
+    {
+      "gate": "comparative-benchmarks",
+      "path": "tests/PHASE5_BENCHMARKS.md",
+      "sha256": "d1115d044aec9b33c2f8555710dc9a23ff509dbf72050417026059b2327bcaa6"
+    }
+  ],
+  "remaining_gates": [],
+  "production_selection": {
+    "status": "not-selected",
+    "remaining": [
+      "alternative-modern-stack-comparison",
+      "adult-provisioning-and-migration",
+      "release-pipeline-qualification",
+      "support-window"
+    ]
+  }
 }

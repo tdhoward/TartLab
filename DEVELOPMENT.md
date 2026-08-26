@@ -122,13 +122,35 @@ panel-wire-order RGB565 data. Reusable native DMA memory comes from
 callers opting into `wait=False` must not touch or release the buffer until
 `surface.wait()` returns. `get_platform().enter_ui_mode()` performs the inverse
 drain-and-redraw transition. These adapters are host-tested but remain
-hardware-unqualified until Phase 5 item 4.
+separate from the legacy path. The exact hash-bound version has passed the
+Phase 5 item 4 lifecycle and item 5 benchmark gates.
 
 The archived Phase 5 output was reproduced byte-for-byte from two independent
-clean checkouts. It remains unqualified until the runtime and physical checks
-listed in `firmware/lvgl-modern/reference/provenance.json` pass. Run `build`
-only on a fresh checkout; the upstream build initializes submodules and modifies
-generated source state as part of compilation.
+clean checkouts. The exact checkpoint and hash-bound application adapter have
+passed the lifecycle and comparative hardware gates in
+`tests/PHASE5_HARDWARE.md` and `tests/PHASE5_BENCHMARKS.md`. This makes it a
+hardware-qualified research reference, not a production selection or release
+input. Run `build` only on a fresh checkout; the upstream build initializes
+submodules and modifies generated source state as part of compilation.
+
+### Phase 5 comparative benchmark
+
+Provision each exact firmware family on the same T-Display-S3 Pro, then collect
+and compare the locked 480 x 222, 240 MHz CPU, 60 MHz SPI matrix with:
+
+```powershell
+.\.venv\Scripts\python.exe tools/phase5_benchmark.py collect --port COM6 --profile legacy --samples 12 --switches 25 --output hardware_test_artifacts/phase5-item5/legacy.json
+.\.venv\Scripts\python.exe tools/phase5_benchmark.py collect --port COM3 --profile modern --samples 12 --switches 25 --output hardware_test_artifacts/phase5-item5/modern.json
+.\.venv\Scripts\python.exe tools/phase5_benchmark.py compare --legacy hardware_test_artifacts/phase5-item5/legacy.json --modern hardware_test_artifacts/phase5-item5/modern.json --output hardware_test_artifacts/phase5-item5/comparison.json
+```
+
+Collection interrupts the foreground application through the raw REPL, changes
+the displayed pixels, and restores UI ownership. It does not install files or
+flash firmware. The result includes full-frame and 10/25/50% dirty transfers,
+solid fill, sprite, scroll, TartLab widgets, LVGL animation, render/transfer
+overlap, deadline misses, a CPU-headroom proxy, GC bytes, and repeated mode
+switches. See `tests/PHASE5_BENCHMARKS.md` for the exact results and the limits
+on interpreting live network availability and allocation counts.
 
 ## Clean checkout and bootstrap
 

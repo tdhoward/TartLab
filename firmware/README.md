@@ -48,15 +48,17 @@ Two independent clean checkouts produced byte-identical copies of the current
 2,978,512-byte hardware checkpoint, with SHA-256
 `187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`.
 It freezes ST7796 and CST226 drivers, uses the native `lcd_bus` build, and
-exposes the REPL through the board's native USB Serial/JTAG interface, but it
-remains `research-only-reproducible-unqualified`. TartLab's checked-in
-application payload now supplies the Phase 5 direct RGB565 surface and
-exclusive LVGL/game ownership adapter. The exact checkpoint has now
-passed the Phase 5 item 4 physical display, touch, DMA ownership, reset,
-network/IDE, application-switch, and error-recovery observations recorded in
-`tests/PHASE5_HARDWARE.md`. That evidence applies only to this board and exact
-checkpoint. The remaining comparative benchmark gate prevents qualification
-or promotion of the firmware.
+exposes the REPL through the board's native USB Serial/JTAG interface. It is a
+`research-only-reproducible-hardware-qualified` reference. TartLab's checked-in
+application payload supplies the Phase 5 direct RGB565 surface and exclusive
+LVGL/game ownership adapter. The exact checkpoint passed the Phase 5 item 4
+physical display, touch, DMA ownership, reset, network/IDE,
+application-switch, and error-recovery observations in
+`tests/PHASE5_HARDWARE.md`, followed by the Phase 5 item 5 legacy/modern
+comparison in `tests/PHASE5_BENCHMARKS.md`. That evidence applies only to this
+board, checkpoint, and hash-bound adapter. It does not select or promote the
+firmware; the alternative modern stack, adult provisioning, migration, and
+release gates remain open.
 It is not recovered provenance for the archived 2025 binary and is not a
 release-channel input.
 

@@ -37,8 +37,10 @@ qualified values in `profiles/legacy-mp123.json`.
 `tools/modern_firmware.py check` validates the separate Phase 5 reference lock:
 the binding commit, ESP32 submodule graph, target arguments, reviewed local
 inputs, manifest digest of the Linux/amd64 ESP-IDF build container, archived
-artifact hash, and two-clean-build provenance. CI does not rebuild the large
-firmware image and this tier makes no modern-hardware claim.
+artifact hash, two-clean-build provenance, and exact reviewed lifecycle and
+benchmark evidence hashes. CI does not rebuild the large firmware image or
+repeat the physical work; this tier validates the recorded claim rather than
+creating a new hardware claim.
 
 ## Tier 1: CPython virtual device
 
@@ -136,6 +138,13 @@ completion, renderer ownership transitions, heap behavior, repeated
 initialization, and touch samples. Its automated output does not replace the
 required human color, orientation, touch-region, browser, and recovery
 observations.
+
+`PHASE5_BENCHMARKS.md` records the locked legacy/modern item 5 comparison.
+`tools/phase5_benchmark.py collect` runs identical geometry, clock, asset,
+buffer-count, deadline, and workload instrumentation on a provisioned physical
+profile; `compare` rejects matrix drift before summarizing the samples. Raw
+REPL collection pauses the foreground IDE, so its CPU-availability result is a
+service-headroom proxy rather than live browser latency.
 
 ## Tier 4: physical release qualification
 

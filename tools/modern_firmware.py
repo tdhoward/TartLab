@@ -77,8 +77,10 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
         "unexpected modern firmware profile",
     )
     _require(
-        lock.get("status") == "research-only-reproducible-unqualified",
-        "the reference lock must remain reproducible, research-only, and unqualified",
+        lock.get("status") ==
+        "research-only-reproducible-hardware-qualified",
+        "the reference lock must remain reproducible, research-only, and "
+        "hardware-qualified",
     )
 
     source = lock.get("source")
@@ -252,8 +254,20 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
     _require("public-direct-surface-api" not in missing
              and "exclusive-ui-game-ownership-transitions" not in missing,
              "implemented item 3 adapters cannot remain missing gates")
-    _require(missing == ["hardware-benchmark-results"],
-             "hardware benchmarks must be the only remaining gate")
+    _require(missing == [],
+             "the lifecycle and comparative hardware gates must be complete")
+    hardware_evidence = gate.get("hardware_evidence")
+    _require(isinstance(hardware_evidence, list)
+             and [item.get("gate") for item in hardware_evidence
+                  if isinstance(item, dict)] ==
+             ["lifecycle", "comparative-benchmarks"],
+             "hardware evidence must record both reviewed gates")
+    for item in hardware_evidence:
+        evidence_path = ROOT / item.get("path", "")
+        _require(evidence_path.is_file(),
+                 f"hardware evidence is missing: {evidence_path}")
+        _require(item.get("sha256") == sha256_file(evidence_path),
+                 f"{item.get('path')}: hardware evidence hash mismatch")
     profile = load_lock(ROOT / "profiles/lvgl-modern.json")
     adapter = profile.get("application_adapter", {})
     adapter_inputs = adapter.get("inputs", [])
@@ -267,8 +281,9 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
 
     result = lock.get("result")
     _require(isinstance(result, dict), "reproducible build result is missing")
-    _require(result.get("qualification") == "experimental-unqualified",
-             "reference result must remain unqualified")
+    _require(
+        result.get("qualification") == "experimental-hardware-qualified",
+        "reference result must remain experimental and hardware-qualified")
     _require(result.get("independent_clean_builds") == 2
              and result.get("byte_identical") is True,
              "reference result must record two byte-identical clean builds")
@@ -283,8 +298,10 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
     provenance = load_lock(provenance_path)
     provenance_artifact = provenance.get("artifact", {})
     evidence = provenance.get("build_evidence", {})
-    _require(provenance.get("qualification") == "experimental-unqualified",
-             "reference provenance must remain unqualified")
+    _require(
+        provenance.get("qualification") ==
+        "experimental-hardware-qualified",
+        "reference provenance must remain experimental and hardware-qualified")
     _require(provenance_artifact.get("size") == result["size"]
              and provenance_artifact.get("sha256") == result["sha256"],
              "reference provenance artifact identity mismatch")
@@ -296,11 +313,15 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
              and all(isinstance(item, (int, float)) and item > 0
                      for item in durations),
              "reference provenance must time both successful clean builds")
-    _require(
-        provenance.get("remaining_gates") ==
-        ["comparative hardware benchmark matrix"],
-        "comparative hardware benchmarks must be the only remaining gate",
-    )
+    _require(provenance.get("hardware_evidence") == hardware_evidence,
+             "reference provenance hardware evidence must match the lock")
+    _require(provenance.get("remaining_gates") == [],
+             "reference hardware gates must be complete")
+    selection = provenance.get("production_selection", {})
+    _require(selection.get("status") == "not-selected"
+             and "alternative-modern-stack-comparison" in
+             selection.get("remaining", []),
+             "hardware qualification must not select production firmware")
 
     profile = load_lock(ROOT / "profiles/lvgl-modern.json")
     candidate = profile.get("reference_candidate", {})
