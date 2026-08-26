@@ -42,10 +42,12 @@ The `legacy-mp123` artifact is the physically qualified baseline. The
 migration target. Its exact Phase 5 reference now has reproducible-build and
 hardware evidence, and the completed alternative-stack comparison selected it
 as the basis for future modern-firmware work. A separate deterministic builder
-and protected workflow now target `tdhoward/TartLab-modern-releases`, but
-production promotion still requires an adult-admin migration path and the
-remaining Phase 6 gates. Modern assets must never be published as GitHub
-Releases in the legacy-visible `tdhoward/TartLab` repository.
+and protected workflow now produce a self-contained firmware, filesystem,
+provenance, compatibility, and migration-instruction asset set targeting
+`tdhoward/TartLab-modern-releases`, but production promotion still requires a
+tested adult-admin migration path and the remaining Phase 6 gates. Modern
+assets must never be published as GitHub Releases in the legacy-visible
+`tdhoward/TartLab` repository.
 
 ## Modern graphics development direction
 

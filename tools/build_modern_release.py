@@ -22,14 +22,27 @@ sys.path.insert(0, str(ROOT / "tools"))
 import release as release_tools  # noqa: E402
 from check_modern_profile import load_json, validate_profile  # noqa: E402
 from release_utils import (  # noqa: E402
-    ensure_safe_output, file_inventory, inventory_identifier, sha256_file,
-    sha256_source_file, write_json,
+    canonical_source_bytes, ensure_safe_output, file_inventory,
+    inventory_identifier, sha256_file, sha256_source_file, write_json,
 )
 
 
 DEFAULT_PROFILE = ROOT / "profiles/lvgl-modern.json"
 DEFAULT_PACKAGES = ROOT / "tartlab_packages.json"
 MODERN_VERSION = re.compile(r"^modern-v[0-9]+\.[0-9]+(?:\.[0-9]+)?$")
+
+
+def _write_canonical_copy(source: Path, destination: Path) -> None:
+    destination.write_bytes(canonical_source_bytes(source))
+
+
+def _release_file(path: Path, *, kind: str) -> dict[str, object]:
+    return {
+        "kind": kind,
+        "file_name": path.name,
+        "size": path.stat().st_size,
+        "sha256": sha256_file(path),
+    }
 
 
 def _git_value(*args: str) -> str:
@@ -183,6 +196,66 @@ def build_release(
     firmware["lock_sha256"] = sha256_source_file(ROOT / firmware["lock"])
     firmware["provenance_sha256"] = sha256_source_file(
         ROOT / firmware["provenance"])
+    firmware_path = ROOT / firmware["artifact"]
+    firmware_asset = output / ("tartlab-%s.bin" % version)
+    shutil.copyfile(firmware_path, firmware_asset)
+    if sha256_file(firmware_asset) != firmware["sha256"]:
+        raise ValueError("Published modern firmware differs from the profile")
+
+    firmware_lock_asset = output / "firmware-build-lock.json"
+    firmware_provenance_asset = output / "firmware-provenance.json"
+    vendor_lock_asset = output / "filesystem-vendor-lock.json"
+    _write_canonical_copy(ROOT / firmware["lock"], firmware_lock_asset)
+    _write_canonical_copy(ROOT / firmware["provenance"], firmware_provenance_asset)
+    _write_canonical_copy(
+        ROOT / profile["release_builder"]["filesystem_vendor_lock"],
+        vendor_lock_asset)
+
+    published_firmware = _release_file(firmware_asset, kind="firmware-image")
+    published_firmware.update({
+        "image_format": firmware["image_format"],
+        "flash_offset": firmware["flash_offset"],
+        "installation": "adult-provisioning-only",
+    })
+    provenance_assets = [
+        _release_file(firmware_lock_asset, kind="firmware-build-lock"),
+        _release_file(firmware_provenance_asset, kind="firmware-provenance"),
+        _release_file(vendor_lock_asset, kind="filesystem-vendor-lock"),
+    ]
+    compatibility = {
+        "schema": 1,
+        "kind": "tartlab-modern-compatibility",
+        "profile": profile["profile"],
+        "version": version,
+        "release_repository": profile["release_channel"]["repository"],
+        "firmware": published_firmware,
+        "runtime_identity": profile["runtime_identity"],
+        "filesystem": {
+            "manifest": "modern-manifest.json",
+            "packages": [item["file_name"] for item in package_entries],
+            "legacy_updater_compatible": False,
+        },
+        "supported_source_profiles": [],
+        "planned_migration_source": "legacy-mp123",
+        "migration_status": "pending-phase6-hardware-qualification",
+    }
+    write_json(output / "compatibility.json", compatibility)
+
+    migration_source = ROOT / profile["release_builder"]["migration_instructions"]
+    migration_text = canonical_source_bytes(migration_source).decode("utf-8")
+    replacements = {
+        "@VERSION@": version,
+        "@FIRMWARE_ASSET@": firmware_asset.name,
+        "@FIRMWARE_SHA256@": firmware["sha256"],
+        "@FLASH_OFFSET@": firmware["flash_offset"],
+    }
+    for marker, value in replacements.items():
+        migration_text = migration_text.replace(marker, value)
+    if re.search(r"@[A-Z0-9_]+@", migration_text):
+        raise ValueError("Modern migration instructions contain an unknown marker")
+    migration_asset = output / "MIGRATION.md"
+    migration_asset.write_text(migration_text, encoding="utf-8", newline="\n")
+
     manifest: dict[str, Any] = {
         "schema": profile["release_builder"]["manifest_schema"],
         "kind": "tartlab-modern-release",
@@ -198,6 +271,14 @@ def build_release(
             "runtime_identity": profile["runtime_identity"],
         },
         "packages": package_entries,
+        "published_assets": {
+            "firmware": published_firmware,
+            "compatibility": _release_file(
+                output / "compatibility.json", kind="compatibility-declaration"),
+            "migration_instructions": _release_file(
+                migration_asset, kind="migration-instructions"),
+            "provenance": provenance_assets,
+        },
     }
     write_json(output / "modern-manifest.json", manifest)
     write_json(output / "payload_inventory.json", payloads)
@@ -222,12 +303,15 @@ def build_release(
             "package_map_sha256": sha256_source_file(packages_path),
             "firmware_lock_sha256": firmware["lock_sha256"],
             "firmware_provenance_sha256": firmware["provenance_sha256"],
+            "filesystem_vendor_lock_sha256": sha256_file(vendor_lock_asset),
+            "migration_instructions_sha256": sha256_file(migration_asset),
         },
         "totals": {
             "package_count": len(package_entries),
             "archive_bytes": sum(item["archive_size"] for item in package_entries),
             "expanded_bytes": sum(item["expanded_size"] for item in package_entries),
             "dist_files": len(dist_inventory),
+            "firmware_bytes": firmware_asset.stat().st_size,
         },
         "remaining_promotion_gates": profile["promotion_gates"],
     }

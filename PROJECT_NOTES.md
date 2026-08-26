@@ -957,10 +957,15 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    is unchanged. Promotion still requires the remaining migration, recovery,
    support-window, and profile-specific physical gates below; this item does
    not declare a production modern release.
-5. Publish versioned firmware, filesystem packages, source/vendor provenance,
-   compatibility declarations, and migration instructions from CI to the
-   appropriate profile repository. Firmware remains an adult-provisioning
-   artifact, not an on-device filesystem update.
+5. **Implemented for the promotion-gated modern publishing contract:** every
+   modern candidate now contains the version-named compatible firmware image,
+   filesystem packages, firmware build lock and provenance, filesystem vendor
+   lock, standalone compatibility declaration, and rendered migration guide.
+   The manifest and checksums bind every file, and the promotion workflow signs
+   and publishes the BIN/MD assets with the TAR/JSON set only to the isolated
+   modern repository. The guide explicitly retains the unfinished Phase 6
+   gates. Firmware remains an adult-provisioning artifact, not an on-device
+   filesystem update.
 6. Test both clean provisioning and adult-admin migration from the legacy
    firmware, including failure and recovery paths.
 7. Require successful profile-specific hardware, OTA, recovery, and release-feed

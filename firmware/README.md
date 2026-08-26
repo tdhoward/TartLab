@@ -68,6 +68,13 @@ builder. Adult provisioning, migration, support-window, OTA/recovery, and final
 release gates remain open. This evidence is not recovered provenance for the
 archived 2025 binary.
 
+The modern release builder copies this exact image into each candidate as
+`tartlab-modern-vX.Y.Z.bin`. It also publishes the build lock, firmware
+provenance, filesystem vendor lock, compatibility declaration, and migration
+guide as separate checksum-bound and attested assets. The source filename in
+this directory remains unchanged; the release filename supplies the TartLab
+version identity.
+
 All tracked files are combined ESP32 images intended for offset `0x0`. Erase
 the device before changing between firmware layouts. Confirm the target board,
 flash size, and manifest digest before flashing.

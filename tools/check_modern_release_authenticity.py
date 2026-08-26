@@ -46,7 +46,7 @@ def validate_policy(policy: dict[str, Any]) -> None:
         raise ValueError("modern attestation action must use a full commit pin")
     if action.get("version") != "v4.2.1":
         raise ValueError("unexpected modern attestation action version")
-    if policy.get("release_subjects") != ["*.tar", "*.json"]:
+    if policy.get("release_subjects") != ["*.tar", "*.json", "*.bin", "*.md"]:
         raise ValueError("modern attestation subjects are incomplete")
     if policy.get("bundle_asset") != "release-attestation.sigstore.json":
         raise ValueError("unexpected modern attestation bundle")
@@ -75,6 +75,8 @@ def validate_workflow(policy: dict[str, Any], workflow_path: Path) -> None:
         f"uses: actions/attest@{policy['action']['commit']}",
         "build/promote-modern/release/*.tar",
         "build/promote-modern/release/*.json",
+        "build/promote-modern/release/*.bin",
+        "build/promote-modern/release/*.md",
         "steps.attest_release.outputs.bundle-path",
         "--repo \"$TARGET_REPOSITORY\"",
         "--promotion-tag \"$RELEASE_TAG\"",
@@ -117,7 +119,9 @@ def release_assets(release: Path, policy: dict[str, Any]) -> list[Path]:
     })
     required = {
         "modern-manifest.json", "build_metadata.json", "checksums.json",
-        "promotion_attestation.json",
+        "promotion_attestation.json", "compatibility.json",
+        "firmware-build-lock.json", "firmware-provenance.json",
+        "filesystem-vendor-lock.json", "MIGRATION.md",
     }
     missing = sorted(required.difference(path.name for path in assets))
     if missing:
@@ -126,6 +130,8 @@ def release_assets(release: Path, policy: dict[str, Any]) -> list[Path]:
         raise ValueError("modern release contains the legacy manifest")
     if not any(path.suffix == ".tar" for path in assets):
         raise ValueError("modern release contains no filesystem packages")
+    if not any(path.suffix == ".bin" for path in assets):
+        raise ValueError("modern release contains no firmware image")
     return assets
 
 

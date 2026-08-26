@@ -12,7 +12,9 @@
   },
   "release_subjects": [
     "*.tar",
-    "*.json"
+    "*.json",
+    "*.bin",
+    "*.md"
   ],
   "bundle_asset": "release-attestation.sigstore.json",
   "scope": {

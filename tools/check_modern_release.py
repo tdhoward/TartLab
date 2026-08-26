@@ -21,10 +21,29 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 import release as release_tools  # noqa: E402
 from check_modern_profile import load_json, validate_profile  # noqa: E402
-from release_utils import file_inventory, sha256_file  # noqa: E402
+from release_utils import file_inventory, sha256_file, sha256_source_file  # noqa: E402
 
 
 DEFAULT_PROFILE = ROOT / "profiles/lvgl-modern.json"
+
+
+def _validate_published_file(
+        release: Path, record: object, checksums: dict[str, Any],
+        expected_kind: str) -> Path:
+    if not isinstance(record, dict) or record.get("kind") != expected_kind:
+        raise ValueError("modern published asset has an unexpected kind")
+    filename = record.get("file_name")
+    if not isinstance(filename, str) or Path(filename).name != filename:
+        raise ValueError("modern published asset filename is unsafe")
+    path = release / filename
+    if not path.is_file() or filename not in checksums:
+        raise ValueError("modern published asset is missing or unauthenticated: %s" % filename)
+    actual_hash = sha256_file(path)
+    if actual_hash != record.get("sha256") or actual_hash != checksums[filename]:
+        raise ValueError("modern published asset hash mismatch: %s" % filename)
+    if path.stat().st_size != record.get("size"):
+        raise ValueError("modern published asset size mismatch: %s" % filename)
+    return path
 
 
 def validate_compatibility(manifest: dict[str, Any], runtime_profile: str,
@@ -96,7 +115,9 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
             raise ValueError("Modern release checksum mismatch: %s" % filename)
     required_metadata = {
         "modern-manifest.json", "build_metadata.json",
-        "payload_inventory.json", "dist_inventory.json",
+        "payload_inventory.json", "dist_inventory.json", "compatibility.json",
+        "firmware-build-lock.json", "firmware-provenance.json",
+        "filesystem-vendor-lock.json", "MIGRATION.md",
     }
     missing = sorted(required_metadata.difference(checksums))
     if missing:
@@ -104,6 +125,72 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
 
     payloads = _read_object(release / "payload_inventory.json")
     metadata = _read_object(release / "build_metadata.json")
+    published = manifest.get("published_assets")
+    if not isinstance(published, dict):
+        raise ValueError("modern manifest has no published artifact inventory")
+    published_firmware = published.get("firmware")
+    firmware_path = _validate_published_file(
+        release, published_firmware, checksums, "firmware-image")
+    if published_firmware.get("sha256") != firmware_sha256.lower() or \
+            published_firmware.get("image_format") != \
+            expected_compatibility["image_format"] or \
+            published_firmware.get("flash_offset") != \
+            expected_compatibility["flash_offset"] or \
+            published_firmware.get("installation") != "adult-provisioning-only":
+        raise ValueError("published firmware identity differs from compatibility policy")
+
+    compatibility_path = _validate_published_file(
+        release, published.get("compatibility"), checksums,
+        "compatibility-declaration")
+    compatibility = _read_object(compatibility_path)
+    if compatibility.get("schema") != 1 or \
+            compatibility.get("kind") != "tartlab-modern-compatibility" or \
+            compatibility.get("profile") != "lvgl-modern" or \
+            compatibility.get("version") != manifest.get("version") or \
+            compatibility.get("release_repository") != \
+            "tdhoward/TartLab-modern-releases" or \
+            compatibility.get("firmware") != published_firmware or \
+            compatibility.get("runtime_identity") != profile["runtime_identity"] or \
+            compatibility.get("supported_source_profiles") != [] or \
+            compatibility.get("planned_migration_source") != "legacy-mp123" or \
+            compatibility.get("migration_status") != \
+            "pending-phase6-hardware-qualification":
+        raise ValueError("published modern compatibility declaration is invalid")
+
+    migration_path = _validate_published_file(
+        release, published.get("migration_instructions"), checksums,
+        "migration-instructions")
+    migration_text = migration_path.read_text(encoding="utf-8")
+    migration_markers = (
+        manifest["version"], firmware_path.name, firmware_sha256,
+        "adult administrators", "promotion-gated-unreleased",
+        "cannot replace firmware",
+    )
+    if any(marker not in migration_text for marker in migration_markers):
+        raise ValueError("published modern migration instructions are incomplete")
+
+    provenance = published.get("provenance")
+    expected_provenance = {
+        "firmware-build-lock": (
+            "firmware-build-lock.json", expected_compatibility["lock"]),
+        "firmware-provenance": (
+            "firmware-provenance.json", expected_compatibility["provenance"]),
+        "filesystem-vendor-lock": (
+            "filesystem-vendor-lock.json",
+            profile["release_builder"]["filesystem_vendor_lock"]),
+    }
+    if not isinstance(provenance, list) or len(provenance) != 3:
+        raise ValueError("modern source/vendor provenance inventory is incomplete")
+    provenance_by_kind = {
+        item.get("kind"): item for item in provenance if isinstance(item, dict)
+    }
+    for kind, (filename, source) in expected_provenance.items():
+        record = provenance_by_kind.get(kind)
+        path = _validate_published_file(release, record, checksums, kind)
+        if path.name != filename or \
+                record.get("sha256") != sha256_source_file(ROOT / source):
+            raise ValueError("published modern provenance differs from source: %s" % kind)
+
     packages = manifest.get("packages")
     if not isinstance(packages, list) or not packages:
         raise ValueError("modern manifest contains no packages")
@@ -188,12 +275,16 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
             metadata.get("release_repository") != \
             "tdhoward/TartLab-modern-releases":
         raise ValueError("Modern build metadata targets an unexpected profile or feed")
+    if metadata.get("totals", {}).get("firmware_bytes") != firmware_path.stat().st_size:
+        raise ValueError("Modern firmware total differs from build metadata")
     return {
         "profile": "lvgl-modern",
         "version": manifest["version"],
         "packages": len(packages),
         "archive_bytes": archive_total,
         "expanded_bytes": expanded_total,
+        "firmware_asset": firmware_path.name,
+        "published_provenance_assets": len(provenance),
         "preflight": preflight,
         "mutation_performed": False,
     }

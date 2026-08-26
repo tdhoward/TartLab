@@ -47,6 +47,14 @@ and runtime source identities. Build metadata continues to list the remaining
 promotion gates, so creating or uploading a CI candidate does not claim that
 the modern profile is production-qualified.
 
+The candidate is self-contained: `tartlab-modern-vX.Y.Z.bin`, the filesystem
+TAR files, `firmware-build-lock.json`, `firmware-provenance.json`,
+`filesystem-vendor-lock.json`, `compatibility.json`, and `MIGRATION.md` are all
+listed by `modern-manifest.json`, covered by `checksums.json`, and included in
+the signed attestation subject set. The migration guide is rendered with the
+release's exact version, firmware name, digest, and flash offset, while clearly
+retaining the uncompleted migration and recovery gates.
+
 Before an adult provisioning or migration tool changes a device, run the
 read-only preflight with the identity observed from that device:
 

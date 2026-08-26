@@ -136,10 +136,21 @@ class ModernReleaseTests(unittest.TestCase):
             self.assertEqual(
                 manifest["channel"]["repository"],
                 "tdhoward/TartLab-modern-releases")
+            firmware = manifest["published_assets"]["firmware"]
+            self.assertEqual(firmware["file_name"], "tartlab-modern-v1.2.3.bin")
+            self.assertEqual(firmware["sha256"], self.firmware_sha256)
+            self.assertTrue((release / firmware["file_name"]).is_file())
+            self.assertEqual(
+                json.loads((release / "compatibility.json").read_text(
+                    encoding="utf-8"))["firmware"], firmware)
+            self.assertIn(
+                "promotion-gated-unreleased",
+                (release / "MIGRATION.md").read_text(encoding="utf-8"))
             result = check_modern_release(
                 release, "lvgl-modern", self.firmware_sha256, dist=dist)
             self.assertFalse(result["mutation_performed"])
             self.assertEqual(result["packages"], 1)
+            self.assertEqual(result["published_provenance_assets"], 3)
 
     def test_provisioning_preflight_rejects_profile_and_firmware_mismatch(self):
         manifest = {
@@ -181,6 +192,16 @@ class ModernReleaseTests(unittest.TestCase):
                 check_modern_release(
                     release, "lvgl-modern", self.firmware_sha256)
 
+    def test_modern_release_rejects_tampered_published_firmware(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            _, release = self._build(Path(temporary))
+            firmware = release / "tartlab-modern-v1.2.3.bin"
+            with firmware.open("ab") as stream:
+                stream.write(b"tampered")
+            with self.assertRaisesRegex(ValueError, "checksum mismatch"):
+                check_modern_release(
+                    release, "lvgl-modern", self.firmware_sha256)
+
 
 class ModernReleaseAuthenticityTests(unittest.TestCase):
     def setUp(self):
@@ -219,10 +240,13 @@ class ModernReleaseAuthenticityTests(unittest.TestCase):
             for name in (
                     "modern-manifest.json", "build_metadata.json",
                     "checksums.json", "promotion_attestation.json",
-                    "rootfiles.tar"):
+                    "rootfiles.tar", "compatibility.json",
+                    "firmware-build-lock.json", "firmware-provenance.json",
+                    "filesystem-vendor-lock.json", "MIGRATION.md",
+                    "tartlab-modern-v1.2.3.bin"):
                 (release / name).write_text("{}\n", encoding="utf-8")
             self.assertEqual(
-                len(modern_release_assets(release, self.policy)), 5)
+                len(modern_release_assets(release, self.policy)), 11)
             (release / "manifest.json").write_text("[]\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "legacy manifest"):
                 modern_release_assets(release, self.policy)

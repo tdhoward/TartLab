@@ -34,7 +34,9 @@
     "tool": "tools/build_modern_release.py",
     "manifest_schema": 1,
     "validator": "tools/check_modern_release.py",
-    "provisioning_preflight": "tools/check_modern_release.py"
+    "provisioning_preflight": "tools/check_modern_release.py",
+    "migration_instructions": "profiles/lvgl-modern-migration.md",
+    "filesystem_vendor_lock": "vendor/legacy-pydevices.lock.json"
   },
   "hardware_qualification": null,
   "promotion_gates": [
