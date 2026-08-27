@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT))
 import release
 from release_utils import file_inventory, inventory_identifier, sha256_source_file
 from phase1_device import PYDEVICES_BENCHMARK_CODE
+from build_phase4_test_release import _valid_compiler_version
 
 
 class PyDevicesImportInventoryTests(unittest.TestCase):
@@ -41,6 +42,16 @@ class PyDevicesImportInventoryTests(unittest.TestCase):
         self.assertIn("add_ons/displaybuf.py", examples)
         self.assertIn("add_ons/qoi_reader.py", examples)
         self.assertIn("eventsys/keys.py", examples)
+
+    def test_pinned_compiler_accepts_tag_or_exact_commit_identity(self):
+        self.assertTrue(_valid_compiler_version(
+            "MicroPython v1.23.0; mpy-cross emitting mpy v6.3"))
+        self.assertTrue(_valid_compiler_version(
+            "MicroPython a61c446 on 2026-08-27; mpy-cross emitting mpy v6.3"))
+        self.assertFalse(_valid_compiler_version(
+            "MicroPython deadbee; mpy-cross emitting mpy v6.3"))
+        self.assertFalse(_valid_compiler_version(
+            "MicroPython a61c446; mpy-cross emitting mpy v6.2"))
 
     def test_every_locked_file_has_exactly_one_payload_classification(self):
         inventory = json.loads(

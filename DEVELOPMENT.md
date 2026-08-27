@@ -331,11 +331,12 @@ Get-CimInstance Win32_SerialPort |
     Select-Object DeviceID, Name, PNPDeviceID
 ```
 
-Install the serial dependency in the project virtual environment and probe the
-selected port:
+The hash-locked build requirements include the serial dependency used by the
+host test harnesses. Install them in the project virtual environment and probe
+the selected port:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install pyserial==3.5
+.\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements-build.txt
 .\.venv\Scripts\python.exe tools/phase1_device.py --port COMx probe
 ```
 

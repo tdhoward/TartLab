@@ -32,6 +32,7 @@ from release_utils import (
 
 COPY_IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo")
 MPY_VERSION = "v1.23.0"
+MPY_COMMIT = "a61c446"
 MPY_FORMAT = "mpy v6.3"
 
 
@@ -64,6 +65,12 @@ def _run(command):
     return result.stdout.strip()
 
 
+def _valid_compiler_version(version):
+    """Accept the pinned release tag or its exact checkout commit identity."""
+    return MPY_FORMAT in version and (
+        MPY_VERSION in version or MPY_COMMIT in version)
+
+
 def compile_candidate(runtime, mpy_cross, target_arch):
     """Compile the minified candidate for the exact qualified firmware ABI."""
     runtime = Path(runtime).resolve()
@@ -72,10 +79,10 @@ def compile_candidate(runtime, mpy_cross, target_arch):
         raise ValueError("Candidate runtime has no Python sources: %s" % runtime)
     command, via_wsl = _compiler(mpy_cross)
     version = _run(command + ["--version"])
-    if MPY_VERSION not in version or MPY_FORMAT not in version:
+    if not _valid_compiler_version(version):
         raise ValueError(
-            "Phase 4 compiler must report %s and %s; got %s" %
-            (MPY_VERSION, MPY_FORMAT, version))
+            "Phase 4 compiler must report %s/%s and %s; got %s" %
+            (MPY_VERSION, MPY_COMMIT, MPY_FORMAT, version))
 
     compiled = runtime.parent / (runtime.name + "-compiled")
     if compiled.exists():

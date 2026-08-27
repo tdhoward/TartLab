@@ -150,6 +150,11 @@ provide this runner locally, but is optional because CI runs it on Ubuntu.
 Physical serial control should remain on Windows unless there is a specific
 reason to attach the USB device exclusively to WSL.
 
+The pinned `mpy-cross` may identify that same source as either `v1.23.0` or the
+exact short commit `a61c446`, depending on whether Git tag metadata is present
+in the checkout. The release builder accepts only those identities with mpy
+format v6.3.
+
 ## Tier 3: physical smoke tests
 
 Use the LilyGO T-Display-S3 Pro for focused checks after changes to startup,
