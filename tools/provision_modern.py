@@ -373,9 +373,14 @@ class CommandTransport:
         self.port = port
 
     def _run(self, command: list[str]) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            command, check=True, text=True, stdout=subprocess.PIPE,
+        result = subprocess.run(
+            command, check=False, text=True, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
+        if result.returncode:
+            raise RuntimeError(
+                "Command failed (%s):\n%s" % (
+                    " ".join(command), result.stdout))
+        return result
 
     def _remote_kind(self, path: str) -> int:
         script = (
@@ -465,24 +470,25 @@ class CommandTransport:
         try:
             for destination in (":/boot.py", ":/main.py"):
                 self._run([
-                    "mpremote", "connect", self.port, "fs", "cp", "-f",
+                    "mpremote", "connect", self.port, "fs", "--force", "cp",
                     str(placeholder), destination])
             for source in sorted(image.iterdir(), key=lambda item: item.name):
                 if source.name in ("boot.py", "main.py"):
                     continue
                 destination = ":/" + source.name
-                command = ["mpremote", "connect", self.port, "fs", "cp", "-f"]
+                command = [
+                    "mpremote", "connect", self.port, "fs", "--force"]
                 if source.is_dir():
-                    command.append("-r")
-                command.extend((str(source), destination))
+                    command.append("--recursive")
+                command.extend(("cp", str(source), destination))
                 self._run(command)
             # Activate early boot only after recovery and state are complete;
             # keep main inert until the final copy.
             self._run([
-                "mpremote", "connect", self.port, "fs", "cp", "-f",
+                "mpremote", "connect", self.port, "fs", "--force", "cp",
                 str(boot), ":/boot.py"])
             self._run([
-                "mpremote", "connect", self.port, "fs", "cp", "-f",
+                "mpremote", "connect", self.port, "fs", "--force", "cp",
                 str(main), ":/main.py"])
         finally:
             if placeholder.is_file():

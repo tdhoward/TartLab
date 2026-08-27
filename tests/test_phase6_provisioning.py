@@ -421,12 +421,16 @@ class ModernProvisioningTests(unittest.TestCase):
             transport.install(firmware, "0x0", image, FIRMWARE_SHA256)
 
             mpremote = commands[3:]
+            self.assertLess(mpremote[0].index("--force"), mpremote[0].index("cp"))
             self.assertTrue(mpremote[0][-1].endswith(":/boot.py"))
             self.assertIn("provisioning-placeholder.py", mpremote[0][-2])
             self.assertTrue(mpremote[1][-1].endswith(":/main.py"))
             state_upload = next(
                 index for index, command in enumerate(mpremote)
                 if command[-1] == ":/state")
+            self.assertLess(
+                mpremote[state_upload].index("--recursive"),
+                mpremote[state_upload].index("cp"))
             real_boot = next(
                 index for index, command in enumerate(mpremote)
                 if command[-1] == ":/boot.py" and
