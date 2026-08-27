@@ -60,9 +60,10 @@ defines the adult path below that floor, and is hash-bound into qualification
 evidence.
 
 Physical testing does not consume an unsigned CI artifact and does not require
-a release to be promoted first. Dispatch
-`.github/workflows/attest-modern-candidate.yml` from the exact modern source
-tag. Its protected `modern-qualification` job builds twice, checks byte
+a release to be promoted first. Push the exact `modern-v*` source tag to run
+`.github/workflows/attest-modern-candidate.yml`; manual dispatch is also
+available after the workflow reaches the default branch. Its protected
+`modern-qualification` job builds twice, checks byte
 identity, performs the profile/firmware preflight, signs the candidate with its
 own GitHub workflow identity, and uploads it with
 `qualification-attestation.sigstore.json`; it has no release token or publish

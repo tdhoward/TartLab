@@ -1,6 +1,9 @@
 name: Attest modern qualification candidate
 
 on:
+  push:
+    tags:
+      - "modern-v*"
   workflow_dispatch:
     inputs:
       tag:
@@ -18,10 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: modern-qualification
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ env.RELEASE_TAG }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -38,8 +43,6 @@ jobs:
           cache-dependency-path: src/ide/www/package-lock.json
 
       - name: Bind qualification workflow identity
-        env:
-          RELEASE_TAG: ${{ inputs.tag }}
         run: >-
           python tools/check_modern_release_authenticity.py
           --qualification-tag "$RELEASE_TAG"
@@ -56,8 +59,6 @@ jobs:
 
       - name: Build qualification candidate twice
         shell: bash
-        env:
-          RELEASE_TAG: ${{ inputs.tag }}
         run: |
           python makedist.py --output build/qualification/dist-one --clean --skip-web-build
           python makedist.py --output build/qualification/dist-two --clean --skip-web-build

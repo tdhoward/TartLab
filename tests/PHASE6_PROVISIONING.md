@@ -9,7 +9,8 @@ requires all of `--execute`, `--confirm-erase`, an explicit serial port, a
 signed source-tag reference, and a private durable workspace outside the Git
 checkout.
 
-Physical qualification uses the unpublished, tag-bound artifact produced by
+Physical qualification uses the unpublished, tag-bound artifact produced when
+an exact `modern-v*` source tag runs
 `.github/workflows/attest-modern-candidate.yml`. That protected workflow
 rebuilds the candidate twice, attests its TAR/JSON/BIN/MD subjects, and uploads
 `qualification-attestation.sigstore.json` with the candidate without creating
