@@ -21,6 +21,9 @@ Before erasure, migration performs these fail-closed checks:
    regions. The mutable NVS/PHY range at `0x9000` through `0xFFFF` is excluded;
    the checked-in source artifact itself retains whole-image SHA-256
    `41a750a8f047224e3e0a7544a626338c252407df420e2b94dcb0d2dad9793212`.
+6. Enforce the authenticated support window against the captured backup:
+   stable v0.13 or newer and a declared legacy root or canonical layout.
+   Older, prerelease, or unknown layouts stop before erase.
 
 The host then erases and writes the combined modern image at offset `0x0`, uses
 `esptool verify-flash`, reconstructs all authenticated filesystem packages,
@@ -47,12 +50,20 @@ transport:
   resume re-erases and installs a complete recoverable image;
 - inert boot/main placeholders prevent incomplete filesystems from starting,
   and the real boot files are activated only after recovery and state exist;
-- unsupported hardware stops before erase; and
+- unsupported hardware stops before erase;
+- v0.12, prerelease, and unrecognized source layouts stop before erase while
+  v0.13 root-v1 and newer canonical layouts pass the host policy; and
 - the physical transport accepts an exact legacy firmware readback and rejects
   a different image.
 
 This host gate does not qualify a physical migration or authorize classroom
 deployment.
+
+The approved path below the v0.13 floor is not automatic migration. An adult
+captures a private version-appropriate backup, performs authenticated clean
+provisioning, and selectively restores reviewed settings and user files after
+a healthy boot. Intermediate releases and wholesale historical filesystem
+copies are not part of the supported process.
 
 ## Remaining physical gate
 

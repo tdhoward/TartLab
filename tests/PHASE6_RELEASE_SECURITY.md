@@ -49,11 +49,15 @@ the modern profile is production-qualified.
 
 The candidate is self-contained: `tartlab-modern-vX.Y.Z.bin`, the filesystem
 TAR files, `firmware-build-lock.json`, `firmware-provenance.json`,
-`filesystem-vendor-lock.json`, `compatibility.json`, and `MIGRATION.md` are all
+`filesystem-vendor-lock.json`, `support-window.json`, `compatibility.json`, and
+`MIGRATION.md` are all
 listed by `modern-manifest.json`, covered by `checksums.json`, and included in
 the signed attestation subject set. The migration guide is rendered with the
 release's exact version, firmware name, digest, and flash offset, while clearly
 retaining the uncompleted physical migration and recovery gates.
+The support-window policy fixes v0.13 as the oldest direct-migration source,
+defines the adult path below that floor, and is hash-bound into qualification
+evidence.
 
 Before an adult provisioning or migration tool changes a device, run the
 read-only preflight with the identity observed from that device:
@@ -83,7 +87,8 @@ This is release machinery, not release authorization. The adult provisioning
 host transaction, profile-bound OTA/recovery clients, virtual migration gate,
 and fail-closed qualification-evidence validator are implemented. Physical
 provisioning/migration and modern OTA/recovery observations, the support-window
-decision, and the final profile-specific physical gate remain incomplete. See
+floor observation, and the final profile-specific physical gate remain
+incomplete. The support-window decision and host enforcement are complete. See
 `PHASE6_MODERN_QUALIFICATION.md` for the evidence contract.
 
 ## Release-channel isolation

@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 import release as release_tools  # noqa: E402
 from check_modern_profile import load_json, validate_profile  # noqa: E402
+from check_modern_support_window import validate_policy as validate_support_window  # noqa: E402
 from release_utils import file_inventory, sha256_file, sha256_source_file  # noqa: E402
 
 
@@ -118,6 +119,7 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
         "payload_inventory.json", "dist_inventory.json", "compatibility.json",
         "firmware-build-lock.json", "firmware-provenance.json",
         "filesystem-vendor-lock.json", "MIGRATION.md",
+        "support-window.json",
     }
     missing = sorted(required_metadata.difference(checksums))
     if missing:
@@ -143,6 +145,24 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
         release, published.get("compatibility"), checksums,
         "compatibility-declaration")
     compatibility = _read_object(compatibility_path)
+    support_window_record = published.get("support_window")
+    support_window_path = _validate_published_file(
+        release, support_window_record, checksums, "support-window-policy")
+    support_window = _read_object(support_window_path)
+    validate_support_window(support_window)
+    support_window_source = ROOT / profile["release_builder"]["support_window"]
+    if support_window_record.get("sha256") != \
+            sha256_source_file(support_window_source) or \
+            support_window != _read_object(support_window_source):
+        raise ValueError("published modern support-window policy differs from source")
+    expected_support_window = {
+        "policy": support_window_record,
+        "source_profile": "legacy-mp123",
+        "minimum_tartlab_version": "v0.13",
+        "version_rule": "stable-at-or-newer",
+        "below_floor_action": (
+            "adult-clean-provision-with-reviewed-manual-restore"),
+    }
     if compatibility.get("schema") != 1 or \
             compatibility.get("kind") != "tartlab-modern-compatibility" or \
             compatibility.get("profile") != "lvgl-modern" or \
@@ -158,7 +178,8 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
             ["clean", "legacy-mp123"] or \
             compatibility.get("planned_migration_source") != "legacy-mp123" or \
             compatibility.get("migration_status") != \
-            "host-tested-pending-physical-qualification":
+            "host-tested-pending-physical-qualification" or \
+            compatibility.get("support_window") != expected_support_window:
         raise ValueError("published modern compatibility declaration is invalid")
 
     migration_path = _validate_published_file(
@@ -168,7 +189,7 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
     migration_markers = (
         manifest["version"], firmware_path.name, firmware_sha256,
         "adult administrators", "promotion-gated-unreleased",
-        "cannot replace firmware",
+        "cannot replace firmware", "v0.13", "older than v0.13",
     )
     if any(marker not in migration_text for marker in migration_markers):
         raise ValueError("published modern migration instructions are incomplete")
@@ -289,6 +310,7 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
         "expanded_bytes": expanded_total,
         "firmware_asset": firmware_path.name,
         "published_provenance_assets": len(provenance),
+        "support_window_floor": "v0.13",
         "preflight": preflight,
         "mutation_performed": False,
     }

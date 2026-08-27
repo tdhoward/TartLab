@@ -260,6 +260,52 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertEqual(transport.install_count, 0)
             self.assertEqual((device / "settings.json").read_bytes(), before)
 
+    def test_source_below_v013_floor_stops_before_erasure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            device = root / "device"
+            shutil.copytree(ROOT / "tests/fixtures/legacy_mp123/layout", device)
+            repos_path = device / "repos.json"
+            repos = json.loads(repos_path.read_text(encoding="utf-8"))
+            repos["list"][0]["installed_version"] = "v0.12"
+            repos_path.write_text(json.dumps(repos), encoding="utf-8")
+            transport = DirectoryTransport(device)
+
+            with self.assertRaisesRegex(ValueError, "older than the v0.13"):
+                provision(
+                    self.release, root / "workspace", "migrate", transport)
+            self.assertEqual(transport.install_count, 0)
+            journal = json.loads((
+                root / "workspace/provisioning-journal.json").read_text(
+                    encoding="utf-8"))
+            self.assertEqual(journal["stage"], "verified")
+
+    def test_canonical_legacy_layout_at_newer_stable_version_is_supported(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            device = root / "device"
+            shutil.copytree(ROOT / "tests/fixtures/legacy_mp123/layout", device)
+            (device / "state").mkdir()
+            (device / "device").mkdir()
+            repos = json.loads((device / "repos.json").read_text(encoding="utf-8"))
+            repos["list"][0]["installed_version"] = "v0.14"
+            (device / "state/repos.json").write_text(
+                json.dumps(repos), encoding="utf-8")
+            shutil.copy2(
+                device / "hdwconfig.py", device / "device/hdwconfig.py")
+            transport = DirectoryTransport(device)
+            workspace = root / "workspace"
+
+            result = provision(
+                self.release, workspace, "migrate", transport)
+
+            self.assertEqual(result["stage"], "awaiting_health")
+            journal = json.loads((
+                workspace / "provisioning-journal.json").read_text(
+                    encoding="utf-8"))
+            self.assertEqual(journal["source"]["layout"], "canonical-v1")
+            self.assertEqual(journal["source"]["installed_version"], "v0.14")
+
     def test_changed_backup_cannot_be_used_to_resume_after_upload_loss(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

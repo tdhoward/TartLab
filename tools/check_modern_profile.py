@@ -16,6 +16,7 @@ import sys
 from typing import Any, Sequence
 
 from modern_firmware import check_lock as check_modern_firmware_lock
+from check_modern_support_window import validate_policy as validate_support_window
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,17 +77,20 @@ def validate_profile(profile: dict[str, Any]) -> None:
         "provisioning_preflight": "tools/check_modern_release.py",
         "provisioning_tool": "tools/provision_modern.py",
         "qualification_validator": "tools/check_modern_qualification.py",
+        "support_window": "profiles/modern-support-window.json",
         "migration_instructions": "profiles/lvgl-modern-migration.md",
         "filesystem_vendor_lock": "vendor/legacy-pydevices.lock.json",
     }
     if builder != expected_builder:
         raise ValueError("modern release builder contract is incomplete")
     for key in (
-            "provisioning_tool", "qualification_validator",
+            "provisioning_tool", "qualification_validator", "support_window",
             "migration_instructions",
             "filesystem_vendor_lock"):
         if not (ROOT / builder[key]).is_file():
             raise ValueError(f"modern release builder input is missing: {key}")
+    support_window = load_json(ROOT / builder["support_window"])
+    validate_support_window(support_window)
     gates = profile.get("promotion_gates")
     if gates != [
             "adult-provisioning-and-migration",

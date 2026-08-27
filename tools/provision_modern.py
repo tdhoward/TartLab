@@ -25,6 +25,7 @@ from typing import Any, Sequence
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from check_modern_release import check as check_modern_release  # noqa: E402
+from check_modern_support_window import validate_backup as validate_support_window  # noqa: E402
 from release_utils import (  # noqa: E402
     file_inventory, inventory_identifier, sha256_file, write_json,
 )
@@ -168,22 +169,8 @@ def _selected_app(backup: Path) -> str:
     return "hello.py"
 
 
-def _validate_migration_source(backup: Path) -> None:
-    selector = backup / "device/hdwconfig.py"
-    if not selector.is_file():
-        selector = backup / "hdwconfig.py"
-    if not selector.is_file():
-        raise ValueError("legacy backup contains no hardware selector")
-    source = selector.read_text(encoding="utf-8")
-    if "from t_display_s3_pro import *" not in source:
-        raise ValueError(
-            "legacy hardware selector is not the supported T-Display-S3 Pro")
-    if not (backup / "state/repos.json").is_file() and \
-            not (backup / "repos.json").is_file():
-        raise ValueError("legacy backup contains no TartLab release state")
-    if (backup / "state/update.json").is_file():
-        raise ValueError(
-            "legacy source has an active update; recover it before migration")
+def _validate_migration_source(backup: Path) -> dict[str, str]:
+    return validate_support_window(backup)
 
 
 def _migrated_repos(backup: Path, version: str) -> tuple[dict[str, Any], str]:
@@ -323,9 +310,11 @@ def provision(release: Path, workspace: Path, mode: str, transport: Any, *,
     if _stage_index(stage) < _stage_index("backed_up"):
         partial = workspace / "device-backup.partial"
         _replace_directory(partial, workspace)
+        source_identity = None
         if mode == "migrate":
             transport.capture(BACKUP_PATHS, partial)
             transport.validate_source(mode, partial)
+            source_identity = _validate_migration_source(partial)
         if backup.exists():
             _replace_directory(backup, workspace)
             backup.rmdir()
@@ -336,6 +325,8 @@ def provision(release: Path, workspace: Path, mode: str, transport: Any, *,
             "backup_files": len(inventory),
             "backup_identifier": inventory_identifier(inventory),
         })
+        if source_identity is not None:
+            journal["source"] = source_identity
         _write_journal(journal_path, journal)
         stage = journal["stage"]
 

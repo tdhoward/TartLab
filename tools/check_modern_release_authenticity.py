@@ -59,6 +59,7 @@ def validate_policy(policy: dict[str, Any]) -> None:
         "adult_provisioning_preflight": "tools/check_modern_release.py",
         "adult_provisioning_tool": "tools/provision_modern.py",
         "qualification_validator": "tools/check_modern_qualification.py",
+        "support_window_policy": "profiles/modern-support-window.json",
     }
     if scope != expected_scope:
         raise ValueError("modern authenticity scope is incomplete")
@@ -125,7 +126,7 @@ def release_assets(release: Path, policy: dict[str, Any]) -> list[Path]:
         "modern-manifest.json", "build_metadata.json", "checksums.json",
         "promotion_attestation.json", "compatibility.json",
         "firmware-build-lock.json", "firmware-provenance.json",
-        "filesystem-vendor-lock.json", "MIGRATION.md",
+        "filesystem-vendor-lock.json", "support-window.json", "MIGRATION.md",
     }
     missing = sorted(required.difference(path.name for path in assets))
     if missing:

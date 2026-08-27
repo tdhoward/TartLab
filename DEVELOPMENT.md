@@ -64,6 +64,12 @@ plaintext Wi-Fi credentials or student files. Follow the authenticated
 `MIGRATION.md` shipped in the release and retain the workspace until the tool
 confirms the post-install health commit.
 
+Managed direct migration has a stable v0.13 floor. Validate an exported backup
+without mutation with `tools/check_modern_support_window.py --backup PATH`.
+Older, prerelease, or unrecognized layouts are not eligible for automatic
+migration; follow the adult clean-provision and selective manual-restore path
+in `MIGRATION.md` instead of installing intermediate releases.
+
 ## Modern graphics development direction
 
 The modern target is not an LVGL-only replacement for the legacy framebuffer

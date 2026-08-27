@@ -987,8 +987,20 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    downloads a sanitized evidence summary, verifies its exact hash, and rejects
    promotion unless candidate-bound provisioning, hardware, OTA, recovery,
    release-feed-isolation, and support-window gates all report passed. The
-   physical item 6/7 matrix and explicit support-window decision are still
-   required; no modern release is qualified or promoted by this host work.
+   physical item 6/7 matrix and candidate-bound support-window observation are
+   still required; no modern release is qualified or promoted by this host
+   work.
+8. **Support window decided and enforced; physical evidence pending:** direct
+   adult migration supports stable TartLab v0.13 or newer on the exact
+   `legacy-mp123` firmware, qualified board, and either the captured root-v1 or
+   canonical state/device layout. The checked-in policy is published and
+   authenticated with each modern candidate, bound into qualification
+   evidence, and enforced against the captured backup before erase. Older or
+   unrecognized layouts fail closed; their administrator path is a private
+   backup followed by clean authenticated provisioning and selective manual
+   restore, never intermediate-release hunting or wholesale filesystem copy.
+   The support-window promotion gate still needs the candidate-bound physical
+   v0.13 migration observation required by items 6 and 7.
 
 ## Minimum test matrix
 
@@ -1071,9 +1083,12 @@ release topology is also decided: `tdhoward/TartLab` is the legacy feed and
    GitHub Releases for `legacy-mp123`; publish `lvgl-modern` only through
    `tdhoward/TartLab-modern-releases`; never combine modern firmware or modern
    filesystem assets with the legacy-visible release asset set.
-8. The oldest deployed TartLab version/layout included in the direct-to-latest
-   compatibility window and the administrator process for devices older than
-   that floor.
+8. **Decided for managed-modern migration:** v0.13 is the oldest directly
+   supported TartLab version. Stable v0.13-or-newer devices on the exact
+   legacy runtime and a recognized root-v1 or canonical layout may use the
+   authenticated migrator. Older/unrecognized devices require an adult private
+   backup, clean provisioning, and selective reviewed restore; they must not
+   install intermediate releases.
 9. The measured winner of the first-repository `lcd_bus` and PyDevices
    `displayif` modern-firmware comparison, including who maintains TartLab's
    public direct-surface adapter.

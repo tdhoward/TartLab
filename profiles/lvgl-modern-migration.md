@@ -36,8 +36,11 @@ First perform the read-only release inspection:
 python tools/provision_modern.py --release path/to/release --mode migrate
 ```
 
-For a legacy device running the exact supported `legacy-mp123` firmware, start
-the authenticated migration with:
+Direct migration is supported from stable TartLab `v0.13` or newer, using
+either the captured legacy root layout or the canonical `/state` and `/device`
+layout, on the exact supported `legacy-mp123` firmware. The tool reads the
+installed version and layout from the captured backup and rejects an
+out-of-window source before erase. Start the authenticated migration with:
 
 ```text
 python tools/provision_modern.py --release path/to/release --mode migrate --workspace path/to/private-workspace --port SERIAL_PORT --source-ref refs/tags/@VERSION@ --execute --confirm-erase
@@ -53,6 +56,19 @@ translates the hardware selector to
 `t_display_s3_pro_modern`, restores protected state, and leaves the target
 version pending until TartLab completes a healthy boot.
 
+### Devices older than v0.13
+
+Automatic migration is not approved for a device older than v0.13 or with an
+unrecognized layout. Do not install intermediate GitHub releases and do not
+override the migration check. An adult administrator must first capture a
+private backup with tooling appropriate to that historical version, review and
+inventory the settings and user files, then use authenticated `--mode clean`
+provisioning. After a healthy modern boot, manually restore only reviewed
+settings and user files through the supported IDE or administrator workflow.
+Retain the original private backup until the restored device has passed its
+health checks. This path deliberately does not copy an unknown historical
+filesystem wholesale into the modern runtime.
+
 If USB, power, flashing, or file upload is interrupted, do not discard or edit
 the workspace. Reconnect the same board and rerun the same command with
 `--resume`. The journal verifies the immutable backup and repeats the erase,
@@ -65,10 +81,10 @@ record completion. Retain the private workspace until that check succeeds.
 The checked-in profile is still `promotion-gated-unreleased`. Clean
 provisioning, direct legacy migration, interruption, and resume are covered by
 the CPython virtual-device gate, but have not yet passed the profile-specific
-physical provisioning matrix. Profile-bound modern OTA/recovery and promotion
-evidence enforcement are implemented on the host matrix, while their physical
-observations, the support-window decision, and final hardware release tests
-remain open. Until those gates are
+physical provisioning matrix. Profile-bound modern OTA/recovery, promotion
+evidence enforcement, and the v0.13 support-window floor are implemented on the
+host matrix, while their required physical observations and final hardware
+release tests remain open. Until those gates are
 completed and the protected modern-release environment authorizes the release,
 this document is an
 authenticated candidate instruction and artifact inventory—not authorization

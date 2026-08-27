@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "profile": "lvgl-modern",
+  "decision": "approved",
+  "direct_migration": {
+    "source_profile": "legacy-mp123",
+    "source_repository": "tdhoward/TartLab",
+    "minimum_tartlab_version": "v0.13",
+    "version_rule": "stable-at-or-newer",
+    "firmware_sha256": "41a750a8f047224e3e0a7544a626338c252407df420e2b94dcb0d2dad9793212",
+    "board": "LilyGO T-Display-S3 Pro",
+    "pcb_revision": "1.1",
+    "selector_marker": "from t_display_s3_pro import *",
+    "supported_layouts": [
+      {
+        "id": "legacy-root-v1",
+        "repositories": "/repos.json",
+        "hardware_selector": "/hdwconfig.py"
+      },
+      {
+        "id": "canonical-v1",
+        "repositories": "/state/repos.json",
+        "hardware_selector": "/device/hdwconfig.py"
+      }
+    ]
+  },
+  "floor_evidence": {
+    "fixture": "tests/fixtures/legacy_mp123",
+    "installed_version": "v0.13",
+    "legacy_physical_gate": "tests/PHASE2_HARDWARE.md",
+    "modern_physical_gate": "tests/PHASE6_PROVISIONING.md"
+  },
+  "below_floor": {
+    "automatic_migration_allowed": false,
+    "action": "adult-clean-provision-with-reviewed-manual-restore",
+    "required_steps": [
+      "capture-private-backup-before-erase",
+      "clean-provision-authenticated-modern-release",
+      "manually-restore-reviewed-settings-and-user-files",
+      "retain-backup-until-healthy-boot"
+    ]
+  }
+}

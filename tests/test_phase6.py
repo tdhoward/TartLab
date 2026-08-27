@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
@@ -32,7 +33,11 @@ from check_modern_qualification import (  # noqa: E402
     REQUIRED_GATES, check as check_modern_qualification,
     validate as validate_modern_qualification,
 )
-from release_utils import sha256_file  # noqa: E402
+from check_modern_support_window import (  # noqa: E402
+    check as check_support_window, validate_backup as validate_support_backup,
+    validate_policy as validate_support_policy,
+)
+from release_utils import sha256_file, sha256_source_file  # noqa: E402
 
 
 class ReleaseAuthenticityTests(unittest.TestCase):
@@ -156,6 +161,12 @@ class ModernReleaseTests(unittest.TestCase):
             self.assertFalse(result["mutation_performed"])
             self.assertEqual(result["packages"], 1)
             self.assertEqual(result["published_provenance_assets"], 3)
+            self.assertEqual(result["support_window_floor"], "v0.13")
+            support_window = json.loads(
+                (release / "support-window.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                support_window["direct_migration"]["minimum_tartlab_version"],
+                "v0.13")
 
     def test_provisioning_preflight_rejects_profile_and_firmware_mismatch(self):
         manifest = {
@@ -247,11 +258,12 @@ class ModernReleaseAuthenticityTests(unittest.TestCase):
                     "checksums.json", "promotion_attestation.json",
                     "rootfiles.tar", "compatibility.json",
                     "firmware-build-lock.json", "firmware-provenance.json",
-                    "filesystem-vendor-lock.json", "MIGRATION.md",
+                    "filesystem-vendor-lock.json", "support-window.json",
+                    "MIGRATION.md",
                     "tartlab-modern-v1.2.3.bin"):
                 (release / name).write_text("{}\n", encoding="utf-8")
             self.assertEqual(
-                len(modern_release_assets(release, self.policy)), 11)
+                len(modern_release_assets(release, self.policy)), 12)
             (release / "manifest.json").write_text("[]\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "legacy manifest"):
                 modern_release_assets(release, self.policy)
@@ -295,6 +307,8 @@ class ModernQualificationTests(unittest.TestCase):
                 "clean_provisioning_journal_sha256": "b" * 64,
                 "migration_provisioning_journal_sha256": "c" * 64,
                 "serial_log_sha256": "d" * 64,
+                "support_window_policy_sha256": sha256_source_file(
+                    ROOT / "profiles/modern-support-window.json"),
             },
             "gates": {
                 name: {"status": "passed", "evidence": ["record:" + name]}
@@ -343,6 +357,69 @@ class ModernQualificationTests(unittest.TestCase):
             validate_modern_qualification(
                 wrong_feed, tag="modern-v1.2.3",
                 candidate_sha256=self.candidate_sha256)
+
+    def test_qualification_rejects_a_different_support_window(self):
+        evidence = self._evidence()
+        evidence["artifacts"]["support_window_policy_sha256"] = "f" * 64
+        with self.assertRaisesRegex(ValueError, "different support-window"):
+            validate_modern_qualification(
+                evidence, tag="modern-v1.2.3",
+                candidate_sha256=self.candidate_sha256)
+
+
+class ModernSupportWindowTests(unittest.TestCase):
+    def test_checked_in_policy_approves_v013_as_the_floor(self):
+        result = check_support_window(
+            backup=ROOT / "tests/fixtures/legacy_mp123/layout")
+        self.assertEqual(result["minimum_tartlab_version"], "v0.13")
+        self.assertEqual(result["source"]["installed_version"], "v0.13")
+        self.assertEqual(result["source"]["layout"], "legacy-root-v1")
+
+    def test_policy_rejects_a_weakened_floor_or_automatic_old_migration(self):
+        policy = json.loads((
+            ROOT / "profiles/modern-support-window.json").read_text(
+                encoding="utf-8"))
+        weakened = copy.deepcopy(policy)
+        weakened["direct_migration"]["minimum_tartlab_version"] = "v0.1"
+        with self.assertRaisesRegex(ValueError, "minimum_tartlab_version"):
+            validate_support_policy(weakened)
+        automatic = copy.deepcopy(policy)
+        automatic["below_floor"]["automatic_migration_allowed"] = True
+        with self.assertRaisesRegex(ValueError, "below-floor"):
+            validate_support_policy(automatic)
+
+    def test_source_below_floor_is_rejected_before_migration(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            backup = Path(temporary) / "backup"
+            shutil.copytree(
+                ROOT / "tests/fixtures/legacy_mp123/layout", backup)
+            repos_path = backup / "repos.json"
+            repos = json.loads(repos_path.read_text(encoding="utf-8"))
+            repos["list"][0]["installed_version"] = "v0.12"
+            repos_path.write_text(json.dumps(repos), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "older than the v0.13"):
+                validate_support_backup(backup)
+
+    def test_prerelease_and_unrecognized_layout_are_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            prerelease = root / "prerelease"
+            shutil.copytree(
+                ROOT / "tests/fixtures/legacy_mp123/layout", prerelease)
+            repos_path = prerelease / "repos.json"
+            repos = json.loads(repos_path.read_text(encoding="utf-8"))
+            repos["list"][0]["installed_version"] = "v0.13-alpha"
+            repos_path.write_text(json.dumps(repos), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "stable TartLab version"):
+                validate_support_backup(prerelease)
+
+            unknown = root / "unknown"
+            shutil.copytree(
+                ROOT / "tests/fixtures/legacy_mp123/layout", unknown)
+            (unknown / "state").mkdir()
+            shutil.move(unknown / "repos.json", unknown / "state/repos.json")
+            with self.assertRaisesRegex(ValueError, "outside the supported"):
+                validate_support_backup(unknown)
 
 
 if __name__ == "__main__":

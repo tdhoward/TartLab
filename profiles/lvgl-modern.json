@@ -37,6 +37,7 @@
     "provisioning_preflight": "tools/check_modern_release.py",
     "provisioning_tool": "tools/provision_modern.py",
     "qualification_validator": "tools/check_modern_qualification.py",
+    "support_window": "profiles/modern-support-window.json",
     "migration_instructions": "profiles/lvgl-modern-migration.md",
     "filesystem_vendor_lock": "vendor/legacy-pydevices.lock.json"
   },

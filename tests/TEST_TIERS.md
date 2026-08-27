@@ -81,14 +81,18 @@ The separate Phase 6 provisioning transaction tests exercise clean modern
 provisioning and direct v0.13 migration through a host directory transport.
 They verify protected-state preservation, selector translation, isolated feed
 state, exact legacy-firmware readback enforcement, pending-health commit, and
-resumption after a simulated USB loss. See `PHASE6_PROVISIONING.md`; physical
+resumption after a simulated USB loss. The support-window policy additionally
+proves that v0.13 root-v1 and newer canonical layouts are eligible while older,
+prerelease, and unknown layouts fail before erase. See
+`PHASE6_PROVISIONING.md`; physical
 flash, display, touch, network, and recovery observations remain Tier 4.
 
 The updater tests also exercise the `lvgl-modern` object manifest through the
 normal OTA path, prove that the combined firmware asset is not downloaded to
 the device, and require both normal and recovery clients to reject cross-profile
 feeds. `tools/check_modern_qualification.py` rejects incomplete or
-candidate-mismatched Phase 6 promotion evidence. These are policy and virtual
+candidate-mismatched Phase 6 promotion evidence, including a different
+support-window policy hash. These are policy and virtual
 filesystem claims; see `PHASE6_MODERN_QUALIFICATION.md` for the remaining
 physical observations.
 

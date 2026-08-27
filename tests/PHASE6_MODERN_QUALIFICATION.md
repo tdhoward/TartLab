@@ -56,7 +56,8 @@ The JSON has schema 1 and exactly these top-level fields:
   "artifacts": {
     "clean_provisioning_journal_sha256": "<64 lowercase hex>",
     "migration_provisioning_journal_sha256": "<64 lowercase hex>",
-    "serial_log_sha256": "<64 lowercase hex>"
+    "serial_log_sha256": "<64 lowercase hex>",
+    "support_window_policy_sha256": "<SHA-256 of authenticated support-window.json>"
   },
   "gates": {
     "adult_provisioning": {"status": "passed", "evidence": ["<reference>"]},
@@ -77,6 +78,16 @@ The detailed physical record must cover the provisioning matrix in
 behavior, a direct modern-to-modern OTA with pending-health commit, offline
 recovery resume, corrupt/interrupted update containment, and queries proving
 that modern and legacy devices see only their own release feeds.
+
+The support-window gate uses the approved policy in
+`profiles/modern-support-window.json`: stable v0.13 is the direct-migration
+floor, and recognized later stable versions remain in the window when they use
+one of the declared legacy layouts. The evidence hash must match the
+authenticated `support-window.json` shipped with the exact candidate. The
+detailed record must exercise the floor itself, not only a newer or clean
+device. Sources older than v0.13 or with an unknown layout must be shown to
+stop before erase and use the documented adult clean-provision/manual-restore
+path.
 
 This policy is fail closed: a missing, pending, malformed, mismatched, or
 unreachable qualification record blocks the promotion job before signing or

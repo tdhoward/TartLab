@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 import release as release_tools  # noqa: E402
 from check_modern_profile import load_json, validate_profile  # noqa: E402
+from check_modern_support_window import validate_policy as validate_support_window  # noqa: E402
 from release_utils import (  # noqa: E402
     canonical_source_bytes, ensure_safe_output, file_inventory,
     inventory_identifier, sha256_file, sha256_source_file, write_json,
@@ -205,11 +206,16 @@ def build_release(
     firmware_lock_asset = output / "firmware-build-lock.json"
     firmware_provenance_asset = output / "firmware-provenance.json"
     vendor_lock_asset = output / "filesystem-vendor-lock.json"
+    support_window_asset = output / "support-window.json"
     _write_canonical_copy(ROOT / firmware["lock"], firmware_lock_asset)
     _write_canonical_copy(ROOT / firmware["provenance"], firmware_provenance_asset)
     _write_canonical_copy(
         ROOT / profile["release_builder"]["filesystem_vendor_lock"],
         vendor_lock_asset)
+    support_window_source = ROOT / profile["release_builder"]["support_window"]
+    support_window = load_json(support_window_source)
+    validate_support_window(support_window)
+    _write_canonical_copy(support_window_source, support_window_asset)
 
     published_firmware = _release_file(firmware_asset, kind="firmware-image")
     published_firmware.update({
@@ -222,6 +228,8 @@ def build_release(
         _release_file(firmware_provenance_asset, kind="firmware-provenance"),
         _release_file(vendor_lock_asset, kind="filesystem-vendor-lock"),
     ]
+    published_support_window = _release_file(
+        support_window_asset, kind="support-window-policy")
     compatibility = {
         "schema": 1,
         "kind": "tartlab-modern-compatibility",
@@ -240,6 +248,15 @@ def build_release(
         "host_tested_source_profiles": ["clean", "legacy-mp123"],
         "planned_migration_source": "legacy-mp123",
         "migration_status": "host-tested-pending-physical-qualification",
+        "support_window": {
+            "policy": published_support_window,
+            "source_profile": support_window["direct_migration"][
+                "source_profile"],
+            "minimum_tartlab_version": support_window["direct_migration"][
+                "minimum_tartlab_version"],
+            "version_rule": support_window["direct_migration"]["version_rule"],
+            "below_floor_action": support_window["below_floor"]["action"],
+        },
     }
     write_json(output / "compatibility.json", compatibility)
 
@@ -279,6 +296,7 @@ def build_release(
                 output / "compatibility.json", kind="compatibility-declaration"),
             "migration_instructions": _release_file(
                 migration_asset, kind="migration-instructions"),
+            "support_window": published_support_window,
             "provenance": provenance_assets,
         },
     }
@@ -306,6 +324,7 @@ def build_release(
             "firmware_lock_sha256": firmware["lock_sha256"],
             "firmware_provenance_sha256": firmware["provenance_sha256"],
             "filesystem_vendor_lock_sha256": sha256_file(vendor_lock_asset),
+            "support_window_sha256": sha256_file(support_window_asset),
             "migration_instructions_sha256": sha256_file(migration_asset),
         },
         "totals": {

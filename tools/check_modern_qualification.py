@@ -8,10 +8,12 @@ from pathlib import Path
 import re
 from typing import Any, Sequence
 
-from release_utils import read_json, sha256_file
+from release_utils import read_json, sha256_file, sha256_source_file
 
 
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+ROOT = Path(__file__).resolve().parents[1]
+SUPPORT_WINDOW_POLICY = ROOT / "profiles/modern-support-window.json"
 MODERN_TAG = re.compile(r"^modern-v[0-9]+\.[0-9]+(?:\.[0-9]+)?$")
 PROFILE = "lvgl-modern"
 TARGET_REPOSITORY = "tdhoward/TartLab-modern-releases"
@@ -34,6 +36,7 @@ ARTIFACT_KEYS = {
     "clean_provisioning_journal_sha256",
     "migration_provisioning_journal_sha256",
     "serial_log_sha256",
+    "support_window_policy_sha256",
 }
 
 
@@ -108,6 +111,10 @@ def validate(evidence: dict[str, Any], *, tag: str, candidate_sha256: str,
     _require_exact_keys(artifacts, ARTIFACT_KEYS, "qualification artifacts")
     for name, value in artifacts.items():
         _require_sha256(value, name)
+    if artifacts["support_window_policy_sha256"] != \
+            sha256_source_file(SUPPORT_WINDOW_POLICY):
+        raise ValueError(
+            "Qualification evidence targets a different support-window policy")
 
     gates = evidence["gates"]
     if not isinstance(gates, dict):
@@ -131,6 +138,8 @@ def validate(evidence: dict[str, Any], *, tag: str, candidate_sha256: str,
         "version": tag,
         "candidate_checksums_sha256": candidate_sha256,
         "firmware_sha256": firmware_sha256,
+        "support_window_policy_sha256": artifacts[
+            "support_window_policy_sha256"],
         "passed_gates": list(REQUIRED_GATES),
     }
 
