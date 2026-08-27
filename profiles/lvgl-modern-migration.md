@@ -56,8 +56,10 @@ readback regions to match the exact legacy profile. Mutable NVS/PHY sectors are
 excluded. It then erases the chip, writes and verifies `@FIRMWARE_ASSET@` at
 `@FLASH_OFFSET@`, constructs the filesystem from authenticated packages,
 translates the hardware selector to
-`t_display_s3_pro_modern`, restores protected state, and leaves the target
-version pending until TartLab completes a healthy boot.
+`t_display_s3_pro_modern` under `/device`, preserves the legacy root
+`/app.py` and `/hdwconfig.py` verbatim for rollback and audit, restores the
+remaining protected state, and leaves the target version pending until TartLab
+completes a healthy boot.
 
 ### Devices older than v0.13
 

@@ -195,6 +195,8 @@ class ModernProvisioningTests(unittest.TestCase):
             shutil.copytree(
                 ROOT / "tests/fixtures/legacy_mp123/layout", device,
                 ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
+            original_app = (device / "app.py").read_bytes()
+            original_selector = (device / "hdwconfig.py").read_bytes()
             original_settings = (device / "settings.json").read_bytes()
             original_logs = {
                 path.name: path.read_bytes() for path in (device / "logs").iterdir()
@@ -229,6 +231,9 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertIn(
                 "t_display_s3_pro_modern",
                 (device / "device/hdwconfig.py").read_text(encoding="utf-8"))
+            self.assertEqual((device / "app.py").read_bytes(), original_app)
+            self.assertEqual(
+                (device / "hdwconfig.py").read_bytes(), original_selector)
             self.assertFalse((device / "settings.json").exists())
             repos = json.loads(
                 (device / "state/repos.json").read_text(encoding="utf-8"))
@@ -469,12 +474,18 @@ class ModernProvisioningTests(unittest.TestCase):
             transport = CommandTransport("COM_TEST")
             transport._check_tools = lambda: None
             commands = []
-            transport._run = lambda command: (
-                commands.append(command) or types.SimpleNamespace(stdout=""))
+            transport._run = lambda command, check=True: (
+                commands.append(command) or types.SimpleNamespace(
+                    stdout="", returncode=1 if not check else 0))
 
             transport.install(firmware, "0x0", image, FIRMWARE_SHA256)
 
-            mpremote = commands[3:]
+            self.assertIn("verify-flash", commands[0])
+            self.assertIn("erase-flash", commands[1])
+            self.assertIn("write-flash", commands[2])
+            self.assertIn("verify-flash", commands[3])
+            self.assertIn("watchdog-reset", commands[4])
+            mpremote = commands[5:]
             self.assertLess(mpremote[0].index("--force"), mpremote[0].index("cp"))
             self.assertTrue(mpremote[0][-1].endswith(":/boot.py"))
             self.assertIn("provisioning-placeholder.py", mpremote[0][-2])
@@ -498,6 +509,106 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertLess(real_boot, real_main)
             self.assertEqual(real_main, len(mpremote) - 1)
             self.assertFalse((root / "provisioning-placeholder.py").exists())
+
+    def test_physical_transport_reuses_verified_firmware_on_resume(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            image = root / "image"
+            image.mkdir()
+            (image / "boot.py").write_text("# boot\n", encoding="utf-8")
+            (image / "main.py").write_text("# main\n", encoding="utf-8")
+            firmware = self.release / "tartlab-modern-v1.2.3.bin"
+            transport = CommandTransport("COM_TEST")
+            transport._check_tools = lambda: None
+            commands = []
+            transport._run = lambda command, check=True: (
+                commands.append(command) or
+                types.SimpleNamespace(stdout="", returncode=0))
+
+            transport.install(firmware, "0x0", image, FIRMWARE_SHA256)
+
+            flattened = [part for command in commands for part in command]
+            self.assertNotIn("erase-flash", flattened)
+            self.assertNotIn("write-flash", flattened)
+            self.assertIn("verify-flash", commands[0])
+            self.assertIn("watchdog-reset", commands[1])
+            self.assertEqual(commands[2][-1], ":/boot.py")
+
+    @mock.patch("provision_modern.time.sleep")
+    @mock.patch("provision_modern.RawRepl")
+    def test_physical_health_check_brackets_raw_state_read_with_safe_boots(
+            self, repl, sleep):
+        transport = CommandTransport("COM_TEST")
+        commands = []
+        transport._run = lambda command, check=True: (
+            commands.append(command) or
+            types.SimpleNamespace(stdout="", returncode=0))
+        instance = repl.return_value
+        instance.exec.side_effect = (
+            b'TARTLAB_HEALTH={"version":"modern-v1.2.3",'
+            b'"update":null}\r\n',
+            b"",
+        )
+
+        self.assertTrue(transport.release_is_healthy("modern-v1.2.3"))
+
+        self.assertEqual(len(commands), 2)
+        self.assertIn("watchdog-reset", commands[0])
+        self.assertEqual(commands[0], commands[1])
+        repl.assert_called_once_with("COM_TEST", timeout=20)
+        instance.enter.assert_called_once_with()
+        instance.close.assert_called_once_with()
+        self.assertEqual(instance.exec.call_count, 2)
+        self.assertIn("recovery._retry()", instance.exec.call_args_list[1].args[0])
+        sleep.assert_called_once_with(3)
+
+    @mock.patch("provision_modern.time.sleep")
+    @mock.patch("provision_modern.RawRepl")
+    def test_physical_health_check_waits_for_native_usb_reenumeration(
+            self, repl, sleep):
+        transport = CommandTransport("COM_TEST")
+        transport._run = lambda command, check=True: types.SimpleNamespace(
+            stdout="", returncode=0)
+        instance = mock.Mock()
+        instance.exec.side_effect = (
+            b'TARTLAB_HEALTH={"version":"modern-v1.2.3",'
+            b'"update":null}\r\n',
+            b"",
+        )
+        repl.side_effect = (OSError("port absent"), instance)
+
+        self.assertTrue(transport.release_is_healthy("modern-v1.2.3"))
+
+        self.assertEqual(repl.call_count, 2)
+        self.assertEqual(
+            sleep.call_args_list, [mock.call(3), mock.call(0.2)])
+        instance.enter.assert_called_once_with()
+        instance.close.assert_called_once_with()
+
+    @mock.patch("provision_modern.time.sleep")
+    @mock.patch("provision_modern.RawRepl")
+    def test_physical_health_check_retries_early_unwritable_usb_handle(
+            self, repl, sleep):
+        transport = CommandTransport("COM_TEST")
+        transport._run = lambda command, check=True: types.SimpleNamespace(
+            stdout="", returncode=0)
+        early = mock.Mock()
+        early.enter.side_effect = OSError("endpoint not writable")
+        ready = mock.Mock()
+        ready.exec.side_effect = (
+            b'TARTLAB_HEALTH={"version":"modern-v1.2.3",'
+            b'"update":null}\r\n',
+            b"",
+        )
+        repl.side_effect = (early, ready)
+
+        self.assertTrue(transport.release_is_healthy("modern-v1.2.3"))
+
+        early.close.assert_called_once_with()
+        ready.enter.assert_called_once_with()
+        ready.close.assert_called_once_with()
+        self.assertEqual(
+            sleep.call_args_list, [mock.call(3), mock.call(0.2)])
 
 
 if __name__ == "__main__":

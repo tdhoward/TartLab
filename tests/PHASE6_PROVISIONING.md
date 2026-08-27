@@ -39,10 +39,11 @@ Before erasure, migration performs these fail-closed checks:
 The host then erases and writes the combined modern image at offset `0x0`, uses
 `esptool verify-flash`, reconstructs all authenticated filesystem packages,
 translates the legacy board selector to `t_display_s3_pro_modern`, restores
-settings, repositories, logs, selected application, hardware state, and user
-files, and records both the modern feed and exact firmware identity with the
-target version pending health. The existing TartLab health gate commits the
-version exactly once. A content-addressed host journal
+the legacy root `/app.py` and `/hdwconfig.py` verbatim, restores settings,
+repositories, logs, selected application, hardware state, and user files, and
+records both the modern feed and exact firmware identity with the target
+version pending health. The existing TartLab health gate commits the version
+exactly once. A content-addressed host journal
 contains no captured values and makes backup, flash, or upload interruption
 resumable with `--resume`.
 
@@ -52,13 +53,15 @@ transport:
 - clean provisioning creates a modern selector, isolated release state,
   recovery payload, and pending-health transaction;
 - direct migration from the sanitized v0.13 layout preserves settings, logs,
-  user programs, selected application, and installed-version history;
+  user programs, selected application, legacy root files, and
+  installed-version history;
 - the legacy selector is translated instead of being copied into incompatible
   firmware;
 - the journal does not contain the fixture Wi-Fi password;
 - an active legacy update and a changed backup both fail before erase/resume;
-- USB loss after erase and during upload retains the immutable backup, and one
-  resume re-erases and installs a complete recoverable image;
+- USB loss after erase and during upload retains the immutable backup; resume
+  reuses an already verified firmware image instead of erasing it again, then
+  installs a complete recoverable filesystem;
 - inert boot/main placeholders prevent incomplete filesystems from starting,
   and the real boot files are activated only after recovery and state exist;
 - unsupported hardware stops before erase;
@@ -69,6 +72,46 @@ transport:
 
 This host gate does not qualify a physical migration or authorize classroom
 deployment.
+
+## Physical direct-migration session: 2026-08-27
+
+Candidate `modern-v0.14.6` was migrated on the qualification LilyGO
+T-Display-S3 Pro from the exact MicroPython 1.23.0 legacy image. The legacy
+application enumerated on COM6 and the ROM/modern runtime on COM3; the ESP32-S3
+reported chip revision 0.2, 16 MiB flash, and 8 MiB octal PSRAM. The signed
+candidate's `checksums.json` SHA-256 was
+`f0388af976033818665352f91c5af932c9c27d2e84cf043bd3518bc4f1f25878`.
+
+The protected capture completed in one raw-REPL session without a soft reset.
+The private journal recorded 22 inventoried files, approved source profile
+`legacy-mp123`, canonical-v1 layout, installed v0.13, and backup identifier
+`sha256:e30827b98825bcb5413e36b920848ae2e79af32dfe3ca453d4c950294f0971ee`
+before ROM entry. Resume on COM3 verified the pinned immutable legacy regions,
+flashed and verified the modern firmware, restored the filesystem, committed
+the version after health, and reached journal stage `complete`.
+
+Physical interruption exposed three host-transport gaps which are now covered
+by regression tests: capture must not perform repeated mpremote soft resets;
+resume must reuse an already matching firmware and explicitly exit the ROM
+loader with a watchdog reset; and the health check must allow the native USB
+endpoint to become writable before reading exact repository state. The final
+device reported MicroPython 1.27.0, runtime profile `lvgl-modern`, repository
+`tdhoward/TartLab-modern-releases`, installed version `modern-v0.14.6`, no
+pending update, the modern hardware selector, selected application
+`selected_app.py`, and 213 filesystem files. A passive final boot reached
+`HEALTHY mode=IDE` after the expected synthetic-network fallback.
+
+The post-migration protected digests for `/app.py`, `/hdwconfig.py`, and
+`/files/user` exactly matched their pre-migration values. `/device` changed as
+required for the modern selector. The selected-application JSON retained the
+same semantic value but was canonically reformatted. Legacy logs were present
+immediately after restoration; repeated diagnostic boots subsequently advanced
+the active five-entry rolling log window, while the original logs remain in
+the retained private backup.
+
+This session qualifies the direct migration and normal health-commit path on
+the device. It does not claim the still-open browser interaction, physical OTA,
+release-feed, support-window, or exhaustive power-loss matrix observations.
 
 The approved path below the v0.13 floor is not automatic migration. An adult
 captures a private version-appropriate backup, performs authenticated clean

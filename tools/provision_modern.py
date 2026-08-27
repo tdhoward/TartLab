@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import time
 from typing import Any, Sequence
 
 
@@ -231,6 +232,11 @@ def prepare_image(release: Path, backup: Path, image: Path, *,
     state = image / "state"
     state.mkdir(parents=True, exist_ok=True)
     if mode == "migrate":
+        # Preserve the legacy root files verbatim for rollback/audit.  The
+        # modern runtime resolves /device before /, so the translated selector
+        # remains authoritative without discarding protected source data.
+        _copy_if_present(backup / "app.py", image / "app.py")
+        _copy_if_present(backup / "hdwconfig.py", image / "hdwconfig.py")
         _copy_if_present(
             backup / "state/settings.json", state / "settings.json") or \
             _copy_if_present(backup / "settings.json", state / "settings.json")
@@ -388,11 +394,12 @@ class CommandTransport:
             raise ValueError("a concrete serial port is required")
         self.port = port
 
-    def _run(self, command: list[str]) -> subprocess.CompletedProcess[str]:
+    def _run(self, command: list[str], *, check: bool = True
+             ) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(
             command, check=False, text=True, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
-        if result.returncode:
+        if check and result.returncode:
             raise RuntimeError(
                 "Command failed (%s):\n%s" % (
                     " ".join(command), result.stdout))
@@ -485,13 +492,26 @@ class CommandTransport:
         if not boot.is_file() or not main.is_file():
             raise ValueError("prepared image must contain boot.py and main.py")
         self._check_tools()
-        self._run(["esptool", "--chip", "esp32s3", "--port", self.port,
-                   "erase-flash"])
-        self._run(["esptool", "--chip", "esp32s3", "--port", self.port,
-                   "--after", "hard-reset", "write-flash", offset,
-                   str(firmware)])
-        self._run(["esptool", "--chip", "esp32s3", "--port", self.port,
-                   "verify-flash", offset, str(firmware)])
+        verify = [
+            "esptool", "--chip", "esp32s3", "--port", self.port,
+            "verify-flash", offset, str(firmware)]
+        # A failed filesystem upload can leave the exact firmware installed
+        # while the journal remains at ``backed_up``.  Reuse that verified
+        # image on resume instead of needlessly erasing and rewriting flash.
+        firmware_matches = self._run(verify, check=False).returncode == 0
+        if not firmware_matches:
+            self._run(["esptool", "--chip", "esp32s3", "--port", self.port,
+                       "erase-flash"])
+            self._run(["esptool", "--chip", "esp32s3", "--port", self.port,
+                       "--after", "hard-reset", "write-flash", offset,
+                       str(firmware)])
+            self._run(verify)
+        # Native USB can remain in the ROM loader after verify-flash even when
+        # a hard reset was requested.  The watchdog-reset exit is reliable on
+        # the qualified ESP32-S3 board and does not alter flash.
+        self._run([
+            "esptool", "--chip", "esp32s3", "--port", self.port,
+            "--after", "watchdog-reset", "chip-id"])
         placeholder = image.parent / "provisioning-placeholder.py"
         placeholder.write_text(
             "# TartLab provisioning transaction in progress.\n",
@@ -539,11 +559,45 @@ class CommandTransport:
             "v=next((x.get('installed_version') for x in r.get('list', []) "
             "if x.get('name') == 'TartLab'), None)\n"
             "print('TARTLAB_HEALTH=' + ujson.dumps({'version':v,'update':u}))\n")
-        output = self._run([
-            "mpremote", "connect", self.port, "exec", script]).stdout
+        boot = [
+            "esptool", "--chip", "esp32s3", "--port", self.port,
+            "--after", "watchdog-reset", "chip-id"]
+        # The IDE event loop can make a late raw-REPL attach unreliable.  Boot
+        # once and inspect state before the IDE owns the runtime, then clear the
+        # diagnostic boot count and return the device to a normal boot.
+        self._run(boot)
+        # Windows exposes the native USB name before the endpoint is writable.
+        # The qualified board needs a short fixed settle period; retries below
+        # then cover any remaining enumeration variance.
+        time.sleep(3)
+        repl = None
+        try:
+            deadline = time.monotonic() + 10
+            while repl is None:
+                candidate = None
+                try:
+                    candidate = RawRepl(self.port, timeout=20)
+                    candidate.enter()
+                    repl = candidate
+                except Exception:
+                    if candidate is not None:
+                        candidate.close()
+                    if time.monotonic() >= deadline:
+                        raise
+                    time.sleep(0.2)
+            output = repl.exec(script, 20).decode("utf-8", "replace")
+            repl.exec(
+                "import sys\n"
+                "sys.path.insert(0,'/recovery')\n"
+                "import recovery\n"
+                "recovery._retry()\n", 20)
+        finally:
+            if repl is not None:
+                repl.close()
+            self._run(boot)
         match = re.search(r"TARTLAB_HEALTH=(\{.*\})", output)
         if not match:
-            raise RuntimeError("mpremote did not report TartLab health state")
+            raise RuntimeError("device did not report TartLab health state")
         health = json.loads(match.group(1))
         return health.get("version") == version and health.get("update") is None
 
