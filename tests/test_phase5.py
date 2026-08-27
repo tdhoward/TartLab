@@ -642,6 +642,20 @@ class Phase5BenchmarkHarnessTests(unittest.TestCase):
         self.assertIn("SWITCHES = 2", source)
         self.assertNotIn("__SAMPLES__", source)
 
+    def test_legacy_program_removes_unreachable_async_transfer_branch(self):
+        universal = device_program(3, 2)
+        legacy = device_program(3, 2, "legacy")
+        compile(legacy, "<phase5-legacy-benchmark>", "exec")
+        self.assertLess(len(legacy), len(universal))
+        self.assertNotIn("LEGACY_SPECIALIZATION", legacy)
+        self.assertNotIn("while surface.busy:", legacy)
+        self.assertIn(
+            "transfer_region(transport, 0, 0, width, height)", legacy)
+
+    def test_device_program_rejects_unknown_profile(self):
+        with self.assertRaisesRegex(ValueError, "unsupported benchmark profile"):
+            device_program(3, 2, "unknown")
+
     def test_benchmark_result_locks_geometry_clock_and_regions(self):
         result = {
             "schema": 1,

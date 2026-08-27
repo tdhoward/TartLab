@@ -402,6 +402,7 @@ fill_from(transport_view, black)
 cpu_value = 1
 cpu_iterations = 0
 started = ticks()
+# LEGACY_SPECIALIZATION_START
 if async_direct:
     offset_y = 0
     while offset_y < height:
@@ -415,6 +416,7 @@ if async_direct:
         offset_y += rows
 else:
     transfer_region(transport, 0, 0, width, height)
+# LEGACY_SPECIALIZATION_END
 transfer_interval_us = elapsed(started)
 baseline_value = 1
 baseline_iterations = 0
@@ -629,15 +631,30 @@ print('PHASE5_BENCHMARK=' + ujson.dumps(result))
 '''
 
 
-def device_program(samples: int, switches: int) -> str:
+def device_program(samples: int, switches: int,
+                   profile: str | None = None) -> str:
     """Return MicroPython-compatible benchmark source."""
     if samples < 3:
         raise ValueError("samples must be at least 3")
     if switches < 2:
         raise ValueError("switches must be at least 2")
-    return (DEVICE_BENCHMARK_TEMPLATE
-            .replace("__SAMPLES__", str(samples))
-            .replace("__SWITCHES__", str(switches)))
+    if profile is not None and profile not in PROFILES:
+        raise ValueError("unsupported benchmark profile")
+    source = (DEVICE_BENCHMARK_TEMPLATE
+              .replace("__SAMPLES__", str(samples))
+              .replace("__SWITCHES__", str(switches)))
+    if profile == "legacy":
+        # The complete universal program crosses the parser/compiler limit in
+        # the pinned MicroPython 1.23 runtime.  Its transfer is synchronous, so
+        # specialize away the unreachable asynchronous CPU-headroom branch.
+        start = source.index("# LEGACY_SPECIALIZATION_START")
+        end = source.index("# LEGACY_SPECIALIZATION_END", start)
+        end += len("# LEGACY_SPECIALIZATION_END")
+        source = (
+            source[:start] +
+            "transfer_region(transport, 0, 0, width, height)" +
+            source[end:])
+    return source
 
 
 def extract_result(output: bytes) -> dict:
@@ -922,7 +939,7 @@ def comparison(legacy: dict, modern: dict) -> dict:
 
 
 def collect(args: argparse.Namespace) -> None:
-    program = device_program(args.samples, args.switches)
+    program = device_program(args.samples, args.switches, args.profile)
     repl = RawRepl(args.port, args.baudrate, args.timeout)
     try:
         repl.enter()
