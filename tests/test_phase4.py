@@ -265,6 +265,13 @@ class PyDevicesCandidatePipelineTests(unittest.TestCase):
         self.assertEqual(
             validated["qualified_candidate"], "phase4-candidate9-6d930fd")
 
+        compilation["compiler_version"] = (
+            "MicroPython a61c446; mpy-cross emitting mpy v6.3")
+        validated = release.validate_promoted_vendor(
+            profile, provenance, compilation,
+            promoted["packaged_runtime_identifier"], 71)
+        self.assertEqual(validated["mpy_source_commit"], "a61c446")
+
         compilation["packaged_identifier"] = "sha256:" + "0" * 64
         with self.assertRaisesRegex(ValueError, "compiled_identifier"):
             release.validate_promoted_vendor(

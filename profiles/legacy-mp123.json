@@ -33,6 +33,7 @@
     "packaged_runtime_files": 71,
     "target_arch": "xtensawin",
     "mpy_version": "v1.23.0",
+    "mpy_source_commit": "a61c446",
     "mpy_format": "mpy v6.3",
     "qualified_candidate": "phase4-candidate9-6d930fd",
     "physical_gate": "tests/PHASE4_HARDWARE.md"

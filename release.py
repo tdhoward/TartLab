@@ -334,9 +334,13 @@ def validate_promoted_vendor(profile, provenance, compilation,
         if promoted.get(name) != actual
     ]
     compiler_version = compilation.get("compiler_version", "")
-    for name in ("mpy_version", "mpy_format"):
-        if promoted.get(name) not in compiler_version:
-            mismatches.append(name)
+    if promoted.get("mpy_format") not in compiler_version:
+        mismatches.append("mpy_format")
+    compiler_identities = (
+        promoted.get("mpy_version"), promoted.get("mpy_source_commit"))
+    if not all(isinstance(item, str) and item for item in compiler_identities) or \
+            not any(item in compiler_version for item in compiler_identities):
+        mismatches.append("mpy_version")
     if compilation.get("modules") != promoted.get("packaged_runtime_files"):
         mismatches.append("compiled_modules")
     if compilation.get("packaged_identifier") != packaged_identifier:

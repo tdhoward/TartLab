@@ -153,7 +153,7 @@ reason to attach the USB device exclusively to WSL.
 The pinned `mpy-cross` may identify that same source as either `v1.23.0` or the
 exact short commit `a61c446`, depending on whether Git tag metadata is present
 in the checkout. The release builder accepts only those identities with mpy
-format v6.3.
+format v6.3; both identities are locked in `profiles/legacy-mp123.json`.
 
 ## Tier 3: physical smoke tests
 
