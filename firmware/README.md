@@ -64,9 +64,10 @@ alternative-stack comparisons in `tests/PHASE5_BENCHMARKS.md` and
 `tests/PHASE5_PYDEVICES.md`. That evidence applies only to this board,
 checkpoint, and hash-bound adapter. The comparison selected this reference as
 the exact firmware compatibility identity for the promotion-gated modern
-builder. Adult provisioning, migration, support-window, OTA/recovery, and final
-release gates remain open. This evidence is not recovered provenance for the
-archived 2025 binary.
+builder. The resumable adult host transaction and virtual migration matrix are
+implemented, while physical provisioning/migration, support-window,
+OTA/recovery, and final release gates remain open. This evidence is not
+recovered provenance for the archived 2025 binary.
 
 The modern release builder copies this exact image into each candidate as
 `tartlab-modern-vX.Y.Z.bin`. It also publishes the build lock, firmware

@@ -6,6 +6,20 @@
     "version": "1.23.0",
     "image": "ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin",
     "sha256": "41a750a8f047224e3e0a7544a626338c252407df420e2b94dcb0d2dad9793212",
+    "runtime_identity_regions": [
+      {
+        "name": "bootloader-and-partition-table",
+        "offset": 0,
+        "size": 36864,
+        "sha256": "6b22cf113eaffda9ac43e236f873c62dccceed233f1d0f5114b5e8b3de1ca414"
+      },
+      {
+        "name": "factory-application",
+        "offset": 65536,
+        "size": 1565888,
+        "sha256": "9d6998170b5bf7e8568be2aa2845e25fe98bd622f945e1fdd9740a35b12ffa8d"
+      }
+    ],
     "spiram": "octal",
     "manifest": "firmware/legacy-mp123/manifest.json"
   },

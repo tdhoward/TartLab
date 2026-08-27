@@ -33,9 +33,9 @@ python tools/check_release_authenticity.py --release path/to/release --source-re
 
 This closes publisher/workflow authentication for the existing stable release
 pipeline. It does not claim that deployed MicroPython devices verify Sigstore
-certificates. On-device authenticity, or an adult-admin provisioning tool that
-enforces this policy before installation, remains part of the provisioning and
-migration work required before modern-profile promotion.
+certificates. Deployed MicroPython devices still do not verify Sigstore
+certificates; the adult-admin modern provisioning tool performs that host-side
+enforcement before installation.
 
 ## Modern promotion-gated path
 
@@ -53,7 +53,7 @@ TAR files, `firmware-build-lock.json`, `firmware-provenance.json`,
 listed by `modern-manifest.json`, covered by `checksums.json`, and included in
 the signed attestation subject set. The migration guide is rendered with the
 release's exact version, firmware name, digest, and flash offset, while clearly
-retaining the uncompleted migration and recovery gates.
+retaining the uncompleted physical migration and recovery gates.
 
 Before an adult provisioning or migration tool changes a device, run the
 read-only preflight with the identity observed from that device:
@@ -65,7 +65,7 @@ python tools/check_modern_release.py --release path/to/release --runtime-profile
 The preflight fails closed on a runtime-profile or firmware-hash mismatch and
 performs no mutation. The protected `modern-release` environment rebuilds the
 candidate twice, requires byte identity, repeats this preflight, binds the
-candidate to physical evidence, authenticates every TAR/JSON asset with the
+candidate to physical evidence, authenticates every release asset with the
 commit-pinned attestation action, and publishes with a target-repository token.
 `profiles/modern-release-authenticity.json` statically locks the source and
 target repositories, signer workflow, manifest, profile, and preflight.
@@ -77,9 +77,10 @@ bundle with:
 python tools/check_modern_release_authenticity.py --release path/to/release --source-ref refs/tags/modern-vX.Y.Z --execute
 ```
 
-This is release machinery, not release authorization. Adult provisioning and
-migration, modern OTA/recovery qualification, the support window, and the final
-profile-specific physical gate remain incomplete.
+This is release machinery, not release authorization. The adult provisioning
+host transaction and virtual migration gate are implemented, while physical
+provisioning/migration, modern OTA/recovery qualification, the support window,
+and the final profile-specific physical gate remain incomplete.
 
 ## Release-channel isolation
 

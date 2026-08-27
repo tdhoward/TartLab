@@ -43,12 +43,11 @@ repeat the physical work; this tier validates the recorded claim rather than
 creating a new hardware claim.
 
 `tools/check_modern_profile.py` is the corresponding filesystem-profile gate.
-It verifies that the current `lvgl-modern` profile remains a non-promotable
-research input, checks the hash-bound modern adapter, builds the ordinary
-TartLab filesystem twice, compares every output file, and compiles each
-generated Python source. This is deliberately a shared CI coverage path, not a
-modern release builder or a claim that firmware can be delivered through the
-legacy OTA updater. A future modern builder and promotion gate must target only
+It verifies that the current `lvgl-modern` profile remains promotion gated,
+checks the hash-bound adapter and isolated release machinery, builds the
+ordinary TartLab filesystem twice, compares every output file, and compiles
+each generated Python source. The separate builder, promotion workflow, and
+adult provisioning transaction target only
 `tdhoward/TartLab-modern-releases`; `tdhoward/TartLab` GitHub Releases remain
 reserved for the `legacy-mp123` profile.
 
@@ -57,7 +56,7 @@ reserved for the `legacy-mp123` profile.
 Run:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_profile tests.test_phase6 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
 ```
 
 `tests/virtual_device.py` maps MicroPython-style absolute paths into an isolated
@@ -77,6 +76,13 @@ recovery decision, and health-commit code. They currently cover:
   extraction write of every installable package;
 - `update_installing` recovery selection after the simulated reset; and
 - staged resume by a newly loaded recovery runtime.
+
+The separate Phase 6 provisioning transaction tests exercise clean modern
+provisioning and direct v0.13 migration through a host directory transport.
+They verify protected-state preservation, selector translation, isolated feed
+state, exact legacy-firmware readback enforcement, pending-health commit, and
+resumption after a simulated USB loss. See `PHASE6_PROVISIONING.md`; physical
+flash, display, touch, network, and recovery observations remain Tier 4.
 
 `tests/headless_platform.py` implements the startup-facing platform contract
 without importing board drivers. The startup tests run the real `main.run()`

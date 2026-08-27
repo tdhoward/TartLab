@@ -45,9 +45,24 @@ as the basis for future modern-firmware work. A separate deterministic builder
 and protected workflow now produce a self-contained firmware, filesystem,
 provenance, compatibility, and migration-instruction asset set targeting
 `tdhoward/TartLab-modern-releases`, but production promotion still requires a
-tested adult-admin migration path and the remaining Phase 6 gates. Modern
-assets must never be published as GitHub Releases in the legacy-visible
-`tdhoward/TartLab` repository.
+physically qualified adult-admin migration path and the remaining Phase 6
+gates. Modern assets must never be published as GitHub Releases in the
+legacy-visible `tdhoward/TartLab` repository.
+
+The adult provisioning CLI is read-only unless `--execute` and
+`--confirm-erase` are both supplied. Start by inspecting a downloaded modern
+release with:
+
+```powershell
+.\.venv\Scripts\python.exe tools/provision_modern.py --release path\to\release --mode migrate
+```
+
+Executable migration additionally requires the exact signed source tag, an
+explicit serial port, `esptool` 5.x, `mpremote`, and a private workspace outside
+the checkout. That workspace contains the resumable device backup and may hold
+plaintext Wi-Fi credentials or student files. Follow the authenticated
+`MIGRATION.md` shipped in the release and retain the workspace until the tool
+confirms the post-install health commit.
 
 ## Modern graphics development direction
 

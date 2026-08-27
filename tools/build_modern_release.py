@@ -230,14 +230,16 @@ def build_release(
         "release_repository": profile["release_channel"]["repository"],
         "firmware": published_firmware,
         "runtime_identity": profile["runtime_identity"],
+        "provisioning_tool": profile["release_builder"]["provisioning_tool"],
         "filesystem": {
             "manifest": "modern-manifest.json",
             "packages": [item["file_name"] for item in package_entries],
             "legacy_updater_compatible": False,
         },
         "supported_source_profiles": [],
+        "host_tested_source_profiles": ["clean", "legacy-mp123"],
         "planned_migration_source": "legacy-mp123",
-        "migration_status": "pending-phase6-hardware-qualification",
+        "migration_status": "host-tested-pending-physical-qualification",
     }
     write_json(output / "compatibility.json", compatibility)
 

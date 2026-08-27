@@ -57,6 +57,7 @@ def validate_policy(policy: dict[str, Any]) -> None:
         "legacy_repository_allowed": False,
         "on_device_enforcement": False,
         "adult_provisioning_preflight": "tools/check_modern_release.py",
+        "adult_provisioning_tool": "tools/provision_modern.py",
     }
     if scope != expected_scope:
         raise ValueError("modern authenticity scope is incomplete")

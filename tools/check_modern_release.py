@@ -151,10 +151,14 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
             "tdhoward/TartLab-modern-releases" or \
             compatibility.get("firmware") != published_firmware or \
             compatibility.get("runtime_identity") != profile["runtime_identity"] or \
+            compatibility.get("provisioning_tool") != \
+            "tools/provision_modern.py" or \
             compatibility.get("supported_source_profiles") != [] or \
+            compatibility.get("host_tested_source_profiles") != \
+            ["clean", "legacy-mp123"] or \
             compatibility.get("planned_migration_source") != "legacy-mp123" or \
             compatibility.get("migration_status") != \
-            "pending-phase6-hardware-qualification":
+            "host-tested-pending-physical-qualification":
         raise ValueError("published modern compatibility declaration is invalid")
 
     migration_path = _validate_published_file(

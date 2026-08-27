@@ -966,8 +966,17 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    modern repository. The guide explicitly retains the unfinished Phase 6
    gates. Firmware remains an adult-provisioning artifact, not an on-device
    filesystem update.
-6. Test both clean provisioning and adult-admin migration from the legacy
-   firmware, including failure and recovery paths.
+6. **Host transaction implemented; physical gate pending:**
+   `tools/provision_modern.py` now provides read-only inspection plus explicit,
+   authenticated clean and legacy-migration modes. It captures a private
+   content-addressed backup, read-verifies the exact legacy firmware before
+   erase, writes and verifies the modern image, reconstructs authenticated
+   filesystem packages, translates the board selector, restores protected
+   state, and resumes from a durable journal after interruption. The virtual
+   matrix covers clean provisioning, direct v0.13 migration, preservation,
+   pending-health commit, wrong-board rejection, firmware identity, and a USB
+   loss during upload. The profile remains promotion gated until the physical
+   matrix in `tests/PHASE6_PROVISIONING.md` passes.
 7. Require successful profile-specific hardware, OTA, recovery, and release-feed
    isolation tests before any artifact is promoted to its deployment channel.
 

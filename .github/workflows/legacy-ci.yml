@@ -154,7 +154,11 @@ jobs:
           python tools/check_modern_release_authenticity.py
 
       - name: Run Phase 6 release-security tests
-        run: python -m unittest tests.test_phase6 -v
+        run: >-
+          python -m unittest
+          tests.test_phase6
+          tests.test_phase6_provisioning
+          -v
 
       - name: Run virtual-device recovery tests
         run: python -m unittest tests.test_virtual_device -v
@@ -262,6 +266,7 @@ jobs:
           tests.test_phase5
           tests.test_modern_profile
           tests.test_phase6
+          tests.test_phase6_provisioning
           tests.test_virtual_device
           tests.test_platform
           tests.test_headless_ide
