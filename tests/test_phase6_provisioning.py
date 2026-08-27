@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 from pathlib import Path
 import shutil
@@ -429,6 +430,29 @@ class ModernProvisioningTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "supported exact legacy"):
                 transport.validate_source("migrate", root)
             self.assertFalse((root / "legacy-firmware-readback.bin").exists())
+
+    @mock.patch("provision_modern.RawRepl")
+    def test_physical_capture_uses_one_session_without_soft_resets(self, repl):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            transport = CommandTransport("COM6")
+            instance = repl.return_value
+            instance.exec.side_effect = (
+                b'PHASE1_INVENTORY=[["/device/hdwconfig.py",4],'
+                b'["/settings.json",3],["/unprotected.txt",5]]\r\n',
+                base64.b64encode(b"test") + b"\r\n",
+                base64.b64encode(b"{}\n") + b"\r\n",
+            )
+            transport.capture(
+                ("/device", "/settings.json", "/missing"), root)
+
+            repl.assert_called_once_with("COM6", timeout=20)
+            instance.enter.assert_called_once_with()
+            instance.close.assert_called_once_with()
+            self.assertEqual(instance.exec.call_count, 3)
+            self.assertEqual((root / "device/hdwconfig.py").read_bytes(), b"test")
+            self.assertEqual((root / "settings.json").read_bytes(), b"{}\n")
+            self.assertFalse((root / "unprotected.txt").exists())
 
     def test_physical_transport_activates_boot_files_only_after_full_upload(self):
         with tempfile.TemporaryDirectory() as temporary:

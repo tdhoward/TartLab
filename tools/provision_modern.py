@@ -10,6 +10,7 @@ device has completed a healthy boot.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -26,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from check_modern_release import check as check_modern_release  # noqa: E402
 from check_modern_support_window import validate_backup as validate_support_window  # noqa: E402
+from phase1_device import RawRepl, inventory as device_inventory  # noqa: E402
 from release_utils import (  # noqa: E402
     file_inventory, inventory_identifier, sha256_file, write_json,
 )
@@ -396,32 +398,45 @@ class CommandTransport:
                     " ".join(command), result.stdout))
         return result
 
-    def _remote_kind(self, path: str) -> int:
-        script = (
-            "import os\n"
-            "try:\n"
-            " m=os.stat(%r)[0]; print('TARTLAB_KIND=' + "
-            "('file' if m & 0x8000 else 'dir'))\n"
-            "except OSError:\n print('TARTLAB_KIND=missing')\n" % path)
-        output = self._run([
-            "mpremote", "connect", self.port, "exec", script]).stdout
-        match = re.search(r"TARTLAB_KIND=(file|dir|missing)", output)
-        if not match:
-            raise RuntimeError("mpremote did not report the requested path kind")
-        return {"missing": 0, "file": 1, "dir": 2}[match.group(1)]
-
     def capture(self, paths: Sequence[str], destination: Path) -> None:
-        for logical in paths:
-            kind = self._remote_kind(logical)
-            if kind == 0:
-                continue
-            target = destination / logical.lstrip("/")
-            target.parent.mkdir(parents=True, exist_ok=True)
-            command = ["mpremote", "connect", self.port, "fs", "cp"]
-            if kind == 2:
-                command.append("-r")
-            command.extend((":" + logical, str(target)))
-            self._run(command)
+        """Capture protected files in one raw-REPL session without soft resets."""
+        repl = RawRepl(self.port, timeout=20)
+        try:
+            repl.enter()
+            files = [
+                (remote, expected_size)
+                for remote, expected_size in device_inventory(repl)
+                if any(
+                    remote == logical or remote.startswith(logical + "/")
+                    for logical in paths)
+            ]
+            for remote, expected_size in files:
+                target = (destination / remote.lstrip("/")).resolve()
+                resolved_destination = destination.resolve()
+                if resolved_destination != target and \
+                        resolved_destination not in target.parents:
+                    raise ValueError("unsafe remote backup path: " + remote)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                code = (
+                    "import ubinascii\n"
+                    "f=open(%r,'rb')\n"
+                    "while True:\n"
+                    " d=f.read(384)\n"
+                    " if not d: break\n"
+                    " print(ubinascii.b2a_base64(d).decode().strip())\n"
+                    "f.close()\n" % remote)
+                encoded = repl.exec(
+                    code, max(20, expected_size / 4000 + 10))
+                content = b"".join(
+                    base64.b64decode(line)
+                    for line in encoded.splitlines() if line)
+                if len(content) != expected_size:
+                    raise IOError(
+                        "size mismatch for %s: %d != %d" % (
+                            remote, len(content), expected_size))
+                target.write_bytes(content)
+        finally:
+            repl.close()
 
     def validate_source(self, mode: str, workspace: Path) -> None:
         if mode != "migrate":
