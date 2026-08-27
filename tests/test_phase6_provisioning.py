@@ -31,6 +31,7 @@ class DirectoryTransport:
         self.source_validation_count = 0
         self.install_count = 0
         self.fail_install_once = False
+        self.fail_source_validation_once = False
 
     def capture(self, paths, destination):
         self.capture_count += 1
@@ -47,6 +48,9 @@ class DirectoryTransport:
         self.source_validation_count += 1
         if mode != "migrate":
             raise AssertionError("source validation is only valid for migration")
+        if self.fail_source_validation_once:
+            self.fail_source_validation_once = False
+            raise RuntimeError("simulated ROM loader transition")
 
     def install(self, firmware, offset, image, expected_sha256):
         self.install_count += 1
@@ -267,6 +271,32 @@ class ModernProvisioningTests(unittest.TestCase):
                 backup_settings)
             self.assertFalse((device / "partial-upload.txt").exists())
             self.assertTrue((device / "recovery/recovery.py").is_file())
+
+    def test_rom_transition_reuses_complete_content_addressed_backup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            device = root / "device"
+            shutil.copytree(ROOT / "tests/fixtures/legacy_mp123/layout", device)
+            transport = DirectoryTransport(device)
+            transport.fail_source_validation_once = True
+            workspace = root / "workspace"
+
+            with self.assertRaisesRegex(
+                    RuntimeError, "simulated ROM loader transition"):
+                provision(self.release, workspace, "migrate", transport)
+
+            journal = json.loads(
+                (workspace / "provisioning-journal.json").read_text(
+                    encoding="utf-8"))
+            self.assertEqual(journal["stage"], "backup_captured")
+            self.assertTrue((workspace / "device-backup/settings.json").is_file())
+            self.assertEqual(transport.capture_count, 1)
+
+            resumed = provision(
+                self.release, workspace, "migrate", transport, resume=True)
+            self.assertEqual(resumed["stage"], "awaiting_health")
+            self.assertEqual(transport.capture_count, 1)
+            self.assertEqual(transport.source_validation_count, 2)
 
     def test_unsupported_legacy_selector_stops_before_erasure(self):
         with tempfile.TemporaryDirectory() as temporary:

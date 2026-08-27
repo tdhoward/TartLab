@@ -61,7 +61,8 @@ BACKUP_PATHS = (
     "/device", "/state", "/files/user", "/hdwconfig.py", "/settings.json",
     "/repos.json", "/logs", "/app.py",
 )
-STAGES = ("verified", "backed_up", "awaiting_health", "complete")
+STAGES = (
+    "verified", "backup_captured", "backed_up", "awaiting_health", "complete")
 
 
 def _read_object(path: Path) -> dict[str, Any]:
@@ -307,13 +308,12 @@ def provision(release: Path, workspace: Path, mode: str, transport: Any, *,
     stage = journal["stage"]
     _stage_index(stage)
     backup = workspace / "device-backup"
-    if _stage_index(stage) < _stage_index("backed_up"):
+    if _stage_index(stage) < _stage_index("backup_captured"):
         partial = workspace / "device-backup.partial"
         _replace_directory(partial, workspace)
         source_identity = None
         if mode == "migrate":
             transport.capture(BACKUP_PATHS, partial)
-            transport.validate_source(mode, partial)
             source_identity = _validate_migration_source(partial)
         if backup.exists():
             _replace_directory(backup, workspace)
@@ -321,12 +321,26 @@ def provision(release: Path, workspace: Path, mode: str, transport: Any, *,
         os.replace(partial, backup)
         inventory = file_inventory(backup)
         journal.update({
-            "stage": "backed_up",
+            "stage": "backup_captured",
             "backup_files": len(inventory),
             "backup_identifier": inventory_identifier(inventory),
         })
         if source_identity is not None:
             journal["source"] = source_identity
+        _write_journal(journal_path, journal)
+        stage = journal["stage"]
+
+    if _stage_index(stage) < _stage_index("backed_up"):
+        inventory = file_inventory(backup)
+        if inventory_identifier(inventory) != journal["backup_identifier"]:
+            raise ValueError("device backup differs from the provisioning journal")
+        if mode == "migrate":
+            # Physical native-USB boards may expose the filesystem and the ROM
+            # loader on different ports.  Persist the complete content-addressed
+            # backup before immutable flash readback so --resume can continue
+            # after an adult enters the ROM loader without recapturing state.
+            transport.validate_source(mode, backup)
+        journal["stage"] = "backed_up"
         _write_journal(journal_path, journal)
         stage = journal["stage"]
 
