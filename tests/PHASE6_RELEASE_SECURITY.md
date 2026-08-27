@@ -59,6 +59,25 @@ The support-window policy fixes v0.13 as the oldest direct-migration source,
 defines the adult path below that floor, and is hash-bound into qualification
 evidence.
 
+Physical testing does not consume an unsigned CI artifact and does not require
+a release to be promoted first. Dispatch
+`.github/workflows/attest-modern-candidate.yml` from the exact modern source
+tag. Its protected `modern-qualification` job builds twice, checks byte
+identity, performs the profile/firmware preflight, signs the candidate with its
+own GitHub workflow identity, and uploads it with
+`qualification-attestation.sigstore.json`; it has no release token or publish
+step. Verify the downloaded candidate with:
+
+```text
+python tools/check_modern_release_authenticity.py --release path/to/candidate --purpose qualification --source-ref refs/tags/modern-vX.Y.Z --execute
+```
+
+`tools/provision_modern.py --execute` performs this qualification-signer check
+before it captures or changes a pre-promotion test device. The promotion signer
+is deliberately different and is accepted for the eventual published release
+asset set. A missing bundle or an artifact directory containing both bundle
+types fails closed.
+
 Before an adult provisioning or migration tool changes a device, run the
 read-only preflight with the identity observed from that device:
 
@@ -85,7 +104,8 @@ python tools/check_modern_release_authenticity.py --release path/to/release --so
 
 This is release machinery, not release authorization. The adult provisioning
 host transaction, profile-bound OTA/recovery clients, virtual migration gate,
-and fail-closed qualification-evidence validator are implemented. Physical
+fail-closed qualification-evidence validator, and authenticated unpublished
+qualification-candidate path are implemented. Physical
 provisioning/migration and modern OTA/recovery observations, the support-window
 floor observation, and the final profile-specific physical gate remain
 incomplete. The support-window decision and host enforcement are complete. See

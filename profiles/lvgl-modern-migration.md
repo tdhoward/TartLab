@@ -17,9 +17,12 @@ device. Do not attach these assets to, or discover them through, the legacy
 
 ## Required safety checks
 
-1. Download every asset from the same `@VERSION@` release in
-   `tdhoward/TartLab-modern-releases`.
-2. Verify every asset and the signed bundle with the command documented in
+1. For a promoted release, download every asset from the same `@VERSION@`
+   release in `tdhoward/TartLab-modern-releases`. For pre-promotion physical
+   qualification, use only the artifact created for the exact source tag by
+   the protected `attest-modern-candidate.yml` workflow; it is not a release.
+2. Verify every asset and its single signed qualification or release bundle
+   with the purpose-specific command documented in
    `tests/PHASE6_RELEASE_SECURITY.md` before connecting a device.
 3. Confirm the target is the qualified LilyGO T-Display-S3 Pro checkpoint with
    16 MiB flash. Install `esptool` 5.x and `mpremote`, and identify its explicit

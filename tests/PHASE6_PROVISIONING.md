@@ -9,6 +9,16 @@ requires all of `--execute`, `--confirm-erase`, an explicit serial port, a
 signed source-tag reference, and a private durable workspace outside the Git
 checkout.
 
+Physical qualification uses the unpublished, tag-bound artifact produced by
+`.github/workflows/attest-modern-candidate.yml`. That protected workflow
+rebuilds the candidate twice, attests its TAR/JSON/BIN/MD subjects, and uploads
+`qualification-attestation.sigstore.json` with the candidate without creating
+a GitHub Release. `tools/provision_modern.py` accepts that qualification
+workflow as the signer for pre-promotion device testing, or the separate
+promotion signer for an eventual published release; it rejects a missing or
+ambiguous bundle. Final promotion remains blocked on the completed physical
+gates.
+
 Before erasure, migration performs these fail-closed checks:
 
 1. Validate the complete modern release, compatibility declaration, checksums,

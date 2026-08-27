@@ -36,6 +36,7 @@
     "validator": "tools/check_modern_release.py",
     "provisioning_preflight": "tools/check_modern_release.py",
     "provisioning_tool": "tools/provision_modern.py",
+    "qualification_attestation_workflow": ".github/workflows/attest-modern-candidate.yml",
     "qualification_validator": "tools/check_modern_qualification.py",
     "support_window": "profiles/modern-support-window.json",
     "migration_instructions": "profiles/lvgl-modern-migration.md",

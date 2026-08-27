@@ -9,6 +9,7 @@ import sys
 import tempfile
 import types
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,7 +17,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 from build_modern_release import build_release  # noqa: E402
 from provision_modern import (  # noqa: E402
     CommandTransport, FIRMWARE_SHA256, LEGACY_FIRMWARE,
-    LEGACY_IDENTITY_REGIONS, MODERN_REPOSITORY, provision,
+    LEGACY_IDENTITY_REGIONS, MODERN_REPOSITORY, _verify_attestations, provision,
 )
 
 
@@ -71,6 +72,29 @@ class DirectoryTransport:
 
 
 class ModernProvisioningTests(unittest.TestCase):
+    def test_provisioning_accepts_exactly_one_bound_attestation_purpose(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            release = Path(temporary)
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                _verify_attestations(release, "refs/tags/modern-v1.2.3")
+
+            qualification = release / "qualification-attestation.sigstore.json"
+            qualification.write_text("{}\n", encoding="utf-8")
+            with mock.patch("provision_modern.subprocess.run") as run:
+                _verify_attestations(release, "refs/tags/modern-v1.2.3")
+            self.assertIn("qualification", run.call_args.args[0])
+
+            qualification.unlink()
+            (release / "release-attestation.sigstore.json").write_text(
+                "{}\n", encoding="utf-8")
+            with mock.patch("provision_modern.subprocess.run") as run:
+                _verify_attestations(release, "refs/tags/modern-v1.2.3")
+            self.assertIn("release", run.call_args.args[0])
+
+            qualification.write_text("{}\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                _verify_attestations(release, "refs/tags/modern-v1.2.3")
+
     @classmethod
     def setUpClass(cls):
         cls.build = tempfile.TemporaryDirectory()

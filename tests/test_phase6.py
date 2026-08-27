@@ -230,6 +230,9 @@ class ModernReleaseAuthenticityTests(unittest.TestCase):
             result["target_repository"],
             "tdhoward/TartLab-modern-releases")
         self.assertEqual(result["profile"], "lvgl-modern")
+        self.assertEqual(
+            result["qualification_signer_workflow"],
+            "tdhoward/TartLab/.github/workflows/attest-modern-candidate.yml")
 
     def test_modern_policy_rejects_the_legacy_target(self):
         policy = copy.deepcopy(self.policy)
@@ -264,9 +267,16 @@ class ModernReleaseAuthenticityTests(unittest.TestCase):
                 (release / name).write_text("{}\n", encoding="utf-8")
             self.assertEqual(
                 len(modern_release_assets(release, self.policy)), 12)
+            (release / "promotion_attestation.json").unlink()
+            self.assertEqual(
+                len(modern_release_assets(
+                    release, self.policy, purpose="qualification")), 11)
+            with self.assertRaisesRegex(ValueError, "promotion_attestation"):
+                modern_release_assets(release, self.policy)
             (release / "manifest.json").write_text("[]\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "legacy manifest"):
-                modern_release_assets(release, self.policy)
+                modern_release_assets(
+                    release, self.policy, purpose="qualification")
 
     def test_modern_verification_pins_source_workflow_and_tag(self):
         command = modern_verification_command(
@@ -279,6 +289,17 @@ class ModernReleaseAuthenticityTests(unittest.TestCase):
             command)
         self.assertIn("refs/tags/modern-v1.2.3", command)
         self.assertIn("--deny-self-hosted-runners", command)
+
+        qualification_command = modern_verification_command(
+            Path("modern-manifest.json"), self.policy,
+            bundle=Path("qualification-attestation.sigstore.json"),
+            source_ref="refs/tags/modern-v1.2.3", purpose="qualification")
+        self.assertIn(
+            "tdhoward/TartLab/.github/workflows/attest-modern-candidate.yml",
+            qualification_command)
+        self.assertNotIn(
+            "tdhoward/TartLab/.github/workflows/promote-modern-release.yml",
+            qualification_command)
 
 
 class ModernQualificationTests(unittest.TestCase):

@@ -51,6 +51,12 @@ adult provisioning transaction target only
 `tdhoward/TartLab-modern-releases`; `tdhoward/TartLab` GitHub Releases remain
 reserved for the `legacy-mp123` profile.
 
+The protected `attest-modern-candidate.yml` workflow is the Tier 4 handoff. It
+creates a reproducible, tag-bound, signed candidate artifact for physical
+qualification without publishing a release. Adult provisioning verifies that
+qualification workflow's identity; final release verification separately pins
+the promotion workflow's identity.
+
 ## Tier 1: CPython virtual device
 
 Run:

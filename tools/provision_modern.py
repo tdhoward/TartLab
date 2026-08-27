@@ -509,9 +509,21 @@ class CommandTransport:
 
 
 def _verify_attestations(release: Path, source_ref: str) -> None:
+    qualification_bundle = release / "qualification-attestation.sigstore.json"
+    release_bundle = release / "release-attestation.sigstore.json"
+    present = [
+        purpose for purpose, path in (
+            ("qualification", qualification_bundle), ("release", release_bundle))
+        if path.is_file()
+    ]
+    if len(present) != 1:
+        raise ValueError(
+            "modern provisioning requires exactly one qualification or release "
+            "attestation bundle")
     subprocess.run([
         sys.executable, str(ROOT / "tools/check_modern_release_authenticity.py"),
-        "--release", str(release), "--source-ref", source_ref, "--execute",
+        "--release", str(release), "--source-ref", source_ref,
+        "--purpose", present[0], "--execute",
     ], cwd=ROOT, check=True)
 
 

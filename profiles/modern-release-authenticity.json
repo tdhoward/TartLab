@@ -4,6 +4,7 @@
   "source_repository": "tdhoward/TartLab",
   "target_repository": "tdhoward/TartLab-modern-releases",
   "signer_workflow": "tdhoward/TartLab/.github/workflows/promote-modern-release.yml",
+  "qualification_signer_workflow": "tdhoward/TartLab/.github/workflows/attest-modern-candidate.yml",
   "predicate_type": "https://slsa.dev/provenance/v1",
   "action": {
     "repository": "actions/attest",
@@ -17,6 +18,7 @@
     "*.md"
   ],
   "bundle_asset": "release-attestation.sigstore.json",
+  "qualification_bundle_asset": "qualification-attestation.sigstore.json",
   "scope": {
     "release_profile": "lvgl-modern",
     "manifest": "modern-manifest.json",

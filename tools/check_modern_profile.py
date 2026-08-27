@@ -76,6 +76,8 @@ def validate_profile(profile: dict[str, Any]) -> None:
         "validator": "tools/check_modern_release.py",
         "provisioning_preflight": "tools/check_modern_release.py",
         "provisioning_tool": "tools/provision_modern.py",
+        "qualification_attestation_workflow": (
+            ".github/workflows/attest-modern-candidate.yml"),
         "qualification_validator": "tools/check_modern_qualification.py",
         "support_window": "profiles/modern-support-window.json",
         "migration_instructions": "profiles/lvgl-modern-migration.md",
@@ -84,8 +86,8 @@ def validate_profile(profile: dict[str, Any]) -> None:
     if builder != expected_builder:
         raise ValueError("modern release builder contract is incomplete")
     for key in (
-            "provisioning_tool", "qualification_validator", "support_window",
-            "migration_instructions",
+            "provisioning_tool", "qualification_attestation_workflow",
+            "qualification_validator", "support_window", "migration_instructions",
             "filesystem_vendor_lock"):
         if not (ROOT / builder[key]).is_file():
             raise ValueError(f"modern release builder input is missing: {key}")

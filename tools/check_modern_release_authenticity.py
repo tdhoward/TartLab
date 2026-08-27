@@ -15,6 +15,7 @@ from typing import Any, Sequence
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POLICY = ROOT / "profiles/modern-release-authenticity.json"
 PROMOTION_WORKFLOW = ROOT / ".github/workflows/promote-modern-release.yml"
+QUALIFICATION_WORKFLOW = ROOT / ".github/workflows/attest-modern-candidate.yml"
 MODERN_TAG = re.compile(r"^modern-v[0-9]+\.[0-9]+(?:\.[0-9]+)?$")
 
 
@@ -36,6 +37,9 @@ def validate_policy(policy: dict[str, Any]) -> None:
     if policy.get("signer_workflow") != \
             "tdhoward/TartLab/.github/workflows/promote-modern-release.yml":
         raise ValueError("unexpected modern signer workflow")
+    if policy.get("qualification_signer_workflow") != \
+            "tdhoward/TartLab/.github/workflows/attest-modern-candidate.yml":
+        raise ValueError("unexpected modern qualification signer workflow")
     if policy.get("predicate_type") != "https://slsa.dev/provenance/v1":
         raise ValueError("modern attestations must use SLSA provenance")
     action = policy.get("action")
@@ -50,6 +54,9 @@ def validate_policy(policy: dict[str, Any]) -> None:
         raise ValueError("modern attestation subjects are incomplete")
     if policy.get("bundle_asset") != "release-attestation.sigstore.json":
         raise ValueError("unexpected modern attestation bundle")
+    if policy.get("qualification_bundle_asset") != \
+            "qualification-attestation.sigstore.json":
+        raise ValueError("unexpected modern qualification attestation bundle")
     scope = policy.get("scope")
     expected_scope = {
         "release_profile": "lvgl-modern",
@@ -65,7 +72,8 @@ def validate_policy(policy: dict[str, Any]) -> None:
         raise ValueError("modern authenticity scope is incomplete")
 
 
-def validate_workflow(policy: dict[str, Any], workflow_path: Path) -> None:
+def validate_workflow(policy: dict[str, Any], workflow_path: Path,
+                      qualification_workflow_path: Path) -> None:
     source = workflow_path.read_text(encoding="utf-8")
     required = (
         "environment: modern-release",
@@ -96,6 +104,34 @@ def validate_workflow(policy: dict[str, Any], workflow_path: Path) -> None:
     if attest_at > publish_at:
         raise ValueError("modern assets must be attested before publication")
 
+    qualification_source = qualification_workflow_path.read_text(
+        encoding="utf-8")
+    qualification_required = (
+        "environment: modern-qualification",
+        "id-token: write",
+        "attestations: write",
+        "--qualification-tag \"$RELEASE_TAG\"",
+        "tools/build_modern_release.py",
+        "tools/compare_releases.py",
+        "tools/check_modern_release.py",
+        f"uses: actions/attest@{policy['action']['commit']}",
+        "build/qualification/release/*.tar",
+        "build/qualification/release/*.json",
+        "build/qualification/release/*.bin",
+        "build/qualification/release/*.md",
+        "qualification-attestation.sigstore.json",
+        "actions/upload-artifact@v7",
+    )
+    for marker in qualification_required:
+        if marker not in qualification_source:
+            raise ValueError(
+                "modern qualification workflow is missing marker: %s" % marker)
+    if "gh release create" in qualification_source or \
+            "MODERN_RELEASE_TOKEN" in qualification_source:
+        raise ValueError("modern qualification workflow must not publish")
+    if "continue-on-error" in qualification_source:
+        raise ValueError("modern qualification workflow must fail closed")
+
 
 def validate_ci_identity(tag: str, commit: str,
                          environment: dict[str, str] | None = None) -> None:
@@ -113,21 +149,27 @@ def validate_ci_identity(tag: str, commit: str,
             raise ValueError("modern promotion identity mismatch: %s" % name)
 
 
-def release_assets(release: Path, policy: dict[str, Any]) -> list[Path]:
+def release_assets(release: Path, policy: dict[str, Any], *,
+                   purpose: str = "release") -> list[Path]:
     if not release.is_dir():
         raise ValueError("modern release directory not found: %s" % release)
-    bundle = policy["bundle_asset"]
+    if purpose not in ("release", "qualification"):
+        raise ValueError("unknown modern attestation purpose")
+    all_bundles = {
+        policy["bundle_asset"], policy["qualification_bundle_asset"]}
     assets = sorted({
         path for pattern in policy["release_subjects"]
         for path in release.glob(pattern)
-        if path.is_file() and path.name != bundle
+        if path.is_file() and path.name not in all_bundles
     })
     required = {
         "modern-manifest.json", "build_metadata.json", "checksums.json",
-        "promotion_attestation.json", "compatibility.json",
+        "compatibility.json",
         "firmware-build-lock.json", "firmware-provenance.json",
         "filesystem-vendor-lock.json", "support-window.json", "MIGRATION.md",
     }
+    if purpose == "release":
+        required.add("promotion_attestation.json")
     missing = sorted(required.difference(path.name for path in assets))
     if missing:
         raise ValueError("modern release is missing metadata: %s" % missing[0])
@@ -142,11 +184,17 @@ def release_assets(release: Path, policy: dict[str, Any]) -> list[Path]:
 
 def verification_command(asset: Path, policy: dict[str, Any], *,
                          bundle: Path | None = None,
-                         source_ref: str | None = None) -> list[str]:
+                         source_ref: str | None = None,
+                         purpose: str = "release") -> list[str]:
+    if purpose not in ("release", "qualification"):
+        raise ValueError("unknown modern attestation purpose")
+    signer = policy[
+        "signer_workflow" if purpose == "release" else
+        "qualification_signer_workflow"]
     command = [
         "gh", "attestation", "verify", str(asset),
         "--repo", policy["source_repository"],
-        "--signer-workflow", policy["signer_workflow"],
+        "--signer-workflow", signer,
         "--predicate-type", policy["predicate_type"],
         "--deny-self-hosted-runners",
     ]
@@ -158,15 +206,19 @@ def verification_command(asset: Path, policy: dict[str, Any], *,
 
 
 def check(policy_path: Path = DEFAULT_POLICY,
-          workflow_path: Path = PROMOTION_WORKFLOW) -> dict[str, object]:
+          workflow_path: Path = PROMOTION_WORKFLOW,
+          qualification_workflow_path: Path =
+          QUALIFICATION_WORKFLOW) -> dict[str, object]:
     policy = load_json(policy_path)
     validate_policy(policy)
-    validate_workflow(policy, workflow_path)
+    validate_workflow(policy, workflow_path, qualification_workflow_path)
     return {
         "mechanism": policy["mechanism"],
         "source_repository": policy["source_repository"],
         "target_repository": policy["target_repository"],
         "profile": "lvgl-modern",
+        "qualification_signer_workflow": policy[
+            "qualification_signer_workflow"],
         "on_device_enforcement": False,
     }
 
@@ -175,34 +227,51 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
     parser.add_argument("--workflow", type=Path, default=PROMOTION_WORKFLOW)
+    parser.add_argument(
+        "--qualification-workflow", type=Path,
+        default=QUALIFICATION_WORKFLOW)
     parser.add_argument("--release", type=Path)
     parser.add_argument("--promotion-tag")
+    parser.add_argument("--qualification-tag")
     parser.add_argument("--source-ref")
+    parser.add_argument(
+        "--purpose", choices=("release", "qualification"), default="release")
     parser.add_argument("--execute", action="store_true")
     return parser.parse_args(argv)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    result = check(args.policy, args.workflow)
-    if args.promotion_tag is not None:
+    result = check(
+        args.policy, args.workflow, args.qualification_workflow)
+    if args.promotion_tag is not None and args.qualification_tag is not None:
+        raise ValueError(
+            "choose only one of --promotion-tag and --qualification-tag")
+    identity_tag = args.promotion_tag or args.qualification_tag
+    if identity_tag is not None:
         commit = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-        validate_ci_identity(args.promotion_tag, commit)
-        result["promotion_identity"] = {
-            "tag": args.promotion_tag,
+        validate_ci_identity(identity_tag, commit)
+        result[
+            "promotion_identity" if args.promotion_tag else
+            "qualification_identity"] = {
+            "tag": identity_tag,
             "commit": commit,
         }
     if args.release is not None:
         policy = load_json(args.policy)
-        assets = release_assets(args.release, policy)
-        bundle = args.release / policy["bundle_asset"]
+        assets = release_assets(
+            args.release, policy, purpose=args.purpose)
+        bundle_name = policy[
+            "bundle_asset" if args.purpose == "release" else
+            "qualification_bundle_asset"]
+        bundle = args.release / bundle_name
         if args.execute and not bundle.is_file():
             raise ValueError("modern release attestation bundle not found")
         commands = [
             verification_command(
                 asset, policy, bundle=bundle if bundle.is_file() else None,
-                source_ref=args.source_ref)
+                source_ref=args.source_ref, purpose=args.purpose)
             for asset in assets
         ]
         result["release_assets"] = len(assets)

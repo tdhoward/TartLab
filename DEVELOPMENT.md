@@ -427,6 +427,12 @@ The release repository is part of the compatibility boundary:
   recovery, feed-isolation, and support-window gates. Validate a prepared
   summary with `tools/check_modern_qualification.py`; its exact schema and
   privacy boundary are in `tests/PHASE6_MODERN_QUALIFICATION.md`.
+- Physical modern qualification starts from the protected
+  `attest-modern-candidate.yml` workflow. It signs a twice-rebuilt, tag-bound
+  candidate and uploads it with `qualification-attestation.sigstore.json`
+  without publishing to either release feed. `tools/provision_modern.py`
+  verifies that qualification signer before any device mutation; final
+  promotion uses a separate signer identity after the physical gates pass.
 - Do not attach modern firmware images or modern filesystem packages to a
   legacy release. The deployed updater counts all attached assets for its
   free-space decision even if `manifest.json` does not reference them, and it

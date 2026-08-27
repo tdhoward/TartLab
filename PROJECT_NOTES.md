@@ -957,6 +957,10 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    is unchanged. Promotion still requires the remaining migration, recovery,
    support-window, and profile-specific physical gates below; this item does
    not declare a production modern release.
+   A separate protected `attest-modern-candidate.yml` workflow now closes the
+   pre-promotion qualification handoff: it twice rebuilds and signs the exact
+   tag-bound candidate for adult physical testing, uploads it without
+   publishing, and uses a signer identity distinct from final promotion.
 5. **Implemented for the promotion-gated modern publishing contract:** every
    modern candidate now contains the version-named compatible firmware image,
    filesystem packages, firmware build lock and provenance, filesystem vendor
@@ -977,6 +981,10 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    pending-health commit, wrong-board rejection, firmware identity, and a USB
    loss during upload. The profile remains promotion gated until the physical
    matrix in `tests/PHASE6_PROVISIONING.md` passes.
+   Device mutation additionally requires the unpublished candidate's GitHub
+   attestation from the protected qualification workflow, avoiding both an
+   unsigned test image and a circular dependency on post-qualification
+   promotion.
 7. **Host enforcement implemented; physical qualification pending:** the normal
    and recovery updaters now bind `lvgl-modern` to the isolated modern feed and
    object manifest while retaining the legacy list-manifest path. They reject
