@@ -284,6 +284,126 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
         ] + [{"name": "package-%02d.tar" % index} for index in range(11)]
         self.assertEqual(self.updater._initial_progress_steps(assets), 15)
 
+    def test_modern_ota_uses_isolated_object_manifest_and_skips_firmware(self):
+        updater = self.updater
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            package_file = root / "modern.tar"
+            content = root / "module.py"
+            content.write_text("VALUE = 'modern'\n")
+            with tarfile.open(package_file, "w", format=tarfile.USTAR_FORMAT) as archive:
+                archive.add(content, arcname="module.py")
+            digest = hashlib.sha256(package_file.read_bytes()).hexdigest()
+            package = {
+                "file_name": "modern.tar", "sha256": digest,
+                "target": "/ide", "clear_first": True,
+                "expanded_size": content.stat().st_size,
+            }
+            document = {
+                "schema": 1,
+                "version": "modern-v2",
+                "channel": {
+                    "repository": "tdhoward/TartLab-modern-releases",
+                    "manifest": "modern-manifest.json",
+                },
+                "compatibility": {
+                    "runtime_profile": "lvgl-modern",
+                    "firmware": {"sha256": updater.MODERN_FIRMWARE_SHA256},
+                },
+                "packages": [package],
+            }
+            assets = [
+                {"name": "modern-manifest.json", "size": 500,
+                 "browser_download_url": "manifest"},
+                {"name": "modern.tar", "size": package_file.stat().st_size,
+                 "browser_download_url": "package"},
+                {"name": "tartlab-modern-v2.bin", "size": 50_000_000,
+                 "browser_download_url": "firmware"},
+            ]
+            repo = {
+                "name": "TartLab",
+                "repo": "tdhoward/TartLab-modern-releases",
+                "installed_version": "modern-v1",
+                "runtime_profile": "lvgl-modern",
+                "manifest": "modern-manifest.json",
+                "firmware_sha256": updater.MODERN_FIRMWARE_SHA256,
+            }
+            downloaded = []
+            installed = []
+            begun = []
+
+            async def check(unused_repo):
+                return assets, "modern-v2"
+
+            async def download(url, target):
+                downloaded.append(url)
+                if url == "manifest":
+                    Path(target).write_text(json.dumps(document))
+                elif url == "package":
+                    shutil.copy2(package_file, target)
+                else:
+                    raise AssertionError("firmware must not be downloaded by OTA")
+                return True
+
+            async def install(filename, target, clear_first):
+                installed.append((Path(filename).name, target, clear_first))
+
+            old = (
+                updater.TMP_UPDATE_FOLDER, updater.check_for_update,
+                updater.download_asset, updater._free_space, updater.begin_update,
+                updater.set_update_pending_health, updater.update_folder,
+                updater.file_exists, updater.rmvdir, updater.mkdirs,
+            )
+            updater.TMP_UPDATE_FOLDER = (root / "staging").as_posix()
+            updater.check_for_update = check
+            updater.download_asset = download
+            updater._free_space = lambda: 1_000_000
+            updater.begin_update = lambda *args: begun.append(args)
+            updater.set_update_pending_health = lambda: None
+            updater.update_folder = install
+            updater.file_exists = lambda path: 2 if Path(path).is_dir() else (
+                1 if Path(path).is_file() else 0)
+            updater.rmvdir = lambda path: shutil.rmtree(path)
+            updater.mkdirs = lambda path: os.makedirs(path, exist_ok=True)
+            try:
+                result = asyncio.run(updater.update_packages(repo, lambda *args: None))
+            finally:
+                (
+                    updater.TMP_UPDATE_FOLDER, updater.check_for_update,
+                    updater.download_asset, updater._free_space,
+                    updater.begin_update, updater.set_update_pending_health,
+                    updater.update_folder, updater.file_exists, updater.rmvdir,
+                    updater.mkdirs,
+                ) = old
+            self.assertEqual(result, updater.UPDATE_INSTALLED)
+            self.assertEqual(downloaded, ["manifest", "package"])
+            self.assertEqual(installed, [("modern.tar", "/ide", True)])
+            self.assertEqual(begun, [("TartLab", "modern-v1", "modern-v2")])
+
+    def test_tartlab_profiles_reject_the_other_release_feed(self):
+        updater = self.updater
+        modern_on_legacy = {
+            "name": "TartLab", "repo": "tdhoward/TartLab",
+            "runtime_profile": "lvgl-modern",
+            "manifest": "modern-manifest.json",
+            "firmware_sha256": updater.MODERN_FIRMWARE_SHA256,
+        }
+        legacy_on_modern = {
+            "name": "TartLab", "repo": "tdhoward/TartLab-modern-releases",
+            "runtime_profile": "legacy-mp123",
+            "manifest": "manifest.json",
+        }
+        with self.assertRaisesRegex(ValueError, "isolated modern feed"):
+            updater.release_contract(modern_on_legacy)
+        with self.assertRaisesRegex(ValueError, "legacy feed"):
+            updater.release_contract(legacy_on_modern)
+
+        wrong_firmware = dict(modern_on_legacy)
+        wrong_firmware["repo"] = "tdhoward/TartLab-modern-releases"
+        wrong_firmware["firmware_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "firmware identity"):
+            updater.release_contract(wrong_firmware)
+
     def test_interrupted_download_never_promotes_partial_file(self):
         updater = self.updater
 
@@ -350,7 +470,8 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
             updater.mkdirs = lambda path: os.makedirs(path, exist_ok=True)
             try:
                 result = asyncio.run(updater.update_packages(
-                    {"name": "TartLab", "installed_version": "old"},
+                    {"name": "TartLab", "repo": "tdhoward/TartLab",
+                     "installed_version": "old"},
                     lambda *args: None))
             finally:
                 (updater.TMP_UPDATE_FOLDER, updater.check_for_update,
@@ -381,7 +502,8 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
         updater.begin_update = lambda *args: begun.append(args)
         try:
             result = asyncio.run(updater.update_packages(
-                {"name": "TartLab", "installed_version": "old"},
+                {"name": "TartLab", "repo": "tdhoward/TartLab",
+                 "installed_version": "old"},
                 lambda *args: None))
         finally:
             updater.check_for_update, updater.download_asset, updater._free_space, updater.begin_update = old
@@ -438,7 +560,8 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
             updater.mkdirs = lambda path: os.makedirs(path, exist_ok=True)
             try:
                 result = asyncio.run(updater.update_packages(
-                    {"name": "TartLab", "installed_version": "old"},
+                    {"name": "TartLab", "repo": "tdhoward/TartLab",
+                     "installed_version": "old"},
                     lambda *args: None))
             finally:
                 (updater.TMP_UPDATE_FOLDER, updater.check_for_update,

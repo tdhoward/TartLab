@@ -16,7 +16,7 @@ on:
         required: true
         type: string
       hardware_evidence_reference:
-        description: Durable URL or artifact reference for the evidence bundle
+        description: Durable HTTPS URL for the sanitized qualification JSON
         required: true
         type: string
 
@@ -83,6 +83,28 @@ jobs:
           --dist build/promote-modern/dist-one
           --runtime-profile lvgl-modern
           --firmware-sha256 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
+
+      - name: Validate candidate-bound modern qualification evidence
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          CANDIDATE_HASH: ${{ inputs.candidate_checksums_sha256 }}
+          EVIDENCE_HASH: ${{ inputs.hardware_evidence_sha256 }}
+          EVIDENCE_REFERENCE: ${{ inputs.hardware_evidence_reference }}
+        run: |
+          case "$EVIDENCE_REFERENCE" in
+            https://*) ;;
+            *) echo "Qualification evidence reference must use HTTPS" >&2; exit 1 ;;
+          esac
+          curl --fail --location --proto '=https' --proto-redir '=https' \
+            --tlsv1.2 \
+            --output build/promote-modern/qualification-evidence.json \
+            "$EVIDENCE_REFERENCE"
+          python tools/check_modern_qualification.py \
+            --evidence build/promote-modern/qualification-evidence.json \
+            --tag "$RELEASE_TAG" \
+            --candidate-checksums-sha256 "$CANDIDATE_HASH" \
+            --expected-sha256 "$EVIDENCE_HASH"
 
       - name: Bind physical evidence to the rebuilt modern release
         env:

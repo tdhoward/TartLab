@@ -308,6 +308,145 @@ class RecoveryUpdaterTests(unittest.TestCase):
             self.recovery_update._tartlab_repo(repos)["installed_version"], "v0.13")
         self.assertIsNone(self.recovery_update._tartlab_repo({"list": []}))
 
+    def test_recovery_accepts_only_profile_bound_manifest_and_feed(self):
+        updater = self.recovery_update
+        repo = {
+            "name": "TartLab",
+            "repo": "tdhoward/TartLab-modern-releases",
+            "installed_version": "modern-v1",
+            "runtime_profile": "lvgl-modern",
+            "manifest": "modern-manifest.json",
+            "firmware_sha256": updater.MODERN_FIRMWARE_SHA256,
+        }
+        package = {
+            "file_name": "rootfiles.tar", "sha256": "a" * 64,
+            "target": "/", "clear_first": False,
+        }
+        document = {
+            "schema": 1,
+            "version": "modern-v2",
+            "channel": {
+                "repository": "tdhoward/TartLab-modern-releases",
+                "manifest": "modern-manifest.json",
+            },
+            "compatibility": {
+                "runtime_profile": "lvgl-modern",
+                "firmware": {"sha256": updater.MODERN_FIRMWARE_SHA256},
+            },
+            "packages": [package],
+        }
+        self.assertEqual(
+            updater._manifest_packages(document, repo, "modern-v2"),
+            [package])
+
+        wrong_feed = dict(repo)
+        wrong_feed["repo"] = "tdhoward/TartLab"
+        with self.assertRaisesRegex(ValueError, "isolated modern feed"):
+            updater._release_contract(wrong_feed)
+
+        wrong_version = json.loads(json.dumps(document))
+        wrong_version["version"] = "modern-v3"
+        with self.assertRaisesRegex(ValueError, "version"):
+            updater._manifest_packages(wrong_version, repo, "modern-v2")
+
+        wrong_profile = json.loads(json.dumps(document))
+        wrong_profile["compatibility"]["runtime_profile"] = "legacy-mp123"
+        with self.assertRaisesRegex(ValueError, "runtime profile"):
+            updater._manifest_packages(wrong_profile, repo, "modern-v2")
+
+        wrong_firmware = json.loads(json.dumps(document))
+        wrong_firmware["compatibility"]["firmware"]["sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "firmware identity"):
+            updater._manifest_packages(wrong_firmware, repo, "modern-v2")
+
+    def test_recovery_modern_update_selects_packages_not_firmware(self):
+        updater = self.recovery_update
+        repo = {
+            "name": "TartLab",
+            "repo": "tdhoward/TartLab-modern-releases",
+            "installed_version": "modern-v1",
+            "runtime_profile": "lvgl-modern",
+            "manifest": "modern-manifest.json",
+            "firmware_sha256": updater.MODERN_FIRMWARE_SHA256,
+        }
+        package = {
+            "file_name": "rootfiles.tar", "sha256": "a" * 64,
+            "target": "/", "clear_first": False, "expanded_size": 1,
+        }
+        document = {
+            "schema": 1,
+            "version": "modern-v2",
+            "channel": {
+                "repository": "tdhoward/TartLab-modern-releases",
+                "manifest": "modern-manifest.json",
+            },
+            "compatibility": {
+                "runtime_profile": "lvgl-modern",
+                "firmware": {"sha256": updater.MODERN_FIRMWARE_SHA256},
+            },
+            "packages": [package],
+        }
+        release = {
+            "tag_name": "modern-v2",
+            "assets": [
+                {"name": "modern-manifest.json",
+                 "browser_download_url": "manifest"},
+                {"name": "rootfiles.tar", "browser_download_url": "package"},
+                {"name": "tartlab-modern-v2.bin",
+                 "browser_download_url": "firmware"},
+            ],
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            downloaded = []
+            installed = []
+
+            def read_json(path, default):
+                if path == updater.STATE_REPOS:
+                    return {"list": [repo]}
+                if path.endswith("modern-manifest.json"):
+                    return document
+                return default
+
+            def download(url, path, expected_sha256=None):
+                downloaded.append(url)
+                Path(path).write_bytes(b"package")
+                return True
+
+            def install(tartlab, version, manifest, progress):
+                installed.append((tartlab, version, manifest))
+                return version
+
+            old = (
+                updater.TEMP_DIR, updater._read_json, updater._release,
+                updater._download_verified, updater._kind, updater._mkdirs,
+                updater._tar_members, updater._required_install_space,
+                updater._free_space, updater._install_verified_packages,
+            )
+            updater.TEMP_DIR = Path(temp).as_posix()
+            updater._read_json = read_json
+            updater._release = lambda unused_repo: release
+            updater._download_verified = download
+            updater._kind = lambda path: 1 if path == updater.STATE_REPOS else (
+                2 if Path(path).is_dir() else (1 if Path(path).is_file() else 0))
+            updater._mkdirs = lambda path: os.makedirs(path, exist_ok=True)
+            updater._tar_members = lambda *args: ["/main.py"]
+            updater._required_install_space = lambda manifest: 1
+            updater._free_space = lambda: 1_000_000
+            updater._install_verified_packages = install
+            try:
+                result = updater.update_to_latest(lambda message: None)
+            finally:
+                (
+                    updater.TEMP_DIR, updater._read_json, updater._release,
+                    updater._download_verified, updater._kind,
+                    updater._mkdirs, updater._tar_members,
+                    updater._required_install_space, updater._free_space,
+                    updater._install_verified_packages,
+                ) = old
+            self.assertEqual(result, "modern-v2")
+            self.assertEqual(downloaded, ["manifest", "package"])
+            self.assertEqual(installed, [(repo, "modern-v2", [package])])
+
     def test_recovery_download_reuses_verified_file_and_promotes_atomically(self):
         updater = self.recovery_update
         with tempfile.TemporaryDirectory() as temp:

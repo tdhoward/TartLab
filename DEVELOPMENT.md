@@ -416,6 +416,11 @@ The release repository is part of the compatibility boundary:
 - `lvgl-modern` candidates and eventual releases belong only in
   `tdhoward/TartLab-modern-releases`, using a separate protected promotion
   workflow and explicit modern firmware/profile compatibility checks.
+- Modern promotion also downloads and hash-verifies the sanitized Phase 6
+  qualification summary, then requires passed provisioning, hardware, OTA,
+  recovery, feed-isolation, and support-window gates. Validate a prepared
+  summary with `tools/check_modern_qualification.py`; its exact schema and
+  privacy boundary are in `tests/PHASE6_MODERN_QUALIFICATION.md`.
 - Do not attach modern firmware images or modern filesystem packages to a
   legacy release. The deployed updater counts all attached assets for its
   free-space decision even if `manifest.json` does not reference them, and it

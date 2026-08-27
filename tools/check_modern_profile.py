@@ -75,18 +75,26 @@ def validate_profile(profile: dict[str, Any]) -> None:
         "validator": "tools/check_modern_release.py",
         "provisioning_preflight": "tools/check_modern_release.py",
         "provisioning_tool": "tools/provision_modern.py",
+        "qualification_validator": "tools/check_modern_qualification.py",
         "migration_instructions": "profiles/lvgl-modern-migration.md",
         "filesystem_vendor_lock": "vendor/legacy-pydevices.lock.json",
     }
     if builder != expected_builder:
         raise ValueError("modern release builder contract is incomplete")
     for key in (
-            "provisioning_tool", "migration_instructions",
+            "provisioning_tool", "qualification_validator",
+            "migration_instructions",
             "filesystem_vendor_lock"):
         if not (ROOT / builder[key]).is_file():
             raise ValueError(f"modern release builder input is missing: {key}")
     gates = profile.get("promotion_gates")
-    if not isinstance(gates, list) or not gates:
+    if gates != [
+            "adult-provisioning-and-migration",
+            "profile-specific-hardware",
+            "profile-specific-ota-and-recovery",
+            "release-feed-isolation",
+            "release-pipeline-qualification",
+            "support-window"]:
         raise ValueError("modern release promotion gates are missing")
 
     firmware = profile.get("firmware_compatibility")

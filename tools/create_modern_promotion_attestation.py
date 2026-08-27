@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+from urllib.parse import urlsplit
 
 from check_modern_release import check as check_modern_release
 from check_modern_release_authenticity import MODERN_TAG, validate_ci_identity
@@ -35,8 +36,15 @@ def main() -> None:
         raise ValueError("Modern tags must use modern-vMAJOR.MINOR[.PATCH]")
     if not SHA256.fullmatch(candidate_hash) or not SHA256.fullmatch(evidence_hash):
         raise ValueError("Candidate and evidence hashes must be lowercase SHA-256")
-    if not args.hardware_evidence_reference.strip():
-        raise ValueError("A durable modern hardware-evidence reference is required")
+    evidence_reference = args.hardware_evidence_reference.strip()
+    parsed_reference = urlsplit(evidence_reference)
+    if parsed_reference.scheme != "https" or not parsed_reference.netloc or \
+            parsed_reference.username is not None or \
+            parsed_reference.password is not None or parsed_reference.query or \
+            parsed_reference.fragment:
+        raise ValueError(
+            "Hardware evidence must use a durable public HTTPS URL without "
+            "credentials, query, or fragment")
     if sha256_file(args.release / "checksums.json") != candidate_hash:
         raise ValueError("Rebuilt modern release differs from the tested candidate")
     metadata = read_json(args.release / "build_metadata.json")
@@ -69,7 +77,7 @@ def main() -> None:
         "firmware_sha256": firmware_hash,
         "candidate_checksums_sha256": candidate_hash,
         "hardware_evidence_sha256": evidence_hash,
-        "hardware_evidence_reference": args.hardware_evidence_reference,
+        "hardware_evidence_reference": evidence_reference,
         "promoted_at_utc": datetime.now(timezone.utc).isoformat().replace(
             "+00:00", "Z"),
         "github_run_id": os.environ.get("GITHUB_RUN_ID"),

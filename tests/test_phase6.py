@@ -28,6 +28,11 @@ from check_modern_release_authenticity import (  # noqa: E402
     validate_policy as validate_modern_policy,
     verification_command as modern_verification_command,
 )
+from check_modern_qualification import (  # noqa: E402
+    REQUIRED_GATES, check as check_modern_qualification,
+    validate as validate_modern_qualification,
+)
+from release_utils import sha256_file  # noqa: E402
 
 
 class ReleaseAuthenticityTests(unittest.TestCase):
@@ -262,6 +267,82 @@ class ModernReleaseAuthenticityTests(unittest.TestCase):
             command)
         self.assertIn("refs/tags/modern-v1.2.3", command)
         self.assertIn("--deny-self-hosted-runners", command)
+
+
+class ModernQualificationTests(unittest.TestCase):
+    candidate_sha256 = "a" * 64
+    firmware_sha256 = (
+        "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab")
+
+    def _evidence(self):
+        return {
+            "schema": 1,
+            "profile": "lvgl-modern",
+            "version": "modern-v1.2.3",
+            "target_repository": "tdhoward/TartLab-modern-releases",
+            "candidate_checksums_sha256": self.candidate_sha256,
+            "firmware_sha256": self.firmware_sha256,
+            "board": {
+                "model": "LilyGO T-Display-S3 Pro",
+                "pcb_revision": "1.1",
+                "chip_revision": "v0.2",
+                "flash_size_bytes": 16777216,
+                "psram_size_bytes": 8388608,
+            },
+            "operator": "sanitized-operator-id",
+            "tested_at_utc": "2026-08-26T20:00:00Z",
+            "artifacts": {
+                "clean_provisioning_journal_sha256": "b" * 64,
+                "migration_provisioning_journal_sha256": "c" * 64,
+                "serial_log_sha256": "d" * 64,
+            },
+            "gates": {
+                name: {"status": "passed", "evidence": ["record:" + name]}
+                for name in REQUIRED_GATES
+            },
+        }
+
+    def test_complete_candidate_bound_qualification_passes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "qualification.json"
+            path.write_text(
+                json.dumps(self._evidence(), sort_keys=True) + "\n",
+                encoding="utf-8")
+            result = check_modern_qualification(
+                path, tag="modern-v1.2.3",
+                candidate_sha256=self.candidate_sha256,
+                expected_sha256=sha256_file(path))
+            self.assertEqual(result["passed_gates"], list(REQUIRED_GATES))
+
+    def test_qualification_rejects_missing_or_failed_gate(self):
+        missing = self._evidence()
+        missing["gates"].pop("recovery")
+        with self.assertRaisesRegex(ValueError, "missing=.*recovery"):
+            validate_modern_qualification(
+                missing, tag="modern-v1.2.3",
+                candidate_sha256=self.candidate_sha256)
+
+        failed = self._evidence()
+        failed["gates"]["ota"]["status"] = "pending"
+        with self.assertRaisesRegex(ValueError, "ota has not passed"):
+            validate_modern_qualification(
+                failed, tag="modern-v1.2.3",
+                candidate_sha256=self.candidate_sha256)
+
+    def test_qualification_rejects_candidate_or_channel_mismatch(self):
+        wrong_candidate = self._evidence()
+        wrong_candidate["candidate_checksums_sha256"] = "e" * 64
+        with self.assertRaisesRegex(ValueError, "different candidate"):
+            validate_modern_qualification(
+                wrong_candidate, tag="modern-v1.2.3",
+                candidate_sha256=self.candidate_sha256)
+
+        wrong_feed = self._evidence()
+        wrong_feed["target_repository"] = "tdhoward/TartLab"
+        with self.assertRaisesRegex(ValueError, "wrong repository"):
+            validate_modern_qualification(
+                wrong_feed, tag="modern-v1.2.3",
+                candidate_sha256=self.candidate_sha256)
 
 
 if __name__ == "__main__":

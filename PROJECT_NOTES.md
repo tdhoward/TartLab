@@ -977,8 +977,18 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    pending-health commit, wrong-board rejection, firmware identity, and a USB
    loss during upload. The profile remains promotion gated until the physical
    matrix in `tests/PHASE6_PROVISIONING.md` passes.
-7. Require successful profile-specific hardware, OTA, recovery, and release-feed
-   isolation tests before any artifact is promoted to its deployment channel.
+7. **Host enforcement implemented; physical qualification pending:** the normal
+   and recovery updaters now bind `lvgl-modern` to the isolated modern feed and
+   object manifest while retaining the legacy list-manifest path. They reject
+   cross-profile feeds and validate the modern release version, channel,
+   runtime profile, and provisioned firmware identity before installation;
+   device OTA stages only filesystem TARs, never the adult-only firmware asset.
+   The protected promotion workflow now
+   downloads a sanitized evidence summary, verifies its exact hash, and rejects
+   promotion unless candidate-bound provisioning, hardware, OTA, recovery,
+   release-feed-isolation, and support-window gates all report passed. The
+   physical item 6/7 matrix and explicit support-window decision are still
+   required; no modern release is qualified or promoted by this host work.
 
 ## Minimum test matrix
 

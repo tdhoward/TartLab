@@ -58,6 +58,7 @@ def validate_policy(policy: dict[str, Any]) -> None:
         "on_device_enforcement": False,
         "adult_provisioning_preflight": "tools/check_modern_release.py",
         "adult_provisioning_tool": "tools/provision_modern.py",
+        "qualification_validator": "tools/check_modern_qualification.py",
     }
     if scope != expected_scope:
         raise ValueError("modern authenticity scope is incomplete")
@@ -73,6 +74,8 @@ def validate_workflow(policy: dict[str, Any], workflow_path: Path) -> None:
         'TARGET_REPOSITORY: "tdhoward/TartLab-modern-releases"',
         "tools/build_modern_release.py",
         "tools/check_modern_release.py",
+        "tools/check_modern_qualification.py",
+        "--expected-sha256 \"$EVIDENCE_HASH\"",
         f"uses: actions/attest@{policy['action']['commit']}",
         "build/promote-modern/release/*.tar",
         "build/promote-modern/release/*.json",

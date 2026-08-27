@@ -36,13 +36,16 @@
     "validator": "tools/check_modern_release.py",
     "provisioning_preflight": "tools/check_modern_release.py",
     "provisioning_tool": "tools/provision_modern.py",
+    "qualification_validator": "tools/check_modern_qualification.py",
     "migration_instructions": "profiles/lvgl-modern-migration.md",
     "filesystem_vendor_lock": "vendor/legacy-pydevices.lock.json"
   },
   "hardware_qualification": null,
   "promotion_gates": [
     "adult-provisioning-and-migration",
+    "profile-specific-hardware",
     "profile-specific-ota-and-recovery",
+    "release-feed-isolation",
     "release-pipeline-qualification",
     "support-window"
   ],

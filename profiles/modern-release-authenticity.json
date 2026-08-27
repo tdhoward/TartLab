@@ -23,6 +23,7 @@
     "legacy_repository_allowed": false,
     "on_device_enforcement": false,
     "adult_provisioning_preflight": "tools/check_modern_release.py",
-    "adult_provisioning_tool": "tools/provision_modern.py"
+    "adult_provisioning_tool": "tools/provision_modern.py",
+    "qualification_validator": "tools/check_modern_qualification.py"
   }
 }

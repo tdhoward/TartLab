@@ -65,8 +65,10 @@ record completion. Retain the private workspace until that check succeeds.
 The checked-in profile is still `promotion-gated-unreleased`. Clean
 provisioning, direct legacy migration, interruption, and resume are covered by
 the CPython virtual-device gate, but have not yet passed the profile-specific
-physical provisioning matrix. Modern OTA, on-device recovery, support-window,
-and final hardware release tests also remain open. Until those gates are
+physical provisioning matrix. Profile-bound modern OTA/recovery and promotion
+evidence enforcement are implemented on the host matrix, while their physical
+observations, the support-window decision, and final hardware release tests
+remain open. Until those gates are
 completed and the protected modern-release environment authorizes the release,
 this document is an
 authenticated candidate instruction and artifact inventory—not authorization

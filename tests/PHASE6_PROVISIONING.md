@@ -26,8 +26,9 @@ The host then erases and writes the combined modern image at offset `0x0`, uses
 `esptool verify-flash`, reconstructs all authenticated filesystem packages,
 translates the legacy board selector to `t_display_s3_pro_modern`, restores
 settings, repositories, logs, selected application, hardware state, and user
-files, and records the target version as pending health. The existing TartLab
-health gate commits the version exactly once. A content-addressed host journal
+files, and records both the modern feed and exact firmware identity with the
+target version pending health. The existing TartLab health gate commits the
+version exactly once. A content-addressed host journal
 contains no captured values and makes backup, flash, or upload interruption
 resumable with `--resume`.
 
@@ -76,5 +77,7 @@ The physical item 6 gate passes only after all of the following are observed:
 5. After every post-erase failure, USB reflash/resume remains available; after
    the filesystem is complete, the on-device recovery route also boots.
 
-Modern OTA, release-feed behavior, support-window policy, and final promotion
-remain Phase 6 item 7 work even after this physical provisioning matrix passes.
+The profile-aware modern OTA/recovery client and promotion evidence validator
+are implemented as Phase 6 item 7 host gates. Their physical OTA, recovery,
+release-feed, and support-window observations remain required even after this
+physical provisioning matrix passes; see `tests/PHASE6_MODERN_QUALIFICATION.md`.

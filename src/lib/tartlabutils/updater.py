@@ -23,6 +23,12 @@ PROTECTED_PATHS = (
     "/device", "/state", "/files/user",
 )
 PHASE1_MIGRATION_FILE = "/state/phase1_migration.json"
+LEGACY_PROFILE = "legacy-mp123"
+MODERN_PROFILE = "lvgl-modern"
+LEGACY_REPOSITORY = "tdhoward/tartlab"
+MODERN_REPOSITORY = "tdhoward/tartlab-modern-releases"
+MODERN_FIRMWARE_SHA256 = (
+    "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab")
 
 
 def _is_protected(path):
@@ -47,6 +53,58 @@ def _target_path(target_folder, archive_name):
     return path
 
 
+def release_contract(repo):
+    """Return the manifest name and profile after enforcing feed isolation."""
+    if repo.get("name") != "TartLab":
+        manifest_name = repo.get("manifest", "manifest.json")
+        if manifest_name != "manifest.json":
+            raise ValueError("Non-TartLab repositories require manifest.json")
+        return manifest_name, None
+
+    profile = repo.get("runtime_profile", LEGACY_PROFILE)
+    repository = repo.get("repo", "").lower()
+    manifest_name = repo.get("manifest")
+    if profile == MODERN_PROFILE:
+        if repository != MODERN_REPOSITORY:
+            raise ValueError("Modern profile requires the isolated modern feed")
+        if manifest_name != "modern-manifest.json":
+            raise ValueError("Modern profile requires modern-manifest.json")
+        if repo.get("firmware_sha256") != MODERN_FIRMWARE_SHA256:
+            raise ValueError("Modern release state has the wrong firmware identity")
+        return manifest_name, profile
+    if profile == LEGACY_PROFILE:
+        if repository != LEGACY_REPOSITORY:
+            raise ValueError("Legacy profile requires the legacy feed")
+        if manifest_name not in (None, "manifest.json"):
+            raise ValueError("Legacy profile requires manifest.json")
+        return "manifest.json", profile
+    raise ValueError("Unsupported TartLab runtime profile")
+
+
+def manifest_packages(document, repo, version):
+    manifest_name, profile = release_contract(repo)
+    if profile == MODERN_PROFILE:
+        if not isinstance(document, dict) or document.get("schema") != 1:
+            raise ValueError("Invalid modern manifest schema")
+        channel = document.get("channel", {})
+        compatibility = document.get("compatibility", {})
+        if document.get("version") != version:
+            raise ValueError("Modern manifest version does not match release")
+        if channel.get("repository", "").lower() != MODERN_REPOSITORY or \
+                channel.get("manifest") != manifest_name:
+            raise ValueError("Modern manifest targets the wrong release feed")
+        if compatibility.get("runtime_profile") != MODERN_PROFILE:
+            raise ValueError("Modern manifest targets the wrong runtime profile")
+        firmware = compatibility.get("firmware", {})
+        if firmware.get("sha256") != repo["firmware_sha256"]:
+            raise ValueError("Modern manifest targets the wrong firmware identity")
+        manifest = document.get("packages")
+    else:
+        manifest = document
+    validate_manifest(manifest)
+    return manifest
+
+
 def validate_manifest(manifest):
     if not isinstance(manifest, list) or not manifest:
         raise ValueError("Manifest must contain at least one package")
@@ -62,6 +120,7 @@ def validate_manifest(manifest):
 
 
 async def check_for_update(repo):
+    release_contract(repo)
     log("\nChecking %s for updates" % repo["repo"])
     url = "https://api.github.com/repos/%s/releases" % repo["repo"]
     response = None
@@ -255,14 +314,25 @@ def clean_up():
 
 async def update_packages(repo, callback):
     global updating_updater
+    try:
+        manifest_name, unused_profile = release_contract(repo)
+    except Exception as error:
+        log("Release feed policy rejected the update!")
+        log_exception(error)
+        return UPDATE_FAILED
     assets, latest_version = await check_for_update(repo)
     if not assets:
         return UPDATE_NONE
 
     progress_steps = _initial_progress_steps(assets)
+    asset_map = {asset["name"]: asset for asset in assets}
+    manifest_asset = asset_map.get(manifest_name)
+    if manifest_asset is None:
+        log("Could not find %s." % manifest_name)
+        return UPDATE_FAILED
     callback("Checking disk space", 1, progress_steps)
     try:
-        total_size = sum(asset["size"] for asset in assets)
+        total_size = manifest_asset["size"]
         free_space = _free_space()
         if total_size + FILESYSTEM_RESERVE_BYTES > free_space:
             log("Not enough disk space!")
@@ -275,22 +345,25 @@ async def update_packages(repo, callback):
     clean_up()
     mkdirs(TMP_UPDATE_FOLDER)
     await asyncio.sleep(0.25)
-    asset_map = {asset["name"]: asset for asset in assets}
-    manifest_asset = asset_map.get("manifest.json")
-    if manifest_asset is None:
-        log("Could not find manifest.json.")
-        clean_up()
-        return UPDATE_FAILED
 
     try:
         callback("Downloading manifest", 2, progress_steps)
-        manifest_path = TMP_UPDATE_FOLDER + "/manifest.json"
+        manifest_path = TMP_UPDATE_FOLDER + "/" + manifest_name
         if not await download_asset(manifest_asset["browser_download_url"], manifest_path):
             raise OSError("Manifest download failed")
         with open(manifest_path, "r") as stream:
-            manifest = ujson.load(stream)
-        validate_manifest(manifest)
+            document = ujson.load(stream)
+        manifest = manifest_packages(document, repo, latest_version)
         progress_steps = 4 + len(manifest)
+
+        required_download = 0
+        for package in manifest:
+            asset = asset_map.get(package["file_name"])
+            if asset is None:
+                raise ValueError("Missing release asset: " + package["file_name"])
+            required_download += asset["size"]
+        if required_download + FILESYSTEM_RESERVE_BYTES > _free_space():
+            raise OSError("Not enough disk space to stage release")
 
         callback("Downloading files", 3, progress_steps)
         for package in manifest:

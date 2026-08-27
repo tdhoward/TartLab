@@ -84,6 +84,14 @@ state, exact legacy-firmware readback enforcement, pending-health commit, and
 resumption after a simulated USB loss. See `PHASE6_PROVISIONING.md`; physical
 flash, display, touch, network, and recovery observations remain Tier 4.
 
+The updater tests also exercise the `lvgl-modern` object manifest through the
+normal OTA path, prove that the combined firmware asset is not downloaded to
+the device, and require both normal and recovery clients to reject cross-profile
+feeds. `tools/check_modern_qualification.py` rejects incomplete or
+candidate-mismatched Phase 6 promotion evidence. These are policy and virtual
+filesystem claims; see `PHASE6_MODERN_QUALIFICATION.md` for the remaining
+physical observations.
+
 `tests/headless_platform.py` implements the startup-facing platform contract
 without importing board drivers. The startup tests run the real `main.run()`
 logic against the virtual filesystem and cover:

@@ -150,6 +150,7 @@ class ModernProvisioningTests(unittest.TestCase):
             tartlab = next(
                 item for item in repos["list"] if item["name"] == "TartLab")
             self.assertEqual(tartlab["repo"], MODERN_REPOSITORY)
+            self.assertEqual(tartlab["firmware_sha256"], FIRMWARE_SHA256)
             self.assertEqual(tartlab["installed_version"], "unprovisioned")
 
             self._complete_health(device)
@@ -206,6 +207,7 @@ class ModernProvisioningTests(unittest.TestCase):
                 item for item in repos["list"] if item["name"] == "TartLab")
             self.assertEqual(tartlab["installed_version"], "v0.13")
             self.assertEqual(tartlab["repo"], MODERN_REPOSITORY)
+            self.assertEqual(tartlab["firmware_sha256"], FIRMWARE_SHA256)
             journal_text = (workspace / "provisioning-journal.json").read_text(
                 encoding="utf-8")
             self.assertNotIn("not-a-real-password", journal_text)

@@ -64,9 +64,11 @@ python tools/check_modern_release.py --release path/to/release --runtime-profile
 
 The preflight fails closed on a runtime-profile or firmware-hash mismatch and
 performs no mutation. The protected `modern-release` environment rebuilds the
-candidate twice, requires byte identity, repeats this preflight, binds the
-candidate to physical evidence, authenticates every release asset with the
-commit-pinned attestation action, and publishes with a target-repository token.
+candidate twice, requires byte identity, repeats this preflight, downloads the
+sanitized qualification JSON from its durable HTTPS reference, verifies its
+exact hash and required passed gates, binds the candidate to that evidence,
+authenticates every release asset with the commit-pinned attestation action,
+and publishes with a target-repository token.
 `profiles/modern-release-authenticity.json` statically locks the source and
 target repositories, signer workflow, manifest, profile, and preflight.
 
@@ -78,9 +80,11 @@ python tools/check_modern_release_authenticity.py --release path/to/release --so
 ```
 
 This is release machinery, not release authorization. The adult provisioning
-host transaction and virtual migration gate are implemented, while physical
-provisioning/migration, modern OTA/recovery qualification, the support window,
-and the final profile-specific physical gate remain incomplete.
+host transaction, profile-bound OTA/recovery clients, virtual migration gate,
+and fail-closed qualification-evidence validator are implemented. Physical
+provisioning/migration and modern OTA/recovery observations, the support-window
+decision, and the final profile-specific physical gate remain incomplete. See
+`PHASE6_MODERN_QUALIFICATION.md` for the evidence contract.
 
 ## Release-channel isolation
 
@@ -94,8 +98,9 @@ prerelease updates enabled.
 `lvgl-modern` promotion uses a separate protected workflow that publishes only
 to `tdhoward/TartLab-modern-releases`. Its policy binds the source repository
 and workflow identity, target release repository, profile, firmware identity,
-and hardware evidence. Provisioning must record the modern feed explicitly and
-invoke the checked preflight before changing active files.
+and qualification evidence. Provisioning records the modern feed and manifest
+explicitly. Both device updater paths reject a modern repository record that
+points to the legacy feed or manifest.
 
 Modern firmware images and modern filesystem packages must not be attached to a
 GitHub Release in `tdhoward/TartLab`, even under different filenames. Besides

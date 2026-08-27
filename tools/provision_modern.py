@@ -213,6 +213,7 @@ def _migrated_repos(backup: Path, version: str) -> tuple[dict[str, Any], str]:
         "installed_version": previous,
         "runtime_profile": PROFILE,
         "manifest": "modern-manifest.json",
+        "firmware_sha256": FIRMWARE_SHA256,
     })
     repos["list"] = entries
     return repos, previous

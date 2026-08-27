@@ -15,6 +15,12 @@ UPDATE_STATE = STATE_DIR + "/update.json"
 TEMP_DIR = "/tmp/recovery"
 FILESYSTEM_RESERVE_BYTES = 10000
 PHASE1_MIGRATION_FILE = STATE_DIR + "/phase1_migration.json"
+LEGACY_PROFILE = "legacy-mp123"
+MODERN_PROFILE = "lvgl-modern"
+LEGACY_REPOSITORY = "tdhoward/tartlab"
+MODERN_REPOSITORY = "tdhoward/tartlab-modern-releases"
+MODERN_FIRMWARE_SHA256 = (
+    "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab")
 PROTECTED = (
     "/app.py", "/hdwconfig.py", "/settings.json", "/repos.json", "/logs",
     "/device", "/state", "/files/user",
@@ -171,7 +177,31 @@ def _download_verified(url, path, expected_sha256=None):
         raise
 
 
+def _release_contract(repo):
+    if repo.get("name") != "TartLab":
+        raise ValueError("Recovery only installs TartLab releases")
+    profile = repo.get("runtime_profile", LEGACY_PROFILE)
+    repository = repo.get("repo", "").lower()
+    manifest_name = repo.get("manifest")
+    if profile == MODERN_PROFILE:
+        if repository != MODERN_REPOSITORY:
+            raise ValueError("Modern profile requires the isolated modern feed")
+        if manifest_name != "modern-manifest.json":
+            raise ValueError("Modern profile requires modern-manifest.json")
+        if repo.get("firmware_sha256") != MODERN_FIRMWARE_SHA256:
+            raise ValueError("Modern release state has the wrong firmware identity")
+        return manifest_name, profile
+    if profile == LEGACY_PROFILE:
+        if repository != LEGACY_REPOSITORY:
+            raise ValueError("Legacy profile requires the legacy feed")
+        if manifest_name not in (None, "manifest.json"):
+            raise ValueError("Legacy profile requires manifest.json")
+        return "manifest.json", profile
+    raise ValueError("Unsupported TartLab runtime profile")
+
+
 def _release(repo):
+    _release_contract(repo)
     response = None
     try:
         url = "https://api.github.com/repos/%s/releases" % repo["repo"]
@@ -198,6 +228,30 @@ def _validate_manifest(manifest):
             raise ValueError("Manifest targets protected state")
         if package["target"].rstrip("/") == "/recovery" and package["clear_first"]:
             raise ValueError("Recovery cannot clear itself")
+
+
+def _manifest_packages(document, repo, version):
+    manifest_name, profile = _release_contract(repo)
+    if profile == MODERN_PROFILE:
+        if not isinstance(document, dict) or document.get("schema") != 1:
+            raise ValueError("Invalid modern manifest schema")
+        channel = document.get("channel", {})
+        compatibility = document.get("compatibility", {})
+        if document.get("version") != version:
+            raise ValueError("Modern manifest version does not match release")
+        if channel.get("repository", "").lower() != MODERN_REPOSITORY or \
+                channel.get("manifest") != manifest_name:
+            raise ValueError("Modern manifest targets the wrong release feed")
+        if compatibility.get("runtime_profile") != MODERN_PROFILE:
+            raise ValueError("Modern manifest targets the wrong runtime profile")
+        firmware = compatibility.get("firmware", {})
+        if firmware.get("sha256") != repo["firmware_sha256"]:
+            raise ValueError("Modern manifest targets the wrong firmware identity")
+        manifest = document.get("packages")
+    else:
+        manifest = document
+    _validate_manifest(manifest)
+    return manifest
 
 
 def _free_space():
@@ -288,8 +342,9 @@ def resume_staged_update(progress=print):
     tartlab = _tartlab_repo(repos)
     if tartlab is None:
         raise ValueError("TartLab release state not found")
-    manifest = _read_json(TEMP_DIR + "/manifest.json", None)
-    _validate_manifest(manifest)
+    manifest_name, unused_profile = _release_contract(tartlab)
+    document = _read_json(TEMP_DIR + "/" + manifest_name, None)
+    manifest = _manifest_packages(document, tartlab, version)
     for package in manifest:
         path = TEMP_DIR + "/" + package["file_name"]
         if _kind(path) != 1 or _sha256(path) != package["sha256"]:
@@ -309,17 +364,18 @@ def update_to_latest(progress=print):
     release = _release(tartlab)
     version = release["tag_name"]
     assets = {item["name"]: item for item in release["assets"]}
-    manifest_asset = assets.get("manifest.json")
+    manifest_name, unused_profile = _release_contract(tartlab)
+    manifest_asset = assets.get(manifest_name)
     if manifest_asset is None:
         raise ValueError("Release manifest not found")
 
     if _kind(TEMP_DIR) == 0:
         _mkdirs(TEMP_DIR)
     progress("Downloading recovery manifest")
-    manifest_path = TEMP_DIR + "/manifest.json"
+    manifest_path = TEMP_DIR + "/" + manifest_name
     _download_verified(manifest_asset["browser_download_url"], manifest_path)
-    manifest = _read_json(manifest_path, None)
-    _validate_manifest(manifest)
+    document = _read_json(manifest_path, None)
+    manifest = _manifest_packages(document, tartlab, version)
     for package in manifest:
         asset = assets.get(package["file_name"])
         if asset is None:
