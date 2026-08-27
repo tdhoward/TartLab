@@ -480,6 +480,11 @@ class CommandTransport:
                     "mpremote", "connect", self.port, "fs", "--force"]
                 if source.is_dir():
                     command.append("--recursive")
+                    # mpremote's recursive copy treats an existing destination
+                    # as the parent of the source directory.  Copy top-level
+                    # directories into the existing root so flat directories
+                    # are not misclassified as files.
+                    destination = ":/"
                 command.extend(("cp", str(source), destination))
                 self._run(command)
             # Activate early boot only after recovery and state are complete;

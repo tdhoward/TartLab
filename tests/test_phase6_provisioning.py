@@ -427,7 +427,8 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertTrue(mpremote[1][-1].endswith(":/main.py"))
             state_upload = next(
                 index for index, command in enumerate(mpremote)
-                if command[-1] == ":/state")
+                if command[-2].endswith("state"))
+            self.assertEqual(mpremote[state_upload][-1], ":/")
             self.assertLess(
                 mpremote[state_upload].index("--recursive"),
                 mpremote[state_upload].index("cp"))
