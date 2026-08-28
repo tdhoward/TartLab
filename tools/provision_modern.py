@@ -42,6 +42,7 @@ LEGACY_FIRMWARE = (
     "ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin")
 LEGACY_FIRMWARE_SHA256 = (
     "41a750a8f047224e3e0a7544a626338c252407df420e2b94dcb0d2dad9793212")
+LEGACY_READ_CHUNK_SIZE = 256 * 1024
 LEGACY_IDENTITY_REGIONS = [
     {
         "name": "bootloader-and-partition-table",
@@ -451,29 +452,47 @@ class CommandTransport:
         self._check_tools()
         if sha256_file(LEGACY_FIRMWARE) != LEGACY_FIRMWARE_SHA256:
             raise ValueError("checked-in legacy firmware identity is invalid")
-        readback = workspace / "legacy-firmware-readback.bin"
-        try:
-            self._run([
-                "esptool", "--chip", "esp32s3", "--port", self.port,
-                "read-flash", "0x0", str(LEGACY_FIRMWARE.stat().st_size),
-                str(readback)])
-            legacy_profile = _read_object(ROOT / "profiles/legacy-mp123.json")
-            regions = legacy_profile["firmware_compatibility"].get(
-                "runtime_identity_regions")
-            if regions != LEGACY_IDENTITY_REGIONS:
-                raise ValueError("legacy runtime identity region policy changed")
-            with readback.open("rb") as stream:
-                for region in regions:
-                    stream.seek(region["offset"])
-                    data = stream.read(region["size"])
-                    if len(data) != region["size"] or \
-                            hashlib.sha256(data).hexdigest() != region["sha256"]:
+        legacy_profile = _read_object(ROOT / "profiles/legacy-mp123.json")
+        regions = legacy_profile["firmware_compatibility"].get(
+            "runtime_identity_regions")
+        if regions != LEGACY_IDENTITY_REGIONS:
+            raise ValueError("legacy runtime identity region policy changed")
+        for region_index, region in enumerate(regions):
+            digest = hashlib.sha256()
+            offset = region["offset"]
+            remaining = region["size"]
+            chunk_index = 0
+            while remaining:
+                size = min(remaining, LEGACY_READ_CHUNK_SIZE)
+                readback = workspace / (
+                    "legacy-firmware-readback-%02d-%03d.bin" % (
+                        region_index, chunk_index))
+                try:
+                    self._run([
+                        "esptool", "--chip", "esp32s3", "--port", self.port,
+                        # The ESP32-S3 native-USB flasher stub can disconnect
+                        # reproducibly while transferring particular legacy
+                        # flash blocks.  ROM-only bounded reads preserve the
+                        # SHA-256 identity check and keep one loader session.
+                        "--no-stub", "--before", "no-reset", "--after",
+                        "no-reset",
+                        "read-flash", hex(offset), str(size), str(readback)])
+                    data = readback.read_bytes()
+                    if len(data) != size:
                         raise ValueError(
-                            "connected device does not contain the supported "
-                            "exact legacy-mp123 runtime")
-        finally:
-            if readback.is_file():
-                readback.unlink()
+                            "connected device returned an incomplete legacy "
+                            "runtime identity region")
+                    digest.update(data)
+                finally:
+                    if readback.is_file():
+                        readback.unlink()
+                offset += size
+                remaining -= size
+                chunk_index += 1
+            if digest.hexdigest() != region["sha256"]:
+                raise ValueError(
+                    "connected device does not contain the supported exact "
+                    "legacy-mp123 runtime")
 
     def _check_tools(self) -> None:
         if shutil.which("esptool") is None or shutil.which("mpremote") is None:
@@ -512,6 +531,10 @@ class CommandTransport:
         self._run([
             "esptool", "--chip", "esp32s3", "--port", self.port,
             "--after", "watchdog-reset", "chip-id"])
+        # Windows publishes the native USB COM name before the reset endpoint
+        # is writable.  Use the same qualified settle interval as the health
+        # check before beginning the transactional filesystem upload.
+        time.sleep(3)
         placeholder = image.parent / "provisioning-placeholder.py"
         placeholder.write_text(
             "# TartLab provisioning transaction in progress.\n",

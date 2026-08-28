@@ -146,9 +146,40 @@ This session qualifies the direct migration, normal health-commit path, and
 post-migration browser edit/save/run, APP-selection, and recovery boot/AP paths
 on the device. Together with the subsequent modern qualification session, the
 normal physical OTA and recovery-browser corrective paths are also observed.
-The still-open clean-provisioning, destructive interruption/containment,
-release-feed, support-window, and exhaustive power-loss matrix observations are
-not claimed.
+The live release-feed isolation and candidate-bound v0.13 support-floor
+observations recorded in `PHASE6_MODERN_QUALIFICATION.md` now also pass. The
+still-open clean-provisioning, destructive interruption/containment, and
+exhaustive power-loss matrix observations are not claimed.
+
+## Candidate-bound v0.13 floor migration: 2026-08-27--28
+
+The exact sanitized `legacy-root-v1` v0.13 fixture was staged on the pinned
+MicroPython 1.23.0 image and migrated to the authenticated
+`modern-v0.14.7` candidate. The transaction captured an 11-file private backup
+with identifier
+`sha256:761202b737d5ee4a62915d3db63cf5cf483fef0a285bb3eacf877dcd614b4cff`
+before erase, verified the locked legacy runtime regions through bounded
+ROM-only reads, installed 210 prepared files, and reached journal stage
+`complete` only after an exact version health check.
+
+The physical session exposed and fixed two native-USB transport boundaries:
+the flasher stub dropped reproducibly at absolute address `0x83000`, so legacy
+identity reads now remain in the ROM loader and are SHA-256 hashed in 256 KiB
+chunks; and Windows published COM3 before the modern endpoint was writable, so
+filesystem upload waits the same qualified three seconds as the health check.
+Both behaviors have targeted regression coverage, and resume reused the
+already verified firmware rather than erasing it again.
+
+Post-migration comparison found exact legacy app, root hardware selector,
+settings, and user-file bytes; the active selector and selected-app translation
+were correct; the repository reported `modern-v0.14.7` and `lvgl-modern`; and
+the pending update marker was absent. Headless Chrome hid the loading overlay
+without a file-panel error, and the versions, space, and user-files APIs all
+returned valid state. Full candidate hashes, journal/snapshot identifiers, and
+the secret-handling boundary are recorded in
+`PHASE6_MODERN_QUALIFICATION.md`. This closes the candidate-bound physical
+support-window floor observation, not the remaining clean or interruption
+matrix.
 
 The approved path below the v0.13 floor is not automatic migration. An adult
 captures a private version-appropriate backup, performs authenticated clean
@@ -158,10 +189,10 @@ copies are not part of the supported process.
 
 ## Remaining physical gate
 
-On a sanitized LilyGO T-Display-S3 Pro PCB v1.1 running the exact legacy image,
-record the port, chip revision, flash/PSRAM size, pre/post protected-state
-inventories, release and firmware hashes, journal hash, serial output, and
-operator/date. Do not archive credentials or student work.
+The candidate-bound direct-migration floor case now has the required device,
+runtime, port, protected-state, release/firmware, journal, and operator/date
+record without credentials or student work. The rest of the item 6 physical
+matrix remains open.
 
 The physical item 6 gate passes only after all of the following are observed:
 
@@ -180,6 +211,7 @@ The physical item 6 gate passes only after all of the following are observed:
    the filesystem is complete, the on-device recovery route also boots.
 
 The profile-aware modern OTA/recovery client and promotion evidence validator
-are implemented as Phase 6 item 7 host gates. Their physical OTA, recovery,
-release-feed, and support-window observations remain required even after this
-physical provisioning matrix passes; see `tests/PHASE6_MODERN_QUALIFICATION.md`.
+are implemented as Phase 6 item 7 host gates. Their normal physical OTA,
+recovery-browser, release-feed, and support-window observations now pass for
+this candidate; destructive containment and the complete provisioning matrix
+remain required. See `tests/PHASE6_MODERN_QUALIFICATION.md`.

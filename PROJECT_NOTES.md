@@ -970,7 +970,7 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    modern repository. The guide explicitly retains the unfinished Phase 6
    gates. Firmware remains an adult-provisioning artifact, not an on-device
    filesystem update.
-6. **Host transaction implemented; physical gate pending:**
+6. **Host transaction implemented; physical gate partial:**
    `tools/provision_modern.py` now provides read-only inspection plus explicit,
    authenticated clean and legacy-migration modes. It captures a private
    content-addressed backup, read-verifies the exact legacy firmware before
@@ -999,11 +999,12 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    browser regression, recovery-page status/update interaction, and offline
    staged recovery resume have now passed on the qualification board. A
    fail-closed live query also passed against the separate public legacy and
-   empty pre-promotion modern feeds. The destructive interruption/containment
-   cases, complete item 6 provisioning matrix, and candidate-bound
-   support-window observation are still required; no modern release is
-   qualified or promoted by this partial physical work.
-8. **Support window decided and enforced; physical evidence pending:** direct
+   empty pre-promotion modern feeds. The exact candidate was also physically
+   migrated from the sanitized v0.13 floor with byte-exact protected-state and
+   browser/API checks. The destructive interruption/containment cases and
+   complete item 6 provisioning matrix are still required; no modern release
+   is qualified or promoted by this partial physical work.
+8. **Support window decided, enforced, and physically observed:** direct
    adult migration supports stable TartLab v0.13 or newer on the exact
    `legacy-mp123` firmware, qualified board, and either the captured root-v1 or
    canonical state/device layout. The checked-in policy is published and
@@ -1012,8 +1013,11 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    unrecognized layouts fail closed; their administrator path is a private
    backup followed by clean authenticated provisioning and selective manual
    restore, never intermediate-release hunting or wholesale filesystem copy.
-   The support-window promotion gate still needs the candidate-bound physical
-   v0.13 migration observation required by items 6 and 7.
+   The authenticated `modern-v0.14.7` candidate passed the physical v0.13
+   floor observation on 2026-08-27--28. The content-addressed backup preceded
+   erase, the exact legacy runtime regions passed ROM-only SHA-256 readback,
+   protected state survived, health committed the modern version exactly once,
+   and the physical IDE/browser APIs returned the expected modern state.
 
 ## Minimum test matrix
 

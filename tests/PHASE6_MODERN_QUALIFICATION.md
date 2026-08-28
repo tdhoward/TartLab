@@ -218,10 +218,62 @@ isolation observation. The promotion workflow's existing static policy still
 owns the future publication target; the live check must be repeated if public
 feed state changes before promotion.
 
-Together, the two sessions qualify the direct modern-to-modern OTA normal path,
+## Physical support-window floor migration: 2026-08-27--28
+
+The same authenticated `modern-v0.14.7` candidate was provisioned from the
+oldest approved direct-migration source. The qualification board ran the exact
+1,631,424-byte MicroPython 1.23.0 legacy image with SHA-256
+`41a750a8f047224e3e0a7544a626338c252407df420e2b94dcb0d2dad9793212`.
+Its runtime enumerated on COM6 and the ESP32-S3 ROM/modern endpoint on COM3.
+The sanitized `legacy-root-v1` fixture reported installed version `v0.13`; the
+ignored local credential file was applied only to the physical device and no
+credential value was retained as evidence.
+
+The authenticated provisioning transaction reverified all 23 candidate
+subjects and captured 11 protected source files before any erase. The journal
+recorded source profile `legacy-mp123`, layout `legacy-root-v1`, minimum and
+installed version `v0.13`, and backup identifier
+`sha256:761202b737d5ee4a62915d3db63cf5cf483fef0a285bb3eacf877dcd614b4cff`.
+The ESP32-S3 native-USB flasher stub disconnected reproducibly while reading
+absolute flash address `0x83000`. Source validation was therefore hardened to
+SHA-256 the same locked identity regions through bounded 256 KiB ROM-only
+reads with no intervening reset. The targeted 18-test provisioning suite
+covers the bound, ROM-only behavior and cleanup of every temporary readback.
+The physical retry passed both pinned region hashes before the journal advanced
+to `backed_up` or permitted erase.
+
+The candidate firmware then flashed and verified. Windows exposed the reset
+native-USB name before it was writable during the first filesystem upload, so
+the installer now uses the same qualified three-second settle interval as the
+health check. Resume verified and reused the already matching firmware,
+installed all 210 prepared files, reached `awaiting_health`, and committed
+`modern-v0.14.7` exactly once after the health check. The completed private
+journal SHA-256 is
+`c85ef50ff93adfe0704ce21ece7bf175ab933d58276c84c454376329a5078d62`.
+
+Secret-safe comparison against a fresh 211-file post-migration snapshot found
+byte-identical legacy `/app.py`, `/hdwconfig.py`, canonical settings, and both
+user files. The active modern selector exactly matched the prepared image, the
+selected application retained its legacy semantic value, the repository moved
+to `tdhoward/TartLab-modern-releases` with profile `lvgl-modern`, and no pending
+update remained. The five source logs remain in the private backup and the
+device retained a healthy five-file rolling window. The post-snapshot manifest
+SHA-256 is
+`d718f99e57d049b442e738da4b0fc7e0df92d6b89e59920778a07683ac6561d0`.
+
+After a normal reset, isolated headless Chrome rendered the physical IDE with
+title `TartLab`, hid the loading overlay, and showed no file-panel connection
+error. Read-only `/api/versions`, `/api/space`, and `/api/files/user` requests
+all succeeded; they reported `modern-v0.14.7`, `lvgl-modern`, valid filesystem
+space, both migrated user files, and a valid selected-app index. This passes
+the candidate-bound physical support-window floor observation without
+qualifying any source older than v0.13.
+
+Together, the candidate-bound sessions qualify the support-window floor
+migration, direct modern-to-modern OTA normal path,
 recovery-page rendering and redacted status, the corrective-update button,
 offline staged recovery resume, pending-health commit, protected-state
 preservation, browser regression, and recovery availability for this candidate.
 They do not yet qualify physical corrupt or interrupted OTA/recovery
-containment, the support-window floor migration case, clean provisioning, or
-the exhaustive power-loss matrix, so promotion remains blocked.
+containment, clean provisioning, or the exhaustive power-loss matrix, so
+promotion remains blocked.

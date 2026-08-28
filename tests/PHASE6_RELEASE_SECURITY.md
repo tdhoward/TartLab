@@ -108,8 +108,8 @@ host transaction, profile-bound OTA/recovery clients, virtual migration gate,
 fail-closed qualification-evidence validator, and authenticated unpublished
 qualification-candidate path are implemented. Physical
 clean provisioning and destructive interruption/containment observations, the
-support-window floor observation, and the final profile-specific physical gate
-remain incomplete. Direct migration, modern-to-modern OTA, and the
+final profile-specific physical gate remain incomplete. Direct migration, the
+candidate-bound v0.13 support-window floor, modern-to-modern OTA, and the
 recovery-browser offline staged resume have now been physically observed, and
 the live public pre-promotion release feeds have passed their isolation check.
 The support-window decision and host enforcement are complete. See

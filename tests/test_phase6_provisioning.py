@@ -18,7 +18,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 from build_modern_release import build_release  # noqa: E402
 from provision_modern import (  # noqa: E402
     CommandTransport, FIRMWARE_SHA256, LEGACY_FIRMWARE,
-    LEGACY_IDENTITY_REGIONS, MODERN_REPOSITORY, _verify_attestations, provision,
+    LEGACY_IDENTITY_REGIONS, LEGACY_READ_CHUNK_SIZE, MODERN_REPOSITORY,
+    _verify_attestations, provision,
 )
 
 
@@ -406,35 +407,55 @@ class ModernProvisioningTests(unittest.TestCase):
             commands = []
             transport._check_tools = lambda: None
 
-            def exact_readback(command):
+            def readback_from(image, command):
                 commands.append(command)
-                shutil.copy2(LEGACY_FIRMWARE, Path(command[-1]))
+                offset = int(command[-3], 0)
+                size = int(command[-2])
+                with image.open("rb") as stream:
+                    stream.seek(offset)
+                    Path(command[-1]).write_bytes(stream.read(size))
                 return types.SimpleNamespace(stdout="")
+
+            def exact_readback(command):
+                return readback_from(LEGACY_FIRMWARE, command)
 
             transport._run = exact_readback
             transport.validate_source("migrate", root)
-            self.assertIn("read-flash", commands[0])
-            self.assertFalse((root / "legacy-firmware-readback.bin").exists())
+            self.assertTrue(commands)
+            self.assertTrue(all("read-flash" in command for command in commands))
+            self.assertTrue(all("--no-stub" in command for command in commands))
+            self.assertTrue(all(
+                command[command.index("--before") + 1] == "no-reset"
+                and command[command.index("--after") + 1] == "no-reset"
+                for command in commands))
+            self.assertTrue(all(
+                int(command[-2]) <= LEGACY_READ_CHUNK_SIZE
+                for command in commands))
+            self.assertEqual(
+                sum(int(command[-2]) for command in commands),
+                sum(region["size"] for region in LEGACY_IDENTITY_REGIONS))
+            self.assertFalse(list(root.glob("legacy-firmware-readback-*.bin")))
+
+            mutable_firmware = root / "mutable-runtime.bin"
+            shutil.copy2(LEGACY_FIRMWARE, mutable_firmware)
+            with mutable_firmware.open("r+b") as stream:
+                stream.seek(0x9000)
+                stream.write(b"runtime NVS may differ")
 
             def mutable_runtime_readback(command):
-                target = Path(command[-1])
-                shutil.copy2(LEGACY_FIRMWARE, target)
-                with target.open("r+b") as stream:
-                    stream.seek(0x9000)
-                    stream.write(b"runtime NVS may differ")
-                return types.SimpleNamespace(stdout="")
+                return readback_from(mutable_firmware, command)
 
             transport._run = mutable_runtime_readback
             transport.validate_source("migrate", root)
 
             def wrong_readback(command):
-                Path(command[-1]).write_bytes(b"wrong firmware")
+                Path(command[-1]).write_bytes(b"\0" * int(command[-2]))
                 return types.SimpleNamespace(stdout="")
 
             transport._run = wrong_readback
             with self.assertRaisesRegex(ValueError, "supported exact legacy"):
                 transport.validate_source("migrate", root)
-            self.assertFalse((root / "legacy-firmware-readback.bin").exists())
+            self.assertFalse(list(root.glob("legacy-firmware-readback-*.bin")))
 
     @mock.patch("provision_modern.RawRepl")
     def test_physical_capture_uses_one_session_without_soft_resets(self, repl):
@@ -459,7 +480,9 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertEqual((root / "settings.json").read_bytes(), b"{}\n")
             self.assertFalse((root / "unprotected.txt").exists())
 
-    def test_physical_transport_activates_boot_files_only_after_full_upload(self):
+    @mock.patch("provision_modern.time.sleep")
+    def test_physical_transport_activates_boot_files_only_after_full_upload(
+            self, sleep):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             image = root / "image"
@@ -485,6 +508,7 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertIn("write-flash", commands[2])
             self.assertIn("verify-flash", commands[3])
             self.assertIn("watchdog-reset", commands[4])
+            sleep.assert_called_once_with(3)
             mpremote = commands[5:]
             self.assertLess(mpremote[0].index("--force"), mpremote[0].index("cp"))
             self.assertTrue(mpremote[0][-1].endswith(":/boot.py"))
@@ -510,7 +534,8 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertEqual(real_main, len(mpremote) - 1)
             self.assertFalse((root / "provisioning-placeholder.py").exists())
 
-    def test_physical_transport_reuses_verified_firmware_on_resume(self):
+    @mock.patch("provision_modern.time.sleep")
+    def test_physical_transport_reuses_verified_firmware_on_resume(self, sleep):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             image = root / "image"
@@ -532,6 +557,7 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertNotIn("write-flash", flattened)
             self.assertIn("verify-flash", commands[0])
             self.assertIn("watchdog-reset", commands[1])
+            sleep.assert_called_once_with(3)
             self.assertEqual(commands[2][-1], ":/boot.py")
 
     @mock.patch("provision_modern.time.sleep")
