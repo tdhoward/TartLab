@@ -1034,8 +1034,10 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    final 209-file inventory matched every immutable prepared byte and contained
    no staging. This completes item 7 and the modern physical qualification
    matrix. No release has been promoted: publication still requires the
-   commit-bound sanitized evidence JSON, protected environment approval,
-   reproducible tag rebuild, and signed isolated-repository workflow.
+   protected environment approval, reproducible tag rebuild, and signed
+   isolated-repository workflow. The commit-bound sanitized evidence JSON now
+   passes all six validator gates with SHA-256
+   `1d889e55d969a906c888af9a0ac6c3af355e5b9e6770175b2c5b0e02b7d4d8c8`.
 8. **Support window decided, enforced, and physically observed:** direct
    adult migration supports stable TartLab v0.13 or newer on the exact
    `legacy-mp123` firmware, qualified board, and either the captured root-v1 or

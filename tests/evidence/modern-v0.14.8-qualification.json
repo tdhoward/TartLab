@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "profile": "lvgl-modern",
+  "version": "modern-v0.14.8",
+  "target_repository": "tdhoward/TartLab-modern-releases",
+  "candidate_checksums_sha256": "dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e",
+  "firmware_sha256": "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab",
+  "board": {
+    "model": "LilyGO T-Display-S3 Pro",
+    "pcb_revision": "1.1",
+    "chip_revision": "0.2",
+    "flash_size_bytes": 16777216,
+    "psram_size_bytes": 8388608
+  },
+  "operator": "Tim",
+  "tested_at_utc": "2026-08-28T23:41:17Z",
+  "artifacts": {
+    "clean_provisioning_journal_sha256": "98f712cfff5252be368d767cda45688d4097adb7881000361fbd382a71131a53",
+    "migration_provisioning_journal_sha256": "c85ef50ff93adfe0704ce21ece7bf175ab933d58276c84c454376329a5078d62",
+    "serial_log_sha256": "d7e0caeaa8c64b08c55b40f251a921153fdfddbcab6b8f1e24f9cf5ad228862a",
+    "support_window_policy_sha256": "702710eb438d67fdc4ebcb1ab6f697375b531051421ec2a63eb81334f3139a95"
+  },
+  "gates": {
+    "adult_provisioning": {
+      "status": "passed",
+      "evidence": [
+        "https://github.com/tdhoward/TartLab/blob/52cb7608199f81b3d37998f0b3a59da52008010e/tests/PHASE6_PROVISIONING.md"
+      ]
+    },
+    "hardware": {
+      "status": "passed",
+      "evidence": [
+        "https://github.com/tdhoward/TartLab/blob/52cb7608199f81b3d37998f0b3a59da52008010e/tests/PHASE6_MODERN_QUALIFICATION.md"
+      ]
+    },
+    "ota": {
+      "status": "passed",
+      "evidence": [
+        "https://github.com/tdhoward/TartLab/blob/52cb7608199f81b3d37998f0b3a59da52008010e/tests/PHASE6_MODERN_QUALIFICATION.md"
+      ]
+    },
+    "recovery": {
+      "status": "passed",
+      "evidence": [
+        "https://github.com/tdhoward/TartLab/blob/52cb7608199f81b3d37998f0b3a59da52008010e/tests/PHASE6_MODERN_QUALIFICATION.md"
+      ]
+    },
+    "release_feed_isolation": {
+      "status": "passed",
+      "evidence": [
+        "https://github.com/tdhoward/TartLab/blob/52cb7608199f81b3d37998f0b3a59da52008010e/tests/PHASE6_MODERN_QUALIFICATION.md"
+      ]
+    },
+    "support_window": {
+      "status": "passed",
+      "evidence": [
+        "https://github.com/tdhoward/TartLab/blob/52cb7608199f81b3d37998f0b3a59da52008010e/tests/PHASE6_MODERN_QUALIFICATION.md"
+      ]
+    }
+  }
+}

@@ -427,4 +427,8 @@ Together with the previously recorded direct OTA, recovery browser, offline
 recovery, release-feed isolation, support-window floor, clean provisioning,
 hardware, browser, APP, and exhaustive provisioning-interruption sessions,
 this completes every physical gate required by the modern qualification
-contract. Release publication has not been invoked.
+contract. The strict sanitized summary is
+`tests/evidence/modern-v0.14.8-qualification.json`; it passes all six gates in
+`tools/check_modern_qualification.py` and has SHA-256
+`1d889e55d969a906c888af9a0ac6c3af355e5b9e6770175b2c5b0e02b7d4d8c8`.
+Release publication has not been invoked.
