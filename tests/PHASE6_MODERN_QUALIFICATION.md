@@ -196,11 +196,32 @@ above still matched exactly. The final sanitized IDE screenshot SHA-256 was
 The temporary server was stopped and the temporary host recovery Wi-Fi profile
 was removed after the original saved Wi-Fi profile had been restored.
 
+## Live public release-feed isolation: 2026-08-27
+
+`tools/check_release_feed_isolation.py` bound the sanitized deployed v0.13
+repository record and the checked-in modern profile to their respective public
+GitHub Release API responses. The read-only live check observed 14 releases in
+`tdhoward/TartLab`; the legacy updater's first stable selection was `v0.13`,
+all 14 releases contained `manifest.json`, and none contained
+`modern-manifest.json`, a modern-only metadata asset, or a firmware BIN. The
+separate `tdhoward/TartLab-modern-releases` feed contained zero releases, which
+matches the checked-in `promotion-gated-unreleased` status. The physically
+qualified modern device's `/api/versions` response independently recorded that
+same modern repository and `modern-manifest.json`, so it cannot discover the 14
+legacy releases.
+
+The checker performs no mutation and fails closed on an empty legacy feed,
+cross-profile manifest or firmware assets, an unexpected pre-promotion modern
+release, invalid tags, duplicate assets, or a checked-in profile/fixture that
+points at the other feed. This passes the public pre-promotion release-feed
+isolation observation. The promotion workflow's existing static policy still
+owns the future publication target; the live check must be repeated if public
+feed state changes before promotion.
+
 Together, the two sessions qualify the direct modern-to-modern OTA normal path,
 recovery-page rendering and redacted status, the corrective-update button,
 offline staged recovery resume, pending-health commit, protected-state
 preservation, browser regression, and recovery availability for this candidate.
 They do not yet qualify physical corrupt or interrupted OTA/recovery
-containment, public modern/legacy release-feed isolation, the support-window
-floor migration case, clean provisioning, or the exhaustive power-loss matrix,
-so promotion remains blocked.
+containment, the support-window floor migration case, clean provisioning, or
+the exhaustive power-loss matrix, so promotion remains blocked.

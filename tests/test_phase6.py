@@ -37,6 +37,9 @@ from check_modern_support_window import (  # noqa: E402
     check as check_support_window, validate_backup as validate_support_backup,
     validate_policy as validate_support_policy,
 )
+from check_release_feed_isolation import (  # noqa: E402
+    check as check_feed_isolation, validate_feeds,
+)
 from release_utils import sha256_file, sha256_source_file  # noqa: E402
 
 
@@ -300,6 +303,70 @@ class ModernReleaseAuthenticityTests(unittest.TestCase):
         self.assertNotIn(
             "tdhoward/TartLab/.github/workflows/promote-modern-release.yml",
             qualification_command)
+
+
+class ReleaseFeedIsolationTests(unittest.TestCase):
+    def legacy_release(self, *extra_assets):
+        return {
+            "tag_name": "v0.13",
+            "draft": False,
+            "prerelease": False,
+            "assets": [
+                {"name": "manifest.json"},
+                {"name": "rootfiles.tar"},
+                *({"name": name} for name in extra_assets),
+            ],
+        }
+
+    def modern_release(self, *extra_assets):
+        return {
+            "tag_name": "modern-v1.2.3",
+            "draft": False,
+            "prerelease": False,
+            "assets": [
+                {"name": "modern-manifest.json"},
+                {"name": "tartlab-modern-v1.2.3.bin"},
+                {"name": "rootfiles.tar"},
+                *({"name": name} for name in extra_assets),
+            ],
+        }
+
+    def test_checked_in_profiles_and_separate_prepromotion_feeds_pass(self):
+        result = check_feed_isolation(
+            legacy_releases=[self.legacy_release()], modern_releases=[])
+        self.assertEqual(result["mode"], "prepromotion")
+        self.assertEqual(result["legacy"]["selected_stable_tag"], "v0.13")
+        self.assertIsNone(result["modern"]["selected_stable_tag"])
+        self.assertFalse(result["mutation_performed"])
+
+    def test_legacy_feed_rejects_modern_manifest_or_firmware(self):
+        for asset in ("modern-manifest.json", "tartlab-modern-v1.2.3.bin"):
+            with self.subTest(asset=asset), self.assertRaises(ValueError):
+                validate_feeds(
+                    [self.legacy_release(asset)], [],
+                    expect_modern_empty=True)
+
+    def test_prepromotion_modern_feed_must_remain_empty(self):
+        with self.assertRaisesRegex(ValueError, "not empty"):
+            validate_feeds(
+                [self.legacy_release()], [self.modern_release()],
+                expect_modern_empty=True)
+
+    def test_published_modern_feed_rejects_legacy_contract(self):
+        for asset in ("manifest.json",):
+            with self.subTest(asset=asset), self.assertRaisesRegex(
+                    ValueError, "legacy manifest"):
+                validate_feeds(
+                    [self.legacy_release()], [self.modern_release(asset)],
+                    expect_modern_empty=False)
+        broken = self.modern_release()
+        broken["assets"] = [
+            item for item in broken["assets"]
+            if item["name"] != "modern-manifest.json"]
+        with self.assertRaisesRegex(ValueError, "modern-manifest"):
+            validate_feeds(
+                [self.legacy_release()], [broken],
+                expect_modern_empty=False)
 
 
 class ModernQualificationTests(unittest.TestCase):

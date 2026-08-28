@@ -995,13 +995,14 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    downloads a sanitized evidence summary, verifies its exact hash, and rejects
    promotion unless candidate-bound provisioning, hardware, OTA, recovery,
    release-feed-isolation, and support-window gates all report passed. The
-   A candidate-bound physical modern-to-modern OTA, protected-state comparison,
+   candidate-bound physical modern-to-modern OTA, protected-state comparison,
    browser regression, recovery-page status/update interaction, and offline
-   staged recovery resume have now passed on the qualification board. The
-   destructive interruption/containment cases, release-feed isolation query,
-   complete item 6 provisioning matrix, and candidate-bound support-window
-   observation are still required; no modern release is qualified or promoted
-   by this partial physical work.
+   staged recovery resume have now passed on the qualification board. A
+   fail-closed live query also passed against the separate public legacy and
+   empty pre-promotion modern feeds. The destructive interruption/containment
+   cases, complete item 6 provisioning matrix, and candidate-bound
+   support-window observation are still required; no modern release is
+   qualified or promoted by this partial physical work.
 8. **Support window decided and enforced; physical evidence pending:** direct
    adult migration supports stable TartLab v0.13 or newer on the exact
    `legacy-mp123` firmware, qualified board, and either the captured root-v1 or

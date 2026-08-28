@@ -51,6 +51,12 @@ adult provisioning transaction target only
 `tdhoward/TartLab-modern-releases`; `tdhoward/TartLab` GitHub Releases remain
 reserved for the `legacy-mp123` profile.
 
+`tools/check_release_feed_isolation.py` is the read-only live-state companion
+to those static checks. It binds the sanitized legacy repository record and
+modern profile to both public GitHub Release feeds, rejects cross-profile
+assets and contracts, and requires the modern feed to remain empty while the
+profile is marked `promotion-gated-unreleased`.
+
 The protected `attest-modern-candidate.yml` workflow is the Tier 4 handoff. It
 creates a reproducible, tag-bound, signed candidate artifact for physical
 qualification without publishing a release. Adult provisioning verifies that

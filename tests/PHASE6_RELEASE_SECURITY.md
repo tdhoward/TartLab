@@ -108,10 +108,11 @@ host transaction, profile-bound OTA/recovery clients, virtual migration gate,
 fail-closed qualification-evidence validator, and authenticated unpublished
 qualification-candidate path are implemented. Physical
 clean provisioning and destructive interruption/containment observations, the
-support-window floor observation, release-feed isolation query, and the final
-profile-specific physical gate remain incomplete. Direct migration,
-modern-to-modern OTA, and the recovery-browser offline staged resume have now
-been physically observed. The support-window decision and host enforcement are complete. See
+support-window floor observation, and the final profile-specific physical gate
+remain incomplete. Direct migration, modern-to-modern OTA, and the
+recovery-browser offline staged resume have now been physically observed, and
+the live public pre-promotion release feeds have passed their isolation check.
+The support-window decision and host enforcement are complete. See
 `PHASE6_MODERN_QUALIFICATION.md` for the evidence contract.
 
 ## Release-channel isolation
@@ -141,3 +142,17 @@ CI artifacts, plain tags, and draft releases are not device-visible stable
 promotion. A release-feed isolation test must fail any modern promotion whose
 target is not `tdhoward/TartLab-modern-releases`, and must fail any legacy
 promotion containing modern firmware or modern filesystem assets.
+
+Run the read-only public-feed check with:
+
+```text
+python tools/check_release_feed_isolation.py
+```
+
+The checker binds the deployed legacy fixture and checked-in modern profile to
+the two live GitHub Release API responses. While the profile status remains
+`promotion-gated-unreleased`, it additionally requires the modern public feed
+to be empty. The 2026-08-27 observation found 14 legacy releases, selected
+stable `v0.13`, found no modern-only or firmware assets in that feed, and found
+zero releases in the modern feed. Detailed evidence is in
+`PHASE6_MODERN_QUALIFICATION.md`.
