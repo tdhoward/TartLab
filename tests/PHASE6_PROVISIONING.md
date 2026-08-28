@@ -109,9 +109,40 @@ immediately after restoration; repeated diagnostic boots subsequently advanced
 the active five-entry rolling log window, while the original logs remain in
 the retained private backup.
 
-This session qualifies the direct migration and normal health-commit path on
-the device. It does not claim the still-open browser interaction, physical OTA,
-release-feed, support-window, or exhaustive power-loss matrix observations.
+The session resumed after migration with the ignored root `settings.json` as
+the serial helper's credential source. The credential values were not retained
+as evidence. The modern device joined the local network and Chrome loaded the
+TartLab IDE from the device with the loading overlay dismissed and no file-panel
+error. An automated browser interaction created `phase6_browser_test.py` in a
+CodeMirror tab, entered a synthetic print statement, clicked Save, read back the
+exact saved content, clicked Run, and observed `PHASE6_BROWSER_RUN_OK` in the
+expanded IDE console. `/api/space`, `/api/versions`, and `/api/files/user` all
+returned HTTP 200; the repository state reported `modern-v0.14.6` and
+`lvgl-modern`. The temporary device file was deleted and subsequently returned
+HTTP 404. The sanitized browser screenshot SHA-256 is
+`188a19caf5e696763f6f9036fbee329786258226f65509dde4ce7931d6f81f1c`.
+
+The collision-safe Phase 5 switch helper then staged its hash-verified direct
+RGB565 test app while retaining `selected_app.py` in the cleanup marker.
+Holding the physical upper-right GPIO 12 button during reset displayed the
+expected magenta, cyan, yellow, green, and blue vertical bands. Cleanup restored
+`selected_app.py` and removed only the temporary app and marker. An ordinary
+unpressed reset returned the IDE page and version API with HTTP 200 responses.
+
+Finally, the live IDE pseudo-REPL set the next startup mode to `RECOVERY` and
+reset the device without using serial. The station IDE went offline and the
+open `TartLab-Recovery` SSID was physically observed from a separate Wi-Fi
+client. Because recovery mode is one-shot, an ordinary unpressed reset returned
+the station IDE page and version API with HTTP 200 responses. This confirms the
+display-independent recovery boot, AP advertisement, and safe normal-boot
+return path; the recovery page's browser controls and corrective-update path
+remain unqualified.
+
+This session qualifies the direct migration, normal health-commit path, and
+post-migration browser edit/save/run, APP-selection, and recovery boot/AP paths
+on the device. It does not claim the still-open clean-provisioning,
+recovery-browser update interaction, physical OTA, release-feed, support-window,
+or exhaustive power-loss matrix observations.
 
 The approved path below the v0.13 floor is not automatic migration. An adult
 captures a private version-appropriate backup, performs authenticated clean

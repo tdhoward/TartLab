@@ -655,22 +655,30 @@ print('PREFLIGHT_OK=True')
 def ota_install(args):
     base_url = args.base_url.rstrip("/")
     version = args.version
+    manifest_name = args.manifest
     code = r'''
 import ujson, urequests, uasyncio as asyncio
 from tartlabutils import updater
 BASE = %r
 VERSION = %r
+MANIFEST_NAME = %r
 
-response = urequests.get(BASE + '/manifest.json')
+response = urequests.get(BASE + '/' + MANIFEST_NAME)
 if response.status_code != 200:
-    raise OSError('HTTP ' + str(response.status_code) + ' for manifest.json')
-manifest = response.json()
+    raise OSError('HTTP ' + str(response.status_code) + ' for ' + MANIFEST_NAME)
+document = response.json()
 response.close()
+if MANIFEST_NAME == 'modern-manifest.json':
+    manifest = document.get('packages') if isinstance(document, dict) else None
+else:
+    manifest = document
+if not isinstance(manifest, list) or not manifest:
+    raise ValueError('Invalid local release manifest')
 
 assets = [{
-    'name': 'manifest.json',
+    'name': MANIFEST_NAME,
     'size': 4096,
-    'browser_download_url': BASE + '/manifest.json',
+    'browser_download_url': BASE + '/' + MANIFEST_NAME,
 }]
 for package in manifest:
     assets.append({
@@ -708,7 +716,7 @@ if installed:
 print('OTA_VERSION=' + str(target.get('installed_version')))
 print('OTA_RESULT=' + str(result))
 print('OTA_OK=' + str(installed))
-''' % (base_url, version)
+''' % (base_url, version, manifest_name)
     repl = connect(args)
     try:
         output = repl.exec(code, max(args.timeout, 300))
@@ -1154,6 +1162,9 @@ def parser():
     ota_parser = commands.add_parser("ota-install")
     ota_parser.add_argument("--base-url", required=True)
     ota_parser.add_argument("--version", default="phase1-hwtest")
+    ota_parser.add_argument(
+        "--manifest", choices=("manifest.json", "modern-manifest.json"),
+        default="manifest.json")
     ota_parser.set_defaults(func=ota_install)
     fault_parser = commands.add_parser("fault-update")
     fault_parser.add_argument("--base-url", required=True)

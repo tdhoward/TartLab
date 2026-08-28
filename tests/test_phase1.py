@@ -607,5 +607,51 @@ class FixtureTests(unittest.TestCase):
             self.assertTrue((device / "recovery/recovery_update.py").is_file())
 
 
+class PhysicalHelperTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.helper = load_module(
+            "phase1_device_helper", ROOT / "tools/phase1_device.py")
+
+    def test_ota_helper_selects_modern_object_manifest_explicitly(self):
+        captured = {}
+
+        class Repl:
+            def exec(self, code, timeout):
+                captured["code"] = code
+                captured["timeout"] = timeout
+                return b""
+
+            def close(self):
+                captured["closed"] = True
+
+        original_connect = self.helper.connect
+        original_stdout = self.helper.sys.stdout
+        self.helper.connect = lambda unused_args: Repl()
+        self.helper.sys.stdout = types.SimpleNamespace(buffer=io.BytesIO())
+        try:
+            self.helper.ota_install(types.SimpleNamespace(
+                base_url="http://192.0.2.1:8765/capability/",
+                version="modern-v1.2.3",
+                manifest="modern-manifest.json",
+                timeout=30,
+            ))
+        finally:
+            self.helper.connect = original_connect
+            self.helper.sys.stdout = original_stdout
+
+        self.assertIn("MANIFEST_NAME = 'modern-manifest.json'", captured["code"])
+        self.assertIn("document.get('packages')", captured["code"])
+        self.assertIn("BASE = 'http://192.0.2.1:8765/capability'", captured["code"])
+        self.assertEqual(captured["timeout"], 300)
+        self.assertTrue(captured["closed"])
+
+    def test_ota_parser_keeps_legacy_manifest_as_default(self):
+        args = self.helper.parser().parse_args([
+            "ota-install", "--base-url", "http://192.0.2.1:8765",
+        ])
+        self.assertEqual(args.manifest, "manifest.json")
+
+
 if __name__ == "__main__":
     unittest.main()
