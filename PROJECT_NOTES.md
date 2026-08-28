@@ -1014,10 +1014,12 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    candidates that omit it. The corrected signed `modern-v0.14.8` candidate
    then passed clean preflight and a new physical erase/write/verify/upload and
    pending-health commit. Its 208-file snapshot matched every immutable
-   prepared byte and proved that both authenticated starter copies exist.
-   Human display/touch, tablet browser, APP, recovery, and destructive
-   interruption observations are still required; no modern release is
-   qualified or promoted by this partial physical work.
+   prepared byte and proved that both authenticated starter copies exist. The
+   tablet IDE create/edit/save/reopen/run/delete path, upright color display,
+   five-point touch, GPIO 12 visual APP boot, recovery AP/page, forced IDE
+   return, and subsequent normal reset also passed. Only the destructive
+   interruption/containment matrix remains for this provisioning item; no
+   modern release is qualified or promoted by this partial physical work.
 8. **Support window decided, enforced, and physically observed:** direct
    adult migration supports stable TartLab v0.13 or newer on the exact
    `legacy-mp123` firmware, qualified board, and either the captured root-v1 or

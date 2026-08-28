@@ -255,7 +255,7 @@ tablet browser edit/save/run, selected APP, or recovery observations. Those
 manual checks and the destructive interruption matrix remain open, so the
 physical clean-provisioning gate and promotion remain incomplete.
 
-## Corrected signed clean transaction: 2026-08-28 (partial gate)
+## Corrected signed clean transaction: 2026-08-28 (clean case passed)
 
 The starter-seed correction was committed as
 `49d5b82c795297fa0c6f12ed683af465502779a1`, tagged
@@ -292,18 +292,44 @@ private snapshot-manifest SHA-256 is
 The board was reset to standalone operation after capture; this PC was never
 joined to the device AP.
 
-This corrected session closes the signed-candidate seed, immutable filesystem,
-and automated health portions of clean provisioning. Human display/touch,
-tablet browser edit/save/run, selected APP, and recovery observations still
-remain, as does the destructive interruption matrix. Promotion therefore
+The operator then joined only a tablet to the device's temporary fallback AP;
+this PC remained on its existing network. The tablet loaded the IDE at
+`http://192.168.4.1/` without a persistent loading overlay or file-panel error,
+showed the seeded `hello.py`, and completed create/edit/save/reopen/run/delete
+with the expected console output.
+
+The modern display probe drew upright red, green, blue, white, and black bands
+in the correct top-to-bottom order at logical 480 x 222. Human five-point touch
+observation recorded representative logical coordinates `(18, 6)`, `(476, 6)`,
+`(470, 219)`, `(22, 217)`, and `(260, 109)` for the four corners and center. A
+collision-safe temporary visual app retained the original `hello.py` selection
+and was bound to SHA-256
+`9bd6179166a55cfddfe98c4e7bde35108eef9abd325984105b8cfa6fa36b6d56`.
+Holding the upper-right GPIO 12 button during reset entered APP mode and showed
+the expected magenta, cyan, yellow, green, and blue vertical bands. Cleanup
+restored `hello.py` and removed only the temporary app and marker.
+
+Finally, the durable early-boot recovery request advertised the open
+`TartLab-Recovery` SSID. The tablet loaded the recovery page at
+`http://192.168.4.1/` and observed its status and recovery controls. The Force
+IDE on next boot control cleared the request and returned the normal fallback AP
+and IDE;
+an additional physical reset with GPIO 12 unpressed again returned to the IDE.
+Final USB-only state reported a healthy sequence 27 IDE boot, zero consecutive
+failures, selected `hello.py`, `STARTUP_MODE=BUTTON`, and no recovery flag.
+
+This corrected signed candidate therefore passes the complete clean
+provisioning case: authenticated seed and immutable filesystem, health-gated
+commit, tablet IDE operations, display/color/touch, selected APP, recovery, and
+normal return. The destructive interruption matrix remains open, so promotion
 remains blocked.
 
 ## Remaining physical gate
 
-The candidate-bound direct-migration floor and corrected automated clean cases
-now have the required device, runtime, port, protected-state,
-release/firmware, journal, and operator/date records without credentials or
-student work. The rest of the item 6 physical matrix remains open.
+The candidate-bound direct-migration floor and corrected complete clean case
+now have the required device, runtime, port, protected-state, release/firmware,
+journal, and operator/date records without credentials or student work. The
+rest of the item 6 physical matrix remains open.
 
 The physical item 6 gate passes only after all of the following are observed:
 

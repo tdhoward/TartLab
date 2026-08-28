@@ -338,8 +338,25 @@ private snapshot-manifest SHA-256 is
 The board was reset after capture without joining this PC to its temporary AP.
 
 This supersedes the unsigned diagnostic result and passes the corrected
-candidate's automated clean-filesystem checks. Human display/touch, tablet IDE
-edit/save/run, selected APP, and recovery observations remain open.
+candidate's automated clean-filesystem checks. The operator then used only a
+tablet on the temporary fallback AP to load the IDE, verify seeded `hello.py`,
+and complete create/edit/save/reopen/run/delete with expected console output.
+This PC did not join the device AP.
+
+Human observation confirmed upright, correctly ordered red/green/blue/white/
+black display bands and correctly oriented touches at all four corners and the
+center. A hash-bound, collision-safe temporary visual app preserved the
+original `hello.py` selection; the GPIO 12 APP boot showed the expected five
+vertical color bands, after which cleanup restored `hello.py` and removed only
+the temporary qualification files.
+
+A durable early-boot request then advertised `TartLab-Recovery`; the tablet
+loaded its page and observed the status and controls. `Force IDE on next boot`
+returned the normal fallback AP and IDE, and a further unpressed physical reset
+again returned to the IDE. Final USB state was healthy IDE mode with zero boot
+failures, selected `hello.py`, `STARTUP_MODE=BUTTON`, and no recovery flag. The
+corrected signed candidate therefore passes the complete clean-provisioning
+case.
 
 Together, the candidate-bound sessions qualify the support-window floor
 migration, direct modern-to-modern OTA normal path,
@@ -347,5 +364,4 @@ recovery-page rendering and redacted status, the corrective-update button,
 offline staged recovery resume, pending-health commit, protected-state
 preservation, browser regression, and recovery availability for this candidate.
 They do not yet qualify physical corrupt or interrupted OTA/recovery
-containment, the remaining human clean-provision checks, or the exhaustive
-power-loss matrix, so promotion remains blocked.
+containment or the exhaustive power-loss matrix, so promotion remains blocked.
