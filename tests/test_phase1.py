@@ -652,6 +652,27 @@ class PhysicalHelperTests(unittest.TestCase):
         ])
         self.assertEqual(args.manifest, "manifest.json")
 
+    def test_recovery_browser_helper_uses_modern_candidate_adapter(self):
+        args = self.helper.parser().parse_args([
+            "recovery-browser",
+            "--base-url", "http://192.0.2.1:8765/candidate/",
+            "--version", "modern-v1.2.3",
+            "--manifest", "modern-manifest.json",
+            "--stage-before-browser",
+        ])
+        code = self.helper._recovery_browser_code(args)
+
+        self.assertIn("BASE = 'http://192.0.2.1:8765/candidate'", code)
+        self.assertIn("VERSION = 'modern-v1.2.3'", code)
+        self.assertIn("MANIFEST_NAME = 'modern-manifest.json'", code)
+        self.assertIn("STAGE_BEFORE_BROWSER = True", code)
+        self.assertIn("packages = document.get('packages')", code)
+        self.assertIn("recovery_update._release = lambda unused_repo: release", code)
+        self.assertIn(
+            "recovery_update.update_to_latest = recovery_update.resume_staged_update", code)
+        self.assertIn("recovery.run('qualification_corrective_update')", code)
+        self.assertIs(args.func, self.helper.recovery_browser)
+
 
 if __name__ == "__main__":
     unittest.main()

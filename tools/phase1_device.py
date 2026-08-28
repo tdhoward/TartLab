@@ -967,6 +967,126 @@ print('RECOVERY_INSTALLED=' + str(installed))
     sys.stdout.buffer.write(output)
 
 
+def _recovery_browser_code(args):
+    base_url = args.base_url.rstrip("/")
+    return r'''
+import sys, urequests
+if '/recovery' not in sys.path:
+    sys.path.insert(0, '/recovery')
+import recovery
+import recovery_update
+BASE = %r
+VERSION = %r
+MANIFEST_NAME = %r
+STAGE_BEFORE_BROWSER = %r
+
+station = recovery._connect_to_wifi()
+print('RECOVERY_BROWSER_STATION_IP=' + station.ifconfig()[0])
+response = urequests.get(BASE + '/' + MANIFEST_NAME)
+if response.status_code != 200:
+    raise OSError('HTTP ' + str(response.status_code) + ' for ' + MANIFEST_NAME)
+document = response.json()
+response.close()
+if isinstance(document, dict):
+    packages = document.get('packages')
+else:
+    packages = document
+if not isinstance(packages, list) or not packages:
+    raise ValueError('Recovery qualification manifest has no packages')
+assets = [{
+    'name': MANIFEST_NAME,
+    'browser_download_url': BASE + '/' + MANIFEST_NAME,
+}]
+for package in packages:
+    assets.append({
+        'name': package['file_name'],
+        'browser_download_url': BASE + '/' + package['file_name'],
+    })
+release = {'tag_name': VERSION, 'assets': assets}
+recovery_update._release = lambda unused_repo: release
+if STAGE_BEFORE_BROWSER:
+    repos_path = recovery_update.STATE_REPOS
+    if recovery_update._kind(repos_path) != 1:
+        repos_path = recovery_update.LEGACY_REPOS
+    repos = recovery_update._read_json(repos_path, {})
+    tartlab = recovery_update._tartlab_repo(repos)
+    if tartlab is None:
+        raise ValueError('TartLab release state not found')
+    if recovery_update._kind(recovery_update.TEMP_DIR) == 0:
+        recovery_update._mkdirs(recovery_update.TEMP_DIR)
+    manifest_path = recovery_update.TEMP_DIR + '/' + MANIFEST_NAME
+    recovery_update._download_verified(
+        BASE + '/' + MANIFEST_NAME, manifest_path)
+    document = recovery_update._read_json(manifest_path, None)
+    packages = recovery_update._manifest_packages(document, tartlab, VERSION)
+    for package in packages:
+        path = recovery_update.TEMP_DIR + '/' + package['file_name']
+        recovery_update._download_verified(
+            BASE + '/' + package['file_name'], path, package['sha256'])
+        recovery_update._tar_members(path, package['target'], False)
+    if recovery_update._required_install_space(packages) > recovery_update._free_space():
+        raise OSError('Not enough disk space to extract release safely')
+    recovery_update._write_json(recovery_update.UPDATE_STATE, {
+        'schema': 1,
+        'status': 'installing',
+        'repos': [{
+            'name': 'TartLab',
+            'previous_version': tartlab['installed_version'],
+            'pending_version': VERSION,
+        }],
+        'source': 'recovery',
+        'completed_packages': [],
+    })
+    recovery_update.update_to_latest = recovery_update.resume_staged_update
+    print('RECOVERY_BROWSER_STAGED=True')
+print('RECOVERY_BROWSER_READY=True')
+recovery.run('qualification_corrective_update')
+''' % (base_url, args.version, args.manifest, args.stage_before_browser)
+
+
+def recovery_browser(args):
+    """Run the real recovery page with a local, authenticated release adapter."""
+    code = _recovery_browser_code(args)
+    repl = connect(args)
+    completed = False
+    try:
+        payload = code.encode("utf-8")
+        for offset in range(0, len(payload), 128):
+            repl.serial.write(payload[offset:offset + 128])
+            time.sleep(0.01)
+        repl.serial.write(b"\x04")
+        output = repl._read_until(
+            b"RECOVERY_BROWSER_READY=True", max(args.timeout, 60))
+        if not output.startswith(b"OK"):
+            raise RuntimeError("Raw REPL rejected recovery browser command")
+        sys.stdout.buffer.write(output)
+        sys.stdout.buffer.flush()
+
+        deadline = time.monotonic() + max(args.timeout, 300)
+        tail = bytearray(output[-512:])
+        while time.monotonic() < deadline:
+            try:
+                waiting = repl.serial.in_waiting
+                chunk = repl.serial.read(waiting or 1)
+            except serial.SerialException:
+                break
+            if not chunk:
+                continue
+            sys.stdout.buffer.write(chunk)
+            sys.stdout.buffer.flush()
+            tail.extend(chunk)
+            if len(tail) > 1024:
+                del tail[:-1024]
+            if b"Recovery installed " in tail and \
+                    b"boot health is pending" in tail:
+                completed = True
+                break
+        if not completed:
+            raise TimeoutError("Recovery browser session ended before update completion")
+    finally:
+        repl.close()
+
+
 def recovery_resume(args):
     code = r'''
 import sys
@@ -1187,6 +1307,14 @@ def parser():
         "--signal-package",
         help="pause with a white display before installing this package")
     recovery_parser.set_defaults(func=recovery_install)
+    recovery_browser_parser = commands.add_parser("recovery-browser")
+    recovery_browser_parser.add_argument("--base-url", required=True)
+    recovery_browser_parser.add_argument("--version", required=True)
+    recovery_browser_parser.add_argument(
+        "--manifest", choices=("manifest.json", "modern-manifest.json"),
+        default="manifest.json")
+    recovery_browser_parser.add_argument("--stage-before-browser", action="store_true")
+    recovery_browser_parser.set_defaults(func=recovery_browser)
     commands.add_parser("recovery-resume").set_defaults(func=recovery_resume)
     serial_parser = commands.add_parser("serial-install")
     serial_parser.add_argument("--release-dir", type=Path, required=True)

@@ -136,13 +136,19 @@ client. Because recovery mode is one-shot, an ordinary unpressed reset returned
 the station IDE page and version API with HTTP 200 responses. This confirms the
 display-independent recovery boot, AP advertisement, and safe normal-boot
 return path; the recovery page's browser controls and corrective-update path
-remain unqualified.
+were not exercised in this migration session. The subsequent candidate-bound
+modern OTA session recorded in `PHASE6_MODERN_QUALIFICATION.md` physically
+exercised the recovery page, redacted status endpoint, corrective-update
+button, offline staged resume, healthy IDE return, and protected-state
+preservation.
 
 This session qualifies the direct migration, normal health-commit path, and
 post-migration browser edit/save/run, APP-selection, and recovery boot/AP paths
-on the device. It does not claim the still-open clean-provisioning,
-recovery-browser update interaction, physical OTA, release-feed, support-window,
-or exhaustive power-loss matrix observations.
+on the device. Together with the subsequent modern qualification session, the
+normal physical OTA and recovery-browser corrective paths are also observed.
+The still-open clean-provisioning, destructive interruption/containment,
+release-feed, support-window, and exhaustive power-loss matrix observations are
+not claimed.
 
 The approved path below the v0.13 floor is not automatic migration. An adult
 captures a private version-appropriate backup, performs authenticated clean

@@ -107,9 +107,11 @@ This is release machinery, not release authorization. The adult provisioning
 host transaction, profile-bound OTA/recovery clients, virtual migration gate,
 fail-closed qualification-evidence validator, and authenticated unpublished
 qualification-candidate path are implemented. Physical
-provisioning/migration and modern OTA/recovery observations, the support-window
-floor observation, and the final profile-specific physical gate remain
-incomplete. The support-window decision and host enforcement are complete. See
+clean provisioning and destructive interruption/containment observations, the
+support-window floor observation, release-feed isolation query, and the final
+profile-specific physical gate remain incomplete. Direct migration,
+modern-to-modern OTA, and the recovery-browser offline staged resume have now
+been physically observed. The support-window decision and host enforcement are complete. See
 `PHASE6_MODERN_QUALIFICATION.md` for the evidence contract.
 
 ## Release-channel isolation

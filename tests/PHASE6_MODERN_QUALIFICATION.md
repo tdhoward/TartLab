@@ -157,10 +157,50 @@ it contains no Wi-Fi credentials or protected-file contents.
 A final one-shot recovery boot took the station IDE offline and advertised the
 open `TartLab-Recovery` SSID, which was physically observed. An ordinary reset
 returned the board to `modern-v0.14.7`, healthy IDE mode, zero consecutive
-failures, and no update marker. This qualifies the direct modern-to-modern OTA
-normal path, pending-health commit, protected-state preservation, browser
-regression, and recovery availability for this candidate. It does not yet
-qualify the recovery page's corrective-update controls, physical corrupt or
-interrupted OTA containment, public modern/legacy release-feed isolation, the
-support-window floor migration case, clean provisioning, or the exhaustive
-power-loss matrix, so promotion remains blocked.
+failures, and no update marker.
+
+## Physical recovery-browser corrective session: 2026-08-27
+
+The same authenticated `modern-v0.14.7` candidate was then exercised through
+the display-independent recovery browser. The physical helper joined the
+configured station network before enabling the recovery AP, downloaded the
+modern object manifest and all 11 package archives from the temporary candidate
+feed, and used the installed recovery implementation to validate the profile,
+channel, firmware identity, package hashes, TAR structure, protected targets,
+and required extraction space. It recorded a recovery-source `installing`
+marker with no completed packages, then exposed the real recovery console for
+an offline staged resume. The local release adapter affected only this physical
+qualification session; production profile and manifest validation remained in
+force.
+
+Windows temporarily joined the open `TartLab-Recovery` AP and Chrome loaded
+`http://192.168.4.1/`. Chrome observed the `TartLab Recovery` heading, all three
+`/retry`, `/ide`, and `/update` forms, and the `/status` link. The redacted
+status endpoint returned HTTP 200 with recovery mode, zero boot failures,
+`installing` update status, and pending `modern-v0.14.7`. Clicking the actual
+`Install latest corrective release` button returned `Installing update; watch
+the serial log`. The recovery updater then revalidated the staged files,
+installed all 10 non-recovery packages, retained its running recovery package,
+and reported `Recovery installed modern-v0.14.7; boot health is pending`.
+The recovery-page screenshot SHA-256 was
+`d89425e9d41bec6d84b011ea5cc98d2b348d9e479e60f7923974a7d6f1805b08`.
+
+Boot sequence 76 reached `HEALTHY mode=IDE` and committed the pending version
+exactly once. Later diagnostic boots retained no update marker. An independent
+browser physically loaded the IDE after reset; headless Chrome then confirmed
+the loading overlay was hidden, `/api/versions` returned HTTP 200 with
+`modern-v0.14.7` and `lvgl-modern`, and final boot sequence 82 was healthy IDE
+mode with zero consecutive failures. All five protected digests in the table
+above still matched exactly. The final sanitized IDE screenshot SHA-256 was
+`dbd78a5e8fa1b68647e47be19b0da5db05550006fa7a93416a9c990fbf3556c7`.
+The temporary server was stopped and the temporary host recovery Wi-Fi profile
+was removed after the original saved Wi-Fi profile had been restored.
+
+Together, the two sessions qualify the direct modern-to-modern OTA normal path,
+recovery-page rendering and redacted status, the corrective-update button,
+offline staged recovery resume, pending-health commit, protected-state
+preservation, browser regression, and recovery availability for this candidate.
+They do not yet qualify physical corrupt or interrupted OTA/recovery
+containment, public modern/legacy release-feed isolation, the support-window
+floor migration case, clean provisioning, or the exhaustive power-loss matrix,
+so promotion remains blocked.
