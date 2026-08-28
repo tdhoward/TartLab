@@ -970,7 +970,7 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    modern repository. The guide explicitly retains the unfinished Phase 6
    gates. Firmware remains an adult-provisioning artifact, not an on-device
    filesystem update.
-6. **Host transaction implemented; physical gate partial:**
+6. **Host transaction and physical gate complete:**
    `tools/provision_modern.py` now provides read-only inspection plus explicit,
    authenticated clean and legacy-migration modes. It captures a private
    content-addressed backup, read-verifies the exact legacy firmware before
@@ -979,8 +979,11 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    state, and resumes from a durable journal after interruption. The virtual
    matrix covers clean provisioning, direct v0.13 migration, preservation,
    pending-health commit, wrong-board rejection, firmware identity, and a USB
-   loss during upload. The profile remains promotion gated until the physical
-   matrix in `tests/PHASE6_PROVISIONING.md` passes.
+   loss during upload. The signed `modern-v0.14.8` candidate has now passed the
+   complete physical matrix in `tests/PHASE6_PROVISIONING.md`: clean and direct
+   migration, every flash/filesystem activation boundary, pending-health power
+   loss, USB resume, and post-filesystem recovery. Promotion remains gated on
+   item 7 containment.
    Device mutation additionally requires the unpublished candidate's GitHub
    attestation from the protected qualification workflow, avoiding both an
    unsigned test image and a circular dependency on post-qualification
@@ -1001,8 +1004,7 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    fail-closed live query also passed against the separate public legacy and
    empty pre-promotion modern feeds. The exact candidate was also physically
    migrated from the sanitized v0.13 floor with byte-exact protected-state and
-   browser/API checks. The destructive interruption/containment cases and
-   complete item 6 provisioning matrix are still required. A subsequent
+   browser/API checks. A subsequent
    authenticated clean transaction physically erased, flashed, verified, and
    installed `modern-v0.14.7`, committed it only after health, and produced a
    clean snapshot matching every immutable prepared file. That session fixed
@@ -1017,9 +1019,15 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    prepared byte and proved that both authenticated starter copies exist. The
    tablet IDE create/edit/save/reopen/run/delete path, upright color display,
    five-point touch, GPIO 12 visual APP boot, recovery AP/page, forced IDE
-   return, and subsequent normal reset also passed. Only the destructive
-   interruption/containment matrix remains for this provisioning item; no
-   modern release is qualified or promoted by this partial physical work.
+   return, and subsequent normal reset also passed. A qualification-only
+   harness then interrupted erase, firmware write/verification, both inert
+   placeholders, all eight top-level uploads, both final boot-file activations,
+   and the pending-health boot. Every loss resumed from the same private
+   journal; incomplete filesystems stayed inert, the durable recovery route
+   handled activation failures, and the final 209-file snapshot matched every
+   immutable prepared byte. This completes item 6. Physical corrupt or
+   interrupted OTA/recovery containment remains open under item 7, so no modern
+   release is yet qualified or promoted.
 8. **Support window decided, enforced, and physically observed:** direct
    adult migration supports stable TartLab v0.13 or newer on the exact
    `legacy-mp123` firmware, qualified board, and either the captured root-v1 or

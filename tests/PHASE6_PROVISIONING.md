@@ -321,17 +321,81 @@ failures, selected `hello.py`, `STARTUP_MODE=BUTTON`, and no recovery flag.
 This corrected signed candidate therefore passes the complete clean
 provisioning case: authenticated seed and immutable filesystem, health-gated
 commit, tablet IDE operations, display/color/touch, selected APP, recovery, and
-normal return. The destructive interruption matrix remains open, so promotion
-remains blocked.
+normal return.
 
-## Remaining physical gate
+## Physical destructive-interruption matrix: 2026-08-28 (item 6 passed)
 
-The candidate-bound direct-migration floor and corrected complete clean case
-now have the required device, runtime, port, protected-state, release/firmware,
-journal, and operator/date records without credentials or student work. The
-rest of the item 6 physical matrix remains open.
+The same authenticated `modern-v0.14.8` candidate was then provisioned on COM3
+through a qualification-only wrapper around the unchanged production
+transaction. `tools/qualify_provision_interruptions.py` requires both
+`--execute` and `--confirm-interrupt`, revalidates the complete release on every
+run, and binds any reused attestation result to the exact source ref,
+`checksums.json`, and Sigstore bundle. It terminates one named child transport
+operation and writes a collision-safe, sanitized receipt; normal continuation
+always uses `tools/provision_modern.py --resume`.
 
-The physical item 6 gate passes only after all of the following are observed:
+Sixteen receipts cover two erase trials and every distinct post-erase boundary:
+firmware write and verification; inert `boot.py` and `main.py` placeholders;
+top-level `configs`, `defaults`, `device`, `files`, `ide`, `lib`, `recovery`,
+and `state` uploads; and final `boot.py` and `main.py` activation. Every receipt
+records `completed_before_interrupt: false`. The conclusive erase trial stopped
+an active command three seconds into a separately measured 46-second erase,
+and the following probe found the prior image erased. The write receipt stopped
+at 8.9 percent (147456 of 1665413 compressed bytes), while the verification
+receipt stopped during comparison of the 2978512-byte image.
+
+After each loss, the same private workspace retained stage `backed_up`, the
+empty-source identifier
+`sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`,
+and no sensitive backup. Resume replayed the authenticated transaction instead
+of claiming a partial operation. The inert placeholders prevented incomplete
+filesystems from starting. Interrupting either real boot-file activation
+triggered the durable repeated-boot-failure recovery route; USB recovery retry
+then allowed the unmodified production resume to reconstruct the complete
+filesystem and return to `awaiting_health`. This also demonstrates USB
+reflash/resume after every class of post-erase failure and on-device recovery
+once the filesystem is complete.
+
+The operator next removed USB power during the pending-health boot, waited five
+seconds, and reconnected the board. The host journal independently remained at
+`awaiting_health`; it had not claimed the candidate. A subsequent stable normal
+boot consumed the pending marker, and authenticated production resume reported
+`healthy: true`, stage `complete`, and exact version `modern-v0.14.8`.
+
+Final USB-only inspection reported MicroPython 1.27.0, exact modern identity,
+the isolated repository and manifest, zero configured Wi-Fi networks,
+8,138,576 bytes of free heap, the expected ten root entries, and five rolling
+logs. A new 209-file snapshot matched all 201 prepared files that should remain
+immutable. `/state/update.json` was consumed, only `/state/repos.json` changed,
+and the eight extras were boot state, five logs, migration state, and settings.
+Both `hello.py` copies retained authenticated SHA-256
+`75faa4bdd4c3b7db7de9c63437330778f14268b5a4ca6a9e4a9587963c035b0f`.
+The completed journal SHA-256 is
+`98f712cfff5252be368d767cda45688d4097adb7881000361fbd382a71131a53`;
+the final private snapshot-manifest SHA-256 is
+`1e4cff9cf46c3a9f1cf3eac9d05be5a67ac99278de4282f6b33c7cc2442851ec`;
+and the SHA-256 of the ordered 16-receipt hash list is
+`8c6514ac11ad06d9523b9714b49f615366af1ef6f780c268e4e695fd2b994228`.
+The board was reset to standalone operation after capture. This PC was never
+joined to the device AP.
+
+Together with the earlier physical direct-migration interruptions at the
+protected capture and ROM-only legacy-readback boundaries, this completes the
+power/USB-loss observations. The host failure-injection matrix supplies the
+safe fail-closed cases for wrong legacy firmware, wrong board selector, changed
+backup, bad modern firmware, corrupt packages, failed verification, and
+incomplete upload; none can advance the durable journal to success. The full
+172-test suite, including seven tests for the qualification-only interruption
+helper, passed after the physical session.
+
+## Physical item 6 gate result
+
+The candidate-bound direct-migration floor, corrected complete clean case, and
+destructive interruption session have the required device, runtime, port,
+protected-state, release/firmware, journal, and operator/date records without
+credentials or student work.
+
+The physical item 6 gate passed with the following combined evidence:
 
 1. Clean provisioning reaches the IDE and APP paths with display, touch, AP,
    browser edit/save/run, selected application, and recovery available.
@@ -349,6 +413,7 @@ The physical item 6 gate passes only after all of the following are observed:
 
 The profile-aware modern OTA/recovery client and promotion evidence validator
 are implemented as Phase 6 item 7 host gates. Their normal physical OTA,
-recovery-browser, release-feed, and support-window observations now pass for
-this candidate; destructive containment and the complete provisioning matrix
-remain required. See `tests/PHASE6_MODERN_QUALIFICATION.md`.
+recovery-browser, release-feed, and support-window observations pass for this
+candidate, and the provisioning matrix above is complete. Physical corrupt or
+interrupted OTA/recovery containment remains required before promotion. See
+`tests/PHASE6_MODERN_QUALIFICATION.md`.

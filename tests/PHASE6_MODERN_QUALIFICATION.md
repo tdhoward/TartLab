@@ -363,5 +363,7 @@ migration, direct modern-to-modern OTA normal path,
 recovery-page rendering and redacted status, the corrective-update button,
 offline staged recovery resume, pending-health commit, protected-state
 preservation, browser regression, and recovery availability for this candidate.
-They do not yet qualify physical corrupt or interrupted OTA/recovery
-containment or the exhaustive power-loss matrix, so promotion remains blocked.
+The exhaustive provisioning power-loss matrix subsequently passed with the
+same signed candidate, as recorded in `PHASE6_PROVISIONING.md`. Physical corrupt
+or interrupted OTA/recovery containment is still unqualified, so promotion
+remains blocked.
