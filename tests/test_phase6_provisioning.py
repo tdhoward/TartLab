@@ -32,6 +32,7 @@ class DirectoryTransport:
         self.capture_count = 0
         self.source_validation_count = 0
         self.install_count = 0
+        self.reuse_matching_firmware = []
         self.fail_install_once = False
         self.fail_source_validation_once = False
 
@@ -54,8 +55,10 @@ class DirectoryTransport:
             self.fail_source_validation_once = False
             raise RuntimeError("simulated ROM loader transition")
 
-    def install(self, firmware, offset, image, expected_sha256):
+    def install(self, firmware, offset, image, expected_sha256, *,
+                reuse_matching_firmware=False):
         self.install_count += 1
+        self.reuse_matching_firmware.append(reuse_matching_firmware)
         self.asserted_firmware = (firmware.name, offset, expected_sha256)
         for item in list(self.device.iterdir()):
             if item.is_dir():
@@ -112,6 +115,9 @@ class ModernProvisioningTests(unittest.TestCase):
         (cls.dist / "recovery").mkdir()
         (cls.dist / "recovery/recovery.py").write_text(
             "print('recovery')\n", encoding="utf-8")
+        (cls.dist / "defaults/user").mkdir(parents=True)
+        (cls.dist / "defaults/user/hello.py").write_text(
+            "print('clean hello')\n", encoding="utf-8")
         packages = root / "packages.json"
         packages.write_text(json.dumps([
             {
@@ -127,6 +133,13 @@ class ModernProvisioningTests(unittest.TestCase):
                 "target": "/recovery",
                 "clear_first": False,
                 "ownership": "protected-recovery",
+            },
+            {
+                "name": "defaults",
+                "source": "dist/defaults",
+                "target": "/defaults",
+                "clear_first": True,
+                "ownership": "system",
             },
         ]), encoding="utf-8")
         cls.release = root / "release"
@@ -168,9 +181,13 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertEqual(transport.capture_count, 0)
             self.assertEqual(transport.asserted_firmware, (
                 "tartlab-modern-v1.2.3.bin", "0x0", FIRMWARE_SHA256))
+            self.assertEqual(transport.reuse_matching_firmware, [False])
             self.assertIn(
                 "from t_display_s3_pro_modern import *",
                 (device / "device/hdwconfig.py").read_text(encoding="utf-8"))
+            self.assertEqual(
+                (device / "files/user/hello.py").read_text(encoding="utf-8"),
+                "print('clean hello')\n")
             marker = json.loads(
                 (device / "state/update.json").read_text(encoding="utf-8"))
             self.assertEqual(marker["status"], "pending_health")
@@ -273,6 +290,8 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertEqual(transport.capture_count, 1)
             self.assertEqual(transport.source_validation_count, 1)
             self.assertEqual(transport.install_count, 2)
+            self.assertEqual(
+                transport.reuse_matching_firmware, [False, True])
             self.assertEqual(
                 (workspace / "device-backup/settings.json").read_bytes(),
                 backup_settings)
@@ -499,7 +518,7 @@ class ModernProvisioningTests(unittest.TestCase):
             commands = []
             transport._run = lambda command, check=True: (
                 commands.append(command) or types.SimpleNamespace(
-                    stdout="", returncode=1 if not check else 0))
+                    stdout="", returncode=0))
 
             transport.install(firmware, "0x0", image, FIRMWARE_SHA256)
 
@@ -550,7 +569,9 @@ class ModernProvisioningTests(unittest.TestCase):
                 commands.append(command) or
                 types.SimpleNamespace(stdout="", returncode=0))
 
-            transport.install(firmware, "0x0", image, FIRMWARE_SHA256)
+            transport.install(
+                firmware, "0x0", image, FIRMWARE_SHA256,
+                reuse_matching_firmware=True)
 
             flattened = [part for command in commands for part in command]
             self.assertNotIn("erase-flash", flattened)

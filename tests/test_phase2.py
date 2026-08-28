@@ -125,11 +125,13 @@ class DistributionBuildTests(unittest.TestCase):
     def make_source(self, root):
         source = root / "src"
         for relative in (
-                "files/help", "configs", "defaults", "recovery", "lib/pydevices",
+                "files/help", "files/user", "configs", "defaults", "recovery",
+                "lib/pydevices",
                 "ide/www/dist"):
             (source / relative).mkdir(parents=True)
         (source / "main.py").write_text("print('main')\n")
         (source / "files/help/help.py").write_text("VALUE = 1\n")
+        (source / "files/user/hello.py").write_text("print('hello')\n")
         (source / "configs/board.py").write_text("BOARD = 1\n")
         (source / "defaults/default.json").write_text("{}\n")
         (source / "recovery/recovery.py").write_text("def run(): pass\n")
@@ -152,6 +154,9 @@ class DistributionBuildTests(unittest.TestCase):
                 source, output, clean=True, minify_python=False,
                 build_web=False, epoch=123)
             self.assertFalse((output / "stale.py").exists())
+            self.assertEqual(
+                (output / "defaults/user/hello.py").read_bytes(),
+                (output / "files/user/hello.py").read_bytes())
             gzip_path = output / "ide/www/index.html.gz"
             self.assertTrue(gzip_path.is_file())
             self.assertEqual(int.from_bytes(gzip_path.read_bytes()[4:8], "little"), 123)

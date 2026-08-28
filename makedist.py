@@ -145,6 +145,11 @@ def build_distribution(
     copy_top_level(source, output)
     for relative in ("files", "configs", "defaults", "recovery"):
         copy_tree(source / relative, output / relative, False)
+    # OTA archives must never target /files/user, but authenticated clean
+    # provisioning still needs a starter application.  Duplicate the source
+    # seed under update-managed defaults so a signed release can initialize a
+    # genuinely empty filesystem without weakening protected-path ownership.
+    copy_tree(source / "files" / "user", output / "defaults" / "user", False)
     copy_tree(source / "lib", output / "lib", minify_python)
     copy_top_level(source / IDE_FOLDER, output / IDE_FOLDER, minify_python)
     copy_tree(web_dist, output / IDE_FOLDER / WEB_FOLDER, False)

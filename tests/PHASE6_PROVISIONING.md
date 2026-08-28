@@ -187,6 +187,74 @@ provisioning, and selectively restores reviewed settings and user files after
 a healthy boot. Intermediate releases and wholesale historical filesystem
 copies are not part of the supported process.
 
+## Physical clean-filesystem transaction: 2026-08-28 (partial gate)
+
+The authenticated `modern-v0.14.7` qualification candidate from workflow run
+`33125667951` was inspected in clean mode and all 23 subjects were reverified
+against the bundled GitHub Artifact Attestation, exact
+`refs/tags/modern-v0.14.7` source ref, protected qualification workflow, SLSA
+provenance predicate, and non-self-hosted-runner policy. Its
+`checksums.json` SHA-256 remained
+`b66d3de474b05a6cf5ba04cd94bb0979a7cfb9bd672da4f0e3bbaea768027537`.
+
+The pre-erase review found that a new clean transaction on a board already
+containing the exact modern firmware would reuse that firmware and recursively
+overlay the filesystem. That did not establish an empty-filesystem baseline.
+The host transaction now permits matching-firmware reuse only when the caller
+explicitly resumes an existing journal; every new clean or migration
+transaction erases, writes, and verifies the candidate even when the initial
+firmware comparison matches. The targeted 18-test provisioning suite covers
+both branches, including the `False` then `True` reuse sequence across an
+interrupted transaction, and the full 164-test host suite passed before the
+physical erase.
+
+The qualification board enumerated as the modern ESP32-S3 endpoint on COM3.
+The clean transaction captured an empty source inventory with identifier
+`sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`,
+erased flash, wrote and verified the exact candidate firmware, and uploaded a
+200-file prepared filesystem. It reached `awaiting_health` without claiming
+the version. A subsequent normal IDE boot consumed the pending-health marker;
+the journaled resume then reported `healthy: true`, stage `complete`, and
+installed version `modern-v0.14.7`. The completed journal SHA-256 is
+`686482b6a79cec4e6b4e63113155b9a006b8b500c07b3af11f78c18e8069b379`.
+
+A USB-only probe reported MicroPython 1.27.0, the exact modern firmware
+identity, runtime profile `lvgl-modern`, isolated modern repository and
+manifest, no pending update, zero configured Wi-Fi networks, 8,071,744 bytes
+of free heap, and only the expected ten top-level filesystem entries. A fresh
+207-file post-provision snapshot matched all 198 prepared files that remain
+immutable after health byte-for-byte. The only missing prepared path was the
+consumed `/state/update.json`; only `/state/repos.json` changed to commit the
+version; and the seven extra device-generated paths were boot state, five
+rolling logs, migration state, and default settings. The private snapshot
+manifest SHA-256 is
+`f2b419086d5dae9b4aa971bf3aa17c35ea5b1df3ba222faaebd795d039558c8d`.
+Serial inspection independently found the fallback AP active at
+`192.168.4.1`. No Wi-Fi credential or student file was present or retained in
+the journal.
+
+The snapshot then exposed a second clean-only release defect: the candidate
+selected `hello.py` in `/state/selected_app.json` but contained neither
+`/files/user` nor an authenticated copy of the starter application. APP mode
+therefore could not pass from this otherwise clean image. The build now copies
+the protected source seed into update-managed `/defaults/user`; clean
+provisioning requires that authenticated seed and copies it into a new
+`/files/user`, while migration continues to restore student files exclusively
+from the private backup. Modern release preflight also rejects a candidate
+without `/defaults/user/hello.py`. Consequently the old `modern-v0.14.7`
+candidate now fails read-only clean preflight and cannot close this gate. A
+local dirty `modern-v0.14.8` diagnostic build contained `user/hello.py` in
+`defaults.tar`, passed modern preflight with the same 11-package ownership
+model, and all 165 host tests passed. It is not an authenticated qualification
+candidate; a new clean source commit, tag, and signed candidate are required.
+
+This closes the authenticated erase/flash/upload, empty-source, pending-health
+commit, runtime identity, clean inventory, and fallback-AP activation portions
+of the clean case. It does not yet claim the required human display/touch,
+tablet browser edit/save/run, selected APP, or recovery observations. Those
+manual checks and the destructive interruption matrix remain open, so the
+physical clean-provisioning gate and promotion remain incomplete.
+
 ## Remaining physical gate
 
 The candidate-bound direct-migration floor case now has the required device,

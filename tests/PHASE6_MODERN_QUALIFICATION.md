@@ -269,11 +269,52 @@ space, both migrated user files, and a valid selected-app index. This passes
 the candidate-bound physical support-window floor observation without
 qualifying any source older than v0.13.
 
+## Physical clean-filesystem transaction: 2026-08-28
+
+The same authenticated `modern-v0.14.7` candidate was exercised through a new
+clean provisioning journal on COM3. All 23 candidate subjects reverified
+against the tag-bound qualification signer before mutation. The transaction
+used an empty source inventory, performed an actual erase even though the
+qualification board initially contained matching modern firmware, wrote and
+verified the exact candidate, uploaded 200 prepared files, retained the old
+version state until a healthy normal IDE boot, and then reached journal stage
+`complete` with `healthy: true`. The completed private journal SHA-256 is
+`686482b6a79cec4e6b4e63113155b9a006b8b500c07b3af11f78c18e8069b379`.
+
+The matching-firmware boundary exposed a host-tool defect before erase: a new
+clean transaction could previously treat an already matching image like a
+resume and overlay stale filesystem content. New transactions now always
+erase/write/verify, while only an explicit resume may reuse verified firmware.
+The targeted provisioning suite and all 164 host tests passed with that guard.
+
+USB-only post-provision inspection reported MicroPython 1.27.0, exact modern
+firmware identity, the isolated modern profile/feed/manifest, committed
+`modern-v0.14.7`, no pending update, zero configured Wi-Fi networks, and the
+fallback AP active at `192.168.4.1`. A fresh 207-file snapshot matched every
+immutable prepared file; its only differences were the consumed update marker,
+committed repository state, and expected generated boot/log/migration/settings
+state. The private snapshot-manifest SHA-256 is
+`f2b419086d5dae9b4aa971bf3aa17c35ea5b1df3ba222faaebd795d039558c8d`.
+
+That snapshot also proved that `modern-v0.14.7` selected `hello.py` without
+shipping `/files/user/hello.py` or an authenticated clean-default copy. The
+candidate therefore cannot pass APP mode on a truly empty device. The build
+now includes the source starter application under update-managed
+`/defaults/user`, clean provisioning requires and copies that authenticated
+seed, and modern release preflight fails closed when it is absent. A local
+dirty `modern-v0.14.8` diagnostic build passed that preflight and all 165 host
+tests, but it is not signed qualification input. Clean qualification must be
+repeated with a new commit- and tag-bound candidate.
+
+This is partial clean-case evidence. Human display/touch, tablet IDE
+edit/save/run, selected APP, and recovery observations remain required before
+the clean-provisioning gate can pass.
+
 Together, the candidate-bound sessions qualify the support-window floor
 migration, direct modern-to-modern OTA normal path,
 recovery-page rendering and redacted status, the corrective-update button,
 offline staged recovery resume, pending-health commit, protected-state
 preservation, browser regression, and recovery availability for this candidate.
 They do not yet qualify physical corrupt or interrupted OTA/recovery
-containment, clean provisioning, or the exhaustive power-loss matrix, so
-promotion remains blocked.
+containment, the remaining human clean-provision checks, or the exhaustive
+power-loss matrix, so promotion remains blocked.

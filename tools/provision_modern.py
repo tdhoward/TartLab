@@ -244,6 +244,15 @@ def prepare_image(release: Path, backup: Path, image: Path, *,
         _copy_tree_if_present(backup / "state/logs", state / "logs") or \
             _copy_tree_if_present(backup / "logs", state / "logs")
         _copy_tree_if_present(backup / "files/user", image / "files/user")
+    else:
+        defaults = image / "defaults/user"
+        if not defaults.is_dir():
+            raise ValueError(
+                "modern release has no authenticated clean user defaults")
+        _copy_tree_if_present(defaults, image / "files/user")
+        if not (image / "files/user/hello.py").is_file():
+            raise ValueError(
+                "modern release clean defaults are missing hello.py")
     repos, previous = _migrated_repos(backup, version)
     write_json(state / "repos.json", repos)
     write_json(state / "selected_app.json", {
@@ -363,7 +372,8 @@ def provision(release: Path, workspace: Path, mode: str, transport: Any, *,
             backup_identifier=journal["backup_identifier"])
         transport.install(
             firmware, firmware_record["flash_offset"], image,
-            firmware_record["sha256"])
+            firmware_record["sha256"],
+            reuse_matching_firmware=resume)
         journal["stage"] = "awaiting_health"
         journal["prepared_files"] = len(file_inventory(image))
         _write_journal(journal_path, journal)
@@ -503,7 +513,8 @@ class CommandTransport:
         self._run(["mpremote", "version"])
 
     def install(self, firmware: Path, offset: str, image: Path,
-                expected_sha256: str) -> None:
+                expected_sha256: str, *,
+                reuse_matching_firmware: bool = False) -> None:
         if sha256_file(firmware) != expected_sha256:
             raise ValueError("firmware changed after release verification")
         boot = image / "boot.py"
@@ -516,9 +527,12 @@ class CommandTransport:
             "verify-flash", offset, str(firmware)]
         # A failed filesystem upload can leave the exact firmware installed
         # while the journal remains at ``backed_up``.  Reuse that verified
-        # image on resume instead of needlessly erasing and rewriting flash.
+        # image only on an explicit resume.  A new transaction must erase even
+        # when the same firmware is already present: otherwise clean
+        # provisioning would overlay the prepared image onto stale filesystem
+        # content instead of establishing a known-empty device.
         firmware_matches = self._run(verify, check=False).returncode == 0
-        if not firmware_matches:
+        if not (reuse_matching_firmware and firmware_matches):
             self._run(["esptool", "--chip", "esp32s3", "--port", self.port,
                        "erase-flash"])
             self._run(["esptool", "--chip", "esp32s3", "--port", self.port,

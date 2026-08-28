@@ -1002,8 +1002,18 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    empty pre-promotion modern feeds. The exact candidate was also physically
    migrated from the sanitized v0.13 floor with byte-exact protected-state and
    browser/API checks. The destructive interruption/containment cases and
-   complete item 6 provisioning matrix are still required; no modern release
-   is qualified or promoted by this partial physical work.
+   complete item 6 provisioning matrix are still required. A subsequent
+   authenticated clean transaction physically erased, flashed, verified, and
+   installed `modern-v0.14.7`, committed it only after health, and produced a
+   clean snapshot matching every immutable prepared file. That session fixed
+   matching-firmware reuse so only an explicit resume may skip erase, then
+   exposed that the candidate selected `hello.py` without shipping an
+   authenticated clean user seed. Builds now place that seed under
+   `/defaults/user`; clean provisioning requires and installs it without
+   weakening `/files/user` protection, and modern preflight rejects older
+   candidates that omit it. A new signed candidate and repeated human
+   display/touch, tablet browser, APP, and recovery observations are required;
+   no modern release is qualified or promoted by this partial physical work.
 8. **Support window decided, enforced, and physically observed:** direct
    adult migration supports stable TartLab v0.13 or newer on the exact
    `legacy-mp123` firmware, qualified board, and either the captured root-v1 or

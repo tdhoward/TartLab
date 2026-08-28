@@ -120,18 +120,31 @@ class ModernReleaseTests(unittest.TestCase):
     firmware_sha256 = (
         "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab")
 
-    def _build(self, root: Path) -> tuple[Path, Path]:
+    def _build(self, root: Path, *,
+               include_clean_defaults: bool = True) -> tuple[Path, Path]:
         dist = root / "dist"
         dist.mkdir()
         (dist / "main.py").write_text("print('modern')\n", encoding="utf-8")
-        packages = root / "packages.json"
-        packages.write_text(json.dumps([{
+        package_map = [{
             "name": "rootfiles",
             "source": "dist/*",
             "target": "/",
             "clear_first": False,
             "ownership": "system",
-        }]), encoding="utf-8")
+        }]
+        if include_clean_defaults:
+            (dist / "defaults/user").mkdir(parents=True)
+            (dist / "defaults/user/hello.py").write_text(
+                "print('hello')\n", encoding="utf-8")
+            package_map.append({
+                "name": "defaults",
+                "source": "dist/defaults",
+                "target": "/defaults",
+                "clear_first": True,
+                "ownership": "system",
+            })
+        packages = root / "packages.json"
+        packages.write_text(json.dumps(package_map), encoding="utf-8")
         release = root / "release"
         build_modern_release(
             dist, release, "modern-v1.2.3", packages_path=packages,
@@ -162,7 +175,7 @@ class ModernReleaseTests(unittest.TestCase):
             result = check_modern_release(
                 release, "lvgl-modern", self.firmware_sha256, dist=dist)
             self.assertFalse(result["mutation_performed"])
-            self.assertEqual(result["packages"], 1)
+            self.assertEqual(result["packages"], 2)
             self.assertEqual(result["published_provenance_assets"], 3)
             self.assertEqual(result["support_window_floor"], "v0.13")
             support_window = json.loads(
@@ -170,6 +183,14 @@ class ModernReleaseTests(unittest.TestCase):
             self.assertEqual(
                 support_window["direct_migration"]["minimum_tartlab_version"],
                 "v0.13")
+
+    def test_modern_release_requires_authenticated_clean_user_defaults(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            _, release = self._build(
+                Path(temporary), include_clean_defaults=False)
+            with self.assertRaisesRegex(ValueError, "clean user defaults"):
+                check_modern_release(
+                    release, "lvgl-modern", self.firmware_sha256)
 
     def test_provisioning_preflight_rejects_profile_and_firmware_mismatch(self):
         manifest = {

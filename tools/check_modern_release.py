@@ -281,6 +281,10 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
         archive_total += archive_path.stat().st_size
         expanded_total += expanded
 
+    if "/defaults/user/hello.py" not in owned_paths:
+        raise ValueError(
+            "modern release has no authenticated clean user defaults")
+
     recorded_dist = json.loads(
         (release / "dist_inventory.json").read_text(encoding="utf-8"))
     required_paths = {
