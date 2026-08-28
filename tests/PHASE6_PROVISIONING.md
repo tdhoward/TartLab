@@ -255,12 +255,55 @@ tablet browser edit/save/run, selected APP, or recovery observations. Those
 manual checks and the destructive interruption matrix remain open, so the
 physical clean-provisioning gate and promotion remain incomplete.
 
+## Corrected signed clean transaction: 2026-08-28 (partial gate)
+
+The starter-seed correction was committed as
+`49d5b82c795297fa0c6f12ed683af465502779a1`, tagged
+`modern-v0.14.8`, and rebuilt by protected qualification workflow run
+`33188118448`. All 23 release subjects reverified against the bundled GitHub
+Artifact Attestation, exact `refs/tags/modern-v0.14.8` source ref, protected
+qualification workflow, SLSA provenance predicate, and non-self-hosted-runner
+policy. The signed candidate's `checksums.json` SHA-256 is
+`dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e`.
+Read-only clean preflight passed, including the authenticated
+`/defaults/user/hello.py` requirement, and all 165 host tests had passed before
+the physical transaction.
+
+A new clean journal on COM3 again recorded an empty source inventory, erased
+flash, wrote and verified firmware SHA-256
+`187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`,
+and uploaded 202 prepared files. It stopped at `awaiting_health`, retained the
+pending marker through the first post-reset inspection, and advanced to
+`complete` only after a later normal boot consumed that marker. The completed
+journal reports `modern-v0.14.8`, profile `lvgl-modern`, no sensitive backup,
+and SHA-256
+`98f712cfff5252be368d767cda45688d4097adb7881000361fbd382a71131a53`.
+
+An independent USB-only probe reported MicroPython 1.27.0, the exact firmware
+identity, committed `modern-v0.14.8`, the isolated modern repository and
+manifest, zero configured Wi-Fi networks, 8,102,416 bytes of free heap, and the
+expected ten top-level entries. A fresh 208-file snapshot differed from the
+prepared image only as expected: `/state/update.json` was consumed,
+`/state/repos.json` committed the version, and seven boot/log/migration/settings
+paths were device-generated. Both `/defaults/user/hello.py` and the newly
+created `/files/user/hello.py` match the authenticated prepared bytes. The
+private snapshot-manifest SHA-256 is
+`054fbdcd82990efdd47e6195f2d56bc7b5cfb87f1b34cf6c9ada2871d4e50f1c`.
+The board was reset to standalone operation after capture; this PC was never
+joined to the device AP.
+
+This corrected session closes the signed-candidate seed, immutable filesystem,
+and automated health portions of clean provisioning. Human display/touch,
+tablet browser edit/save/run, selected APP, and recovery observations still
+remain, as does the destructive interruption matrix. Promotion therefore
+remains blocked.
+
 ## Remaining physical gate
 
-The candidate-bound direct-migration floor case now has the required device,
-runtime, port, protected-state, release/firmware, journal, and operator/date
-record without credentials or student work. The rest of the item 6 physical
-matrix remains open.
+The candidate-bound direct-migration floor and corrected automated clean cases
+now have the required device, runtime, port, protected-state,
+release/firmware, journal, and operator/date records without credentials or
+student work. The rest of the item 6 physical matrix remains open.
 
 The physical item 6 gate passes only after all of the following are observed:
 

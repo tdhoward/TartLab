@@ -1011,9 +1011,13 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    authenticated clean user seed. Builds now place that seed under
    `/defaults/user`; clean provisioning requires and installs it without
    weakening `/files/user` protection, and modern preflight rejects older
-   candidates that omit it. A new signed candidate and repeated human
-   display/touch, tablet browser, APP, and recovery observations are required;
-   no modern release is qualified or promoted by this partial physical work.
+   candidates that omit it. The corrected signed `modern-v0.14.8` candidate
+   then passed clean preflight and a new physical erase/write/verify/upload and
+   pending-health commit. Its 208-file snapshot matched every immutable
+   prepared byte and proved that both authenticated starter copies exist.
+   Human display/touch, tablet browser, APP, recovery, and destructive
+   interruption observations are still required; no modern release is
+   qualified or promoted by this partial physical work.
 8. **Support window decided, enforced, and physically observed:** direct
    adult migration supports stable TartLab v0.13 or newer on the exact
    `legacy-mp123` firmware, qualified board, and either the captured root-v1 or

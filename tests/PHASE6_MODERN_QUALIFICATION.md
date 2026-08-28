@@ -310,6 +310,37 @@ This is partial clean-case evidence. Human display/touch, tablet IDE
 edit/save/run, selected APP, and recovery observations remain required before
 the clean-provisioning gate can pass.
 
+The correction was then committed as
+`49d5b82c795297fa0c6f12ed683af465502779a1`, tagged
+`modern-v0.14.8`, and rebuilt by protected qualification workflow run
+`33188118448`. All 23 subjects in that candidate reverified against the bundled
+attestation, exact tag ref, protected signer, SLSA predicate, and hosted-runner
+policy. Its `checksums.json` SHA-256 is
+`dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e`.
+Read-only clean preflight and all 165 host tests passed.
+
+A new COM3 clean transaction used an empty source inventory, erased flash,
+wrote and verified the exact candidate firmware, and uploaded 202 prepared
+files including authenticated `/defaults/user/hello.py` and its clean-seeded
+`/files/user/hello.py` copy. The journal remained at `awaiting_health` until a
+normal boot consumed `/state/update.json`, then committed
+`modern-v0.14.8` at stage `complete`. Its SHA-256 is
+`98f712cfff5252be368d767cda45688d4097adb7881000361fbd382a71131a53`.
+
+USB-only inspection reported MicroPython 1.27.0, exact firmware identity,
+profile `lvgl-modern`, the isolated modern feed/manifest, zero configured Wi-Fi
+networks, and the expected root layout. In the 208-file snapshot, every
+immutable prepared file matched; only the consumed update marker, committed
+repository state, and seven generated boot/log/migration/settings paths
+differed. Both starter copies matched the authenticated prepared bytes. The
+private snapshot-manifest SHA-256 is
+`054fbdcd82990efdd47e6195f2d56bc7b5cfb87f1b34cf6c9ada2871d4e50f1c`.
+The board was reset after capture without joining this PC to its temporary AP.
+
+This supersedes the unsigned diagnostic result and passes the corrected
+candidate's automated clean-filesystem checks. Human display/touch, tablet IDE
+edit/save/run, selected APP, and recovery observations remain open.
+
 Together, the candidate-bound sessions qualify the support-window floor
 migration, direct modern-to-modern OTA normal path,
 recovery-page rendering and redacted status, the corrective-update button,
