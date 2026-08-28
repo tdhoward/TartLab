@@ -652,6 +652,20 @@ class PhysicalHelperTests(unittest.TestCase):
         ])
         self.assertEqual(args.manifest, "manifest.json")
 
+    def test_recovery_retry_and_update_status_commands_are_explicit(self):
+        retry = self.helper.parser().parse_args(["recovery-retry"])
+        status = self.helper.parser().parse_args(["update-status"])
+        self.assertIs(retry.func, self.helper.recovery_retry)
+        self.assertIs(status.func, self.helper.update_status)
+
+        source = (ROOT / "tools/phase1_device.py").read_text()
+        self.assertIn("recovery._retry()", source)
+        self.assertIn("'update': read('/state/update.json', None)", source)
+        self.assertIn("'recovery_stage_kind': kind('/tmp/recovery')", source)
+        self.assertIn(
+            "'qualification_stage_kind': kind('/qualification/modern-update')",
+            source)
+
     def test_recovery_browser_helper_uses_modern_candidate_adapter(self):
         args = self.helper.parser().parse_args([
             "recovery-browser",

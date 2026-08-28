@@ -1212,6 +1212,63 @@ def reset_device(args):
     print("Reset requested on %s" % args.port)
 
 
+def recovery_retry(args):
+    """Clear the durable recovery failure count and request a normal boot."""
+
+    repl = connect(args)
+    try:
+        output = repl.exec(
+            "import sys\n"
+            "if '/recovery' not in sys.path: sys.path.insert(0, '/recovery')\n"
+            "import recovery\n"
+            "recovery._retry()\n"
+            "print('RECOVERY_RETRY=True')\n",
+            max(args.timeout, 30))
+        sys.stdout.buffer.write(output)
+        sys.stdout.buffer.flush()
+        repl.serial.write(b"import machine\nmachine.reset()\n\x04")
+        time.sleep(0.5)
+    finally:
+        repl.close()
+    print("Recovery retry requested on %s" % args.port)
+
+
+def update_status(args):
+    """Read durable update/repository state without initializing the display."""
+
+    code = r'''
+import os, ujson
+def read(path, default):
+    try:
+        return ujson.load(open(path))
+    except Exception:
+        return default
+def kind(path):
+    try:
+        return 1 if os.stat(path)[0] & 0x8000 else 2
+    except OSError:
+        return 0
+print('UPDATE_STATUS=' + ujson.dumps({
+    'boot': read('/state/boot.json', {}),
+    'update': read('/state/update.json', None),
+    'repos': read('/state/repos.json', {}),
+    'temporary_root_kind': kind('/tmp'),
+    'temporary_root_entries': sorted(os.listdir('/tmp'))
+        if kind('/tmp') == 2 else [],
+    'recovery_stage_kind': kind('/tmp/recovery'),
+    'recovery_stage_entries': sorted(os.listdir('/tmp/recovery'))
+        if kind('/tmp/recovery') == 2 else [],
+    'qualification_stage_kind': kind('/qualification/modern-update'),
+}))
+'''
+    repl = connect(args)
+    try:
+        output = repl.exec(code, max(args.timeout, 30))
+    finally:
+        repl.close()
+    sys.stdout.buffer.write(output)
+
+
 def guided_app_reset(args):
     repl = connect(args)
     try:
@@ -1267,6 +1324,8 @@ def parser():
     commands.add_parser("probe").set_defaults(func=probe)
     commands.add_parser("protected-digest").set_defaults(func=protected_digest)
     commands.add_parser("reset").set_defaults(func=reset_device)
+    commands.add_parser("recovery-retry").set_defaults(func=recovery_retry)
+    commands.add_parser("update-status").set_defaults(func=update_status)
     commands.add_parser("guided-app-reset").set_defaults(func=guided_app_reset)
     commands.add_parser("press-detected-app-reset").set_defaults(func=press_detected_app_reset)
     commands.add_parser("display-touch").set_defaults(func=display_touch)

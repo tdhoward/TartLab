@@ -17,8 +17,9 @@ rebuilds the candidate twice, attests its TAR/JSON/BIN/MD subjects, and uploads
 a GitHub Release. `tools/provision_modern.py` accepts that qualification
 workflow as the signer for pre-promotion device testing, or the separate
 promotion signer for an eventual published release; it rejects a missing or
-ambiguous bundle. Final promotion remains blocked on the completed physical
-gates.
+ambiguous bundle. Passing the physical gates does not itself publish a release;
+final promotion separately requires commit-bound evidence and protected
+workflow approval.
 
 Before erasure, migration performs these fail-closed checks:
 
@@ -365,8 +366,8 @@ boot consumed the pending marker, and authenticated production resume reported
 Final USB-only inspection reported MicroPython 1.27.0, exact modern identity,
 the isolated repository and manifest, zero configured Wi-Fi networks,
 8,138,576 bytes of free heap, the expected ten root entries, and five rolling
-logs. A new 209-file snapshot matched all 201 prepared files that should remain
-immutable. `/state/update.json` was consumed, only `/state/repos.json` changed,
+logs. A new 209-file snapshot matched all 200 immutable prepared files.
+`/state/update.json` was consumed, only `/state/repos.json` changed,
 and the eight extras were boot state, five logs, migration state, and settings.
 Both `hello.py` copies retained authenticated SHA-256
 `75faa4bdd4c3b7db7de9c63437330778f14268b5a4ca6a9e4a9587963c035b0f`.

@@ -988,7 +988,7 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    attestation from the protected qualification workflow, avoiding both an
    unsigned test image and a circular dependency on post-qualification
    promotion.
-7. **Host enforcement implemented; physical qualification partial:** the normal
+7. **Host enforcement and physical qualification complete:** the normal
    and recovery updaters now bind `lvgl-modern` to the isolated modern feed and
    object manifest while retaining the legacy list-manifest path. They reject
    cross-profile feeds and validate the modern release version, channel,
@@ -1025,9 +1025,17 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    and the pending-health boot. Every loss resumed from the same private
    journal; incomplete filesystems stayed inert, the durable recovery route
    handled activation failures, and the final 209-file snapshot matched every
-   immutable prepared byte. This completes item 6. Physical corrupt or
-   interrupted OTA/recovery containment remains open under item 7, so no modern
-   release is yet qualified or promoted.
+   immutable prepared byte. This completes item 6. The same signed candidate
+   then rejected a physically corrupted temporary package before mutation,
+   retained its committed version through a real download power loss, and
+   retained a durable recovery-install marker and all staged assets through a
+   second real power loss. Offline recovery skipped completed packages,
+   installed the remainder, and reached a healthy exact-version commit. The
+   final 209-file inventory matched every immutable prepared byte and contained
+   no staging. This completes item 7 and the modern physical qualification
+   matrix. No release has been promoted: publication still requires the
+   commit-bound sanitized evidence JSON, protected environment approval,
+   reproducible tag rebuild, and signed isolated-repository workflow.
 8. **Support window decided, enforced, and physically observed:** direct
    adult migration supports stable TartLab v0.13 or newer on the exact
    `legacy-mp123` firmware, qualified board, and either the captured root-v1 or

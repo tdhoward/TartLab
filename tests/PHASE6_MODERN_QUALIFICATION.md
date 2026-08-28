@@ -91,9 +91,11 @@ path.
 
 This policy is fail closed: a missing, pending, malformed, mismatched, or
 unreachable qualification record blocks the promotion job before signing or
-publishing. The physical record below is partial and does not satisfy every
-required gate, so this implementation does not qualify or promote a modern
-release.
+publishing. The physical record below now satisfies the required gates for the
+exact `modern-v0.14.8` candidate. That result does not publish a release:
+promotion still requires a commit-bound sanitized JSON summary, protected
+environment approval, a reproducible tag rebuild, and signed publication to
+the isolated modern repository.
 
 ## Physical modern-to-modern OTA session: 2026-08-27
 
@@ -364,6 +366,65 @@ recovery-page rendering and redacted status, the corrective-update button,
 offline staged recovery resume, pending-health commit, protected-state
 preservation, browser regression, and recovery availability for this candidate.
 The exhaustive provisioning power-loss matrix subsequently passed with the
-same signed candidate, as recorded in `PHASE6_PROVISIONING.md`. Physical corrupt
-or interrupted OTA/recovery containment is still unqualified, so promotion
-remains blocked.
+same signed candidate, as recorded in `PHASE6_PROVISIONING.md`.
+
+## Physical corrupt/interrupted OTA containment: 2026-08-28 (item 7 passed)
+
+The signed `modern-v0.14.8` candidate was staged over USB through
+`tools/qualify_modern_update_containment.py`. The qualification-only helper is
+separate from both installed updaters, requires `--execute` and
+`--confirm-fault`, verifies the complete release and its 23-subject GitHub
+Artifact Attestation, and binds its reusable receipt to the exact source ref,
+candidate checksums, Sigstore bundle, and all twelve staged asset hashes. This
+PC never joined a device Wi-Fi network and no local HTTP server was started.
+
+For the corrupt-download case, the adapter changed one bit only in the
+normal updater's temporary copy of authenticated `pydevices.tar`. The installed
+updater rejected its hash, returned `UPDATE_FAILED`, retained committed version
+`modern-v0.14.8`, and created no update marker. The private receipt SHA-256 is
+`07b4ebc42d7fd77a9b47c281e742b2d5e8154e87bea8626ac0e00f743e827de1`.
+
+For the first real power loss, the normal updater began copying
+`pydevices.tar` into its isolated `/tmp` stage. The qualified modern renderer
+filled the display white, the operator immediately removed USB power for five
+seconds, and the host independently observed COM3 disappear and re-enumerate.
+The next boot retained `modern-v0.14.8`, no update marker, healthy IDE mode,
+and zero failures. Evidence capture found eight complete authenticated staged
+assets and a zero-byte `/tmp/pydevices.tar`, with no active-target overlap. The
+private receipt SHA-256 is
+`55c3311b7cc58fede1026ddf1ad01ef915764454cb449c8d4179e2bfec0feed7`.
+
+For the recovery case, all twelve authenticated assets were copied into the
+installed recovery updater's `/tmp/recovery` stage and revalidated there. The
+updater wrote a durable recovery-source `installing` marker, recorded
+`assetfiles.tar` and `libahttpserver.tar` complete, and began
+`pydevices.tar`. At the white display cue, the operator again removed USB power
+for five seconds and the host observed the disconnect/reconnect. Durable state
+still committed `modern-v0.14.8`, retained all twelve staged assets, and booted
+through the `update_installing` recovery gate. Offline
+`resume_staged_update()` skipped the two completed packages, installed the
+remaining eight non-recovery packages, removed recovery staging, and reached
+pending health. A stable IDE boot then committed health exactly once and
+cleared the marker. The private receipt SHA-256 is
+`fc6e0204c6f58b1537e217c7deba015154251b73430c3146f43fff96606778f5`.
+
+The 218-file evidence snapshot preserved the nine isolated normal-download
+files. Excluding those temporary files, its 209 active files had the same
+expected relationship to the authenticated 202-file prepared image as the
+clean case: all 200 immutable prepared files matched byte-for-byte,
+`/state/update.json` was consumed, only `/state/repos.json` changed, and the
+eight extras were boot state, five logs, migration state, and settings. The
+private snapshot-manifest SHA-256 is
+`04bb068a60eebe9d45432efcbac3d35c16aa112d0655d7a06011a6b9210be4d6`.
+Normal temporary cleanup then restored exactly 209 files. Final USB inspection
+reported MicroPython 1.27.0, the expected ten root entries, zero configured
+Wi-Fi networks, no update or staging state, exact `modern-v0.14.8`, and the
+isolated modern feed and manifest. The sanitized transcript is
+`tests/evidence/modern-v0.14.8-physical-transcript.txt`; its SHA-256 is
+`d7e0caeaa8c64b08c55b40f251a921153fdfddbcab6b8f1e24f9cf5ad228862a`.
+
+Together with the previously recorded direct OTA, recovery browser, offline
+recovery, release-feed isolation, support-window floor, clean provisioning,
+hardware, browser, APP, and exhaustive provisioning-interruption sessions,
+this completes every physical gate required by the modern qualification
+contract. Release publication has not been invoked.

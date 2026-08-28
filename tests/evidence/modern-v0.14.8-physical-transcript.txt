@@ -1,0 +1,78 @@
+TartLab modern-v0.14.8 sanitized physical qualification transcript
+Operator: Tim
+Board: LilyGO T-Display-S3 Pro PCB 1.1, ESP32-S3 revision 0.2
+Candidate checksums SHA-256: dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e
+Firmware SHA-256: 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
+
+This transcript contains no Wi-Fi values, credentials, protected-file
+contents, student work, device MAC address, or private workspace path.
+
+Corrupt normal-updater download
+--------------------------------
+The qualification adapter changed one bit only in the temporary downloaded
+copy of authenticated pydevices.tar. The installed normal updater reported:
+
+  Update validation failed!
+  ValueError: Hash did not match: pydevices.tar
+  CONTAIN_RESULT=-1
+  CONTAIN_FAILED=True
+  CONTAIN_VERSION_BEFORE=modern-v0.14.8
+  CONTAIN_VERSION_AFTER=modern-v0.14.8
+  CONTAIN_MARKER=none
+
+Normal-updater physical power loss during download
+--------------------------------------------------
+After the first chunk of pydevices.tar was handed to the isolated download
+target, the qualified modern renderer filled the display white and reported:
+
+  CONTAIN_POWER_SIGNAL=interrupt-download
+
+The operator removed USB power immediately, kept it disconnected for five
+seconds, and reconnected it. The host independently observed COM3 disappear
+and re-enumerate. Post-boot durable state reported exact committed version
+modern-v0.14.8, no update marker, healthy IDE mode, and zero boot failures.
+The isolated /tmp stage contained eight complete authenticated assets plus a
+zero-byte pydevices.tar. No temporary path overlapped an active target.
+
+Recovery-installer physical power loss and offline resume
+----------------------------------------------------------
+All twelve update assets were copied from the host-authenticated qualification
+stage into /tmp/recovery and revalidated by the installed recovery updater.
+The updater wrote its durable installing marker, recorded completed packages,
+and reached:
+
+  CONTAIN_RECOVERY=Installing assetfiles.tar
+  CONTAIN_RECOVERY=Installing libahttpserver.tar
+  CONTAIN_RECOVERY=Installing pydevices.tar
+  CONTAIN_POWER_SIGNAL=interrupt-recovery
+
+The operator again removed USB power immediately, waited five seconds, and
+reconnected it; the host observed the real disconnect and reconnect. Durable
+state retained committed version modern-v0.14.8 and reported source=recovery,
+status=installing, pending version modern-v0.14.8, and completed packages
+assetfiles.tar and libahttpserver.tar. All twelve staged assets remained.
+
+The installed offline resume then reported:
+
+  RECOVERY_RESUME=Already installed assetfiles.tar
+  RECOVERY_RESUME=Already installed libahttpserver.tar
+  RECOVERY_RESUME=Installing pydevices.tar
+  RECOVERY_RESUME=Installing configs.tar
+  RECOVERY_RESUME=Installing libtarfile.tar
+  RECOVERY_RESUME=Installing helpfiles.tar
+  RECOVERY_RESUME=Installing defaults.tar
+  RECOVERY_RESUME=Installing rootfiles.tar
+  RECOVERY_RESUME=Installing tartlab.tar
+  RECOVERY_RESUME=Installing tartlabutils.tar
+  RECOVERY_RESUMED_VERSION=modern-v0.14.8
+
+A stable IDE boot consumed pending health. Final durable state reported healthy
+IDE mode, zero failures, no update marker, exact modern-v0.14.8, and no recovery
+or qualification stage. A 218-file evidence snapshot contained 209 active
+files and nine isolated normal-download staging files. All 200 immutable
+prepared files matched byte-for-byte; /state/update.json was
+consumed, only /state/repos.json changed, and the eight active extras were boot
+state, five logs, migration state, and settings. After evidence capture, normal
+temporary cleanup restored the exact 209-file inventory. The final USB probe
+reported MicroPython 1.27.0, zero configured Wi-Fi networks, the expected ten
+root entries, and the isolated modern repository and manifest.
