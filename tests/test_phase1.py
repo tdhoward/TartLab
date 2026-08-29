@@ -167,6 +167,54 @@ class DefaultSettingsTests(unittest.TestCase):
         self.assertIn("settings = default_settings()", (ROOT / "src/main.py").read_text())
 
 
+class RecoveryRetryTests(unittest.TestCase):
+    def test_retry_clears_legacy_interrupted_update_trigger(self):
+        previous_machine = sys.modules.get("machine")
+        previous_network = sys.modules.get("network")
+        sys.modules["machine"] = types.ModuleType("machine")
+        sys.modules["network"] = types.ModuleType("network")
+        try:
+            recovery = load_module(
+                "phase1_recovery_retry", ROOT / "src/recovery/recovery.py")
+            with tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                state = root / "state"
+                staging = root / "tmp"
+                state.mkdir()
+                staging.mkdir()
+                recovery.STATE_DIR = state.as_posix()
+                recovery.BOOT_STATE = (state / "boot.json").as_posix()
+                recovery.UPDATE_STATE = (state / "update.json").as_posix()
+                recovery.RECOVERY_FLAG = (state / "recovery.flag").as_posix()
+                recovery.LEGACY_STAGING_MANIFEST = (
+                    staging / "manifest.json").as_posix()
+                (state / "boot.json").write_text(json.dumps({
+                    "health": "starting",
+                    "consecutive_failures": 3,
+                }))
+                (state / "recovery.flag").write_text("")
+                (staging / "manifest.json").write_text("[]")
+                (staging / "tartlab.tar.part").write_bytes(b"partial")
+
+                recovery._retry()
+
+                boot = json.loads((state / "boot.json").read_text())
+                self.assertEqual(boot["health"], "retrying")
+                self.assertEqual(boot["consecutive_failures"], 0)
+                self.assertFalse((state / "recovery.flag").exists())
+                self.assertFalse((staging / "manifest.json").exists())
+                self.assertTrue((staging / "tartlab.tar.part").exists())
+        finally:
+            if previous_machine is None:
+                sys.modules.pop("machine", None)
+            else:
+                sys.modules["machine"] = previous_machine
+            if previous_network is None:
+                sys.modules.pop("network", None)
+            else:
+                sys.modules["network"] = previous_network
+
+
 class ReleaseOwnershipTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

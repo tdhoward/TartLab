@@ -18,6 +18,7 @@ BOOT_STATE = STATE_DIR + "/boot.json"
 UPDATE_STATE = STATE_DIR + "/update.json"
 SETTINGS_FILE = STATE_DIR + "/settings.json"
 RECOVERY_FLAG = STATE_DIR + "/recovery.flag"
+LEGACY_STAGING_MANIFEST = "/tmp/manifest.json"
 
 
 def _read(path, default):
@@ -74,6 +75,14 @@ def _retry():
     _write(BOOT_STATE, boot)
     try:
         os.remove(RECOVERY_FLAG)
+    except OSError:
+        pass
+    # A legacy update can lose power after downloading its manifest but before
+    # writing the durable update marker.  The early boot gate treats that
+    # manifest as an interrupted update, so explicitly abandon that staging
+    # trigger when the user chooses to retry the normal boot.
+    try:
+        os.remove(LEGACY_STAGING_MANIFEST)
     except OSError:
         pass
 
