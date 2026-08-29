@@ -1,162 +1,69 @@
-# Legacy vendor payload lock
+# Legacy PyDevices vendor model
 
-`legacy-pydevices.lock.json` records two different historical facts:
+TartLab keeps three separate records so historical evidence, upstream research,
+and the release payload are not confused.
 
-- the normalized content of the PyDevices source snapshot currently tracked in
-  `src/lib/pydevices`; and
-- the exact 145-file, 729,986-byte minified payload captured from the deployed
-  MicroPython 1.23.0 baseline.
+## Historical lock
 
-They intentionally have different identifiers. The historical build output was
-stale and omitted one later tracked PyDevices source file. The original
-distillation script named the upstream `PyDevices/pydisplay` repository but did
-not record its commit, so the provenance status remains
-`incomplete-historical-snapshot`; do not invent an upstream revision.
+`legacy-pydevices.lock.json` identifies both the source snapshot tracked under
+`src/lib/pydevices` and the 145-file payload captured from deployed
+MicroPython 1.23 devices. Their hashes intentionally differ because the old
+distribution omitted one later tracked source file. The original upstream
+commit was never recorded; its provenance remains incomplete and must not be
+invented.
 
-Run `python tools/vendor_lock.py` in CI or before building. Only use
-`python tools/vendor_lock.py --write` after reviewing an intentional vendor
-change and its upstream license/provenance. Phase 4 must replace the missing
-upstream revision with a pinned source and allowlist before changing this
-historical snapshot.
+Validate with:
 
-## Phase 4 import and payload inventory
+```text
+python tools/vendor_lock.py
+```
 
-`legacy-pydevices.imports.json` is the reviewed, machine-readable partition of
-the legacy payload. `tools/pydevices_inventory.py` conservatively follows every
-static import, including conditional and function-local imports, from three
-separate root groups:
+Use `--write` only after reviewing an intentional historical-lock change.
 
-- TartLab core startup and IDE display rendering;
-- the default T-Display-S3 Pro legacy adapter; and
-- all shipped Python examples.
+## Reachability and upstream audit
 
-Shared files are assigned to the first category that reaches them. The
-`hdwconfig` import is a deliberate boundary between core/example code and the
-board-adapter category. MicroPython's built-in `framebuf` and `micropython`
-modules take precedence over same-named historical add-on files. Imports built
-from runtime strings are outside static analysis and must be represented by an
-explicit root if introduced. Non-Python resources are not inferred from imports
-and remain in the explicitly retained partition until separately reviewed.
+`legacy-pydevices.imports.json` partitions every historical payload file from
+the core/IDE, T-Display-S3 Pro adapter, and shipped-example roots. It records 39
+statically reachable files and 107 retained but unreachable files. Dynamic
+string imports and non-Python resources require explicit review.
 
-The initial inventory records 39 reachable Python files and 107 files retained
-from the historical payload without a static path from those roots. This is
-evidence for later pruning, not authorization to remove the retained files.
-Verify source and reachability with:
+`legacy-pydevices.upstream.json` maps the reachable set to exact commits in
+`pydisplay`, canonical `pydevices`, `pygraphics`, and `palettes`, including
+license hashes. Thirty-eight files have maintained equivalents; TartLab's QOI
+reader does not. None is a drop-in legacy replacement.
+
+Validate these records with:
 
 ```text
 python tools/pydevices_inventory.py
-```
-
-After building a distribution, also compare its exact vendor paths with the
-reviewed payload partition:
-
-```text
 python tools/pydevices_inventory.py --dist build/legacy/dist
-```
-
-Only use `--write` after reviewing an intentional root, import, category, or
-payload change. Updating the file is an explicit allowlist decision; it must not
-be used merely to make a failing check pass.
-
-## Phase 4 current-upstream mapping
-
-`legacy-pydevices.upstream.json` maps every one of the 39 reviewed reachable
-files to exact paths in current official upstream trees. The audit pins full
-commits for `pydisplay`, `pydevices` (the canonical destination of the former
-`micropython-hardware` repository), `pygraphics`, and the separately maintained
-`palettes` package. It also records each repository's MIT license content.
-
-The mapping found maintained equivalents for 38 files. TartLab's QOI reader has
-no current equivalent in those trees. None of the 39 files is marked drop-in
-compatible: packages and paths moved, and the display, event, timer, graphics,
-and board APIs have materially evolved. In particular, a maintained
-T-Display-S3 Pro board configuration exists upstream, but it does not expose
-the legacy `Broker`-based board contract used by this snapshot.
-
-Verify the mapping's schema, repository pins, and exact inventory coverage with:
-
-```text
 python tools/pydevices_upstream.py
 ```
 
-When the four pinned repositories are already checked out beneath a directory,
-the optional checkout check also verifies each git HEAD, mapped path, and
-license hash without fetching from the network:
+The audit is evidence and does not itself change release content.
 
-```text
-python tools/pydevices_upstream.py --checkout-root build/upstream-audit
-```
+## Generated release payload
 
-These audit pins alone are not a runtime vendor lock or authorization to replace
-or prune the historical payload. The generated candidate below defines the
-separate runtime allowlist and compatibility surface; physical comparison and
-promotion gates still precede any release-content change.
+`pydevices-candidate.lock.json` pins 65 upstream files, five TartLab
+compatibility adapters, the retained QOI reader, four upstream MIT licenses,
+and TartLab's GPL license. There are no source globs. Strict patch manifests
+pin complete input/output hashes and replacement counts.
 
-## Phase 4 generated candidate pipeline
-
-`pydevices-candidate.lock.json` is the noninteractive, pinned allowlist for the
-next migration stage. It cross-checks all four repository pins and all 47
-audited equivalent source paths against `legacy-pydevices.upstream.json`, then
-adds 18 explicit dependency files. There are no globs: all 65 upstream source
-and destination paths are reviewed individually.
-
-The lock separately pins five TartLab-owned compatibility adapters and the
-retained local QOI reader under `compatibility/pydevices-candidate`. They expose
-the legacy names used by the TartLab platform boundary and shipped examples
-without changing upstream sources: `graphics`, `bmp565`, `touch_keypad`,
-`eventsys.keys.Keys`, and the protected
-`board_configs.t_display_s3_pro.board_config` path. The board adapter translates
-the current `eventsys.Runtime` list-based polling contract back to the scalar
-legacy `broker.poll()` result. The candidate also retains TartLab's GPL license
-alongside the four upstream MIT licenses.
-
-`tools/vendor_pydevices.py` reads file and license content from the pinned git
-objects, so checkout line-ending settings cannot change its output. It compiles
-every selected Python file with the host parser, requires the exact reviewed
-sets of external and dynamic import sources, and generates:
-
-- `runtime/`: the 71-file native-layout candidate;
-- `licenses/`: four reviewed upstream MIT licenses and TartLab's GPL license;
-- `provenance.json`: repository, source, destination, patch, content-hash, and
-  runtime-identifier records; and
-- `size-report.json`: totals grouped by repository and runtime top-level path.
-
-Build from already-pinned local checkouts:
-
-```text
-python tools/vendor_pydevices.py --checkout-root build/upstream-audit --output build/vendor/pydevices-candidate --clean
-```
-
-Or let the tool fetch only the locked commits into a temporary build workspace:
+Generate the payload from exact Git objects with:
 
 ```text
 python tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
 ```
 
-Changes to selected upstream files must be strict JSON patch manifests under
-`patches/pydevices-candidate`. Each operation pins its complete input and output
-hashes and exact replacement counts. The six approved patches cover the
-MicroPython 1.23 parser, the selected display constructor contract, native
-framebuffer selection, two stages of ST7796 solid-fill compatibility and
-performance work, and ESP32 SPI transfer
-configuration. TartLab compatibility files remain separate, source- and
-hash-pinned inputs rather than patches disguised as upstream code.
-
-At the promoted pins the generated runtime is 71 files and 522,319 normalized
-source bytes, with runtime identifier
+The output contains the 71-file runtime, licenses, deterministic provenance, and
+a size report. At the promoted pins its source identifier is
 `sha256:277bc307b4e20dc07afd61580e737800f639a161ac2a9a341c4febef981fe23c`.
-`tests/pydevices_candidate_compat.py` checks the legacy surface without board
-hardware, and the pinned MicroPython 1.23 tier compiles every candidate module
-for the ESP32 `xtensawin` emitter before running the same probe.
+After minification and MicroPython 1.23 `xtensawin` compilation, the packaged
+identifier is
+`sha256:409eda4922f6b66c7fde8cdbca75489d15813749e6ef607ed94e4f81d67dc034`.
 
-`tools/build_phase4_test_release.py` can produce an exact hardware-comparison
-artifact from a normal legacy distribution and a generated candidate. It
-verifies the source provenance, applies the locked Python minifier, compiles
-the 71 modules with pinned MicroPython 1.23 `mpy-cross` for `xtensawin`, and
-marks the artifact `research-only-not-for-promotion`. The separate
-`tools/build_promoted_release.py` path requires a clean build and exact matches
-for the qualified source and packaged-runtime identities in the legacy profile.
-`tests/PHASE4_HARDWARE.md` records the completed physical gate, including
-touch/color, direct OTA, fault, and offline recovery-resume results. The
-checked-in historical payload remains an audited base/fallback input; normal
-release artifacts use the promoted generated payload.
+`tools/build_promoted_release.py` accepts only those physically qualified
+identities from `profiles/legacy-mp123.json`. The historical tree remains an
+audited fallback/input; it is not the normal release payload.
+`tools/build_phase4_test_release.py` always creates a research-only comparison.
+Physical evidence is summarized in `tests/PHASE4_HARDWARE.md`.

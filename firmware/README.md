@@ -1,88 +1,58 @@
 # Firmware images
 
-This directory archives the exact flashable firmware images used by TartLab's
-runtime profiles. Firmware images are separate from TartLab filesystem release
-packages: the on-device updater installs files but does not replace firmware.
-Firmware installation is therefore an adult provisioning or migration task.
-Legacy device releases remain in `tdhoward/TartLab`; any published modern
-firmware and its compatible filesystem releases belong in the separate
-`tdhoward/TartLab-modern-releases` feed. Do not attach a modern image to a legacy
-GitHub Release, because deployed updaters cannot distinguish the profiles and
-count every attached asset in their filesystem free-space check.
+This directory archives the exact flashable images used by TartLab profiles.
+Firmware is separate from TartLab filesystem packages: browser OTA never
+flashes it. Firmware installation is an adult provisioning task.
 
-Profile artifacts have a neighboring `manifest.json` containing their byte
-size, SHA-256 digest, target, runtime identity, qualification state, and known
-source provenance. The reproducible Phase 5 reference uses its neighboring
-`provenance.json` plus `reference.lock.json`. Verify every tracked image from
-the repository root with:
+Verify every tracked image, size, and SHA-256 from the repository root:
 
 ```text
 python tools/check_firmware_artifacts.py
 ```
 
-## Profiles
+All tracked artifacts are combined ESP32 images for offset `0x0`. Confirm the
+board and flash size, erase before changing layouts, and retain a private backup
+and known-good recovery image.
 
-- `legacy-mp123` contains the official MicroPython 1.23.0 generic ESP32-S3
-  octal-SPIRAM image. Its digest matches the physically qualified TartLab
-  legacy baseline in `profiles/legacy-mp123.json`.
-- `lvgl-modern/1.27.0` contains a locally built MicroPython 1.27.0 image with
-  LVGL built in. It is an experimental artifact and has not passed TartLab's
-  modern-firmware hardware qualification gate. Its presence proves only that
-  LVGL was built into that binary; the recorded provenance does not show an
-  exact reproducible build or prove that TartLab used the native `lcd_bus`
-  display path. It remains historical research input and is not the firmware
-  identity accepted by the modern release manifest.
+## Qualified profiles
 
-The selected modern profile is performance-first and dual-renderer. One
-native DMA-capable display transport must serve LVGL UI mode and a mutually
-exclusive direct framebuffer/dirty-rectangle game mode. The reproducible
-`lvgl-micropython/lvgl_micropython` reference and the PyDevices comparison were
-benchmarked on the same board before selecting the reference stack. Neither
-repository's unqualified `main` build is a TartLab release artifact.
+- `legacy-mp123` is the official MicroPython 1.23.0 generic ESP32-S3
+  octal-SPIRAM image. Its identity is pinned in
+  `profiles/legacy-mp123.json` and remains the deployed compatibility baseline.
+- `lvgl-modern/reference` is the reproducible MicroPython 1.27.0/LVGL 9.4.0
+  image selected for the T-Display-S3 Pro. Two clean builds produced the same
+  2,978,512-byte image with SHA-256
+  `187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`.
+  Its complete source graph, local CST226 input, target arguments, and
+  digest-pinned ESP-IDF container are recorded by
+  `lvgl-modern/reference.lock.json` and the neighboring provenance file.
 
-The Phase 5 reference's complete ESP32 source graph, target arguments, local
-CST226 adapter, and Linux/amd64 ESP-IDF container image are pinned in
-`lvgl-modern/reference.lock.json`. Validate the lock, provenance, and archived
-binary with:
+Validate the modern lock and archived image with:
 
 ```text
 python tools/modern_firmware.py check
 ```
 
-Two independent clean checkouts produced byte-identical copies of the current
-2,978,512-byte hardware checkpoint, with SHA-256
-`187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`.
-It freezes ST7796 and CST226 drivers, uses the native `lcd_bus` build, and
-exposes the REPL through the board's native USB Serial/JTAG interface. It is a
-`research-only-reproducible-hardware-qualified` reference. TartLab's checked-in
-application payload supplies the Phase 5 direct RGB565 surface and exclusive
-LVGL/game ownership adapter. The exact checkpoint passed the Phase 5 item 4
-physical display, touch, DMA ownership, reset, network/IDE,
-application-switch, and error-recovery observations in
-`tests/PHASE5_HARDWARE.md`, followed by the Phase 5 legacy/modern and
-alternative-stack comparisons in `tests/PHASE5_BENCHMARKS.md` and
-`tests/PHASE5_PYDEVICES.md`. That evidence applies only to this board,
-checkpoint, and hash-bound adapter. The comparison selected this reference as
-the exact firmware compatibility identity for the promotion-gated modern
-builder. The resumable adult host transaction, virtual migration matrix, and
-profile-bound OTA/recovery host gates are implemented, while physical
-provisioning/migration and OTA/recovery observations, the support-window
-decision, and final release gates remain open. This evidence is not
-recovered provenance for the archived 2025 binary.
+The modern image uses native USB Serial/JTAG, ST7796/CST226 support, and one
+DMA-capable transport shared exclusively by LVGL UI mode and TartLab's direct
+RGB565 game surface. Its lifecycle, benchmark, provisioning, OTA/recovery, and
+promotion evidence is summarized in the Phase 5 and Phase 6 documents under
+`tests/`. It is the firmware identity published with stable
+`modern-v0.14.8`.
 
-The modern release builder copies this exact image into each candidate as
-`tartlab-modern-vX.Y.Z.bin`. It also publishes the build lock, firmware
-provenance, filesystem vendor lock, compatibility declaration, and migration
-guide as separate checksum-bound and attested assets. The source filename in
-this directory remains unchanged; the release filename supplies the TartLab
-version identity.
+## Historical and comparison artifacts
 
-All tracked files are combined ESP32 images intended for offset `0x0`. Erase
-the device before changing between firmware layouts. Confirm the target board,
-flash size, and manifest digest before flashing.
+- `lvgl-modern/1.27.0` is an older experimental build with incomplete
+  provenance. Its binary hash identifies the artifact, but it is not accepted
+  by the modern release manifest.
+- `lvgl-modern/pydevices-reference` is the reproducible PyDevices/displayif
+  comparison. It was slower and blocking at the pinned checkpoint and is not
+  the selected production stack.
 
-An explicit JSON `null` means that a custom-build provenance value was not
-captured and could not be recovered reliably from the binary. In particular,
-the modern runtime reports a dirty MicroPython source tree. Its binary digest
-provides an exact artifact identity, but its recorded source commit alone is
-not sufficient to reproduce the build.
+Neighboring manifests are authoritative for artifact identity and provenance.
+JSON `null` means a historical build value was not captured and must not be
+invented.
+
+Legacy releases belong only in `tdhoward/TartLab`; modern firmware and
+filesystem releases belong only in `tdhoward/TartLab-modern-releases`. Never
+attach a modern image to the legacy feed.

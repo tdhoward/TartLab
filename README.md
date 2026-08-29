@@ -1,182 +1,115 @@
 # TartLab
-Lite web-based MicroPython IDE for embedded devices.
 
-For source-development prerequisites, clean setup, build and test commands,
-local credentials, and optional physical-board tooling, see
+TartLab is a lightweight, browser-based MicroPython IDE served directly by an
+embedded device.
+
+![TartLab logo](images/TartLabLogoHoriz_bluebg.png)
+
+> TartLab is alpha software. Use a recovery-capable test device and retain a
+> backup before upgrades or firmware changes.
+
+## Why TartLab exists
+
+TartLab is designed for classrooms where installing USB drivers and desktop
+IDEs on every laptop or tablet is impractical. Once a device is provisioned,
+students connect over Wi-Fi and use a modern browser to edit, save, and run
+MicroPython files stored on the device.
+
+Current features include Python syntax highlighting, a REPL-like console,
+Wi-Fi configuration, application selection, and browser-driven filesystem
+updates.
+
+## Qualified hardware and profiles
+
+The currently qualified board is the LilyGO T-Display-S3 Pro PCB v1.1. TartLab
+is intended to support more Wi-Fi-capable MicroPython boards, but other ESP32,
+ESP8266, RP2040, and RP2350 targets are ports requiring their own adapter and
+test evidence.
+
+TartLab maintains two profiles:
+
+- `legacy-mp123` supports deployed devices running the exact MicroPython
+  1.23.0 octal-SPIRAM image
+  `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin`.
+- `lvgl-modern` uses the pinned MicroPython 1.27.0/LVGL firmware and native
+  display transport. Stable `modern-v0.14.8` is published in the isolated
+  [modern release repository](https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.14.8).
+
+The normal browser updater changes TartLab filesystem packages only; it cannot
+change firmware. Modern installation or migration is therefore an adult-admin
+task performed with the authenticated provisioning workflow in
+[`profiles/lvgl-modern-migration.md`](profiles/lvgl-modern-migration.md).
+
+## Install the legacy profile
+
+1. Flash the exact octal-SPIRAM MicroPython image above. The archived image and
+   its checksum are documented in [`firmware/README.md`](firmware/README.md).
+2. Before first provisioning, select the board module in `src/hdwconfig.py`.
+   The default is the T-Display-S3 Pro. TartLab later migrates the choice to
+   protected `/device/hdwconfig.py`.
+3. Build a clean distribution:
+
+   ```text
+   python -m pip install --require-hashes -r requirements-build.txt
+   npm ci --prefix src/ide/www
+   python makedist.py --clean
+   ```
+
+4. Upload the generated `dist` files with
+   [mpsync](https://github.com/tdhoward/mpsync), then restart the device.
+
+Source-development and release-candidate commands are in
 [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
-![Logo](images/TartLabLogoHoriz_bluebg.png)
+## Use TartLab
 
-**Warning! This is currently in the alpha stage.  Nothing is guaranteed to work.**
-
-## Goals
-The primary goal of this project is to enable embedded device programming with MicroPython in a classroom setting while allowing the students to bring their own laptops, tablets, etc.  Trying to install USB drivers and applications (such as the Arduino IDE) becomes impractical for larger class sizes, and introduces many unnecessary complications to what should otherwise be fairly simple.
-
-Since many embedded devices have WiFi connectivity built in, why not serve a tiny web-based IDE directly from the device?  Once set up, the IDE can be used without the need for any particular drivers, applications, or operating systems.  It can be accessed from any browser, from desktop PCs and Macs to Chromebooks, tablets, or phones.  The files are loaded and saved directly on the embedded device.
-
-Additionally, it would be great if a community of MicroPython developers would get their start on TartLab and then continue to improve it for others.
-
-## Features
- * Works with any modern web browser
- * Python code highlighting
- * REPL-like console
-
-## Requirements
- * Embedded module: Must be able to run MicroPython and have WiFi  (See below for more details.)
- * LCD display (unless you really like pain)
- * Embedded storage: 4MB+ recommended
- * Client device (for development): Any device with a relatively modern browser (keyboard recommended)
-
-## Recommended embedded devices
-TartLab is intended to support multiple Wi-Fi-capable MicroPython devices, but
-the currently qualified legacy release profile is specifically the LilyGO
-T-Display-S3 Pro running the exact MicroPython image listed below. LilyGO
-T-Display-S3 devices have also been used during development. Other ESP32,
-ESP8266, and RP2040/RP2350 targets should be treated as ports requiring their
-own board adapter and test results, not as already-qualified devices. A display
-is not structurally required, although it makes standalone operation much more
-usable.
-
-## Screenshots
-**TartLab in action:**
-
-![TartLab in action](images/screenshots/TartLab_ss2.png)
-
-## Installation
-1. Install a bin file from [MicroPython](https://micropython.org/) on the embedded device.  Sometimes there are special builds of MicroPython that are specific to your device, in which case you should use those.  For the deployed T-Display-S3/T-Display-S3 Pro compatibility baseline, use MicroPython 1.23.0 with octal PSRAM support: `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin` from the [ESP32_GENERIC_S3 port.](https://www.micropython.org/download/ESP32_GENERIC_S3/)  Do not substitute the non-SPIRAM or quad-SPIRAM variant for these devices. The exact legacy image and a reproducible, hardware-qualified research MicroPython 1.27.0/LVGL reference are archived under [`firmware`](firmware/README.md) with checksummed provenance; the LVGL reference is not selected or released as a replacement for the legacy baseline.
- 2. Before first provisioning, edit `src/hdwconfig.py` to point to one of the
-    available modules in `src/configs` for your device. The default is the
-    LilyGO T-Display-S3 Pro. After first boot, TartLab migrates the selection to
-    protected `/device/hdwconfig.py`; OTA updates preserve that local choice.
- 3. Install the pinned host build dependency with
-    `python -m pip install --require-hashes -r requirements-build.txt`, run
-    `npm ci --prefix src/ide/www`, then execute
-    `python makedist.py --clean`. The output is a newly recreated `dist`
-    directory; the command never reuses stale output.
- 4. Use [mpsync](https://github.com/tdhoward/mpsync) to load the TartLab "dist" files onto the device.
- 5. Restart the device and enjoy!
-
-## Operation
 ### Startup modes
-There are two different modes of operation:
- * Normal operation: On power up, the device will begin serving the TartLab IDE.
- * User app operation:  If the device is powered up or reset while holding down the app button (IO12 on the T-Display-S3 Pro), the device will begin to execute the user's selected Python app.
 
-### Connecting to the IDE
-If the device cannot connect to a WiFi access point (for example, the first time you start it) it will create its own "soft access point" that you can connect to for configuration (or normal usage, if you prefer).  The temporary WiFi access point will be named PyAdjectiveAnimalNumber, which is randomly generated and assigned on the first startup.  If you are connected to the temporary WiFi access point, navigate to 192.168.4.1 to access the IDE.  If the device is connecting to a different WiFi access point that you have set up (see below), you can navigate to http://tartlab.local or its IP address from a browser.
-The display should indicate which WiFi access point it is either creating or using, and what address you should enter in your browser.  Be sure your tablet or laptop is on the same WiFi network before typing in the address.
+- Normal startup serves the TartLab IDE.
+- Holding the application button during reset runs the selected student app.
+  On the T-Display-S3 Pro this is GPIO 12.
 
-### Setting up WiFi access points
-From the IDE, click the gear icon and select WiFi Settings.  This dialog will show you any stored WiFi access points, as well as allowing you to add new access points.  It will display the SSIDs that were discovered during the startup scan.  Note: Most embedded devices only support 2.4GHz WiFi connections, and therefore will only show them in the list of scanned access points.
+### Connect to the IDE
 
-### Updates
-TartLab is updated every so often to include more examples, fix bugs, and make
-improvements. If the device is connected to an internet-linked WiFi access
-point, you can check for updates through the TartLab interface. Click on the
-gear icon, and select "Check for updates". One update takes the device directly
-to the latest stable release for its runtime profile; you do not need to find or
-install intermediate versions. TartLab may perform several internal migration
-steps or automatic restarts as part of that one update. During the update
-process, it is best to have the device plugged in to make sure it stays on. Wait
-until the update process is complete before doing anything else in TartLab, and
-do not start "Check for updates" again while an update is being resumed.
+When the device cannot join a configured Wi-Fi network, it creates an access
+point named like `PyAdjectiveAnimalNumber`. Join it and open
+`http://192.168.4.1`. When the device joins another network, use
+`http://tartlab.local` or the IP address shown on its display. The browser must
+be on the same network.
 
-Deployed MicroPython 1.23.0 devices read GitHub Releases from
-`tdhoward/TartLab`, so that release feed is permanently reserved for the
-`legacy-mp123` profile. `lvgl-modern` devices will be provisioned to read the
-separate `tdhoward/TartLab-modern-releases` feed. Modern releases and
-firmware images must not be attached to a release in the legacy repository:
-the deployed updater cannot distinguish profiles, and it cannot replace
-MicroPython firmware.
+Wi-Fi-capable microcontrollers commonly support only 2.4 GHz networks. Add or
+remove saved networks from **Settings → WiFi Settings**.
 
-## Reproducible legacy releases
+### Update TartLab
 
-The `legacy-mp123` release profile is the compatibility path for deployed
-T-Display-S3 Pro devices using the exact MicroPython 1.23.0 octal-SPIRAM image
-listed above. Use a compatible Python (`>=3.10,<3.15`) and Node.js 20 or newer,
-then build it noninteractively from a clean checkout. The
-`python-minifier==3.2.0` build dependency and npm dependency graph remain
-locked because they directly affect the payload:
+Use **Settings → Check for updates** while the device has Internet access. One
+request moves the device directly to the latest compatible stable release;
+internal migrations and restarts may occur automatically. Keep the board on
+reliable power, wait for completion, and do not start a second update while one
+is resuming.
 
-```text
-python -m pip install --require-hashes -r requirements-build.txt
-npm ci --prefix src/ide/www
-npm run build --prefix src/ide/www
-python makedist.py --output build/legacy/dist --clean --skip-web-build
-python tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
-python tools/build_promoted_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/promoted --version vX.Y --mpy-cross path/to/v1.23.0/mpy-cross --clean
-python tools/check_legacy_release.py --dist build/promoted/dist --release build/promoted/release
-python tools/pydevices_upstream.py
-```
+Release feeds are profile-specific:
 
-The promoted source input can also be generated independently without changing
-the historical checked-in tree:
+- legacy devices use `tdhoward/TartLab`; and
+- modern devices use `tdhoward/TartLab-modern-releases`.
 
-```text
-python tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
-```
+Never place modern firmware or packages in a legacy release. Deployed legacy
+updaters cannot distinguish the profiles and cannot flash firmware.
 
-That source candidate is pinned and reproducible. Its minimal legacy import/API
-adapters and retained QOI reader are validated on the host and by the pinned
-MicroPython 1.23 compatibility tier. Phase 4 items 6 and 7 are complete: the
-normal legacy release path accepts only the exact physically qualified source
-and packaged-runtime identities recorded in `profiles/legacy-mp123.json`.
+## Development and testing
 
-For a physical comparison only, overlay the generated tree on an already-built
-legacy distribution with the guarded research builder:
-
-```text
-python tools/build_phase4_test_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/phase4/candidate --version descriptive-research-version --mpy-cross path/to/v1.23.0/mpy-cross --clean
-```
-
-The result is minified, compiled with the pinned MicroPython 1.23 `mpy-cross`
-for the `xtensawin` target, and explicitly marked
-`research-only-not-for-promotion`. The builder records the compiler identity,
-source-runtime identity, and packaged bytecode identity. It cannot substitute
-for the normal legacy release path. The completed item 6 physical findings and
-the promotion decision are recorded in `tests/PHASE4_HARDWARE.md`.
-
-The promoted command requires a clean worktree and the pinned build toolchain. A direct
-`release.py` command cannot create a normal candidate from the historical
-checked-in PyDevices tree.
-
-`release.py` keeps `manifest.json` compatible with the deployed updater and
-adds deterministic USTAR archives, file/archive inventories, checksums, size
-budgets, firmware compatibility, Git/build identity, and the locked legacy
-vendor-payload identifier. `SOURCE_DATE_EPOCH` may be supplied explicitly; it
-defaults to the current Git commit timestamp.
-
-Pull requests and pushes run the same build twice and require byte-identical
-release directories. CI artifacts are candidates only. Stable promotion is a
-separate reviewed workflow gated by the physical-device checklist in
-`tests/PHASE2_HARDWARE.md` and the protected `legacy-release` GitHub
-environment. It publishes only legacy assets to `tdhoward/TartLab`; the
-promotion-gated modern path has its own protected workflow targeting
-`tdhoward/TartLab-modern-releases`. The legacy workflow authenticates every
-published TAR and JSON asset with SLSA build provenance signed by GitHub's
-keyless Sigstore service and publishes the verification bundle with the release. See
-`tests/PHASE6_RELEASE_SECURITY.md` for the strict repository/workflow verification
-command and the current on-device limitation.
-
-## Testing
-
-TartLab separates fast host checks from physical-device qualification. Run the
-complete implemented hardware-free suite with:
+The complete hardware-free suite is:
 
 ```text
 python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
 ```
 
-The suite covers deterministic releases, the captured legacy layout, OTA and
-recovery fault handling, a virtual device filesystem, startup mode routing,
-headless IDE initialization, and the reviewed PyDevices import/payload
-inventory. CI additionally compiles the generated runtime, verifies the built
-vendor payload against that allowlist, verifies the tracked firmware binaries
-against their manifests, and executes its platform-independent
-compatibility probe with pinned MicroPython v1.23.0 host tools. The exact tier
-boundaries, local Tier 2 command, and current limitations are documented in
-[`tests/TEST_TIERS.md`](tests/TEST_TIERS.md). Passing host tests does not replace
-the applicable physical smoke or release-qualification gate.
+Host tests cover deterministic builds, update/recovery behavior, virtual device
+state, startup modes, headless IDE initialization, and profile policy. They do
+not replace physical display, touch, Wi-Fi, reset, memory, migration, or release
+qualification. See [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md).
 
-### Feedback
-Please feel free to add new issues if you are experiencing problems.  I will try to respond as soon as I can.
+![TartLab in action](images/screenshots/TartLab_ss2.png)
+
+Issues and contributions are welcome in the
+[main repository](https://github.com/tdhoward/TartLab).

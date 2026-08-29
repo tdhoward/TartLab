@@ -1,420 +1,75 @@
-# Phase 6 managed-modern provisioning gate
+# Phase 6 managed-modern provisioning qualification
 
-## Host transaction gate
-
-`tools/provision_modern.py` is the only approved path in this repository for
-clean provisioning or direct adult-admin migration to the promotion-gated
-`lvgl-modern` profile. Its default action is read-only. Physical mutation
-requires all of `--execute`, `--confirm-erase`, an explicit serial port, a
-signed source-tag reference, and a private durable workspace outside the Git
+`tools/provision_modern.py` is the approved repository workflow for clean
+provisioning or direct adult migration to `lvgl-modern`. It is read-only by
+default. Mutation requires `--execute`, `--confirm-erase`, an explicit port,
+an exact signed source tag, and a durable private workspace outside the
 checkout.
 
-Physical qualification uses the unpublished, tag-bound artifact produced when
-an exact `modern-v*` source tag runs
-`.github/workflows/attest-modern-candidate.yml`. That protected workflow
-rebuilds the candidate twice, attests its TAR/JSON/BIN/MD subjects, and uploads
-`qualification-attestation.sigstore.json` with the candidate without creating
-a GitHub Release. `tools/provision_modern.py` accepts that qualification
-workflow as the signer for pre-promotion device testing, or the separate
-promotion signer for an eventual published release; it rejects a missing or
-ambiguous bundle. Passing the physical gates does not itself publish a release;
-final promotion separately requires commit-bound evidence and protected
-workflow approval.
+## Transaction contract
 
-Before erasure, migration performs these fail-closed checks:
+Before erase, the tool:
 
-1. Validate the complete modern release, compatibility declaration, checksums,
-   firmware, provenance, package ownership, and rendered instructions.
-2. Verify every release asset against its GitHub Artifact Attestation bundle.
-3. Capture protected canonical and legacy state into a sensitive host backup.
-4. Validate the legacy T-Display-S3 Pro selector and release state.
-5. Read back the flash span occupied by the pinned 1.23.0 image and verify the
-   hash-locked immutable bootloader/partition-table and factory-application
-   regions. The mutable NVS/PHY range at `0x9000` through `0xFFFF` is excluded;
-   the checked-in source artifact itself retains whole-image SHA-256
-   `41a750a8f047224e3e0a7544a626338c252407df420e2b94dcb0d2dad9793212`.
-6. Enforce the authenticated support window against the captured backup:
-   stable v0.13 or newer and a declared legacy root or canonical layout.
-   Older, prerelease, or unknown layouts stop before erase.
+1. validates the complete release, checksums, ownership, firmware, compatibility,
+   locks, provenance, support window, and migration guide;
+2. verifies the qualification or release GitHub Artifact Attestation;
+3. captures protected state into a private content-addressed backup;
+4. validates the T-Display-S3 Pro selector and installed release/layout; and
+5. verifies immutable regions of the exact qualified legacy firmware while
+   excluding mutable NVS/PHY sectors.
 
-The host then erases and writes the combined modern image at offset `0x0`, uses
-`esptool verify-flash`, reconstructs all authenticated filesystem packages,
-translates the legacy board selector to `t_display_s3_pro_modern`, restores
-the legacy root `/app.py` and `/hdwconfig.py` verbatim, restores settings,
-repositories, logs, selected application, hardware state, and user files, and
-records both the modern feed and exact firmware identity with the target
-version pending health. The existing TartLab health gate commits the version
-exactly once. A content-addressed host journal
-contains no captured values and makes backup, flash, or upload interruption
-resumable with `--resume`.
+Direct migration supports stable v0.13 or newer and a recognized legacy root or
+canonical layout. Older, prerelease, wrong-board, wrong-firmware, or unknown
+layouts fail before erase.
 
-`tests.test_phase6_provisioning` currently proves on the CPython directory
-transport:
+The transaction erases, writes, and verifies the combined image, reconstructs
+authenticated filesystem packages, translates the active selector to
+`t_display_s3_pro_modern`, restores protected state, and leaves the target
+version pending until a healthy boot. Inert boot placeholders and late boot-file
+activation keep incomplete filesystems from starting. A content-addressed
+journal contains no captured values and supports `--resume` after power, USB,
+flash, verification, or upload interruption.
 
-- clean provisioning creates a modern selector, isolated release state,
-  recovery payload, and pending-health transaction;
-- direct migration from the sanitized v0.13 layout preserves settings, logs,
-  user programs, selected application, legacy root files, and
-  installed-version history;
-- the legacy selector is translated instead of being copied into incompatible
-  firmware;
-- the journal does not contain the fixture Wi-Fi password;
-- an active legacy update and a changed backup both fail before erase/resume;
-- USB loss after erase and during upload retains the immutable backup; resume
-  reuses an already verified firmware image instead of erasing it again, then
-  installs a complete recoverable filesystem;
-- inert boot/main placeholders prevent incomplete filesystems from starting,
-  and the real boot files are activated only after recovery and state exist;
-- unsupported hardware stops before erase;
-- v0.12, prerelease, and unrecognized source layouts stop before erase while
-  v0.13 root-v1 and newer canonical layouts pass the host policy; and
-- the physical transport accepts an exact legacy firmware readback and rejects
-  a different image.
+## Qualified release
 
-This host gate does not qualify a physical migration or authorize classroom
-deployment.
+The final physical gate used signed `modern-v0.14.8`:
 
-## Physical direct-migration session: 2026-08-27
+- tag commit: `49d5b82c795297fa0c6f12ed683af465502779a1`;
+- candidate `checksums.json` SHA-256:
+  `dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e`;
+- firmware SHA-256:
+  `187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`;
+- board: T-Display-S3 Pro PCB v1.1, 16 MiB flash, 8 MiB octal PSRAM.
 
-Candidate `modern-v0.14.6` was migrated on the qualification LilyGO
-T-Display-S3 Pro from the exact MicroPython 1.23.0 legacy image. The legacy
-application enumerated on COM6 and the ROM/modern runtime on COM3; the ESP32-S3
-reported chip revision 0.2, 16 MiB flash, and 8 MiB octal PSRAM. The signed
-candidate's `checksums.json` SHA-256 was
-`f0388af976033818665352f91c5af932c9c27d2e84cf043bd3518bc4f1f25878`.
+## Physical results
 
-The protected capture completed in one raw-REPL session without a soft reset.
-The private journal recorded 22 inventoried files, approved source profile
-`legacy-mp123`, canonical-v1 layout, installed v0.13, and backup identifier
-`sha256:e30827b98825bcb5413e36b920848ae2e79af32dfe3ca453d4c950294f0971ee`
-before ROM entry. Resume on COM3 verified the pinned immutable legacy regions,
-flashed and verified the modern firmware, restored the filesystem, committed
-the version after health, and reached journal stage `complete`.
+The combined 2026-08-27–28 sessions passed:
 
-Physical interruption exposed three host-transport gaps which are now covered
-by regression tests: capture must not perform repeated mpremote soft resets;
-resume must reuse an already matching firmware and explicitly exit the ROM
-loader with a watchdog reset; and the health check must allow the native USB
-endpoint to become writable before reading exact repository state. The final
-device reported MicroPython 1.27.0, runtime profile `lvgl-modern`, repository
-`tdhoward/TartLab-modern-releases`, installed version `modern-v0.14.6`, no
-pending update, the modern hardware selector, selected application
-`selected_app.py`, and 213 filesystem files. A passive final boot reached
-`HEALTHY mode=IDE` after the expected synthetic-network fallback.
+- direct migration from the exact v0.13 floor with a backup before erase,
+  immutable legacy firmware readback, selector translation, protected-state
+  preservation, browser/API checks, and exactly-once healthy commit;
+- a truly clean erase/write/verify/install, including authenticated
+  `/defaults/user/hello.py` seeding only into a new user area;
+- tablet IDE create/edit/save/reopen/run/delete, upright colors, five-point
+  touch, GPIO 12 APP boot, recovery page/AP, forced IDE return, and normal reset;
+- interruption during backup and legacy readback;
+- active interruption at erase, firmware write and verification, inert
+  placeholders, every top-level upload, both final boot-file activations, and
+  pending-health boot; and
+- resume from the same private journal after every loss, with exact immutable
+  prepared-file comparison at completion.
 
-The post-migration protected digests for `/app.py`, `/hdwconfig.py`, and
-`/files/user` exactly matched their pre-migration values. `/device` changed as
-required for the modern selector. The selected-application JSON retained the
-same semantic value but was canonically reformatted. Legacy logs were present
-immediately after restoration; repeated diagnostic boots subsequently advanced
-the active five-entry rolling log window, while the original logs remain in
-the retained private backup.
+Qualification found and fixed several transaction boundaries: repeated
+`mpremote` resets during capture, native-USB settle time, ROM-only chunked
+legacy reads, reuse of matching firmware only during explicit resume, clean
+starter-file seeding, and recovery after final boot-file activation failure.
 
-The session resumed after migration with the ignored root `settings.json` as
-the serial helper's credential source. The credential values were not retained
-as evidence. The modern device joined the local network and Chrome loaded the
-TartLab IDE from the device with the loading overlay dismissed and no file-panel
-error. An automated browser interaction created `phase6_browser_test.py` in a
-CodeMirror tab, entered a synthetic print statement, clicked Save, read back the
-exact saved content, clicked Run, and observed `PHASE6_BROWSER_RUN_OK` in the
-expanded IDE console. `/api/space`, `/api/versions`, and `/api/files/user` all
-returned HTTP 200; the repository state reported `modern-v0.14.6` and
-`lvgl-modern`. The temporary device file was deleted and subsequently returned
-HTTP 404. The sanitized browser screenshot SHA-256 is
-`188a19caf5e696763f6f9036fbee329786258226f65509dde4ce7931d6f81f1c`.
+The host failure-injection suite also proves fail-closed behavior for wrong
+firmware/board, changed backup, corrupt packages, failed verification, and
+incomplete upload. None advances the journal to success.
 
-The collision-safe Phase 5 switch helper then staged its hash-verified direct
-RGB565 test app while retaining `selected_app.py` in the cleanup marker.
-Holding the physical upper-right GPIO 12 button during reset displayed the
-expected magenta, cyan, yellow, green, and blue vertical bands. Cleanup restored
-`selected_app.py` and removed only the temporary app and marker. An ordinary
-unpressed reset returned the IDE page and version API with HTTP 200 responses.
-
-Finally, the live IDE pseudo-REPL set the next startup mode to `RECOVERY` and
-reset the device without using serial. The station IDE went offline and the
-open `TartLab-Recovery` SSID was physically observed from a separate Wi-Fi
-client. Because recovery mode is one-shot, an ordinary unpressed reset returned
-the station IDE page and version API with HTTP 200 responses. This confirms the
-display-independent recovery boot, AP advertisement, and safe normal-boot
-return path; the recovery page's browser controls and corrective-update path
-were not exercised in this migration session. The subsequent candidate-bound
-modern OTA session recorded in `PHASE6_MODERN_QUALIFICATION.md` physically
-exercised the recovery page, redacted status endpoint, corrective-update
-button, offline staged resume, healthy IDE return, and protected-state
-preservation.
-
-This session qualifies the direct migration, normal health-commit path, and
-post-migration browser edit/save/run, APP-selection, and recovery boot/AP paths
-on the device. Together with the subsequent modern qualification session, the
-normal physical OTA and recovery-browser corrective paths are also observed.
-The live release-feed isolation and candidate-bound v0.13 support-floor
-observations recorded in `PHASE6_MODERN_QUALIFICATION.md` now also pass. The
-still-open clean-provisioning, destructive interruption/containment, and
-exhaustive power-loss matrix observations are not claimed.
-
-## Candidate-bound v0.13 floor migration: 2026-08-27--28
-
-The exact sanitized `legacy-root-v1` v0.13 fixture was staged on the pinned
-MicroPython 1.23.0 image and migrated to the authenticated
-`modern-v0.14.7` candidate. The transaction captured an 11-file private backup
-with identifier
-`sha256:761202b737d5ee4a62915d3db63cf5cf483fef0a285bb3eacf877dcd614b4cff`
-before erase, verified the locked legacy runtime regions through bounded
-ROM-only reads, installed 210 prepared files, and reached journal stage
-`complete` only after an exact version health check.
-
-The physical session exposed and fixed two native-USB transport boundaries:
-the flasher stub dropped reproducibly at absolute address `0x83000`, so legacy
-identity reads now remain in the ROM loader and are SHA-256 hashed in 256 KiB
-chunks; and Windows published COM3 before the modern endpoint was writable, so
-filesystem upload waits the same qualified three seconds as the health check.
-Both behaviors have targeted regression coverage, and resume reused the
-already verified firmware rather than erasing it again.
-
-Post-migration comparison found exact legacy app, root hardware selector,
-settings, and user-file bytes; the active selector and selected-app translation
-were correct; the repository reported `modern-v0.14.7` and `lvgl-modern`; and
-the pending update marker was absent. Headless Chrome hid the loading overlay
-without a file-panel error, and the versions, space, and user-files APIs all
-returned valid state. Full candidate hashes, journal/snapshot identifiers, and
-the secret-handling boundary are recorded in
-`PHASE6_MODERN_QUALIFICATION.md`. This closes the candidate-bound physical
-support-window floor observation, not the remaining clean or interruption
-matrix.
-
-The approved path below the v0.13 floor is not automatic migration. An adult
-captures a private version-appropriate backup, performs authenticated clean
-provisioning, and selectively restores reviewed settings and user files after
-a healthy boot. Intermediate releases and wholesale historical filesystem
-copies are not part of the supported process.
-
-## Physical clean-filesystem transaction: 2026-08-28 (partial gate)
-
-The authenticated `modern-v0.14.7` qualification candidate from workflow run
-`33125667951` was inspected in clean mode and all 23 subjects were reverified
-against the bundled GitHub Artifact Attestation, exact
-`refs/tags/modern-v0.14.7` source ref, protected qualification workflow, SLSA
-provenance predicate, and non-self-hosted-runner policy. Its
-`checksums.json` SHA-256 remained
-`b66d3de474b05a6cf5ba04cd94bb0979a7cfb9bd672da4f0e3bbaea768027537`.
-
-The pre-erase review found that a new clean transaction on a board already
-containing the exact modern firmware would reuse that firmware and recursively
-overlay the filesystem. That did not establish an empty-filesystem baseline.
-The host transaction now permits matching-firmware reuse only when the caller
-explicitly resumes an existing journal; every new clean or migration
-transaction erases, writes, and verifies the candidate even when the initial
-firmware comparison matches. The targeted 18-test provisioning suite covers
-both branches, including the `False` then `True` reuse sequence across an
-interrupted transaction, and the full 164-test host suite passed before the
-physical erase.
-
-The qualification board enumerated as the modern ESP32-S3 endpoint on COM3.
-The clean transaction captured an empty source inventory with identifier
-`sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`,
-erased flash, wrote and verified the exact candidate firmware, and uploaded a
-200-file prepared filesystem. It reached `awaiting_health` without claiming
-the version. A subsequent normal IDE boot consumed the pending-health marker;
-the journaled resume then reported `healthy: true`, stage `complete`, and
-installed version `modern-v0.14.7`. The completed journal SHA-256 is
-`686482b6a79cec4e6b4e63113155b9a006b8b500c07b3af11f78c18e8069b379`.
-
-A USB-only probe reported MicroPython 1.27.0, the exact modern firmware
-identity, runtime profile `lvgl-modern`, isolated modern repository and
-manifest, no pending update, zero configured Wi-Fi networks, 8,071,744 bytes
-of free heap, and only the expected ten top-level filesystem entries. A fresh
-207-file post-provision snapshot matched all 198 prepared files that remain
-immutable after health byte-for-byte. The only missing prepared path was the
-consumed `/state/update.json`; only `/state/repos.json` changed to commit the
-version; and the seven extra device-generated paths were boot state, five
-rolling logs, migration state, and default settings. The private snapshot
-manifest SHA-256 is
-`f2b419086d5dae9b4aa971bf3aa17c35ea5b1df3ba222faaebd795d039558c8d`.
-Serial inspection independently found the fallback AP active at
-`192.168.4.1`. No Wi-Fi credential or student file was present or retained in
-the journal.
-
-The snapshot then exposed a second clean-only release defect: the candidate
-selected `hello.py` in `/state/selected_app.json` but contained neither
-`/files/user` nor an authenticated copy of the starter application. APP mode
-therefore could not pass from this otherwise clean image. The build now copies
-the protected source seed into update-managed `/defaults/user`; clean
-provisioning requires that authenticated seed and copies it into a new
-`/files/user`, while migration continues to restore student files exclusively
-from the private backup. Modern release preflight also rejects a candidate
-without `/defaults/user/hello.py`. Consequently the old `modern-v0.14.7`
-candidate now fails read-only clean preflight and cannot close this gate. A
-local dirty `modern-v0.14.8` diagnostic build contained `user/hello.py` in
-`defaults.tar`, passed modern preflight with the same 11-package ownership
-model, and all 165 host tests passed. It is not an authenticated qualification
-candidate; a new clean source commit, tag, and signed candidate are required.
-
-This closes the authenticated erase/flash/upload, empty-source, pending-health
-commit, runtime identity, clean inventory, and fallback-AP activation portions
-of the clean case. It does not yet claim the required human display/touch,
-tablet browser edit/save/run, selected APP, or recovery observations. Those
-manual checks and the destructive interruption matrix remain open, so the
-physical clean-provisioning gate and promotion remain incomplete.
-
-## Corrected signed clean transaction: 2026-08-28 (clean case passed)
-
-The starter-seed correction was committed as
-`49d5b82c795297fa0c6f12ed683af465502779a1`, tagged
-`modern-v0.14.8`, and rebuilt by protected qualification workflow run
-`33188118448`. All 23 release subjects reverified against the bundled GitHub
-Artifact Attestation, exact `refs/tags/modern-v0.14.8` source ref, protected
-qualification workflow, SLSA provenance predicate, and non-self-hosted-runner
-policy. The signed candidate's `checksums.json` SHA-256 is
-`dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e`.
-Read-only clean preflight passed, including the authenticated
-`/defaults/user/hello.py` requirement, and all 165 host tests had passed before
-the physical transaction.
-
-A new clean journal on COM3 again recorded an empty source inventory, erased
-flash, wrote and verified firmware SHA-256
-`187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`,
-and uploaded 202 prepared files. It stopped at `awaiting_health`, retained the
-pending marker through the first post-reset inspection, and advanced to
-`complete` only after a later normal boot consumed that marker. The completed
-journal reports `modern-v0.14.8`, profile `lvgl-modern`, no sensitive backup,
-and SHA-256
-`98f712cfff5252be368d767cda45688d4097adb7881000361fbd382a71131a53`.
-
-An independent USB-only probe reported MicroPython 1.27.0, the exact firmware
-identity, committed `modern-v0.14.8`, the isolated modern repository and
-manifest, zero configured Wi-Fi networks, 8,102,416 bytes of free heap, and the
-expected ten top-level entries. A fresh 208-file snapshot differed from the
-prepared image only as expected: `/state/update.json` was consumed,
-`/state/repos.json` committed the version, and seven boot/log/migration/settings
-paths were device-generated. Both `/defaults/user/hello.py` and the newly
-created `/files/user/hello.py` match the authenticated prepared bytes. The
-private snapshot-manifest SHA-256 is
-`054fbdcd82990efdd47e6195f2d56bc7b5cfb87f1b34cf6c9ada2871d4e50f1c`.
-The board was reset to standalone operation after capture; this PC was never
-joined to the device AP.
-
-The operator then joined only a tablet to the device's temporary fallback AP;
-this PC remained on its existing network. The tablet loaded the IDE at
-`http://192.168.4.1/` without a persistent loading overlay or file-panel error,
-showed the seeded `hello.py`, and completed create/edit/save/reopen/run/delete
-with the expected console output.
-
-The modern display probe drew upright red, green, blue, white, and black bands
-in the correct top-to-bottom order at logical 480 x 222. Human five-point touch
-observation recorded representative logical coordinates `(18, 6)`, `(476, 6)`,
-`(470, 219)`, `(22, 217)`, and `(260, 109)` for the four corners and center. A
-collision-safe temporary visual app retained the original `hello.py` selection
-and was bound to SHA-256
-`9bd6179166a55cfddfe98c4e7bde35108eef9abd325984105b8cfa6fa36b6d56`.
-Holding the upper-right GPIO 12 button during reset entered APP mode and showed
-the expected magenta, cyan, yellow, green, and blue vertical bands. Cleanup
-restored `hello.py` and removed only the temporary app and marker.
-
-Finally, the durable early-boot recovery request advertised the open
-`TartLab-Recovery` SSID. The tablet loaded the recovery page at
-`http://192.168.4.1/` and observed its status and recovery controls. The Force
-IDE on next boot control cleared the request and returned the normal fallback AP
-and IDE;
-an additional physical reset with GPIO 12 unpressed again returned to the IDE.
-Final USB-only state reported a healthy sequence 27 IDE boot, zero consecutive
-failures, selected `hello.py`, `STARTUP_MODE=BUTTON`, and no recovery flag.
-
-This corrected signed candidate therefore passes the complete clean
-provisioning case: authenticated seed and immutable filesystem, health-gated
-commit, tablet IDE operations, display/color/touch, selected APP, recovery, and
-normal return.
-
-## Physical destructive-interruption matrix: 2026-08-28 (item 6 passed)
-
-The same authenticated `modern-v0.14.8` candidate was then provisioned on COM3
-through a qualification-only wrapper around the unchanged production
-transaction. `tools/qualify_provision_interruptions.py` requires both
-`--execute` and `--confirm-interrupt`, revalidates the complete release on every
-run, and binds any reused attestation result to the exact source ref,
-`checksums.json`, and Sigstore bundle. It terminates one named child transport
-operation and writes a collision-safe, sanitized receipt; normal continuation
-always uses `tools/provision_modern.py --resume`.
-
-Sixteen receipts cover two erase trials and every distinct post-erase boundary:
-firmware write and verification; inert `boot.py` and `main.py` placeholders;
-top-level `configs`, `defaults`, `device`, `files`, `ide`, `lib`, `recovery`,
-and `state` uploads; and final `boot.py` and `main.py` activation. Every receipt
-records `completed_before_interrupt: false`. The conclusive erase trial stopped
-an active command three seconds into a separately measured 46-second erase,
-and the following probe found the prior image erased. The write receipt stopped
-at 8.9 percent (147456 of 1665413 compressed bytes), while the verification
-receipt stopped during comparison of the 2978512-byte image.
-
-After each loss, the same private workspace retained stage `backed_up`, the
-empty-source identifier
-`sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`,
-and no sensitive backup. Resume replayed the authenticated transaction instead
-of claiming a partial operation. The inert placeholders prevented incomplete
-filesystems from starting. Interrupting either real boot-file activation
-triggered the durable repeated-boot-failure recovery route; USB recovery retry
-then allowed the unmodified production resume to reconstruct the complete
-filesystem and return to `awaiting_health`. This also demonstrates USB
-reflash/resume after every class of post-erase failure and on-device recovery
-once the filesystem is complete.
-
-The operator next removed USB power during the pending-health boot, waited five
-seconds, and reconnected the board. The host journal independently remained at
-`awaiting_health`; it had not claimed the candidate. A subsequent stable normal
-boot consumed the pending marker, and authenticated production resume reported
-`healthy: true`, stage `complete`, and exact version `modern-v0.14.8`.
-
-Final USB-only inspection reported MicroPython 1.27.0, exact modern identity,
-the isolated repository and manifest, zero configured Wi-Fi networks,
-8,138,576 bytes of free heap, the expected ten root entries, and five rolling
-logs. A new 209-file snapshot matched all 200 immutable prepared files.
-`/state/update.json` was consumed, only `/state/repos.json` changed,
-and the eight extras were boot state, five logs, migration state, and settings.
-Both `hello.py` copies retained authenticated SHA-256
-`75faa4bdd4c3b7db7de9c63437330778f14268b5a4ca6a9e4a9587963c035b0f`.
-The completed journal SHA-256 is
-`98f712cfff5252be368d767cda45688d4097adb7881000361fbd382a71131a53`;
-the final private snapshot-manifest SHA-256 is
-`1e4cff9cf46c3a9f1cf3eac9d05be5a67ac99278de4282f6b33c7cc2442851ec`;
-and the SHA-256 of the ordered 16-receipt hash list is
-`8c6514ac11ad06d9523b9714b49f615366af1ef6f780c268e4e695fd2b994228`.
-The board was reset to standalone operation after capture. This PC was never
-joined to the device AP.
-
-Together with the earlier physical direct-migration interruptions at the
-protected capture and ROM-only legacy-readback boundaries, this completes the
-power/USB-loss observations. The host failure-injection matrix supplies the
-safe fail-closed cases for wrong legacy firmware, wrong board selector, changed
-backup, bad modern firmware, corrupt packages, failed verification, and
-incomplete upload; none can advance the durable journal to success. The full
-172-test suite, including seven tests for the qualification-only interruption
-helper, passed after the physical session.
-
-## Physical item 6 gate result
-
-The candidate-bound direct-migration floor, corrected complete clean case, and
-destructive interruption session have the required device, runtime, port,
-protected-state, release/firmware, journal, and operator/date records without
-credentials or student work.
-
-The physical item 6 gate passed with the following combined evidence:
-
-1. Clean provisioning reaches the IDE and APP paths with display, touch, AP,
-   browser edit/save/run, selected application, and recovery available.
-2. Direct migration preserves every protected category and translates the
-   hardware selector; the old version remains committed until a healthy IDE
-   boot commits the modern version exactly once.
-3. Power or USB loss during backup, legacy flash readback, erase/write,
-   verification, each top-level filesystem upload, and the pending-health boot
-   can be resumed from the same private workspace.
-4. A wrong legacy firmware, wrong board selector, changed backup, bad modern
-   firmware, corrupt package, failed verification, and incomplete upload all
-   fail closed without claiming success.
-5. After every post-erase failure, USB reflash/resume remains available; after
-   the filesystem is complete, the on-device recovery route also boots.
-
-The profile-aware modern OTA/recovery client and promotion evidence validator
-are implemented as Phase 6 item 7 host gates. Their normal physical OTA,
-recovery-browser, release-feed, and support-window observations pass for this
-candidate, and the provisioning matrix above is complete. Physical corrupt or
-interrupted OTA/recovery containment remains required before promotion. See
-`tests/PHASE6_MODERN_QUALIFICATION.md`.
+The physical provisioning gate is complete for `modern-v0.14.8`. Detailed
+sanitized promotion evidence is
+`tests/evidence/modern-v0.14.8-qualification.json`; private journals, backups,
+credentials, and student data remain outside Git. OTA/recovery containment and
+publication are summarized in `PHASE6_MODERN_QUALIFICATION.md`.

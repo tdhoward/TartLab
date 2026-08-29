@@ -1,119 +1,86 @@
-# TartLab development setup
+# TartLab development
 
-This guide describes how to prepare a computer for TartLab source development,
-host testing, release-candidate builds, and optional work with a physical
-LilyGO T-Display-S3 Pro. The Git repository and GitHub Actions are the source
-of truth; generated output and device-local data are not development inputs.
+This guide covers source setup, host validation, release-candidate builds, and
+optional physical-board work. The tracked repository and lockfiles are source
+inputs; generated output and device-local data are not.
 
-## Supported host environment
+## Host requirements
 
-The primary hardware-development environment is Windows with PowerShell. Source
-work and host tests can also run on Linux or macOS. Use:
+- Git
+- Python `>=3.10,<3.15`
+- Node.js 20 or newer, including npm
+- Windows/PowerShell for the established USB-serial workflow; Linux and macOS
+  are supported for hardware-free work
 
-- Git;
-- Python 3.10 through 3.14 (`>=3.10,<3.15`);
-- Node.js 20 or newer;
-- npm, supplied with Node.js.
+The pinned `python-minifier==3.2.0` and npm dependency graph affect release
+bytes and must remain locked. Docker is needed only to reproduce modern
+firmware, not for ordinary TartLab development.
 
-The compatibility ranges are recorded in
-[`profiles/legacy-mp123.json`](profiles/legacy-mp123.json), and the Node.js
-minimum is also declared in [`src/ide/www/package.json`](src/ide/www/package.json).
-Exact Python and Node.js patch versions are not required. The
-payload-transforming `python-minifier==3.2.0` dependency and the npm dependency
-graph remain locked because they directly affect build output. Release metadata
-records the actual host-tool versions used.
+## Bootstrap a clean checkout
 
-Windows is recommended when controlling a board over USB serial. WSL or another
-Linux environment is optional for running the Tier 2 MicroPython Unix
-compatibility test locally; CI already runs that tier on Ubuntu.
+```powershell
+git clone https://github.com/tdhoward/TartLab.git
+Set-Location TartLab
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements-build.txt
+npm ci --prefix src/ide/www
+npm run build --prefix src/ide/www
+```
 
-## Firmware artifact integrity
+On Linux or macOS use `.venv/bin/python`. Use `npm ci`, not `npm install`, when
+the lockfile changes or the dependency tree may be stale.
 
-Flashable images live under [`firmware`](firmware/README.md), outside the
-filesystem release pipeline. Verify their exact byte sizes and SHA-256 digests
-before hardware work or a commit that touches them:
+## Normal validation
+
+Run the web build and complete hardware-free suite:
+
+```powershell
+npm run build --prefix src/ide/www
+.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+```
+
+Verify tracked firmware identities when firmware or profile metadata changes:
 
 ```powershell
 .\.venv\Scripts\python.exe tools/check_firmware_artifacts.py
+.\.venv\Scripts\python.exe tools/modern_firmware.py check
 ```
 
-The `legacy-mp123` artifact is the physically qualified baseline. The
-`lvgl-modern` profile is promotion-gated and must not be presented as a stable
-migration target. Its exact Phase 5 reference now has reproducible-build and
-hardware evidence, and the completed alternative-stack comparison selected it
-as the basis for future modern-firmware work. A separate deterministic builder
-and protected workflow now produce a self-contained firmware, filesystem,
-provenance, compatibility, and migration-instruction asset set targeting
-`tdhoward/TartLab-modern-releases`, but production promotion still requires a
-physically qualified adult-admin migration path and the remaining Phase 6
-gates. Modern assets must never be published as GitHub Releases in the
-legacy-visible `tdhoward/TartLab` repository.
+CI additionally builds pinned MicroPython 1.23 host tools and runs the Tier 2
+compatibility probe. The optional local command and exact claim boundaries are
+in [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md). Host tests do not replace an
+applicable physical smoke or release gate.
 
-The adult provisioning CLI is read-only unless `--execute` and
-`--confirm-erase` are both supplied. Start by inspecting a downloaded modern
-release with:
+## Build a legacy candidate
+
+Builds must start from clean output. After the web build:
 
 ```powershell
-.\.venv\Scripts\python.exe tools/provision_modern.py --release path\to\release --mode migrate
+.\.venv\Scripts\python.exe makedist.py --output build/legacy/dist --clean --skip-web-build
+.\.venv\Scripts\python.exe tools/pydevices_inventory.py --dist build/legacy/dist
+.\.venv\Scripts\python.exe tools/pydevices_upstream.py
+.\.venv\Scripts\python.exe tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
+.\.venv\Scripts\python.exe -B tests/pydevices_candidate_compat.py build/vendor/pydevices-candidate/runtime src/files/assets/test.qoi
+.\.venv\Scripts\python.exe tools/build_promoted_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/promoted --version vX.Y.Z --mpy-cross path\to\v1.23.0\mpy-cross --clean
+.\.venv\Scripts\python.exe tools/check_legacy_release.py --dist build/promoted/dist --release build/promoted/release
 ```
 
-Executable migration additionally requires the exact signed source tag, an
-explicit serial port, `esptool` 5.x, `mpremote`, and a private workspace outside
-the checkout. That workspace contains the resumable device backup and may hold
-plaintext Wi-Fi credentials or student files. Follow the authenticated
-`MIGRATION.md` shipped in the release and retain the workspace until the tool
-confirms the post-install health commit.
+The promoted builder requires a clean worktree, the pinned toolchain, and exact
+source and packaged PyDevices identities from
+`profiles/legacy-mp123.json`. Direct normal releases from the historical
+checked-in PyDevices tree are rejected. For an explicitly research-only
+comparison, use `tools/build_phase4_test_release.py`; it cannot authorize a
+release.
 
-Managed direct migration has a stable v0.13 floor. Validate an exported backup
-without mutation with `tools/check_modern_support_window.py --backup PATH`.
-Older, prerelease, or unrecognized layouts are not eligible for automatic
-migration; follow the adult clean-provision and selective manual-restore path
-in `MIGRATION.md` instead of installing intermediate releases.
+CI builds the candidate twice and requires byte-identical output. Use only the
+`legacy-mp123-<full-commit-sha>` artifact from a successful **Legacy release
+CI** run whose head SHA matches the intended commit.
 
-## Modern graphics development direction
+## Modern firmware and releases
 
-The modern target is not an LVGL-only replacement for the legacy framebuffer
-path. It must contain one DMA-capable native panel transport with two mutually
-exclusive TartLab rendering modes:
-
-- LVGL UI mode for the IDE, menus, controls, text, and UI-oriented apps.
-- A direct framebuffer/dirty-rectangle surface for games and frame-paced
-  animation.
-
-TartLab owns transitions between the modes. A transition must stop or pause the
-current renderer, wait for outstanding display transfers, transfer ownership,
-and redraw/invalidate the destination renderer. Do not let an LVGL flush race a
-direct game transfer, and do not use private upstream driver fields as the game
-API.
-
-Use `lvgl-micropython/lvgl_micropython` and its ESP32 `lcd_bus` as the first
-reproducible performance reference. Compare it on identical hardware with a
-PyDevices `lvgl-micropython` + `displayif` build before selecting the production
-firmware. The comparison must report full-frame and partial-region throughput,
-sprite/scroll and LVGL animation frame times, render/transfer overlap, missed
-deadlines, heap stability, soft-reset behavior, and CPU availability while the
-IDE/network services remain active.
-
-For the 480 x 222 RGB565 panel, one frame is 213,120 bytes. A 60 MHz SPI link
-needs approximately 28.4 ms merely to put those bytes on the wire, so the
-theoretical full-screen ceiling is about 35 FPS before any other overhead.
-Prioritize dirty rectangles, DMA/double buffering, native draw operations,
-preconverted RGB565 assets, and allocation-free steady-state loops. LVGL being
-present in firmware is not evidence that TartLab is using an accelerated path.
-
-The complete rationale and Phase 5 gate are recorded in
-[`PROJECT_NOTES.md`](PROJECT_NOTES.md#phase-5-prototype-modern-lvgl-firmware-separately).
-
-### Pinned Phase 5 reference
-
-The first reference recipe is machine-checked separately from the archived,
-unqualified 2025 binary. It pins the complete direct gitlink set at the selected
-`lvgl_micropython` commit, the T-Display-S3 Pro build arguments, and the
-Linux/amd64 manifest digest of Espressif's ESP-IDF 5.5.1 container. Docker is
-required only to execute the firmware build, not for normal TartLab development.
-
-From the repository root, validate the lock, create a detached clean checkout,
-and inspect or run the exact container command with:
+The published modern profile is bound to the exact image and adapter hashes in
+[`profiles/lvgl-modern.json`](profiles/lvgl-modern.json). Validate the pinned
+source graph and create a fresh detached checkout with:
 
 ```powershell
 .\.venv\Scripts\python.exe tools/modern_firmware.py check
@@ -123,248 +90,55 @@ and inspect or run the exact container command with:
 .\.venv\Scripts\python.exe tools/modern_firmware.py build --source build/phase5/lvgl-micropython
 ```
 
-`checkout` refuses to reuse a destination, and `build` refuses a wrong commit or
-dirty source tree. The build command does not contain `deploy` or a serial port,
-so it cannot flash a connected board. Its output remains an unqualified research
-artifact. The pinned upstream tree contains the ST7796 display driver but no
-CST226 input driver, so TartLab supplies the separately reviewed, hash-bound
-`firmware/lvgl-modern/drivers/cst226.py` adapter through the public upstream
-pointer and native I2C APIs. The build wrapper also fixes the application
-partition at 4 MiB and bridges the official ESP-IDF container's Python
-environment to the path expected by the pinned upstream merger.
+The build is non-flashing and refuses the wrong commit or dirty upstream tree.
+The upstream build mutates generated source state, so do not reuse its checkout
+for reproducibility claims.
 
-The Phase 5 application adapter is selected explicitly; it does not alter the
-qualified legacy board configuration. On an experimental modern device,
-`/hdwconfig.py` selects it with:
+Modern releases contain a combined firmware image, filesystem packages,
+compatibility data, locks, provenance, and migration instructions. The
+protected qualification and promotion workflows target only
+`tdhoward/TartLab-modern-releases`. Detailed authentication commands are in
+[`tests/PHASE6_RELEASE_SECURITY.md`](tests/PHASE6_RELEASE_SECURITY.md).
 
-```python
-from t_display_s3_pro_modern import *
-```
+## Adult modern provisioning
 
-IDE mode then uses the LVGL status view. App startup calls the platform's game
-mode transition; app code obtains the 480 x 222 direct surface from
-`get_platform().game_surface` (or from the idempotent `enter_game_mode()` call).
-Its `write(buffer, x, y, width, height)` API accepts big-endian,
-panel-wire-order RGB565 data. Reusable native DMA memory comes from
-`allocate_buffer(width, height)`. A write waits for completion by default;
-callers opting into `wait=False` must not touch or release the buffer until
-`surface.wait()` returns. `get_platform().enter_ui_mode()` performs the inverse
-drain-and-redraw transition. These adapters are host-tested but remain
-separate from the legacy path. The exact hash-bound version has passed the
-Phase 5 item 4 lifecycle and item 5 benchmark gates.
-
-The archived Phase 5 output was reproduced byte-for-byte from two independent
-clean checkouts. The exact checkpoint and hash-bound application adapter have
-passed the lifecycle and comparative hardware gates in
-`tests/PHASE5_HARDWARE.md` and `tests/PHASE5_BENCHMARKS.md`. This makes it a
-hardware-qualified research reference, not a production selection or release
-input. Run `build` only on a fresh checkout; the upstream build initializes
-submodules and modifies generated source state as part of compilation.
-
-### Phase 5 comparative benchmark
-
-Provision each exact firmware family on the same T-Display-S3 Pro, then collect
-and compare the locked 480 x 222, 240 MHz CPU, 60 MHz SPI matrix with:
+Start with a read-only inspection of a complete downloaded release:
 
 ```powershell
-.\.venv\Scripts\python.exe tools/phase5_benchmark.py collect --port COM6 --profile legacy --samples 12 --switches 25 --output hardware_test_artifacts/phase5-item5/legacy.json
-.\.venv\Scripts\python.exe tools/phase5_benchmark.py collect --port COM3 --profile modern --samples 12 --switches 25 --output hardware_test_artifacts/phase5-item5/modern.json
-.\.venv\Scripts\python.exe tools/phase5_benchmark.py compare --legacy hardware_test_artifacts/phase5-item5/legacy.json --modern hardware_test_artifacts/phase5-item5/modern.json --output hardware_test_artifacts/phase5-item5/comparison.json
+.\.venv\Scripts\python.exe tools/provision_modern.py --release path\to\release --mode migrate
 ```
 
-Collection interrupts the foreground application through the raw REPL, changes
-the displayed pixels, and restores UI ownership. It does not install files or
-flash firmware. The result includes full-frame and 10/25/50% dirty transfers,
-solid fill, sprite, scroll, TartLab widgets, LVGL animation, render/transfer
-overlap, deadline misses, a CPU-headroom proxy, GC bytes, and repeated mode
-switches. See `tests/PHASE5_BENCHMARKS.md` for the exact results and the limits
-on interpreting live network availability and allocation counts.
+Mutation additionally requires the exact signed source ref, `--execute`,
+`--confirm-erase`, an explicit serial port, `esptool` 5.x, `mpremote`, and a
+durable private workspace outside the checkout. Follow the authenticated
+`MIGRATION.md` shipped in the release. The workflow is resumable; retain the
+workspace until a final `--resume` confirms healthy completion.
 
-### Phase 5 PyDevices/displayif comparison
+Direct migration supports stable v0.13 or newer on the exact legacy firmware
+and a recognized layout. Validate a captured backup without mutation with
+`tools/check_modern_support_window.py --backup PATH`. Older or unknown layouts
+require clean provisioning and selective reviewed restore, not intermediate
+releases. See [`profiles/lvgl-modern-migration.md`](profiles/lvgl-modern-migration.md).
 
-The separately pinned alternative is a reproducible, physically benchmarked,
-research-only rejected candidate. Validate its source graph, archived result,
-and hash-bound evidence with:
+## Optional physical legacy-board work
 
-```powershell
-.\.venv\Scripts\python.exe tools/pydevices_modern_firmware.py check --source-root build/phase5-second
-.\.venv\Scripts\python.exe -m unittest tests.test_phase5_pydevices -v
-```
-
-Its explicit application profile is selected with
-`from t_display_s3_pro_pydevices_modern import *`. The adapter exposes the same
-logical 480 x 222 `RGB565_BE` dirty-rectangle surface and ownership transitions,
-but displayif's current SPI write is blocking. Its capability map therefore
-reports no asynchronous direct transfer or render/transfer overlap. See
-`tests/PHASE5_PYDEVICES.md` for reproducibility, hardware-gate, and selection
-evidence. The first `lvgl_micropython`/`lcd_bus` repository wins the Phase 5
-stack selection; this does not promote it or change the legacy release channel.
-
-## Clean checkout and bootstrap
-
-The commands below use the current `ArchitectureOverhaul` development branch.
-For work based on another branch, substitute that branch explicitly.
-
-```powershell
-git clone https://github.com/tdhoward/TartLab.git
-Set-Location TartLab
-git switch ArchitectureOverhaul
-git pull --ff-only
-git status --short --branch
-
-python --version
-node --version
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements-build.txt
-npm ci --prefix src/ide/www
-npm run build --prefix src/ide/www
-.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
-```
-
-On Linux or macOS, use `.venv/bin/python` in place of
-`.\.venv\Scripts\python.exe`.
-
-Before pushing, configure the intended Git author name and email and
-authenticate the `origin` remote through Git Credential Manager, SSH, or
-another normal GitHub credential flow. Never store an access token in a
-tracked file or command transcript.
-
-## Normal development checks
-
-Reinstall JavaScript dependencies with `npm ci`, not `npm install`, whenever
-the lockfile changes or the local dependency tree may be stale. Build the web
-application with:
-
-```powershell
-npm run build --prefix src/ide/www
-```
-
-Run the hardware-free test suite with:
-
-```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
-```
-
-The exact tier boundaries and the optional local Tier 2 command are documented
-in [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md). Host tests do not replace a
-physical smoke test or release-qualification gate when a change affects
-hardware-facing behavior.
-
-## Build a local release candidate
-
-Build outputs are ignored and must be recreated from source. After the web
-build, run:
-
-```powershell
-.\.venv\Scripts\python.exe makedist.py --output build/legacy/dist --clean --skip-web-build
-.\.venv\Scripts\python.exe tools/pydevices_inventory.py --dist build/legacy/dist
-.\.venv\Scripts\python.exe tools/pydevices_upstream.py
-.\.venv\Scripts\python.exe tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
-.\.venv\Scripts\python.exe -B tests/pydevices_candidate_compat.py build/vendor/pydevices-candidate/runtime src/files/assets/test.qoi
-.\.venv\Scripts\python.exe tools/build_promoted_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/promoted --version descriptive-version --mpy-cross path\to\v1.23.0\mpy-cross --clean
-.\.venv\Scripts\python.exe tools/check_legacy_release.py --dist build/promoted/dist --release build/promoted/release
-.\.venv\Scripts\python.exe tools/build_phase4_test_release.py --base-dist build/legacy/dist --candidate build/vendor/pydevices-candidate --output build/phase4/candidate --version descriptive-research-version --mpy-cross path\to\v1.23.0\mpy-cross --clean
-```
-
-The promoted builder requires a clean Git worktree for a normal candidate and
-rejects source or bytecode that differs from the physically qualified Phase 4
-identities. Direct `release.py` builds from the checked-in historical vendor
-tree are diagnostic-only and are rejected by its normal CLI path. The
-`--allow-dirty` option remains available to lower-level diagnostic builds, but
-artifacts built that way are not promotion eligible. The PyDevices inventory check compares the
-generated vendor payload with the reviewed Phase 4 reachability partition; it
-does not rely on an old root `dist` directory. The upstream check validates
-that every reachable file has a reviewed classification against full upstream
-commit pins; it neither fetches sources nor changes the runtime payload. The
-candidate vendor command fetches only those pins, selects the explicit
-upstream allowlist, adds the separately hash-pinned TartLab compatibility
-surface, and emits provenance and size reports under ignored `build/vendor`.
-The compatibility probe checks the protected board path, legacy graphics,
-keys, keypad, BMP, QOI, and scalar broker behavior without loading hardware.
-The inventory, upstream, vendor, and probe commands do not modify
-`src/lib/pydevices`, `dist`, or a release archive. The Phase 4 builder creates a
-separate, guarded comparison release under its requested output. It minifies
-the exact source runtime and uses the supplied pinned MicroPython 1.23
-`mpy-cross` to package all 71 modules for `xtensawin`; its metadata records the
-compiler hash and both source and packaged runtime identities. The artifact is
-always research-only. The promoted builder applies the same transformation but
-binds it to the source and packaged identities in the legacy release profile.
-
-CI builds the pinned MicroPython v1.23.0 Unix interpreter and `mpy-cross`, runs
-the host and compatibility suites, builds the promoted-vendor release twice,
-and requires the two outputs to be byte-identical. For a CI-produced candidate, use the
-`legacy-mp123-<full-commit-sha>` artifact from a successful `Legacy release CI`
-run whose head SHA matches the intended commit.
-
-## Local Wi-Fi credentials
-
-The root `settings.json` file is ignored by Git and may be used as the local
-credential input for the serial helper:
-
-```json
-{
-  "ssid": "YOUR_2_4_GHZ_NETWORK",
-  "password": "YOUR_PASSWORD"
-}
-```
-
-Confirm that the file is ignored before adding real values:
-
-```powershell
-git check-ignore -v settings.json
-```
-
-Do not paste real credentials into documentation, issues, test fixtures,
-terminal transcripts, or hardware evidence. TartLab boards require a visible
-2.4 GHz network; a hidden or 5 GHz-only SSID will not appear in the startup
-scan.
-
-## Optional physical-board setup
-
-Connect the board directly and close Thonny or any other program that may hold
-the serial port. Discover available ports rather than assuming a saved COM
-name:
+Close programs holding the serial port and discover the current port:
 
 ```powershell
 [System.IO.Ports.SerialPort]::GetPortNames()
-Get-CimInstance Win32_SerialPort |
-    Select-Object DeviceID, Name, PNPDeviceID
-```
-
-The hash-locked build requirements include the serial dependency used by the
-host test harnesses. Install them in the project virtual environment and probe
-the selected port:
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements-build.txt
+Get-CimInstance Win32_SerialPort | Select-Object DeviceID, Name, PNPDeviceID
 .\.venv\Scripts\python.exe tools/phase1_device.py --port COMx probe
 ```
 
-Replace `COMx` explicitly. The qualified legacy hardware profile is a LilyGO
-T-Display-S3 Pro running the exact MicroPython v1.23.0 generic ESP32-S3
-octal-SPIRAM firmware recorded in
-[`profiles/legacy-mp123.json`](profiles/legacy-mp123.json). The installed
-TartLab version depends on the candidate being tested.
-
-Apply the ignored local Wi-Fi credential file with:
-
-```powershell
-.\.venv\Scripts\python.exe tools/phase1_device.py --port COMx --timeout 30 wifi-update --credentials-file settings.json
-```
-
-The board display reports its current network and address. If it cannot join a
-configured network, the tested fallback is an open TartLab access point with
-the IDE at `192.168.4.1`. COM names and station IP addresses are local and may
-change between computers, USB ports, and networks.
-
-Before and after any candidate installation, record the protected-state digest
-without printing settings or student-file contents:
+The qualified legacy target is the T-Display-S3 Pro running the exact firmware
+hash in `profiles/legacy-mp123.json`. Record protected-state digests before and
+after installation without printing file contents:
 
 ```powershell
 .\.venv\Scripts\python.exe tools/phase1_device.py --port COMx protected-digest
 ```
 
-To stage an extracted CI candidate over serial:
+Stage an extracted candidate over serial with:
 
 ```powershell
 .\.venv\Scripts\python.exe tools/phase1_device.py --port COMx --timeout 30 serial-install `
@@ -372,77 +146,38 @@ To stage an extracted CI candidate over serial:
     --version descriptive-smoke-version
 ```
 
-The acknowledged serial transfer can take several minutes. Keep the board
-powered and do not open the port from another program.
+Keep the board on reliable power and do not open the port from another program.
+Use the appropriate phase document for any required visual, touch, network,
+fault, recovery, or benchmark observations.
 
-For repeatable Phase 4 timing samples after a healthy boot, use:
+## Credentials and private data
 
-```powershell
-.\.venv\Scripts\python.exe tools/phase1_device.py --port COMx --timeout 75 boot-timing
-.\.venv\Scripts\python.exe tools/phase1_device.py --port COMx --timeout 75 pydevices-benchmark
+An ignored root `settings.json` may supply local 2.4 GHz Wi-Fi credentials to
+serial helpers:
+
+```json
+{"ssid": "YOUR_2_4_GHZ_NETWORK", "password": "YOUR_PASSWORD"}
 ```
 
-The benchmark changes the display while it measures fills and frame writes.
-It records idle touch polls but cannot replace a person checking displayed
-colors and touching known screen locations.
+Confirm it is ignored with `git check-ignore -v settings.json`. Never put real
+credentials, student files, access-point identities, private backups, or raw
+device captures in documentation, fixtures, issues, or command transcripts.
 
-## Generated, private, and device-local data
+Ignored/non-source data includes `build/`, root `dist/` and `release/`, web
+`dist/`, `node_modules/`, virtual environments, Python caches,
+`_example_installation/`, `hardware_test_artifacts/`, and root `settings.json`.
+The sanitized legacy fixture is `tests/fixtures/legacy_mp123`.
 
-The following ignored paths are not portable source inputs:
+## Release safety
 
-- `build/`, root `dist/`, root `release/`, and web `dist/`;
-- all `node_modules/` directories;
-- `.venv/`, `venv/`, and Python caches;
-- `_example_installation/`, which may contain a private device capture;
-- `hardware_test_artifacts/`, including raw serial logs and evidence;
-- root `settings.json`, which may contain plaintext Wi-Fi credentials.
+- A CI artifact, tag, or draft is not a stable release.
+- Legacy releases require the protected `legacy-release` workflow and an exact
+  candidate-bound physical gate.
+- Modern releases require the protected qualification and `modern-release`
+  workflows and all six physical gates.
+- Never mix legacy and modern release assets or feeds.
+- Installed versions commit only after a healthy boot; recovery and future OTA
+  must remain available after every promoted release.
 
-Recreate generated dependencies and output from the tracked lockfiles and
-scripts. Keep private device captures and raw evidence outside Git; if they
-must be retained for audit purposes, use encrypted storage. The sanitized
-legacy fixture is tracked under `tests/fixtures/legacy_mp123`, and durable
-hardware outcomes are recorded in the `tests/PHASE*_HARDWARE.md` documents.
-
-## Release safety and current work
-
-CI artifacts are candidates, not stable releases. Stable promotion remains a
-separate reviewed workflow gated by the physical qualification record in
-[`tests/PHASE2_HARDWARE.md`](tests/PHASE2_HARDWARE.md) and the protected
-`legacy-release` GitHub environment. The promotion workflow authenticates all
-published TAR and JSON assets with commit-pinned GitHub/Sigstore provenance and
-ships the signed bundle for verification. Run
-`python tools/check_release_authenticity.py` for the static policy gate; see
-[`tests/PHASE6_RELEASE_SECURITY.md`](tests/PHASE6_RELEASE_SECURITY.md) for
-consumer verification and scope.
-
-The release repository is part of the compatibility boundary:
-
-- `tdhoward/TartLab` GitHub Releases are reserved for `legacy-mp123`. Untouched
-  v0.13 devices query this repository and cannot filter releases by runtime
-  profile or tag prefix.
-- `lvgl-modern` candidates and eventual releases belong only in
-  `tdhoward/TartLab-modern-releases`, using a separate protected promotion
-  workflow and explicit modern firmware/profile compatibility checks.
-- Modern promotion also downloads and hash-verifies the sanitized Phase 6
-  qualification summary, then requires passed provisioning, hardware, OTA,
-  recovery, feed-isolation, and support-window gates. Validate a prepared
-  summary with `tools/check_modern_qualification.py`; its exact schema and
-  privacy boundary are in `tests/PHASE6_MODERN_QUALIFICATION.md`.
-- Physical modern qualification starts from the protected
-  `attest-modern-candidate.yml` workflow triggered by an exact `modern-v*`
-  source tag. It signs a twice-rebuilt, tag-bound candidate and uploads it with
-  `qualification-attestation.sigstore.json`
-  without publishing to either release feed. `tools/provision_modern.py`
-  verifies that qualification signer before any device mutation; final
-  promotion uses a separate signer identity after the physical gates pass.
-- Do not attach modern firmware images or modern filesystem packages to a
-  legacy release. The deployed updater counts all attached assets for its
-  free-space decision even if `manifest.json` does not reference them, and it
-  cannot flash firmware.
-- A GitHub Actions artifact, plain source tag, or draft release is not a device
-  deployment. Publishing a non-draft GitHub Release to either profile repository
-  is a reviewed promotion action.
-
-See [`PROJECT_NOTES.md`](PROJECT_NOTES.md) for the current architecture roadmap
-and next implementation task. Do not infer release status or a development
-starting point from an old local build directory or device installation.
+Current architecture, decisions, and open work are summarized in
+[`PROJECT_NOTES.md`](PROJECT_NOTES.md).

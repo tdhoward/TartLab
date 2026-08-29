@@ -1,159 +1,84 @@
-# Phase 6 release-authenticity policy
+# Phase 6 release security
 
-## Legacy authenticity policy
+TartLab authenticates published assets with GitHub Artifact Attestations and
+keeps legacy and modern discovery feeds strictly separate.
 
-TartLab stable release assets are authenticated with GitHub Artifact
-Attestations generated only by the protected
-`.github/workflows/promote-legacy-release.yml` workflow. The workflow uses the
-commit-pinned first-party `actions/attest` action to bind every published TAR
-and JSON asset to SLSA build provenance with a short-lived Sigstore signing
-certificate. No long-lived signing key is stored in the repository or in a
-GitHub Actions secret.
+## Legacy releases
 
-The exact repository, signer workflow, predicate type, action commit, subject
-patterns, and scope are locked in `profiles/release-authenticity.json`. The
-promotion workflow publishes `release-attestation.sigstore.json` beside the
-release assets so an administrator can verify the downloaded files against the
-recorded bundle. Online lookup through GitHub remains available as well.
-Before building, the workflow requires its GitHub OIDC repository, tag ref, and
-commit identity to match the requested stable tag and checked-out commit. This
-prevents a run launched from a branch from producing tag-looking provenance.
+The protected `.github/workflows/promote-legacy-release.yml` workflow rebuilds
+a stable tag and attests every TAR/JSON asset with SLSA provenance using the
+commit-pinned first-party `actions/attest` action and GitHub's short-lived
+Sigstore identity. Policy is locked in
+`profiles/release-authenticity.json`.
 
-Verify one downloaded asset for a specific stable tag with:
-
-```text
-gh attestation verify manifest.json --repo tdhoward/TartLab --signer-workflow tdhoward/TartLab/.github/workflows/promote-legacy-release.yml --predicate-type https://slsa.dev/provenance/v1 --deny-self-hosted-runners --bundle release-attestation.sigstore.json --source-ref refs/tags/vX.Y.Z
-```
-
-Or validate the policy and verify every downloaded TAR/JSON asset with:
+Verify a downloaded release with:
 
 ```text
 python tools/check_release_authenticity.py --release path/to/release --source-ref refs/tags/vX.Y.Z --execute
 ```
 
-This closes publisher/workflow authentication for the existing stable release
-pipeline. It does not claim that deployed MicroPython devices verify Sigstore
-certificates. Deployed MicroPython devices still do not verify Sigstore
-certificates; the adult-admin modern provisioning tool performs that host-side
-enforcement before installation.
+A legacy candidate is not authorized until its exact clean tag, checksums, and
+sanitized physical evidence pass review in the protected `legacy-release`
+environment. The current public legacy feed still selects `v0.13`; promotion
+of a current candidate remains open.
 
-## Modern promotion-gated path
+## Modern qualification and releases
 
-The separate modern builder emits `modern-manifest.json`, never the legacy
-`manifest.json`. Its versioned object schema declares the isolated
-`tdhoward/TartLab-modern-releases` channel, the `lvgl-modern` runtime profile,
-and the exact compatible firmware artifact, SHA-256, build lock, provenance,
-and runtime source identities. Build metadata continues to list the remaining
-promotion gates, so creating or uploading a CI candidate does not claim that
-the modern profile is production-qualified.
+Modern candidates use `modern-manifest.json`, profile `lvgl-modern`, and
+repository `tdhoward/TartLab-modern-releases`. The manifest binds the exact
+firmware, packages, compatibility declaration, locks, provenance, support
+window, and rendered `MIGRATION.md`.
 
-The candidate is self-contained: `tartlab-modern-vX.Y.Z.bin`, the filesystem
-TAR files, `firmware-build-lock.json`, `firmware-provenance.json`,
-`filesystem-vendor-lock.json`, `support-window.json`, `compatibility.json`, and
-`MIGRATION.md` are all
-listed by `modern-manifest.json`, covered by `checksums.json`, and included in
-the signed attestation subject set. The migration guide is rendered with the
-release's exact version, firmware name, digest, and flash offset, while clearly
-requiring a published promotion attestation before it authorizes deployment.
-The support-window policy fixes v0.13 as the oldest direct-migration source,
-defines the adult path below that floor, and is hash-bound into qualification
-evidence.
-
-Physical testing does not consume an unsigned CI artifact and does not require
-a release to be promoted first. Push the exact `modern-v*` source tag to run
-`.github/workflows/attest-modern-candidate.yml`; manual dispatch is also
-available after the workflow reaches the default branch. Its protected
-`modern-qualification` job builds twice, checks byte
-identity, performs the profile/firmware preflight, signs the candidate with its
-own GitHub workflow identity, and uploads it with
-`qualification-attestation.sigstore.json`; it has no release token or publish
-step. Verify the downloaded candidate with:
+Physical testing starts from an unpublished candidate produced by the protected
+`attest-modern-candidate.yml` workflow. It has a qualification signer and no
+publish step. Verify it with:
 
 ```text
 python tools/check_modern_release_authenticity.py --release path/to/candidate --purpose qualification --source-ref refs/tags/modern-vX.Y.Z --execute
 ```
 
-`tools/provision_modern.py --execute` performs this qualification-signer check
-before it captures or changes a pre-promotion test device. The promotion signer
-is deliberately different and is accepted for the eventual published release
-asset set. A missing bundle or an artifact directory containing both bundle
-types fails closed.
-
-Before an adult provisioning or migration tool changes a device, run the
-read-only preflight with the identity observed from that device:
-
-```text
-python tools/check_modern_release.py --release path/to/release --runtime-profile lvgl-modern --firmware-sha256 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
-```
-
-The preflight fails closed on a runtime-profile or firmware-hash mismatch and
-performs no mutation. The protected `modern-release` environment rebuilds the
-candidate twice, requires byte identity, repeats this preflight, downloads the
-sanitized qualification JSON from its durable HTTPS reference, verifies its
-exact hash and required passed gates, binds the candidate to that evidence,
-authenticates every release asset with the commit-pinned attestation action,
-and publishes with a target-repository token.
-`profiles/modern-release-authenticity.json` statically locks the source and
-target repositories, signer workflow, manifest, profile, and preflight.
-
-After downloading every modern release asset, verify the source tag and signed
-bundle with:
+Final publication uses the distinct protected
+`promote-modern-release.yml` signer. It rebuilds twice, checks the candidate
+checksum, downloads and hash-verifies the six-gate qualification summary, and
+publishes only to the modern repository. Verify a published release with:
 
 ```text
 python tools/check_modern_release_authenticity.py --release path/to/release --source-ref refs/tags/modern-vX.Y.Z --execute
 ```
 
-This is release machinery, not release authorization. The adult provisioning
-host transaction, profile-bound OTA/recovery clients, virtual migration gate,
-fail-closed qualification-evidence validator, and authenticated unpublished
-qualification-candidate path are implemented. Physical
-clean provisioning and destructive interruption/containment observations, the
-final profile-specific physical gate remain incomplete. Direct migration, the
-candidate-bound v0.13 support-window floor, modern-to-modern OTA, and the
-recovery-browser offline staged resume have now been physically observed, and
-the live public pre-promotion release feeds have passed their isolation check.
-The support-window decision and host enforcement are complete. See
-`PHASE6_MODERN_QUALIFICATION.md` for the evidence contract.
+Stable `modern-v0.14.8` passed this process in workflow run `33223821198`.
+Its candidate `checksums.json` SHA-256 is
+`dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e`;
+qualification evidence SHA-256 is
+`1d889e55d969a906c888af9a0ac6c3af355e5b9e6770175b2c5b0e02b7d4d8c8`.
+The release is
+<https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.14.8>.
 
-## Release-channel isolation
+Adult provisioning performs the attestation check before device mutation.
+Deployed devices validate package hashes, runtime profile, feed/manifest, and
+firmware identity, but do not verify Sigstore certificates themselves.
 
-`tdhoward/TartLab` GitHub Releases are the immutable discovery feed stored on
-deployed v0.13 devices and are therefore reserved for the `legacy-mp123`
-profile. The old updater selects a release by GitHub prerelease status and tag
-inequality; it does not understand profile names, tag prefixes, compatibility
-declarations, or alternate manifest filenames. Some devices may also have
-prerelease updates enabled.
+## Feed isolation
 
-`lvgl-modern` promotion uses a separate protected workflow that publishes only
-to `tdhoward/TartLab-modern-releases`. Its policy binds the source repository
-and workflow identity, target release repository, profile, firmware identity,
-and qualification evidence. Provisioning records the modern feed and manifest
-explicitly. Both device updater paths reject a modern repository record that
-points to the legacy feed or manifest.
+- `tdhoward/TartLab` is permanently reserved for `legacy-mp123` and legacy
+  `manifest.json`.
+- `tdhoward/TartLab-modern-releases` is exclusively for `lvgl-modern` and
+  `modern-manifest.json`.
+- Firmware is an adult-provisioning asset and is never an on-device filesystem
+  OTA package.
+- CI artifacts, tags, drafts, and qualification artifacts are not public
+  deployment channels.
 
-Modern firmware images and modern filesystem packages must not be attached to a
-GitHub Release in `tdhoward/TartLab`, even under different filenames. Besides
-making the release visible to legacy users, v0.13 sums every attached asset in
-its free-space check before it loads `manifest.json`. Firmware remains an
-adult-admin provisioning artifact and cannot be installed by the filesystem
-updater.
+Untouched v0.13 devices cannot filter by runtime profile and count every release
+asset during their free-space check. Therefore modern assets must never appear
+in the legacy feed, even under different names.
 
-CI artifacts, plain tags, and draft releases are not device-visible stable
-promotion. A release-feed isolation test must fail any modern promotion whose
-target is not `tdhoward/TartLab-modern-releases`, and must fail any legacy
-promotion containing modern firmware or modern filesystem assets.
-
-Run the read-only public-feed check with:
+Run the read-only live check with:
 
 ```text
 python tools/check_release_feed_isolation.py
 ```
 
-The checker binds the deployed legacy fixture and checked-in modern profile to
-the two live GitHub Release API responses. It requires an empty modern public
-feed while the profile is `promotion-gated-unreleased`, then validates the
-modern-only contract after the profile records a publication. The 2026-08-29
-post-promotion observation found 14 isolated legacy releases selecting stable
-`v0.13` and one isolated modern release selecting stable `modern-v0.14.8`, with
-no cross-profile assets. Detailed evidence is in
-`PHASE6_MODERN_QUALIFICATION.md`.
+The post-promotion check observed 14 isolated legacy releases selecting
+`v0.13` and one isolated modern release selecting `modern-v0.14.8`, with no
+cross-profile assets.
