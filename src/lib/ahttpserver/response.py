@@ -36,7 +36,8 @@ class HTTPResponse:
 
     async def send(self, writer):
         """ Send response to stream writer """
-        writer.write(f"HTTP/1.1 {self.status} {reason.get(self.status, 'NA')}\n")
+        writer.write("HTTP/1.1 %s %s\n" %
+                     (self.status, reason.get(self.status, "NA")))
         if self.mimetype is not None:
             writer.write(f"Content-Type: {self.mimetype}\n")
         if self.close:
