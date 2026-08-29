@@ -183,7 +183,7 @@ def validate_selected_app(filename):
     for part in parts:
         stem = part[:-3] if part == parts[-1] else part
         if not _is_importable_name(stem):
-            raise ValueError("Selected app must use importable names")
+            raise ValueError("App names: letters, digits, _ only.")
     return filename
 
 

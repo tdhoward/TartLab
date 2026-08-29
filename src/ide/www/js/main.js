@@ -55,9 +55,22 @@ const hostname = window.location.hostname;
 const baseUrl = `http://${hostname}`;
 const apiBaseUrl = `${baseUrl}/api`;
 const userFilesLocation = baseUrl + "/files/user";
+const pythonFilenameError = "App names: letters, digits, _ only.";
 
 function stripLeadingSlashes(path) {
   return path.replace(/^\/+/, "");
+}
+
+function validatePythonPath(path) {
+  const normalized = stripLeadingSlashes(path.replace(/\\/g, "/"));
+  if (!normalized.endsWith(".py")) return true;
+  const parts = normalized.split("/");
+  parts[parts.length - 1] = parts[parts.length - 1].slice(0, -3);
+  if (parts.some((part) => !/^[A-Za-z0-9_]+$/.test(part))) {
+    showToast(pythonFilenameError, "error");
+    return false;
+  }
+  return true;
 }
 
 function openContextMenu(name, type, isApp = false) {
@@ -115,6 +128,7 @@ function saveFile() {
     let newFilename = prompt("Enter a name for the file:", defaultFilename);
     if (newFilename) {
       newFilename = stripLeadingSlashes(currentFolder + "/" + newFilename); // include the current folder
+      if (!validatePythonPath(newFilename)) return;
       editors[activeTab.filename].isNamed = true;
       renameTab(activeTab.filename, newFilename);
       activeTab.fullPath = "/files/user/" + newFilename;
@@ -123,6 +137,8 @@ function saveFile() {
       return;
     }
   }
+
+  if (!validatePythonPath(activeTab.filename)) return;
 
   const filename = encodeURIComponent(activeTab.filename); // URI encode the filename
   const content = editors[activeTab.filename].editor.state.doc.toString();
@@ -200,6 +216,7 @@ function moveFile(filename) {
 function renameOrMoveFile(srcFile, destFile) {
   let src = srcFile;
   let dest = destFile;
+  if (!validatePythonPath(dest)) return;
   showSpinners(true);
   fetch(`${apiBaseUrl}/files/move`, {
     method: "POST",
@@ -352,6 +369,10 @@ function uploadFile() {
   fileInput.onchange = () => {
     let file = fileInput.files[0];
     if (file) {
+      if (!validatePythonPath(currentFolder + "/" + file.name)) {
+        fileInput.value = "";
+        return;
+      }
       showSpinners(true);
       const formData = new FormData();
       formData.append("file", file);
@@ -379,6 +400,7 @@ function uploadFile() {
 }
 
 function showToast(message, type = "info") {
+  if (message instanceof Error) message = message.message;
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
   toast.innerText = message;

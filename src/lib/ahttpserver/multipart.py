@@ -20,7 +20,9 @@ def extract_filename(content_disposition):
 # Handles the multipart, chunked, upload of a file.
 # The file can potentially be large, so we have to write to the file in chunks.
 # Only use this for uploading a single file, not for receiving general form data.
-async def handleMultipartUpload(reader, writer, request, targetFolder, timeout = 30):
+async def handleMultipartUpload(
+        reader, writer, request, targetFolder, timeout=30,
+        validate_filename=None):
     if b'Content-Type' not in request.header:
         raise HTTPServerError('No Content-Type specified!')
     contentType = request.header[b'Content-Type']
@@ -50,6 +52,8 @@ async def handleMultipartUpload(reader, writer, request, targetFolder, timeout =
                 if headers_end_index != -1:
                     contentDisposition = chunk[boundary_index:headers_end_index].decode('utf-8')
                     filename = extract_filename(contentDisposition) or "uploaded_file"
+                    if validate_filename is not None:
+                        filename = validate_filename(filename)
                     filename = targetFolder + '/' + filename
                     file_data_started = True
                     file_data_start = headers_end_index + 4

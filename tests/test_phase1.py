@@ -108,9 +108,78 @@ class StateTests(unittest.TestCase):
                 self.state.read_json(self.state.REPOS_FILE)["list"][0]["installed_version"], "v0.14")
 
     def test_selected_app_rejects_traversal(self):
-        for value in ("../main.py", "/tmp/app.py", "bad-name.py", "readme.txt"):
+        for value in (
+                "../main.py", "/tmp/app.py", "bad-name.py",
+                "testris.original.py", "readme.txt"):
             with self.assertRaises(ValueError):
                 self.state.validate_selected_app(value)
+
+    def test_selected_app_explains_safe_python_names(self):
+        with self.assertRaises(ValueError) as caught:
+            self.state.validate_selected_app("testris.original.py")
+        message = str(caught.exception)
+        self.assertEqual(message, "App names: letters, digits, _ only.")
+        self.assertLessEqual(len(message), 75)
+        self.assertNotIn("\n", message)
+
+
+class MultipartValidationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        package_name = "phase1_http"
+        package = types.ModuleType(package_name)
+        package.__path__ = []
+        sys.modules[package_name] = package
+        sys.modules.setdefault("uasyncio", asyncio)
+        response = types.ModuleType(package_name + ".response")
+        response.HTTPResponse = type("HTTPResponse", (), {})
+        response.sendHTTPResponse = lambda *args, **kwargs: None
+        url = types.ModuleType(package_name + ".url")
+        url.HTTPRequest = type("HTTPRequest", (), {})
+        url.InvalidRequest = type("InvalidRequest", (Exception,), {})
+        server = types.ModuleType(package_name + ".server")
+        server.HTTPServerError = type("HTTPServerError", (Exception,), {})
+        sys.modules[package_name + ".response"] = response
+        sys.modules[package_name + ".url"] = url
+        sys.modules[package_name + ".server"] = server
+        cls.multipart = load_module(
+            package_name + ".multipart",
+            ROOT / "src/lib/ahttpserver/multipart.py")
+
+    def test_upload_filename_is_validated_before_file_creation(self):
+        boundary = b"tartlab-boundary"
+        payload = (
+            b"--" + boundary +
+            b'\r\nContent-Disposition: form-data; name="file"; '
+            b'filename="unsafe.app.py"\r\n\r\nprint(1)\r\n--' +
+            boundary + b"--\r\n")
+
+        class Reader:
+            def __init__(self, content):
+                self.content = content
+
+            async def read(self, size):
+                result = self.content[:size]
+                self.content = self.content[size:]
+                return result
+
+        request = types.SimpleNamespace(header={
+            b"Content-Type": b"multipart/form-data; boundary=" + boundary,
+            b"Content-Length": str(len(payload)).encode(),
+        })
+        seen = []
+
+        def reject(filename):
+            seen.append(filename)
+            raise ValueError("unsafe upload")
+
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(ValueError, "unsafe upload"):
+                asyncio.run(self.multipart.handleMultipartUpload(
+                    Reader(payload), None, request, folder,
+                    validate_filename=reject))
+            self.assertEqual(seen, ["unsafe.app.py"])
+            self.assertEqual(list(Path(folder).iterdir()), [])
 
 
 class BootStateTests(unittest.TestCase):

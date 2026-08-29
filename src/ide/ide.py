@@ -7,7 +7,7 @@ import uasyncio as asyncio
 import io
 from tartlabutils import file_exists, unquote, rmvdir, check_for_update, main_update_routine, \
             log, repl_exception, log_exception, get_logs, load_settings, save_settings, default_settings, \
-            get_selected_app, save_selected_app, mark_boot_healthy
+            get_selected_app, save_selected_app, validate_selected_app, mark_boot_healthy
 from tartlabutils.platform import get_platform
 from tartlabutils.state import REPOS_FILE
 
@@ -303,6 +303,27 @@ def sanitize_path(path, base_path = USER_BASE_DIR):
     return normalized_path
 
 
+def validate_user_python_path(path):
+    """Reject Python paths that cannot be launched as imported modules."""
+    normalized = path.replace('\\', '/')
+    if not normalized.endswith('.py'):
+        return normalized
+    prefix = USER_BASE_DIR + '/'
+    if normalized.startswith(prefix):
+        normalized = normalized[len(prefix):]
+    else:
+        normalized = normalized.strip('/')
+    validate_selected_app(normalized)
+    return normalized
+
+
+def validate_uploaded_filename(folder, filename):
+    if '/' in filename or '\\' in filename:
+        raise ValueError('Uploaded filename must not contain a path.')
+    validate_user_python_path(folder.rstrip('/') + '/' + filename)
+    return filename
+
+
 # get the Python file currently set as the primary app
 # returns a tuple of (localized_filename, error)
 def get_app():
@@ -353,6 +374,10 @@ async def store_user_file(reader, writer, request):
         filename = sanitize_path(filename)
     except:
         return await sendHTTPResponse(writer, 400, 'Invalid path!')
+    try:
+        validate_user_python_path(filename)
+    except ValueError as ex:
+        return await sendHTTPResponse(writer, 400, str(ex))
     try:
         print(request.body)
         data = ujson.loads(request.body.decode("utf-8"))
@@ -434,9 +459,14 @@ async def api_move_file(reader, writer, request):
     try:
         src = sanitize_path(data["src"])
         dest = sanitize_path(data["dest"])
+        validate_user_python_path(dest)
         if src == dest:
             return await sendHTTPResponse(writer, 400, 'File is already there.')
         os.rename(src, dest)
+    except ValueError as ex:
+        print(f"API request: {request.path} with response code 400")
+        log(str(ex))
+        return await sendHTTPResponse(writer, 400, str(ex))
     except Exception as ex:
         print(f"API request: {request.path} with response code 400")
         log(ex)
@@ -450,7 +480,12 @@ async def api_move_file(reader, writer, request):
 async def api_upload_file(reader, writer, request):
     try:
         folder = sanitize_path(request.path[len('/api/files/upload'):])
-        await handleMultipartUpload(reader, writer, request, folder)
+        await handleMultipartUpload(
+            reader, writer, request, folder,
+            validate_filename=lambda filename: validate_uploaded_filename(
+                folder, filename))
+    except ValueError as e:
+        return await sendHTTPResponse(writer, 400, str(e))
     except HTTPServerError as e:
         return await sendHTTPResponse(writer, 404, str(e))
     await sendHTTPResponse(writer, 200, 'success')
@@ -639,7 +674,7 @@ async def api_setasapp(reader, writer, request):
     except Exception as ex:
         print(f"API request: {request.path} with response code 400")
         log(str(ex))
-        return await sendHTTPResponse(writer, 400, 'Error writing selected-app state!')
+        return await sendHTTPResponse(writer, 400, str(ex))
     await sendHTTPResponse(writer, 200, 'success')
     print(f"SET AS APP {localized_filename} with response code 200")
 
@@ -724,6 +759,31 @@ async def free_memory_task():
         await asyncio.sleep(60)
 
 
+def refresh_committed_version():
+    global repos, version
+    try:
+        with open(REPOS_FILE, 'r') as stream:
+            refreshed_repos = ujson.load(stream)
+        refreshed_version = next(
+            repo['installed_version'] for repo in refreshed_repos['list']
+            if repo['name'] == 'TartLab')
+        repos = refreshed_repos
+        version = refreshed_version
+        ide_view.show_startup(version)
+        return True
+    except Exception as error:
+        log_exception(error)
+        return False
+
+
+async def start_ide_server():
+    await app.start()
+    committed = mark_boot_healthy("IDE")
+    if committed:
+        refresh_committed_version()
+    log("HEALTHY mode=IDE update_committed=%s" % committed)
+
+
 def main():
     global sta_if, ap_if, ip_address, softAP, app
 
@@ -737,11 +797,6 @@ def main():
 
         loop.create_task(check_buttons())
         loop.create_task(free_memory_task())
-        async def start_ide_server():
-            await app.start()
-            committed = mark_boot_healthy("IDE")
-            log("HEALTHY mode=IDE update_committed=%s" % committed)
-
         loop.create_task(start_ide_server())
 
         loop.run_forever()

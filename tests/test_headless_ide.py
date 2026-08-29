@@ -85,11 +85,20 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
         sse = types.ModuleType("ahttpserver.sse")
         sse.EventSource = type("EventSource", (), {})
         servefile = types.ModuleType("ahttpserver.servefile")
-        servefile.serve_file = lambda *args, **kwargs: None
+        async def serve_file_response(*args, **kwargs):
+            return None
+        servefile.serve_file = serve_file_response
         response = types.ModuleType("ahttpserver.response")
-        response.sendHTTPResponse = lambda *args, **kwargs: None
+        async def send_http_response(writer, status, message, msgkey=''):
+            writer.responses.append((status, message, msgkey))
+        response.sendHTTPResponse = send_http_response
         multipart = types.ModuleType("ahttpserver.multipart")
-        multipart.handleMultipartUpload = lambda *args, **kwargs: None
+        async def handle_multipart(
+                reader, writer, request, folder, timeout=30,
+                validate_filename=None):
+            if validate_filename is not None:
+                validate_filename(request.upload_filename)
+        multipart.handleMultipartUpload = handle_multipart
         server = types.ModuleType("ahttpserver.server")
         server.HTTPServerError = type("HTTPServerError", (Exception,), {})
         return {
@@ -125,6 +134,7 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
         services.default_settings = lambda: {"STARTUP_MODE": "BUTTON"}
         services.get_selected_app = state.get_selected_app
         services.save_selected_app = state.save_selected_app
+        services.validate_selected_app = state.validate_selected_app
         services.mark_boot_healthy = bootstate.mark_boot_healthy
 
         state_alias = types.ModuleType("tartlabutils.state")
@@ -228,6 +238,98 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
                 ("startup", "v0.13"),
                 ("network", "PySyntheticDevice42", "192.168.4.1", None),
             ])
+
+    def test_healthy_update_refreshes_display_and_in_memory_version(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, state, platform, ide, logs, errors = self.prepare(
+                Path(temp) / "device")
+            state.begin_update("TartLab", "v0.13", "v0.14")
+            state.set_update_pending_health()
+
+            asyncio.run(ide.start_ide_server())
+
+            self.assertTrue(ide.app.started)
+            self.assertEqual(platform.ide_view.events[-1], ("startup", "v0.14"))
+            self.assertEqual(ide.version, "v0.14")
+            self.assertEqual(ide.repos["list"][0]["installed_version"], "v0.14")
+            self.assertIn("HEALTHY mode=IDE update_committed=True", logs)
+            self.assertEqual(errors, [])
+
+    def test_python_file_paths_follow_selected_app_naming_rules(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, unused_state, unused_platform, ide, unused_logs, \
+                unused_errors = self.prepare(Path(temp) / "device")
+
+            self.assertEqual(
+                ide.validate_user_python_path(
+                    "/files/user/games/testris_original.py"),
+                "games/testris_original.py")
+            self.assertEqual(
+                ide.validate_user_python_path(
+                    "/files/user/assets/title.screen.png"),
+                "/files/user/assets/title.screen.png")
+            with self.assertRaisesRegex(ValueError, "App names"):
+                ide.validate_user_python_path(
+                    "/files/user/games/testris.original.py")
+            with self.assertRaisesRegex(ValueError, "App names"):
+                ide.validate_user_python_path(
+                    "/files/user/my-games/testris.py")
+
+    def test_file_endpoints_explain_and_reject_unsafe_python_names(self):
+        with tempfile.TemporaryDirectory() as temp:
+            device, unused_state, unused_platform, ide, unused_logs, \
+                unused_errors = self.prepare(Path(temp) / "device")
+
+            writer = types.SimpleNamespace(responses=[])
+            request = types.SimpleNamespace(
+                path="/files/user/testris.original.py",
+                body=json.dumps({"content": "print('unsafe')"}).encode())
+            asyncio.run(ide.store_user_file(None, writer, request))
+            self.assertEqual(writer.responses[0][0], 400)
+            self.assertEqual(
+                writer.responses[0][1],
+                "App names: letters, digits, _ only.")
+            self.assertFalse(
+                device.host_path("/files/user/testris.original.py").exists())
+
+            source = device.host_path("/files/user/rename_source.py")
+            source.write_text("print('safe')")
+            writer.responses = []
+            request = types.SimpleNamespace(
+                path="/api/files/move",
+                body=json.dumps({
+                    "src": "rename_source.py",
+                    "dest": "renamed.app.py",
+                }).encode())
+            asyncio.run(ide.api_move_file(None, writer, request))
+            self.assertEqual(writer.responses[0][0], 400)
+            self.assertEqual(
+                writer.responses[0][1],
+                "App names: letters, digits, _ only.")
+            self.assertTrue(source.exists())
+
+            legacy_name = device.host_path(
+                "/files/user/testris.original.py")
+            legacy_name.write_text("print('preserved legacy file')")
+            writer.responses = []
+            request = types.SimpleNamespace(
+                path="/api/setasapp",
+                body=json.dumps({"filename": "testris.original.py"}).encode())
+            asyncio.run(ide.api_setasapp(None, writer, request))
+            self.assertEqual(writer.responses[0][0], 400)
+            self.assertEqual(
+                writer.responses[0][1],
+                "App names: letters, digits, _ only.")
+
+            writer.responses = []
+            request = types.SimpleNamespace(
+                path="/api/files/upload/",
+                upload_filename="uploaded.app.py")
+            asyncio.run(ide.api_upload_file(None, writer, request))
+            self.assertEqual(writer.responses[0][0], 400)
+            self.assertEqual(
+                writer.responses[0][1],
+                "App names: letters, digits, _ only.")
 
     def test_runtime_brightness_button_uses_platform_input_and_view(self):
         with tempfile.TemporaryDirectory() as temp:
