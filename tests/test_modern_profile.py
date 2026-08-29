@@ -1,4 +1,4 @@
-"""Host checks for the modern promotion-gated CI profile."""
+"""Host checks for the published modern CI profile."""
 
 from __future__ import annotations
 
@@ -22,11 +22,12 @@ class ModernProfileTests(unittest.TestCase):
         self.profile = json.loads(
             (ROOT / "profiles/lvgl-modern.json").read_text(encoding="utf-8"))
 
-    def test_checked_in_profile_has_an_isolated_gated_release_path(self):
+    def test_checked_in_profile_has_an_isolated_published_release_path(self):
         result = check()
         self.assertEqual(result, {
             "profile": "lvgl-modern",
-            "artifact_status": "promotion-gated-not-released",
+            "artifact_status": "published",
+            "release_version": "modern-v0.14.8",
             "release_repository": "tdhoward/TartLab-modern-releases",
         })
 
@@ -36,11 +37,20 @@ class ModernProfileTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "isolated repository"):
             validate_profile(profile)
 
-    def test_profile_remains_unqualified_for_release(self):
+    def test_published_profile_requires_the_exact_qualification(self):
         profile = copy.deepcopy(self.profile)
-        profile["hardware_qualification"] = "complete"
+        profile["hardware_qualification"]["evidence_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "qualification does not match"):
+            validate_profile(profile)
+
+    def test_unreleased_profile_cannot_claim_release_qualification(self):
+        profile = copy.deepcopy(self.profile)
+        profile["status"] = "promotion-gated-unreleased"
         with self.assertRaisesRegex(ValueError, "must not claim"):
             validate_profile(profile)
+
+        profile["hardware_qualification"] = None
+        validate_profile(profile)
 
     def test_profile_rejects_an_unpinned_adapter_change(self):
         profile = copy.deepcopy(self.profile)

@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "profile": "lvgl-modern",
-  "status": "promotion-gated-unreleased",
+  "status": "published",
   "firmware_compatibility": {
     "implementation": "MicroPython",
     "version": "1.27.0",
@@ -42,7 +42,20 @@
     "migration_instructions": "profiles/lvgl-modern-migration.md",
     "filesystem_vendor_lock": "vendor/legacy-pydevices.lock.json"
   },
-  "hardware_qualification": null,
+  "hardware_qualification": {
+    "status": "passed-and-promoted",
+    "version": "modern-v0.14.8",
+    "tag_commit": "49d5b82c795297fa0c6f12ed683af465502779a1",
+    "candidate_checksums_sha256": "dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e",
+    "evidence_sha256": "1d889e55d969a906c888af9a0ac6c3af355e5b9e6770175b2c5b0e02b7d4d8c8",
+    "evidence_reference": "https://raw.githubusercontent.com/tdhoward/TartLab/4528f16dbc59750a5b474e81641a19300cfa3a70/tests/evidence/modern-v0.14.8-qualification.json",
+    "promotion_run_id": 33223821198,
+    "published_at_utc": "2026-08-29T00:33:39Z",
+    "release_url": "https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.14.8",
+    "release_asset_count": 25,
+    "promotion_attestation_sha256": "fa14be9388f6b8178d74160ed934c9d1f782ac8d7f83531d78fddef4f26a42b0",
+    "release_attestation_sha256": "fd01d90821eae91f04806a43f7d490a372430f3e429acc976c770c88efff188a"
+  },
   "promotion_gates": [
     "adult-provisioning-and-migration",
     "profile-specific-hardware",

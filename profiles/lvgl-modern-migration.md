@@ -81,19 +81,16 @@ flash, and complete filesystem upload when necessary. After the IDE has booted
 healthily and committed the pending version, rerun with `--resume` once more to
 record completion. Retain the private workspace until that check succeeds.
 
-## Promotion-gate warning
+## Release authorization
 
-The checked-in profile is still `promotion-gated-unreleased`. Clean
-provisioning, direct legacy migration, interruption, and resume are covered by
-the CPython virtual-device gate, but have not yet passed the profile-specific
-physical provisioning matrix. Profile-bound modern OTA/recovery, promotion
-evidence enforcement, and the v0.13 support-window floor are implemented on the
-host matrix, while their required physical observations and final hardware
-release tests remain open. Until those gates are
-completed and the protected modern-release environment authorizes the release,
-this document is an
-authenticated candidate instruction and artifact inventory—not authorization
-to migrate classroom devices.
+This guide is rendered into an authenticated candidate, so the guide alone is
+not authorization to migrate classroom devices. A stable release is authorized
+only when it appears in `tdhoward/TartLab-modern-releases` with a
+`promotion_attestation.json` that binds the exact candidate checksum to passed
+physical evidence, plus the signed `release-attestation.sigstore.json` bundle.
+The checked-in profile records the latest authorized publication and the
+protected `modern-release` environment remains the authority for each later
+promotion.
 
 The firmware is a combined ESP32 image for offset `@FLASH_OFFSET@`. Firmware
 installation remains an adult provisioning operation and is never delegated to

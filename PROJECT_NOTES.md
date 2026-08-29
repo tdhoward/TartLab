@@ -1033,11 +1033,14 @@ migration, support-window, and release-pipeline work continues in Phase 6.
    installed the remainder, and reached a healthy exact-version commit. The
    final 209-file inventory matched every immutable prepared byte and contained
    no staging. This completes item 7 and the modern physical qualification
-   matrix. No release has been promoted: publication still requires the
-   protected environment approval, reproducible tag rebuild, and signed
-   isolated-repository workflow. The commit-bound sanitized evidence JSON now
-   passes all six validator gates with SHA-256
-   `1d889e55d969a906c888af9a0ac6c3af355e5b9e6770175b2c5b0e02b7d4d8c8`.
+   matrix. Protected workflow run `33223821198` subsequently rebuilt
+   `modern-v0.14.8` twice, validated the commit-bound six-gate evidence SHA-256
+   `1d889e55d969a906c888af9a0ac6c3af355e5b9e6770175b2c5b0e02b7d4d8c8`,
+   created signed provenance, and published 25 assets only to
+   `tdhoward/TartLab-modern-releases`. All 22 checksummed assets match GitHub's
+   published digests, the promotion and signed-attestation extras are present,
+   and the post-promotion live check found one stable modern release without
+   changing the isolated 14-release legacy feed.
 8. **Support window decided, enforced, and physically observed:** direct
    adult migration supports stable TartLab v0.13 or newer on the exact
    `legacy-mp123` firmware, qualified board, and either the captured root-v1 or

@@ -54,7 +54,7 @@ TAR files, `firmware-build-lock.json`, `firmware-provenance.json`,
 listed by `modern-manifest.json`, covered by `checksums.json`, and included in
 the signed attestation subject set. The migration guide is rendered with the
 release's exact version, firmware name, digest, and flash offset, while clearly
-retaining the uncompleted physical migration and recovery gates.
+requiring a published promotion attestation before it authorizes deployment.
 The support-window policy fixes v0.13 as the oldest direct-migration source,
 defines the adult path below that floor, and is hash-bound into qualification
 evidence.
@@ -150,9 +150,10 @@ python tools/check_release_feed_isolation.py
 ```
 
 The checker binds the deployed legacy fixture and checked-in modern profile to
-the two live GitHub Release API responses. While the profile status remains
-`promotion-gated-unreleased`, it additionally requires the modern public feed
-to be empty. The 2026-08-27 observation found 14 legacy releases, selected
-stable `v0.13`, found no modern-only or firmware assets in that feed, and found
-zero releases in the modern feed. Detailed evidence is in
+the two live GitHub Release API responses. It requires an empty modern public
+feed while the profile is `promotion-gated-unreleased`, then validates the
+modern-only contract after the profile records a publication. The 2026-08-29
+post-promotion observation found 14 isolated legacy releases selecting stable
+`v0.13` and one isolated modern release selecting stable `modern-v0.14.8`, with
+no cross-profile assets. Detailed evidence is in
 `PHASE6_MODERN_QUALIFICATION.md`.

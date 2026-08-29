@@ -1,9 +1,8 @@
-"""Check the promotion-gated modern TartLab filesystem profile.
+"""Check the published modern TartLab filesystem profile.
 
-The selected LVGL firmware remains short of production qualification, but its
-separate release channel and builder are now defined.  This checker binds that
-gated release path to the exact Phase 5 firmware and keeps it isolated from the
-legacy device feed.
+The selected LVGL firmware and filesystem are production-qualified through a
+separate release channel. This checker binds that published release path to the
+exact Phase 5 firmware and keeps it isolated from the legacy device feed.
 """
 
 from __future__ import annotations
@@ -49,14 +48,44 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def validate_profile(profile: dict[str, Any]) -> None:
-    """Ensure the profile is exact, isolated, and still promotion gated."""
+    """Ensure the profile is exact, isolated, and qualification-bound."""
 
     if profile.get("schema") != 2 or profile.get("profile") != "lvgl-modern":
         raise ValueError("unexpected modern profile identity")
-    if profile.get("status") != "promotion-gated-unreleased":
-        raise ValueError("modern profile must remain promotion gated and unreleased")
-    if profile.get("hardware_qualification") is not None:
-        raise ValueError("modern profile must not claim release qualification")
+    status = profile.get("status")
+    qualification = profile.get("hardware_qualification")
+    if status == "promotion-gated-unreleased":
+        if qualification is not None:
+            raise ValueError(
+                "unreleased modern profile must not claim release qualification")
+    elif status == "published":
+        expected_qualification = {
+            "status": "passed-and-promoted",
+            "version": "modern-v0.14.8",
+            "tag_commit": "49d5b82c795297fa0c6f12ed683af465502779a1",
+            "candidate_checksums_sha256": (
+                "dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e"),
+            "evidence_sha256": (
+                "1d889e55d969a906c888af9a0ac6c3af355e5b9e6770175b2c5b0e02b7d4d8c8"),
+            "evidence_reference": (
+                "https://raw.githubusercontent.com/tdhoward/TartLab/"
+                "4528f16dbc59750a5b474e81641a19300cfa3a70/tests/evidence/"
+                "modern-v0.14.8-qualification.json"),
+            "promotion_run_id": 33223821198,
+            "published_at_utc": "2026-08-29T00:33:39Z",
+            "release_url": (
+                "https://github.com/tdhoward/TartLab-modern-releases/releases/"
+                "tag/modern-v0.14.8"),
+            "release_asset_count": 25,
+            "promotion_attestation_sha256": (
+                "fa14be9388f6b8178d74160ed934c9d1f782ac8d7f83531d78fddef4f26a42b0"),
+            "release_attestation_sha256": (
+                "fd01d90821eae91f04806a43f7d490a372430f3e429acc976c770c88efff188a"),
+        }
+        if qualification != expected_qualification:
+            raise ValueError("published modern profile qualification does not match")
+    else:
+        raise ValueError("modern profile has an unknown release status")
 
     channel = profile.get("release_channel")
     if not isinstance(channel, dict):
@@ -195,7 +224,8 @@ def check(profile_path: Path = DEFAULT_PROFILE, dist: Path | None = None,
     validate_profile(load_json(profile_path))
     result: dict[str, object] = {
         "profile": "lvgl-modern",
-        "artifact_status": "promotion-gated-not-released",
+        "artifact_status": "published",
+        "release_version": "modern-v0.14.8",
         "release_repository": "tdhoward/TartLab-modern-releases",
     }
     if dist is not None:

@@ -188,10 +188,13 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
     migration_text = migration_path.read_text(encoding="utf-8")
     migration_markers = (
         manifest["version"], firmware_path.name, firmware_sha256,
-        "adult administrators", "promotion-gated-unreleased",
-        "cannot replace firmware", "v0.13", "older than v0.13",
+        "adult administrators", "cannot replace firmware", "v0.13",
+        "older than v0.13",
     )
-    if any(marker not in migration_text for marker in migration_markers):
+    authorization_markers = (
+        "promotion-gated-unreleased", "promotion_attestation.json")
+    if any(marker not in migration_text for marker in migration_markers) or \
+            not any(marker in migration_text for marker in authorization_markers):
         raise ValueError("published modern migration instructions are incomplete")
 
     provenance = published.get("provenance")

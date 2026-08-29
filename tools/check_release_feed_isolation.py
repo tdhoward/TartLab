@@ -41,7 +41,10 @@ def validate_policy(root: Path = ROOT):
     if channel.get("legacy_repository") != LEGACY_REPOSITORY or \
             channel.get("legacy_feed_allowed") is not False:
         raise ValueError("Modern profile permits the legacy feed")
-    return modern.get("status") == "promotion-gated-unreleased"
+    status = modern.get("status")
+    if status not in ("promotion-gated-unreleased", "published"):
+        raise ValueError("Modern profile has an unknown release status")
+    return status == "promotion-gated-unreleased"
 
 
 def _assets(release):

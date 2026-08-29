@@ -43,19 +43,20 @@ repeat the physical work; this tier validates the recorded claim rather than
 creating a new hardware claim.
 
 `tools/check_modern_profile.py` is the corresponding filesystem-profile gate.
-It verifies that the current `lvgl-modern` profile remains promotion gated,
-checks the hash-bound adapter and isolated release machinery, builds the
-ordinary TartLab filesystem twice, compares every output file, and compiles
-each generated Python source. The separate builder, promotion workflow, and
-adult provisioning transaction target only
+It verifies that the current `lvgl-modern` profile is bound to its exact
+qualified publication, checks the hash-bound adapter and isolated release
+machinery, builds the ordinary TartLab filesystem twice, compares every output
+file, and compiles each generated Python source. The separate builder,
+promotion workflow, and adult provisioning transaction target only
 `tdhoward/TartLab-modern-releases`; `tdhoward/TartLab` GitHub Releases remain
 reserved for the `legacy-mp123` profile.
 
 `tools/check_release_feed_isolation.py` is the read-only live-state companion
 to those static checks. It binds the sanitized legacy repository record and
 modern profile to both public GitHub Release feeds, rejects cross-profile
-assets and contracts, and requires the modern feed to remain empty while the
-profile is marked `promotion-gated-unreleased`.
+assets and contracts. It requires an empty modern feed while a profile is
+`promotion-gated-unreleased`, and validates the isolated stable feed after the
+profile records a published release.
 
 The protected `attest-modern-candidate.yml` workflow is the Tier 4 handoff. It
 creates a reproducible, tag-bound, signed candidate artifact for physical

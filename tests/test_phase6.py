@@ -170,7 +170,7 @@ class ModernReleaseTests(unittest.TestCase):
                 json.loads((release / "compatibility.json").read_text(
                     encoding="utf-8"))["firmware"], firmware)
             self.assertIn(
-                "promotion-gated-unreleased",
+                "promotion_attestation.json",
                 (release / "MIGRATION.md").read_text(encoding="utf-8"))
             result = check_modern_release(
                 release, "lvgl-modern", self.firmware_sha256, dist=dist)
@@ -352,12 +352,14 @@ class ReleaseFeedIsolationTests(unittest.TestCase):
             ],
         }
 
-    def test_checked_in_profiles_and_separate_prepromotion_feeds_pass(self):
+    def test_checked_in_profiles_and_separate_published_feeds_pass(self):
         result = check_feed_isolation(
-            legacy_releases=[self.legacy_release()], modern_releases=[])
-        self.assertEqual(result["mode"], "prepromotion")
+            legacy_releases=[self.legacy_release()],
+            modern_releases=[self.modern_release()])
+        self.assertEqual(result["mode"], "published")
         self.assertEqual(result["legacy"]["selected_stable_tag"], "v0.13")
-        self.assertIsNone(result["modern"]["selected_stable_tag"])
+        self.assertEqual(
+            result["modern"]["selected_stable_tag"], "modern-v1.2.3")
         self.assertFalse(result["mutation_performed"])
 
     def test_legacy_feed_rejects_modern_manifest_or_firmware(self):

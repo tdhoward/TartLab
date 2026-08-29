@@ -220,6 +220,28 @@ isolation observation. The promotion workflow's existing static policy still
 owns the future publication target; the live check must be repeated if public
 feed state changes before promotion.
 
+## Stable promotion and post-promotion feed isolation: 2026-08-29
+
+Protected workflow run `33223821198` rebuilt tag `modern-v0.14.8` twice,
+matched the hardware-tested candidate checksum
+`dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e`,
+validated the commit-bound qualification evidence, produced signed GitHub
+provenance, and published only to
+`tdhoward/TartLab-modern-releases`. The stable release contains 25 assets: all
+22 entries in `checksums.json` match GitHub's published SHA-256 digests, and
+`checksums.json`, `promotion_attestation.json`, and
+`release-attestation.sigstore.json` form the three required promotion extras.
+The promotion record binds evidence SHA-256
+`1d889e55d969a906c888af9a0ac6c3af355e5b9e6770175b2c5b0e02b7d4d8c8`
+to tag commit `49d5b82c795297fa0c6f12ed683af465502779a1` and firmware SHA-256
+`187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`.
+
+The repeated read-only feed check observed the original 14 legacy releases
+still selecting `v0.13` and exactly one modern release selecting
+`modern-v0.14.8`. The legacy feed contains no modern manifest or firmware, the
+modern feed contains no legacy manifest, and the checker reported
+`cross_profile_assets: false` and `mutation_performed: false`.
+
 ## Physical support-window floor migration: 2026-08-27--28
 
 The same authenticated `modern-v0.14.7` candidate was provisioned from the
