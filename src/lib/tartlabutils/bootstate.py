@@ -10,6 +10,9 @@ except ImportError:
 from .state import BOOT_STATE_FILE, commit_pending_update, get_update_state, read_json, write_json
 
 
+LEGACY_STAGING_MANIFEST = "/tmp/manifest.json"
+
+
 def _safe_call(obj, name):
     try:
         return getattr(obj, name)()
@@ -70,7 +73,17 @@ def mark_boot_healthy(mode):
     state["consecutive_failures"] = 0
     state.pop("error", None)
     write_json(BOOT_STATE_FILE, state)
-    return commit_pending_update()
+    committed = commit_pending_update()
+    if committed:
+        # Recovery can install a corrective release after a legacy app update
+        # loses power between manifest download and its durable marker.  Once
+        # the corrective release proves healthy, remove the old app-updater
+        # trigger so the following boot does not re-enter recovery.
+        try:
+            os.remove(LEGACY_STAGING_MANIFEST)
+        except OSError:
+            pass
+    return committed
 
 
 def mark_boot_failed(message):

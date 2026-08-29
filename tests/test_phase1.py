@@ -143,6 +143,44 @@ class BootStateTests(unittest.TestCase):
             self.assertEqual(result["consecutive_failures"], 0)
             self.assertNotIn("error", result)
 
+    def test_corrective_update_commit_clears_legacy_staging_trigger(self):
+        sys.modules.setdefault("ujson", json)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            state_dir = root / "state"
+            staging = root / "tmp"
+            state_dir.mkdir()
+            staging.mkdir()
+            package = types.ModuleType("phase1_corrective_runtime")
+            package.__path__ = []
+            sys.modules["phase1_corrective_runtime"] = package
+            state = load_module(
+                "phase1_corrective_runtime.state",
+                ROOT / "src/lib/tartlabutils/state.py")
+            state.STATE_DIR = state_dir.as_posix()
+            state.BOOT_STATE_FILE = (state_dir / "boot.json").as_posix()
+            state.UPDATE_STATE_FILE = (state_dir / "update.json").as_posix()
+            state.REPOS_FILE = (state_dir / "repos.json").as_posix()
+            bootstate = load_module(
+                "phase1_corrective_runtime.bootstate",
+                ROOT / "src/lib/tartlabutils/bootstate.py")
+            bootstate.LEGACY_STAGING_MANIFEST = (
+                staging / "manifest.json").as_posix()
+            state.write_json(state.REPOS_FILE, {
+                "list": [{"name": "TartLab", "installed_version": "v0.13"}],
+            })
+            state.begin_update("TartLab", "v0.13", "v0.14")
+            state.set_update_pending_health()
+            (staging / "manifest.json").write_text("[]")
+            (staging / "tartlab.tar.part").write_bytes(b"partial")
+
+            self.assertTrue(bootstate.mark_boot_healthy("IDE"))
+
+            repos = state.read_json(state.REPOS_FILE)
+            self.assertEqual(repos["list"][0]["installed_version"], "v0.14")
+            self.assertFalse((staging / "manifest.json").exists())
+            self.assertTrue((staging / "tartlab.tar.part").exists())
+
 
 class DefaultSettingsTests(unittest.TestCase):
     def test_missing_settings_are_created_and_returned_before_ide_import(self):
