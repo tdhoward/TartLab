@@ -1115,37 +1115,124 @@ An AI agent working on TartLab must follow these rules:
 - Treat filesystem captures, `/settings.json`, and diagnostic bundles as sensitive because settings contain plaintext Wi-Fi credentials.
 - Test on physical legacy hardware before declaring a release compatible.
 
-## Decisions still requiring explicit confirmation
+## Remaining project closeout work
 
-Before the migration is considered complete, the project owner should make
-explicit decisions about the following items. The local configuration directory
-is no longer undecided: `/device` is the authoritative protected location. The
-release topology is also decided: `tdhoward/TartLab` is the legacy feed and
-`tdhoward/TartLab-modern-releases` is the modern feed.
+Status as of 2026-08-29: the managed-modern milestone is complete. Stable
+`modern-v0.14.8` was rebuilt and promoted through the reviewed
+`modern-release` environment, and the post-promotion audit confirmed isolated
+legacy and modern feeds. The complete project definition still has one release
+milestone, four owner-policy decisions, and a small non-blocking cleanup list.
 
-1. The minimum set of boards supported by each release.
-2. How long the exact MicroPython 1.23.0 octal-SPIRAM compatibility profile will be maintained.
-3. Whether TartLab will maintain its own T-Display-S3 Pro board adapter or contribute/consume an upstream one.
-4. The approved firmware provisioning method for LVGL-capable devices.
-5. The amount of flash space reserved for staging, recovery, and rollback.
-6. **Decided for CI-published releases:** use GitHub Artifact Attestations with
+### Required release milestone: promote the legacy channel
+
+This is the only remaining substantial release milestone. The public
+`tdhoward/TartLab` feed still selects stable `v0.13`; therefore the near-term
+goal of moving a deployed MicroPython 1.23 device directly to the latest stable
+legacy release is not yet complete. Current CI produces a reproducible
+`legacy-mp123` candidate, but the old Phase 2 qualification does not by itself
+authorize a different current candidate.
+
+Complete the legacy milestone in this order:
+
+1. Select the legacy stable version and create its tag from a clean, reviewed
+   commit. Dispatch and release identity must use that exact tag ref, not a
+   development branch ref.
+2. Retain the exact CI candidate and record its `checksums.json` SHA-256.
+3. Run the required physical legacy matrix on that exact candidate and exact
+   MicroPython 1.23.0 octal-SPIRAM baseline. At minimum, reconfirm direct update
+   from untouched v0.13, protected-state preservation, browser behavior,
+   corrupt/truncated/low-space/write failure containment, real interruption and
+   offline recovery resume, failed-health recovery, and future OTA access.
+4. Publish a sanitized, durable, tag- and candidate-bound evidence record and
+   record its SHA-256. Keep credentials, private backups, and unsanitized logs
+   outside the repository.
+5. Put `.github/workflows/promote-legacy-release.yml` on the default branch so
+   GitHub registers its manual-dispatch trigger.
+6. Create the `legacy-release` environment, require an approving reviewer, and
+   verify the workflow has only the permissions needed for the reserved legacy
+   repository.
+7. Dispatch the promotion with the tag ref, candidate checksum, evidence hash,
+   and durable evidence URL; approve the protected deployment and require every
+   rebuild, validation, attestation, and publication step to pass.
+8. Audit the published assets and both live feeds. The legacy release must be
+   directly consumable by the oldest supported updater, must contain
+   `manifest.json`, and must contain no modern manifest or firmware image. The
+   modern feed must remain unchanged and isolated.
+9. Record the promotion run, release URL, exact hashes, live-feed result, and
+   final physical observation in this document and the legacy hardware record.
+
+The legacy milestone is complete only when the reviewed stable release is
+public, the oldest supported deployed updater can enter it directly, recovery
+and future OTA remain intact, and the post-promotion feed audit passes.
+
+### Required owner-policy decisions
+
+The project owner must explicitly record these four choices:
+
+1. The minimum board set supported by each release. If the answer is only the
+   LilyGO T-Display-S3 Pro for the current release line, say so explicitly;
+   adding more boards then remains a future expansion rather than an implicit
+   current requirement.
+2. The support lifetime or retirement rule for the exact MicroPython 1.23.0
+   octal-SPIRAM legacy profile.
+3. Whether TartLab will indefinitely maintain its T-Display-S3 Pro adapters or
+   contribute and consume an upstream implementation when a compatible one is
+   available.
+4. The explicit flash-space policy for download staging, recovery, and
+   rollback, including the minimum free-space margin a release must preserve.
+
+### Non-blocking technical and documentation cleanup
+
+These items do not invalidate `modern-v0.14.8` or block the legacy promotion,
+but they remain part of finishing the architecture cleanly:
+
+- Finish Phase 3 capability diagnostics by recording the selected platform's
+  capability set after platform initialization, without exposing secrets or
+  weakening early boot diagnostics.
+- Move bundled student help/examples away from direct `hdwconfig`,
+  `display_drv`, and `broker` access toward the stable TartLab hardware and
+  rendering APIs. Preserve legacy behavior while making the student-facing
+  examples portable across runtime profiles.
+- Update `README.md` so modern provisioning and promotion are described as a
+  current supported path rather than future work, and link the authenticated
+  provisioning/migration instructions.
+- Remove or qualify stale present-tense “pending promotion” language retained
+  in historical phase summaries while preserving the chronological evidence.
+
+On-device Sigstore verification remains an explicitly deferred hardening item,
+not a closeout blocker: adult provisioning currently performs the authenticated
+preflight, while devices enforce package hashes, profile identity, firmware
+identity, and isolated release-channel contracts.
+
+## Decisions already settled
+
+The four open decisions are maintained in the closeout section above. These
+decisions are already settled and must not be reopened implicitly:
+
+1. **Local configuration ownership:** `/device` is the authoritative protected
+   location.
+2. **Managed-modern provisioning:** LVGL-capable devices use the authenticated
+   adult-only `tools/provision_modern.py` workflow. Normal browser OTA remains
+   filesystem-only and never flashes firmware.
+3. **CI-published release authentication:** use GitHub Artifact Attestations with
    short-lived Sigstore certificates, a commit-pinned attestation action, and
    strict repository/signer-workflow verification. The signed bundle is shipped
    with each release; on-device enforcement remains a separate provisioning
    decision.
-7. **Decided for release-channel isolation:** reserve `tdhoward/TartLab`
+4. **Release-channel isolation:** reserve `tdhoward/TartLab`
    GitHub Releases for `legacy-mp123`; publish `lvgl-modern` only through
    `tdhoward/TartLab-modern-releases`; never combine modern firmware or modern
    filesystem assets with the legacy-visible release asset set.
-8. **Decided for managed-modern migration:** v0.13 is the oldest directly
+5. **Managed-modern migration floor:** v0.13 is the oldest directly
    supported TartLab version. Stable v0.13-or-newer devices on the exact
    legacy runtime and a recognized root-v1 or canonical layout may use the
    authenticated migrator. Older/unrecognized devices require an adult private
    backup, clean provisioning, and selective reviewed restore; they must not
    install intermediate releases.
-9. The measured winner of the first-repository `lcd_bus` and PyDevices
-   `displayif` modern-firmware comparison, including who maintains TartLab's
-   public direct-surface adapter.
+6. **Modern display stack:** the pinned first-repository
+   `lvgl_micropython`/`lcd_bus` stack won the measured comparison. TartLab
+   retains its pinned public direct-surface adapter; the long-term upstream
+   ownership of board adapters remains one of the four explicit open choices.
 
 ## Near-term definition of success
 
@@ -1168,3 +1255,8 @@ The corresponding modern milestone is:
 > adults can provision or migrate devices without weakening recovery, and its
 > profile-checked filesystem releases are promoted only through
 > `tdhoward/TartLab-modern-releases` without becoming visible to legacy devices.
+
+Milestone status as of 2026-08-29: the modern milestone is complete for the
+qualified LilyGO T-Display-S3 Pro profile. The legacy milestone remains open
+until the stable legacy promotion and its post-promotion checks in the closeout
+section are complete.
