@@ -47,6 +47,34 @@ class ReleaseAuthenticityTests(unittest.TestCase):
     def setUp(self):
         self.policy = load_json(ROOT / "profiles/release-authenticity.json")
 
+    def test_legacy_profile_records_published_v014(self):
+        profile = load_json(ROOT / "profiles/legacy-mp123.json")
+        self.assertEqual(profile["status"], "published")
+        self.assertEqual(profile["hardware_qualification"], {
+            "status": "passed-and-promoted",
+            "version": "v0.14",
+            "tag_commit": "73ab87c950a4e3fa12f42e87f64368c06bc88a1e",
+            "candidate_run_id": 33263700838,
+            "candidate_artifact_id": 9718009186,
+            "candidate_checksums_sha256": (
+                "95e5cc153728e00ee95ae82a40e718d96a8c098ee52082f6e6cda749c1cde730"),
+            "evidence_sha256": (
+                "eeccf7f4db4dbbe061071b1ffda1c3caeaa89be9947f47605633b389acfb4f4c"),
+            "evidence_reference": (
+                "https://github.com/tdhoward/TartLab/blob/"
+                "36101a60ad3ffd223fa8df456215e72f35d08fb2/tests/evidence/"
+                "legacy-v0.14-qualification.json"),
+            "promotion_run_id": 33265569311,
+            "published_at_utc": "2026-08-29T17:25:52Z",
+            "release_url": (
+                "https://github.com/tdhoward/TartLab/releases/tag/v0.14"),
+            "release_asset_count": 20,
+            "promotion_attestation_sha256": (
+                "8d02b829922a8dd0a5eb6be266566f8ca24795bf39bef63f0430122d3a26bfc2"),
+            "release_attestation_sha256": (
+                "15e7915efa66cace62aee64cbe0654032bfe9d5865c728c1f0f67b3cc8e55731"),
+        })
+
     def test_checked_in_policy_and_promotion_workflow_fail_closed(self):
         self.assertEqual(check(), {
             "mechanism": "github-artifact-attestation",

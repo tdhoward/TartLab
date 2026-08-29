@@ -19,8 +19,16 @@ python tools/check_release_authenticity.py --release path/to/release --source-re
 
 A legacy candidate is not authorized until its exact clean tag, checksums, and
 sanitized physical evidence pass review in the protected `legacy-release`
-environment. The current public legacy feed still selects `v0.13`; promotion
-of a current candidate remains open.
+environment.
+
+Stable `v0.14` passed this process in workflow run `33265569311`. Its candidate
+`checksums.json` SHA-256 is
+`95e5cc153728e00ee95ae82a40e718d96a8c098ee52082f6e6cda749c1cde730`;
+qualification evidence SHA-256 is
+`eeccf7f4db4dbbe061071b1ffda1c3caeaa89be9947f47605633b389acfb4f4c`.
+All 19 authenticated TAR/JSON subjects verified against the exact `v0.14` tag,
+the protected promotion workflow, and the published Sigstore bundle. The
+release is <https://github.com/tdhoward/TartLab/releases/tag/v0.14>.
 
 ## Modern qualification and releases
 
@@ -79,6 +87,7 @@ Run the read-only live check with:
 python tools/check_release_feed_isolation.py
 ```
 
-The post-promotion check observed 14 isolated legacy releases selecting
-`v0.13` and one isolated modern release selecting `modern-v0.14.8`, with no
-cross-profile assets.
+The final `v0.14` post-promotion check observed 15 isolated legacy releases
+selecting `v0.14` and one isolated modern release selecting
+`modern-v0.14.8`, with no cross-profile assets. The check performed no
+mutation.
