@@ -16,7 +16,7 @@ Two runtime profiles are maintained:
 
 | Profile | Runtime and release feed | Status |
 | --- | --- | --- |
-| `legacy-mp123` | Exact MicroPython 1.23.0 octal-SPIRAM image; `tdhoward/TartLab`; legacy `manifest.json` | Deployed compatibility profile. The public stable feed still selects `v0.13`; promotion of the current reproducible candidate remains open. |
+| `legacy-mp123` | Exact MicroPython 1.23.0 octal-SPIRAM image; `tdhoward/TartLab`; legacy `manifest.json` | `v0.14` is published and physically qualified on the exact MicroPython 1.23.0 image. |
 | `lvgl-modern` | Pinned MicroPython 1.27.0/LVGL image; `tdhoward/TartLab-modern-releases`; `modern-manifest.json` | `modern-v0.14.8` is published and physically qualified for the T-Display-S3 Pro. Installation or migration is an adult-admin operation. |
 
 The authoritative identities and status live in
@@ -106,6 +106,12 @@ layouts require a private backup, authenticated clean provisioning, and
 selective reviewed restore. See
 [`profiles/lvgl-modern-migration.md`](profiles/lvgl-modern-migration.md).
 
+On a migrated v0.13 device that loses power during the legacy download before
+the durable update marker is written, use **Install latest corrective release**
+from recovery. The v0.13 **Retry normal boot** action cannot remove that older
+staging marker. v0.14 clears it after the corrective update reaches a healthy
+boot, and clean v0.14 installations also include the corrected retry behavior.
+
 ## Build and dependency model
 
 Host support is Python `>=3.10,<3.15` and Node.js 20 or newer. The minifier and
@@ -141,7 +147,7 @@ requiring them for routine work:
 - Phase 5: modern lifecycle, benchmarks, and rejection of the slower blocking
   PyDevices/displayif alternative.
 - Phase 6: authenticated provisioning, update/recovery containment, release
-  security, and publication of `modern-v0.14.8`.
+  security, and publication of `modern-v0.14.8` and legacy `v0.14`.
 
 The three Phase 5 evidence files are hash-bound by the firmware lock and retain
 their checkpoint-era wording. Treat them as immutable historical evidence;
@@ -161,12 +167,11 @@ current release status comes from the profile JSON and this summary.
 
 ## Remaining work
 
-The only open release milestone is promoting a current `legacy-mp123` stable
-release. It requires an exact clean tag and CI candidate, candidate-bound
-physical qualification from untouched v0.13, sanitized durable evidence,
-review through the protected `legacy-release` environment, publication to the
-legacy-only feed, and a post-promotion audit proving recovery and future OTA
-remain available.
+The legacy `v0.14` release milestone is complete. The exact tagged candidate
+was qualified from untouched v0.13, promoted through the protected
+`legacy-release` environment, published only to the legacy feed, and audited
+after publication for signed provenance, feed isolation, recovery continuity,
+and future OTA availability.
 
 The owner still needs to decide:
 
