@@ -4,19 +4,19 @@
   "profile": "legacy-mp123",
   "version": "v0.15",
   "target_repository": "tdhoward/TartLab",
-  "git_commit": "8e67e5d237d432cb8089c35ad5c040632d1b37ff",
+  "git_commit": "f7f3223c0de9c32aad3d546efd68c09f73eedbf7",
   "qualification_period_utc": {
     "started": "2026-08-29",
     "completed": "2026-08-30"
   },
   "operator": "repository owner with Codex-assisted capture",
   "candidate": {
-    "github_actions_run_id": 33280664063,
-    "github_actions_run_url": "https://github.com/tdhoward/TartLab/actions/runs/33280664063",
-    "artifact_id": 9722897218,
-    "artifact_name": "legacy-mp123-8e67e5d237d432cb8089c35ad5c040632d1b37ff",
-    "artifact_zip_sha256": "f72607b294662b1070c6ed2a8c8ad031a9473993fb54d43d75f06ed04a92d166",
-    "candidate_checksums_sha256": "e206cefb1415624dd6ae3f8f4f57b62fa3b67d923417e2e0f63428bc33ba05b7",
+    "github_actions_run_id": 33283338340,
+    "github_actions_run_url": "https://github.com/tdhoward/TartLab/actions/runs/33283338340",
+    "artifact_id": 9723652212,
+    "artifact_name": "legacy-mp123-f7f3223c0de9c32aad3d546efd68c09f73eedbf7",
+    "artifact_zip_sha256": "df5faa24201869131603fb32eceeb1466b43bf6ddf27031ddb12cd97be57b795",
+    "candidate_checksums_sha256": "561d641faa7a20e7245627a8846c45388f48620ed12fa35f7b5636af6adbbdd3",
     "artifact_internal_validation": "passed",
     "ci_jobs": {
       "legacy-mp123": "passed",
@@ -34,7 +34,7 @@
   "host_validation": {
     "unit_tests": {
       "status": "passed",
-      "count": 165
+      "count": 166
     },
     "production_web_build": {
       "status": "passed",
@@ -65,17 +65,20 @@
     "exact_v014_to_v015_migration": {
       "status": "passed",
       "evidence": [
-        "The exact tag-bound CI artifact was installed from a healthy committed v0.14 device.",
+        "The v0.15 runtime candidate from commit 8e67e5d237d432cb8089c35ad5c040632d1b37ff was installed from a healthy committed v0.14 device and received the complete physical matrix.",
         "The installed version remained v0.14 while v0.15 was pending health, then committed exactly once after a healthy IDE boot.",
         "The operator confirmed that the first successful IDE screen displayed TARTLAB v0.15 without a second reboot.",
-        "The live IDE module, repository state, and /api/versions endpoint reported v0.15."
+        "The live IDE module, repository state, and /api/versions endpoint reported v0.15.",
+        "The final tag commit adds only promotion reproducibility, authenticity-policy regression coverage, and qualification-helper import paths; it does not change distribution sources."
       ]
     },
     "exact_candidate_preflight": {
       "status": "passed",
       "evidence": [
         "The physical device verified five critical package hashes from the final CI artifact.",
-        "Seventeen compiled modules loaded successfully on the pinned MicroPython 1.23 runtime."
+        "Seventeen compiled modules loaded successfully on the pinned MicroPython 1.23 runtime.",
+        "All 122 installed files from the final artifact were compared with the full-matrix candidate: 118 files were byte-identical and the four gzip containers decompressed to byte-identical browser assets.",
+        "The exact final artifact completed a same-version OTA on the qualified board, verified all eleven new archive hashes, reached healthy IDE, and preserved every protected-state digest."
       ]
     },
     "legacy_filename_handling": {
@@ -151,8 +154,10 @@
     }
   },
   "candidate_binding_notes": [
-    "The exact v0.15 CI artifact was installed from v0.14, booted healthy, and received the display, touch, button, browser, filename, APP, fault-containment, power-interruption, offline-resume, and future-update checks recorded here.",
-    "The recovery signal callback issue was confined to qualification display setup after package replacement; package state was inspected before the physical cut, and the offline recovery path resumed the exact staged artifact without network access.",
+    "The v0.15 runtime candidate at 8e67e5d237d432cb8089c35ad5c040632d1b37ff was installed from v0.14, booted healthy, and received the display, touch, button, browser, filename, APP, fault-containment, power-interruption, offline-resume, and future-update checks recorded here.",
+    "Promotion exposed a build-identity ordering defect after UTC midnight. Commit f7f3223c0de9c32aad3d546efd68c09f73eedbf7 fixes only the promotion workflow, its authenticity checker and test, and the qualification-only recovery signal helper; the unpublished v0.15 tag was moved to that commit.",
+    "The final tag artifact was candidate-bound by CI, internal checksums, semantic comparison of every installed file, on-device preflight, and a complete physical same-version installation followed by healthy boot and protected-state verification.",
+    "The recovery signal callback issue was confined to qualification display setup after package replacement; package state was inspected before the physical cut, and the offline recovery path resumed the fully staged runtime candidate without network access.",
     "No promotion or GitHub release was performed during qualification."
   ],
   "sanitization": {
