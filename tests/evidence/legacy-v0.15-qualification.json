@@ -1,0 +1,182 @@
+{
+  "schema": 1,
+  "evidence_type": "legacy-release-physical-qualification",
+  "profile": "legacy-mp123",
+  "version": "v0.15",
+  "target_repository": "tdhoward/TartLab",
+  "git_commit": "8e67e5d237d432cb8089c35ad5c040632d1b37ff",
+  "qualification_period_utc": {
+    "started": "2026-08-29",
+    "completed": "2026-08-30"
+  },
+  "operator": "repository owner with Codex-assisted capture",
+  "candidate": {
+    "github_actions_run_id": 33280664063,
+    "github_actions_run_url": "https://github.com/tdhoward/TartLab/actions/runs/33280664063",
+    "artifact_id": 9722897218,
+    "artifact_name": "legacy-mp123-8e67e5d237d432cb8089c35ad5c040632d1b37ff",
+    "artifact_zip_sha256": "f72607b294662b1070c6ed2a8c8ad031a9473993fb54d43d75f06ed04a92d166",
+    "candidate_checksums_sha256": "e206cefb1415624dd6ae3f8f4f57b62fa3b67d923417e2e0f63428bc33ba05b7",
+    "artifact_internal_validation": "passed",
+    "ci_jobs": {
+      "legacy-mp123": "passed",
+      "lvgl-modern-promotion-gated-candidate": "passed"
+    }
+  },
+  "target": {
+    "board": "LilyGO T-Display-S3 Pro PCB v1.1",
+    "firmware": "ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin",
+    "firmware_sha256": "41a750a8f047224e3e0a7544a626338c252407df420e2b94dcb0d2dad9793212",
+    "runtime": "MicroPython 1.23.0",
+    "spiram": "octal",
+    "serial_port_is_evidence_local_only": true
+  },
+  "host_validation": {
+    "unit_tests": {
+      "status": "passed",
+      "count": 165
+    },
+    "production_web_build": {
+      "status": "passed",
+      "warnings": "pre-existing webpack bundle-size warnings only"
+    },
+    "reproducibility": {
+      "status": "passed",
+      "release_files_compared": 18,
+      "result": "byte-identical"
+    },
+    "micropython_compatibility": {
+      "status": "passed",
+      "runtime_version": "v1.23.0",
+      "runtime_checks": 31,
+      "compiled_runtime_modules": 170,
+      "compiled_vendor_modules": 71,
+      "vendor_compatibility_checks": 18
+    }
+  },
+  "physical_gates": {
+    "firmware_and_memory_identity": {
+      "status": "passed",
+      "evidence": [
+        "Runtime reported MicroPython 1.23.0 on the octal-SPIRAM ESP32-S3 target.",
+        "The pre-update probe reported approximately 7.75 MiB free heap."
+      ]
+    },
+    "exact_v014_to_v015_migration": {
+      "status": "passed",
+      "evidence": [
+        "The exact tag-bound CI artifact was installed from a healthy committed v0.14 device.",
+        "The installed version remained v0.14 while v0.15 was pending health, then committed exactly once after a healthy IDE boot.",
+        "The operator confirmed that the first successful IDE screen displayed TARTLAB v0.15 without a second reboot.",
+        "The live IDE module, repository state, and /api/versions endpoint reported v0.15."
+      ]
+    },
+    "exact_candidate_preflight": {
+      "status": "passed",
+      "evidence": [
+        "The physical device verified five critical package hashes from the final CI artifact.",
+        "Seventeen compiled modules loaded successfully on the pinned MicroPython 1.23 runtime."
+      ]
+    },
+    "legacy_filename_handling": {
+      "status": "passed",
+      "evidence": [
+        "Safe Python save and selected-app operations succeeded through the live browser API.",
+        "Dotted Python save, rename, upload, and selected-app operations were rejected with the single-line message App names: letters, digits, _ only.",
+        "A pre-existing dotted Python file remained present and unchanged after rejected selection.",
+        "The original selected app was restored and all temporary qualification files were removed."
+      ]
+    },
+    "display_and_touch": {
+      "status": "passed",
+      "evidence": [
+        "The operator confirmed correct red, green, blue, white, and black output on the exact final candidate.",
+        "Five guided touches were recorded at raw controller coordinates: top-left [199,18], top-right [214,470], bottom-right [1,472], bottom-left [5,18], center [113,251]."
+      ]
+    },
+    "physical_buttons": {
+      "status": "passed",
+      "evidence": [
+        "Both GPIO 12 and GPIO 0 produced clean press and release transitions on the exact final candidate."
+      ]
+    },
+    "browser_ide_and_app_mode": {
+      "status": "passed",
+      "evidence": [
+        "The exact candidate served the browser IDE and /api/versions successfully over the device network.",
+        "The operator exercised file save and selected-app changes, and the device recorded a healthy APP boot for the selected hello.py application.",
+        "The operator confirmed the application displayed normally before the device returned to healthy IDE mode."
+      ]
+    },
+    "failure_containment": {
+      "status": "passed",
+      "evidence": [
+        "Corrupt-hash, truncated-TAR, pre-staging low-space, post-manifest low-space, and forced-write failures failed closed without advancing the committed version.",
+        "The first four cases created no durable marker or target; the forced-write case recorded failed state while leaving the isolated target absent.",
+        "A complete same-version v0.15 OTA recovered the forced-write marker and committed only after health."
+      ]
+    },
+    "power_loss_during_download": {
+      "status": "passed_with_documented_migrated_recovery_instruction",
+      "evidence": [
+        "A throttled tartlab.tar transfer was physically interrupted after the device displayed the download signal.",
+        "The device retained only manifest.json plus tartlab.tar.part, created no durable install marker or target, and kept v0.15 committed.",
+        "Protected state remained unchanged after reconnection.",
+        "The preserved migrated recovery runtime retains the documented pre-marker retry limitation, so Install latest corrective release was used as required."
+      ]
+    },
+    "power_loss_after_durable_marker_and_offline_resume": {
+      "status": "passed",
+      "evidence": [
+        "The exact final candidate was fully staged and nine packages were recorded complete before a physical USB power cut at the tartlabutils.tar boundary.",
+        "The qualification signal callback initially lacked recovery-mode import paths; the marker was restored from failed to its verified pre-callback installing state without changing package completion, and the white power signal was emitted with explicit /configs and /lib/pydevices paths.",
+        "The artifact server was stopped before reconnection.",
+        "Offline resume skipped the nine completed packages, installed only tartlabutils.tar, and returned v0.15.",
+        "The subsequent healthy IDE boot committed v0.15 with zero failures, removed the update marker and recovery staging directory, and retained all protected state."
+      ]
+    },
+    "protected_state": {
+      "status": "passed",
+      "evidence": [
+        "Application selector, hardware selector, device configuration, selected-app state, and the complete user-file tree matched their pre-install SHA-256 digests after migration, fault injection, both power cuts, and recovery.",
+        "A private pre-install snapshot was retained locally and excluded from this sanitized record."
+      ]
+    },
+    "future_boot_and_update_availability": {
+      "status": "passed",
+      "evidence": [
+        "A complete same-version v0.15 OTA downloaded and installed all release packages from the exact artifact.",
+        "Final IDE and APP boots reached healthy state with zero consecutive failures and no pending update."
+      ]
+    }
+  },
+  "candidate_binding_notes": [
+    "The exact v0.15 CI artifact was installed from v0.14, booted healthy, and received the display, touch, button, browser, filename, APP, fault-containment, power-interruption, offline-resume, and future-update checks recorded here.",
+    "The recovery signal callback issue was confined to qualification display setup after package replacement; package state was inspected before the physical cut, and the offline recovery path resumed the exact staged artifact without network access.",
+    "No promotion or GitHub release was performed during qualification."
+  ],
+  "sanitization": {
+    "status": "passed",
+    "excluded": [
+      "Wi-Fi SSID and password",
+      "settings file contents",
+      "student or user file contents",
+      "raw serial logs",
+      "private filesystem snapshots",
+      "host or device secrets",
+      "local serial-port and network addresses"
+    ],
+    "retained": [
+      "public artifact identities",
+      "firmware identity",
+      "boolean gate results",
+      "non-secret performance and hardware observations",
+      "release-safe diagnostic summaries"
+    ]
+  },
+  "result": {
+    "status": "passed",
+    "promotion_authorized_by_this_record": false,
+    "required_migrated_pre_marker_recovery_action": "Install latest corrective release"
+  }
+}
