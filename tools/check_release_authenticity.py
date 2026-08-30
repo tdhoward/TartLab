@@ -103,6 +103,14 @@ def validate_workflow(policy: dict[str, Any], workflow_path: Path) -> None:
     if attest_at > publish_at:
         raise ValueError("release assets must be attested before publication")
 
+    source_epoch_at = source.index(
+        'echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"')
+    mpy_cross_at = source.index(
+        "make -C build/micropython-v1.23.0/mpy-cross -j2")
+    if source_epoch_at > mpy_cross_at:
+        raise ValueError(
+            "promotion must set SOURCE_DATE_EPOCH before building mpy-cross")
+
 
 def validate_ci_identity(tag: str, commit: str,
                          environment: dict[str, str] | None = None) -> None:

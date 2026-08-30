@@ -928,6 +928,9 @@ SIGNAL_PACKAGE = %r
 def progress(message):
     print('RECOVERY_PROGRESS=' + message)
     if SIGNAL_PACKAGE and message == 'Installing ' + SIGNAL_PACKAGE:
+        for path in ('/lib/pydevices', '/configs'):
+            if path not in sys.path:
+                sys.path.insert(0, path)
         from hdwconfig import display_drv
         display_drv.disable_auto_byteswap(False)
         display_drv.fill(0xffff)

@@ -807,6 +807,41 @@ class PhysicalHelperTests(unittest.TestCase):
         ])
         self.assertEqual(args.manifest, "manifest.json")
 
+    def test_recovery_power_signal_restores_runtime_import_paths(self):
+        captured = {}
+
+        class Repl:
+            def exec(self, code, timeout):
+                captured["code"] = code
+                captured["timeout"] = timeout
+                return b""
+
+            def close(self):
+                captured["closed"] = True
+
+        original_connect = self.helper.connect
+        original_stdout = self.helper.sys.stdout
+        self.helper.connect = lambda unused_args: Repl()
+        self.helper.sys.stdout = types.SimpleNamespace(buffer=io.BytesIO())
+        try:
+            self.helper.recovery_install(types.SimpleNamespace(
+                base_url="http://192.0.2.1:8765/candidate/",
+                version="v1.2",
+                signal_package="tartlabutils.tar",
+                timeout=30,
+            ))
+        finally:
+            self.helper.connect = original_connect
+            self.helper.sys.stdout = original_stdout
+
+        code = captured["code"]
+        self.assertIn("for path in ('/lib/pydevices', '/configs')", code)
+        self.assertLess(
+            code.index("for path in ('/lib/pydevices', '/configs')"),
+            code.index("from hdwconfig import display_drv"))
+        self.assertEqual(captured["timeout"], 300)
+        self.assertTrue(captured["closed"])
+
     def test_recovery_retry_and_update_status_commands_are_explicit(self):
         retry = self.helper.parser().parse_args(["recovery-retry"])
         status = self.helper.parser().parse_args(["update-status"])

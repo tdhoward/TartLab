@@ -58,6 +58,10 @@ jobs:
           cache: npm
           cache-dependency-path: src/ide/www/package-lock.json
 
+      - name: Set deterministic build identity
+        shell: bash
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
       - name: Bind workflow identity to the requested stable tag
         env:
           RELEASE_TAG: ${{ inputs.tag }}
@@ -84,7 +88,6 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
-          echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
           python makedist.py --output build/promote-base/dist --clean --skip-web-build
           SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" python tools/build_promoted_release.py --base-dist build/promote-base/dist --candidate build/vendor/pydevices-candidate --output build/promote --version "$RELEASE_TAG" --mpy-cross build/micropython-v1.23.0/mpy-cross/build/mpy-cross --clean
           python tools/check_legacy_release.py --dist build/promote/dist --release build/promote/release
