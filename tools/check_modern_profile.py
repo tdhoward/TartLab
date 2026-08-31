@@ -14,16 +14,20 @@ from pathlib import Path
 import sys
 from typing import Any, Sequence
 
+from board_catalog import default_board
 from modern_firmware import check_lock as check_modern_firmware_lock
 from check_modern_support_window import validate_policy as validate_support_window
+from release_utils import sha256_source_file
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROFILE = ROOT / "profiles/lvgl-modern.json"
+PROFILE_BOARD = default_board("lvgl-modern")
+PROFILE_SELECTOR_SOURCE = PROFILE_BOARD["selector"]["source"]
 REQUIRED_DIST_FILES = (
     "boot.py",
     "main.py",
-    "configs/t_display_s3_pro_modern.py",
+    PROFILE_SELECTOR_SOURCE.removeprefix("src/"),
     "lib/tartlabutils/modern.py",
     "lib/tartlabutils/platform.py",
 )
@@ -52,6 +56,8 @@ def validate_profile(profile: dict[str, Any]) -> None:
 
     if profile.get("schema") != 2 or profile.get("profile") != "lvgl-modern":
         raise ValueError("unexpected modern profile identity")
+    if profile.get("default_board_id") != PROFILE_BOARD["id"]:
+        raise ValueError("modern profile has an unexpected default board")
     status = profile.get("status")
     qualification = profile.get("hardware_qualification")
     if status == "promotion-gated-unreleased":
@@ -135,14 +141,7 @@ def validate_profile(profile: dict[str, Any]) -> None:
     firmware = profile.get("firmware_compatibility")
     if not isinstance(firmware, dict):
         raise ValueError("modern firmware compatibility is missing")
-    firmware_expected = {
-        "artifact": (
-            "firmware/lvgl-modern/reference/"
-            "lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin"),
-        "sha256": "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab",
-        "lock": "firmware/lvgl-modern/reference.lock.json",
-        "provenance": "firmware/lvgl-modern/reference/provenance.json",
-    }
+    firmware_expected = PROFILE_BOARD["firmware"]
     for key, value in firmware_expected.items():
         if firmware.get(key) != value:
             raise ValueError(f"modern compatible firmware has unexpected {key}")
@@ -177,7 +176,7 @@ def validate_profile(profile: dict[str, Any]) -> None:
         raise ValueError("modern application adapter inputs are incomplete")
     expected_paths = {
         "src/lib/tartlabutils/modern.py",
-        "src/configs/t_display_s3_pro_modern.py",
+        PROFILE_SELECTOR_SOURCE,
     }
     actual_paths = {item.get("path") for item in inputs if isinstance(item, dict)}
     if actual_paths != expected_paths:
@@ -186,7 +185,7 @@ def validate_profile(profile: dict[str, Any]) -> None:
         if not isinstance(item, dict):
             raise ValueError("modern application adapter input is invalid")
         path = ROOT / item["path"]
-        if not path.is_file() or item.get("sha256") != sha256_file(path):
+        if not path.is_file() or item.get("sha256") != sha256_source_file(path):
             raise ValueError(f"modern application adapter hash mismatch: {item['path']}")
 
 

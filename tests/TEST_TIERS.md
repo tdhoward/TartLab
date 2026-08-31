@@ -9,6 +9,8 @@ CI verifies deterministic builds, Python compilation, archive ownership,
 hashes, provenance, size budgets, firmware locks, and profile/feed policy.
 Important checks include:
 
+- `tools/check_board_catalog.py`: validates discovered modern board identities,
+  lifecycle states, selectors, firmware hashes, and qualification evidence.
 - `tools/pydevices_inventory.py`: partitions the locked legacy vendor payload
   by conservative static reachability.
 - `tools/pydevices_upstream.py`: validates the reviewed mapping to exact
@@ -29,7 +31,7 @@ These are source and policy claims, not hardware claims.
 Run the complete hardware-free suite:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
 ```
 
 The suite exercises real TartLab update, migration, recovery, startup, and IDE

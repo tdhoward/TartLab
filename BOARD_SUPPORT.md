@@ -1,0 +1,174 @@
+# TartLab modern board support
+
+TartLab treats a runtime profile, a physical board, and a release as separate
+things:
+
+- a **runtime profile** defines the common MicroPython, LVGL, filesystem, OTA,
+  and recovery contract;
+- a **board descriptor** identifies one hardware family/revision and binds it
+  to its selector, firmware, capabilities, and qualification evidence; and
+- a **release** contains shared TartLab filesystem packages plus an explicit
+  compatibility matrix of accepted board and firmware identities.
+
+This separation lets many boards share `lvgl-modern` without copying the IDE,
+updater, recovery code, or release pipeline for each board. It also prevents an
+experimental port from silently becoming a supported target.
+
+## Repository layout
+
+The intended layout is:
+
+```text
+boards/
+  <board_id>/
+    board.json                 Host-side identity and lifecycle record
+src/
+  configs/
+    <selector_module>.py       Tiny protected-device selector target
+  lib/
+    tartlabboards/
+      <board_id>.py            Board constructor and hardware-only policy
+  lib/tartlabutils/
+    platform.py                Stable application-facing platform boundary
+    modern.py                  Shared LVGL/direct-surface implementation
+firmware/lvgl-modern/
+  boards/
+    <board_id>/                Board-only native overlays, locks, and provenance
+tests/
+  boards/
+    <board_id>/                Board contract tests and sanitized evidence
+```
+
+Existing qualified files remain in their historical locations until a normal
+release candidate moves them. Moving hash-bound sources only for tidiness would
+invalidate the current qualification without improving device behavior. Board
+descriptors may therefore point at a historical path during this transition.
+
+`boards/<board_id>/board.json` is the source of truth for board-specific host
+tooling. The catalog is discovered by directory scan, so adding a board does
+not require editing a central Python list. Run:
+
+```text
+python tools/check_board_catalog.py
+```
+
+The checker rejects duplicate IDs/selectors, missing files, malformed hardware
+records, invalid firmware hashes, and lifecycle records that claim more support
+than their artifacts justify.
+
+## Board lifecycle
+
+Each descriptor has one of these states:
+
+| State | Meaning | Required descriptor fields |
+| --- | --- | --- |
+| `bringup` | Hardware research or an unqualified bench prototype | Hardware and documentation |
+| `candidate` | Complete adapter and reproducible firmware awaiting physical qualification | Selector and firmware identity |
+| `qualified` | Supported by a promoted, board-bound release record | Selector, firmware, and qualification evidence |
+| `retired` | No longer offered for new installation; retained for update/recovery policy | Its last known identities and retirement policy documentation |
+
+Changing a word in a descriptor does not advance the lifecycle. A candidate
+becomes qualified only after the exact firmware and release candidate pass the
+physical gates and their sanitized evidence is promoted.
+
+## Runtime boundary
+
+Student programs, the IDE, launcher, updater, and recovery code use
+`tartlabutils.platform`; they must never import board pins or panel drivers.
+Every modern board adapter exposes the same capabilities:
+
+- Wi-Fi station and setup access point;
+- an LVGL status/UI mode;
+- touch or pointer input when present;
+- brightness and delay;
+- IDE-button behavior, including an explicit no-button policy if necessary;
+- an `RGB565_BE` direct dirty-rectangle surface; and
+- exclusive, completion-signaled ownership between LVGL and direct rendering.
+
+Board modules construct buses, displays, input devices, and reset/backlight
+policy. Reusable transport behavior belongs in shared code. Controller-specific
+rules such as QSPI command packing or dirty-rectangle alignment belong behind a
+small transport strategy, not in games or the IDE.
+
+The selector stored at `/device/hdwconfig.py` remains a protected local device
+property. A selector should contain only a generated comment and an import from
+one module under `/configs`. OTA may update that module and its shared adapter,
+but it must not overwrite the selector or local calibration.
+
+## Compatibility and releases
+
+The published `modern-v0.14.8` profile predates the board catalog and contains
+one firmware identity. New candidate builds dual-write that legacy firmware
+alias and a schema-2 compatibility matrix keyed by `board_id`. The alias lets
+already-deployed T-Display devices accept the bridging OTA; new updater and
+recovery code select the board-specific matrix entry. Each entry binds:
+
+- accepted PCB revisions or an explicit revision policy;
+- flash and PSRAM requirements;
+- selector module;
+- exact firmware SHA-256, flash offset, build lock, and provenance; and
+- the release's shared runtime-profile and filesystem contract.
+
+Candidate qualification evidence is a separate schema-2 aggregate keyed by the
+same board IDs. Protected promotion requires its board set and firmware hashes
+to match the release matrix exactly, so a multi-board release cannot inherit
+evidence from only the default board.
+
+Shared filesystem packages should be built once. Board adapters may be separate
+packages only when that materially reduces device payload; the release manifest
+still owns all files and validates the complete plan before mutation. Device
+OTA continues to update filesystem content only. Firmware changes remain an
+authenticated adult-provisioning operation.
+
+Provisioning must select a descriptor explicitly, verify its support state,
+check observable hardware properties before erase, and install only the bound
+firmware and selector. When a board cannot be identified uniquely in software,
+the tool must require an explicit adult confirmation rather than guessing.
+The selected identity is stored in protected `/device/board.json`, the
+repository state, and the resumable provisioning journal. Use `--board` for
+provisioning and repeat `--board` when building a candidate that deliberately
+contains more than one candidate or qualified board.
+
+## Adding a board
+
+The repeatable path is:
+
+1. Create `boards/<board_id>/board.json` in `bringup` state and link its research
+   or bring-up document. Use a stable lowercase underscore ID; do not encode a
+   temporary COM port or an individual unit serial number.
+2. Pass stock-MicroPython gates for console recovery, flash, PSRAM, filesystem,
+   Wi-Fi, reset, and power.
+3. Prove display and input independently on TartLab's pinned runtime. Record
+   geometry, orientation, transport, clocks, buffering, color order, touch,
+   heap, reset behavior, and all controller constraints.
+4. Add the board constructor and tiny selector. Keep common UI and ownership
+   behavior in `tartlabutils`; keep pins and drivers in board-owned code.
+5. Add a reproducible firmware overlay only when the board needs native changes.
+   Pin every source and license and record a unique firmware identity even when
+   most of the source graph is shared.
+6. Exercise the complete TartLab filesystem, including at least 100 transitions
+   between LVGL and direct rendering, representative examples, Wi-Fi, browser
+   UI, reset cycles, and resource margins.
+7. Change the descriptor to `candidate`, run the catalog and hardware-free
+   suites, and build the exact candidate release.
+8. Run clean provisioning, interruption/resume, OTA, recovery, rollback,
+   protected-state, feed-isolation, and future-update physical gates.
+9. Attach sanitized board-bound evidence and change the descriptor to
+   `qualified` only as part of protected promotion.
+
+The physical gates remain deliberate because they protect classroom devices.
+The catalog, shared probes, generated selectors, compatibility matrix, and one
+release pipeline are what keep the routine parts from becoming repetitive.
+
+## Review rules
+
+- A new board should normally add one descriptor, one adapter, focused tests,
+  and—only if needed—one firmware overlay.
+- Do not fork the IDE, updater, recovery flow, or release repository per board.
+- Do not use display resolution or flash size as a unique board identity.
+- Do not let an unqualified descriptor appear in provisioning defaults or a
+  stable compatibility matrix.
+- Do not edit historical evidence to match current structure; add new evidence
+  for the new candidate.
+- Keep raw logs, dumps, credentials, USB mappings, and unit identifiers out of
+  descriptors and source control.

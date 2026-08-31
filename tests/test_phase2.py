@@ -409,6 +409,13 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "firmware identity"):
             updater.release_contract(wrong_firmware)
 
+        matrix_repo = dict(wrong_firmware)
+        matrix_repo["board_id"] = "another_board"
+        matrix_repo["firmware_sha256"] = "b" * 64
+        self.assertEqual(
+            updater.release_contract(matrix_repo),
+            ("modern-manifest.json", "lvgl-modern"))
+
     def test_interrupted_download_never_promotes_partial_file(self):
         updater = self.updater
 

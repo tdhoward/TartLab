@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 import release as release_tools  # noqa: E402
+from board_catalog import select_board  # noqa: E402
 from check_modern_profile import load_json, validate_profile  # noqa: E402
 from check_modern_support_window import validate_policy as validate_support_window  # noqa: E402
 from release_utils import (  # noqa: E402
@@ -115,7 +116,8 @@ def build_release(
         profile_path: Path = DEFAULT_PROFILE,
         packages_path: Path = DEFAULT_PACKAGES,
         source_epoch: int | None = None,
-        allow_dirty: bool = False) -> dict[str, object]:
+        allow_dirty: bool = False,
+        board_ids: Sequence[str] | None = None) -> dict[str, object]:
     """Create a modern candidate without changing or reusing legacy manifest data."""
 
     dist = dist.resolve()
@@ -192,23 +194,91 @@ def build_release(
         detail = missing[0] if missing else extra[0]
         raise ValueError("Modern package ownership differs from distribution: %s" % detail)
 
-    firmware = dict(profile["firmware_compatibility"])
-    firmware["artifact_sha256_verified"] = True
-    firmware["lock_sha256"] = sha256_source_file(ROOT / firmware["lock"])
-    firmware["provenance_sha256"] = sha256_source_file(
-        ROOT / firmware["provenance"])
-    firmware_path = ROOT / firmware["artifact"]
-    firmware_asset = output / ("tartlab-%s.bin" % version)
-    shutil.copyfile(firmware_path, firmware_asset)
-    if sha256_file(firmware_asset) != firmware["sha256"]:
-        raise ValueError("Published modern firmware differs from the profile")
+    default_board_id = profile["default_board_id"]
+    if board_ids is None:
+        boards = [select_board(default_board_id, required_status="qualified")]
+    else:
+        if len(set(board_ids)) != len(board_ids):
+            raise ValueError("modern release board IDs must be unique")
+        boards = [select_board(board_id) for board_id in board_ids]
+        for descriptor in boards:
+            if descriptor["runtime_profile"] != profile["profile"] or \
+                    descriptor["support_status"] not in ("candidate", "qualified"):
+                raise ValueError(
+                    "modern release boards must be candidate or qualified")
+    boards.sort(key=lambda descriptor: descriptor["id"])
+    if not boards or default_board_id not in {
+            descriptor["id"] for descriptor in boards}:
+        raise ValueError("modern release must include its qualified default board")
 
-    firmware_lock_asset = output / "firmware-build-lock.json"
-    firmware_provenance_asset = output / "firmware-provenance.json"
+    firmware_policies: dict[str, dict[str, Any]] = {}
+    published_firmwares: dict[str, dict[str, object]] = {}
+    board_compatibility: dict[str, dict[str, Any]] = {}
+    provenance_assets: list[dict[str, object]] = []
+    firmware_assets: dict[str, Path] = {}
+    for descriptor in boards:
+        board_id = descriptor["id"]
+        firmware = dict(
+            profile["firmware_compatibility"]
+            if board_id == default_board_id else descriptor["firmware"])
+        for key, value in descriptor["firmware"].items():
+            if firmware.get(key) != value:
+                raise ValueError(
+                    "board firmware differs from profile for %s" % board_id)
+        firmware["artifact_sha256_verified"] = True
+        firmware["lock_sha256"] = sha256_source_file(ROOT / firmware["lock"])
+        firmware["provenance_sha256"] = sha256_source_file(
+            ROOT / firmware["provenance"])
+        source_firmware = ROOT / firmware["artifact"]
+        if board_id == default_board_id:
+            firmware_name = "tartlab-%s.bin" % version
+            lock_name = "firmware-build-lock.json"
+            provenance_name = "firmware-provenance.json"
+        else:
+            firmware_name = "tartlab-%s-%s.bin" % (version, board_id)
+            lock_name = "firmware-build-lock-%s.json" % board_id
+            provenance_name = "firmware-provenance-%s.json" % board_id
+        firmware_asset = output / firmware_name
+        shutil.copyfile(source_firmware, firmware_asset)
+        if sha256_file(firmware_asset) != firmware["sha256"]:
+            raise ValueError(
+                "Published modern firmware differs for board %s" % board_id)
+        lock_asset = output / lock_name
+        provenance_asset = output / provenance_name
+        _write_canonical_copy(ROOT / firmware["lock"], lock_asset)
+        _write_canonical_copy(ROOT / firmware["provenance"], provenance_asset)
+        published_firmware = _release_file(
+            firmware_asset, kind="firmware-image")
+        published_firmware.update({
+            "board_id": board_id,
+            "image_format": firmware["image_format"],
+            "flash_offset": firmware["flash_offset"],
+            "installation": "adult-provisioning-only",
+        })
+        lock_record = _release_file(lock_asset, kind="firmware-build-lock")
+        lock_record["board_id"] = board_id
+        provenance_record = _release_file(
+            provenance_asset, kind="firmware-provenance")
+        provenance_record["board_id"] = board_id
+        provenance_assets.extend((lock_record, provenance_record))
+        firmware_policies[board_id] = firmware
+        published_firmwares[board_id] = published_firmware
+        firmware_assets[board_id] = firmware_asset
+        hardware = descriptor["hardware"]
+        board_compatibility[board_id] = {
+            "name": descriptor["name"],
+            "revisions": hardware["revisions"],
+            "flash_size_bytes": hardware["flash_size_bytes"],
+            "psram_size_bytes": hardware["psram_size_bytes"],
+            "selector_module": descriptor["selector"]["module"],
+            "firmware": firmware,
+        }
+
+    firmware = firmware_policies[default_board_id]
+    firmware_asset = firmware_assets[default_board_id]
+    published_firmware = published_firmwares[default_board_id]
     vendor_lock_asset = output / "filesystem-vendor-lock.json"
     support_window_asset = output / "support-window.json"
-    _write_canonical_copy(ROOT / firmware["lock"], firmware_lock_asset)
-    _write_canonical_copy(ROOT / firmware["provenance"], firmware_provenance_asset)
     _write_canonical_copy(
         ROOT / profile["release_builder"]["filesystem_vendor_lock"],
         vendor_lock_asset)
@@ -217,26 +287,24 @@ def build_release(
     validate_support_window(support_window)
     _write_canonical_copy(support_window_source, support_window_asset)
 
-    published_firmware = _release_file(firmware_asset, kind="firmware-image")
-    published_firmware.update({
-        "image_format": firmware["image_format"],
-        "flash_offset": firmware["flash_offset"],
-        "installation": "adult-provisioning-only",
-    })
-    provenance_assets = [
-        _release_file(firmware_lock_asset, kind="firmware-build-lock"),
-        _release_file(firmware_provenance_asset, kind="firmware-provenance"),
-        _release_file(vendor_lock_asset, kind="filesystem-vendor-lock"),
-    ]
+    provenance_assets.append(
+        _release_file(vendor_lock_asset, kind="filesystem-vendor-lock"))
     published_support_window = _release_file(
         support_window_asset, kind="support-window-policy")
     compatibility = {
-        "schema": 1,
+        "schema": 2,
         "kind": "tartlab-modern-compatibility",
         "profile": profile["profile"],
         "version": version,
         "release_repository": profile["release_channel"]["repository"],
         "firmware": published_firmware,
+        "default_board_id": default_board_id,
+        "boards": {
+            board_id: dict(
+                board_compatibility[board_id],
+                firmware=published_firmwares[board_id])
+            for board_id in sorted(board_compatibility)
+        },
         "runtime_identity": profile["runtime_identity"],
         "provisioning_tool": profile["release_builder"]["provisioning_tool"],
         "filesystem": {
@@ -285,13 +353,17 @@ def build_release(
             "manifest": profile["release_channel"]["manifest"],
         },
         "compatibility": {
+            "schema": 2,
             "runtime_profile": profile["profile"],
             "firmware": firmware,
+            "default_board_id": default_board_id,
+            "boards": board_compatibility,
             "runtime_identity": profile["runtime_identity"],
         },
         "packages": package_entries,
         "published_assets": {
             "firmware": published_firmware,
+            "firmwares": published_firmwares,
             "compatibility": _release_file(
                 output / "compatibility.json", kind="compatibility-declaration"),
             "migration_instructions": _release_file(
@@ -317,12 +389,22 @@ def build_release(
         "release_repository": profile["release_channel"]["repository"],
         "manifest": "modern-manifest.json",
         "firmware_sha256": firmware["sha256"],
+        "default_board_id": default_board_id,
+        "board_ids": sorted(board_compatibility),
         "dist_identifier": inventory_identifier(dist_inventory),
         "inputs": {
             "profile_sha256": sha256_source_file(profile_path),
             "package_map_sha256": sha256_source_file(packages_path),
             "firmware_lock_sha256": firmware["lock_sha256"],
             "firmware_provenance_sha256": firmware["provenance_sha256"],
+            "board_firmware_locks": {
+                board_id: firmware_policies[board_id]["lock_sha256"]
+                for board_id in sorted(firmware_policies)
+            },
+            "board_firmware_provenance": {
+                board_id: firmware_policies[board_id]["provenance_sha256"]
+                for board_id in sorted(firmware_policies)
+            },
             "filesystem_vendor_lock_sha256": sha256_file(vendor_lock_asset),
             "support_window_sha256": sha256_file(support_window_asset),
             "migration_instructions_sha256": sha256_file(migration_asset),
@@ -332,7 +414,8 @@ def build_release(
             "archive_bytes": sum(item["archive_size"] for item in package_entries),
             "expanded_bytes": sum(item["expanded_size"] for item in package_entries),
             "dist_files": len(dist_inventory),
-            "firmware_bytes": firmware_asset.stat().st_size,
+            "firmware_bytes": sum(
+                path.stat().st_size for path in firmware_assets.values()),
         },
         "remaining_promotion_gates": profile["promotion_gates"],
     }
@@ -353,6 +436,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--profile", type=Path, default=DEFAULT_PROFILE)
     parser.add_argument("--packages", type=Path, default=DEFAULT_PACKAGES)
     parser.add_argument("--source-date-epoch", type=int)
+    parser.add_argument(
+        "--board", dest="board_ids", action="append",
+        help="candidate/qualified board ID to include; repeat for multiple boards")
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("--allow-dirty", action="store_true")
     return parser.parse_args(argv)
@@ -363,7 +449,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     result = build_release(
         args.dist, args.output, args.version, clean=args.clean,
         profile_path=args.profile, packages_path=args.packages,
-        source_epoch=args.source_date_epoch, allow_dirty=args.allow_dirty)
+        source_epoch=args.source_date_epoch, allow_dirty=args.allow_dirty,
+        board_ids=args.board_ids)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

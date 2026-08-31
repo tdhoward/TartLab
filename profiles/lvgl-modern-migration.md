@@ -36,7 +36,7 @@ device. Do not attach these assets to, or discover them through, the legacy
 First perform the read-only release inspection:
 
 ```text
-python tools/provision_modern.py --release path/to/release --mode migrate
+python tools/provision_modern.py --release path/to/release --mode migrate --board lilygo_t_display_s3_pro
 ```
 
 Direct migration is supported from stable TartLab `v0.13` or newer, using
@@ -46,7 +46,7 @@ installed version and layout from the captured backup and rejects an
 out-of-window source before erase. Start the authenticated migration with:
 
 ```text
-python tools/provision_modern.py --release path/to/release --mode migrate --workspace path/to/private-workspace --port SERIAL_PORT --source-ref refs/tags/@VERSION@ --execute --confirm-erase
+python tools/provision_modern.py --release path/to/release --mode migrate --board lilygo_t_display_s3_pro --workspace path/to/private-workspace --port SERIAL_PORT --source-ref refs/tags/@VERSION@ --execute --confirm-erase
 ```
 
 Use `--mode clean` instead only for clean provisioning. Before erasure, the

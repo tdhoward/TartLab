@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 import release as release_tools  # noqa: E402
+from board_catalog import load_catalog  # noqa: E402
 from check_modern_profile import load_json, validate_profile  # noqa: E402
 from check_modern_support_window import validate_policy as validate_support_window  # noqa: E402
 from release_utils import file_inventory, sha256_file, sha256_source_file  # noqa: E402
@@ -48,27 +49,49 @@ def _validate_published_file(
 
 
 def validate_compatibility(manifest: dict[str, Any], runtime_profile: str,
-                           firmware_sha256: str) -> dict[str, str]:
+                           firmware_sha256: str,
+                           board_id: str | None = None) -> dict[str, str]:
     """Fail closed unless the device identity exactly matches the manifest."""
 
     compatibility = manifest.get("compatibility")
     if not isinstance(compatibility, dict):
         raise ValueError("modern manifest compatibility declaration is missing")
     required_profile = compatibility.get("runtime_profile")
-    firmware = compatibility.get("firmware")
-    if not isinstance(firmware, dict):
-        raise ValueError("modern manifest firmware identity is missing")
-    required_hash = firmware.get("sha256")
     if runtime_profile != required_profile:
         raise ValueError(
             "Runtime profile mismatch: device is %s, release requires %s" %
             (runtime_profile, required_profile))
+    boards = compatibility.get("boards")
+    if isinstance(boards, dict):
+        if board_id is None:
+            matches = [
+                candidate_id for candidate_id, record in boards.items()
+                if isinstance(record, dict) and
+                isinstance(record.get("firmware"), dict) and
+                record["firmware"].get("sha256") == firmware_sha256.lower()
+            ]
+            if len(matches) != 1:
+                raise ValueError(
+                    "Board identity is required for this modern release")
+            board_id = matches[0]
+        board = boards.get(board_id)
+        if not isinstance(board, dict):
+            raise ValueError("Board is not supported by the modern release")
+        firmware = board.get("firmware")
+    else:
+        firmware = compatibility.get("firmware")
+        if board_id is None:
+            board_id = "legacy-single-board"
+    if not isinstance(firmware, dict):
+        raise ValueError("modern manifest firmware identity is missing")
+    required_hash = firmware.get("sha256")
     if firmware_sha256.lower() != required_hash:
         raise ValueError(
             "Firmware identity mismatch: device hash does not match the release")
     return {
         "runtime_profile": required_profile,
         "firmware_sha256": required_hash,
+        "board_id": board_id,
     }
 
 
@@ -81,7 +104,8 @@ def _read_object(path: Path) -> dict[str, Any]:
 
 def check(release: Path, runtime_profile: str, firmware_sha256: str,
           *, profile_path: Path = DEFAULT_PROFILE,
-          dist: Path | None = None) -> dict[str, object]:
+          dist: Path | None = None,
+          board_id: str | None = None) -> dict[str, object]:
     release = release.resolve()
     if not release.is_dir():
         raise ValueError("modern release directory not found: %s" % release)
@@ -105,7 +129,7 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
         if actual_firmware.get(key) != expected:
             raise ValueError("modern manifest firmware declaration mismatch: %s" % key)
     preflight = validate_compatibility(
-        manifest, runtime_profile, firmware_sha256)
+        manifest, runtime_profile, firmware_sha256, board_id)
 
     checksums = _read_object(release / "checksums.json")
     for filename, expected in checksums.items():
@@ -130,16 +154,30 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
     published = manifest.get("published_assets")
     if not isinstance(published, dict):
         raise ValueError("modern manifest has no published artifact inventory")
+    default_board_id = profile["default_board_id"]
     published_firmware = published.get("firmware")
-    firmware_path = _validate_published_file(
-        release, published_firmware, checksums, "firmware-image")
-    if published_firmware.get("sha256") != firmware_sha256.lower() or \
-            published_firmware.get("image_format") != \
-            expected_compatibility["image_format"] or \
-            published_firmware.get("flash_offset") != \
-            expected_compatibility["flash_offset"] or \
-            published_firmware.get("installation") != "adult-provisioning-only":
+    published_firmwares = published.get("firmwares")
+    if published_firmwares is None:
+        published_firmwares = {default_board_id: published_firmware}
+    if not isinstance(published_firmwares, dict) or \
+            published_firmwares.get(default_board_id) != published_firmware:
+        raise ValueError("published board firmware inventory is incomplete")
+    firmware_paths: dict[str, Path] = {}
+    for published_board_id, record in published_firmwares.items():
+        path = _validate_published_file(
+            release, record, checksums, "firmware-image")
+        if record.get("board_id", published_board_id) != published_board_id or \
+                record.get("installation") != "adult-provisioning-only":
+            raise ValueError("published board firmware identity is invalid")
+        firmware_paths[published_board_id] = path
+    selected_board_id = preflight["board_id"]
+    if selected_board_id == "legacy-single-board":
+        selected_board_id = default_board_id
+    selected_firmware = published_firmwares.get(selected_board_id)
+    if not isinstance(selected_firmware, dict) or \
+            selected_firmware.get("sha256") != firmware_sha256.lower():
         raise ValueError("published firmware identity differs from compatibility policy")
+    firmware_path = firmware_paths[selected_board_id]
 
     compatibility_path = _validate_published_file(
         release, published.get("compatibility"), checksums,
@@ -163,7 +201,7 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
         "below_floor_action": (
             "adult-clean-provision-with-reviewed-manual-restore"),
     }
-    if compatibility.get("schema") != 1 or \
+    if compatibility.get("schema") not in (1, 2) or \
             compatibility.get("kind") != "tartlab-modern-compatibility" or \
             compatibility.get("profile") != "lvgl-modern" or \
             compatibility.get("version") != manifest.get("version") or \
@@ -181,13 +219,56 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
             "host-tested-pending-physical-qualification" or \
             compatibility.get("support_window") != expected_support_window:
         raise ValueError("published modern compatibility declaration is invalid")
+    manifest_compatibility = manifest["compatibility"]
+    if compatibility.get("schema") == 2:
+        if manifest_compatibility.get("schema") != 2 or \
+                compatibility.get("default_board_id") != default_board_id or \
+                manifest_compatibility.get("default_board_id") != default_board_id:
+            raise ValueError("modern default-board compatibility is invalid")
+        published_boards = compatibility.get("boards")
+        manifest_boards = manifest_compatibility.get("boards")
+        if not isinstance(published_boards, dict) or \
+                not isinstance(manifest_boards, dict) or \
+                set(published_boards) != set(published_firmwares) or \
+                set(manifest_boards) != set(published_firmwares):
+            raise ValueError("modern board compatibility matrix is incomplete")
+        catalog = load_catalog()
+        for compatible_board_id in sorted(published_boards):
+            descriptor = catalog.get(compatible_board_id)
+            published_board = published_boards[compatible_board_id]
+            manifest_board = manifest_boards[compatible_board_id]
+            if not isinstance(descriptor, dict) or \
+                    not isinstance(published_board, dict) or \
+                    not isinstance(manifest_board, dict):
+                raise ValueError("modern compatibility names an unknown board")
+            hardware = descriptor["hardware"]
+            expected_board = {
+                "name": descriptor["name"],
+                "revisions": hardware["revisions"],
+                "flash_size_bytes": hardware["flash_size_bytes"],
+                "psram_size_bytes": hardware["psram_size_bytes"],
+                "selector_module": descriptor["selector"]["module"],
+            }
+            for key, value in expected_board.items():
+                if published_board.get(key) != value or \
+                        manifest_board.get(key) != value:
+                    raise ValueError(
+                        "modern board compatibility differs from catalog: %s" %
+                        compatible_board_id)
+            if published_board.get("firmware") != \
+                    published_firmwares[compatible_board_id] or \
+                    manifest_board.get("firmware", {}).get("sha256") != \
+                    published_firmwares[compatible_board_id].get("sha256"):
+                raise ValueError("modern board firmware matrix is inconsistent")
 
     migration_path = _validate_published_file(
         release, published.get("migration_instructions"), checksums,
         "migration-instructions")
     migration_text = migration_path.read_text(encoding="utf-8")
+    default_firmware_path = firmware_paths[default_board_id]
     migration_markers = (
-        manifest["version"], firmware_path.name, firmware_sha256,
+        manifest["version"], default_firmware_path.name,
+        published_firmware["sha256"],
         "adult administrators", "cannot replace firmware", "v0.13",
         "older than v0.13",
     )
@@ -198,26 +279,45 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
         raise ValueError("published modern migration instructions are incomplete")
 
     provenance = published.get("provenance")
-    expected_provenance = {
-        "firmware-build-lock": (
-            "firmware-build-lock.json", expected_compatibility["lock"]),
-        "firmware-provenance": (
-            "firmware-provenance.json", expected_compatibility["provenance"]),
-        "filesystem-vendor-lock": (
-            "filesystem-vendor-lock.json",
-            profile["release_builder"]["filesystem_vendor_lock"]),
-    }
-    if not isinstance(provenance, list) or len(provenance) != 3:
+    if not isinstance(provenance, list) or \
+            len(provenance) != len(published_firmwares) * 2 + 1:
         raise ValueError("modern source/vendor provenance inventory is incomplete")
-    provenance_by_kind = {
-        item.get("kind"): item for item in provenance if isinstance(item, dict)
-    }
-    for kind, (filename, source) in expected_provenance.items():
-        record = provenance_by_kind.get(kind)
-        path = _validate_published_file(release, record, checksums, kind)
-        if path.name != filename or \
-                record.get("sha256") != sha256_source_file(ROOT / source):
-            raise ValueError("published modern provenance differs from source: %s" % kind)
+    catalog = load_catalog()
+    for compatible_board_id in published_firmwares:
+        descriptor = catalog[compatible_board_id]
+        for kind, source_key in (
+                ("firmware-build-lock", "lock"),
+                ("firmware-provenance", "provenance")):
+            matches = [
+                item for item in provenance if isinstance(item, dict) and
+                item.get("kind") == kind and
+                (item.get("board_id") == compatible_board_id or
+                 (compatibility.get("schema") == 1 and
+                  compatible_board_id == default_board_id and
+                  item.get("board_id") is None))
+            ]
+            if len(matches) != 1:
+                raise ValueError(
+                    "modern board provenance is incomplete: %s" %
+                    compatible_board_id)
+            path = _validate_published_file(
+                release, matches[0], checksums, kind)
+            if matches[0].get("sha256") != sha256_source_file(
+                    ROOT / descriptor["firmware"][source_key]):
+                raise ValueError(
+                    "published modern provenance differs from source: %s" % kind)
+    vendor_matches = [
+        item for item in provenance if isinstance(item, dict) and
+        item.get("kind") == "filesystem-vendor-lock"
+    ]
+    if len(vendor_matches) != 1:
+        raise ValueError("modern filesystem provenance is incomplete")
+    vendor_path = _validate_published_file(
+        release, vendor_matches[0], checksums, "filesystem-vendor-lock")
+    if vendor_path.name != "filesystem-vendor-lock.json" or \
+            vendor_matches[0].get("sha256") != sha256_source_file(
+                ROOT / profile["release_builder"]["filesystem_vendor_lock"]):
+        raise ValueError("published modern filesystem provenance differs")
 
     packages = manifest.get("packages")
     if not isinstance(packages, list) or not packages:
@@ -307,7 +407,8 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
             metadata.get("release_repository") != \
             "tdhoward/TartLab-modern-releases":
         raise ValueError("Modern build metadata targets an unexpected profile or feed")
-    if metadata.get("totals", {}).get("firmware_bytes") != firmware_path.stat().st_size:
+    if metadata.get("totals", {}).get("firmware_bytes") != sum(
+            path.stat().st_size for path in firmware_paths.values()):
         raise ValueError("Modern firmware total differs from build metadata")
     return {
         "profile": "lvgl-modern",
@@ -316,6 +417,8 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
         "archive_bytes": archive_total,
         "expanded_bytes": expanded_total,
         "firmware_asset": firmware_path.name,
+        "board_id": selected_board_id,
+        "compatible_boards": sorted(published_firmwares),
         "published_provenance_assets": len(provenance),
         "support_window_floor": "v0.13",
         "preflight": preflight,
@@ -328,6 +431,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--release", type=Path, required=True)
     parser.add_argument("--runtime-profile", required=True)
     parser.add_argument("--firmware-sha256", required=True)
+    parser.add_argument("--board")
     parser.add_argument("--profile", type=Path, default=DEFAULT_PROFILE)
     parser.add_argument("--dist", type=Path)
     return parser.parse_args(argv)
@@ -337,7 +441,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     result = check(
         args.release, args.runtime_profile, args.firmware_sha256,
-        profile_path=args.profile, dist=args.dist)
+        profile_path=args.profile, dist=args.dist, board_id=args.board)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

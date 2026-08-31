@@ -1,10 +1,15 @@
 # Elecrow ESP32-S3 MicroPython, LVGL, and TartLab bring-up plan
 
-Status: research and execution plan. The DLE06235B stock-MicroPython gate was
-completed on 2026-08-29; LVGL/ST77922 work remains experimental and is not a
-qualification claim.
+Status: research and execution plan. The DLE06235B stock-MicroPython gate and
+an experimental portrait LVGL/ST77922 bench proof were completed on 2026-08-29.
+Native 320 x 480 portrait is the selected TartLab mode. Driver integration and
+board qualification remain incomplete; see
+[`../elecrow_dle06235b/BRINGUP_RESULTS.md`](../elecrow_dle06235b/BRINGUP_RESULTS.md)
+for the current results and ordered remaining-work checklist.
 
 Research date: 2026-08-29
+
+Plan updated: 2026-08-30
 
 Targets:
 
@@ -38,12 +43,15 @@ Recommended order:
 
 1. Preserve both factory images and identify the exact PCB revisions.
 2. Bring up stock, generic MicroPython on the 3.5-inch board.
-3. Build and qualify an LVGL 9.4 / MicroPython 1.27 image for the 3.5-inch board.
-4. Add the 3.5-inch TartLab board adapter and take it through modern-release
-   qualification.
-5. Bring up stock MicroPython and then a display-only LVGL image on the 7-inch
+3. Finish the 3.5-inch asynchronous QSPI and reset-lifecycle work on the pinned
+   LVGL 9.4 / MicroPython 1.27 runtime.
+4. Add the portrait TartLab board adapter and complete an end-to-end bench
+   boot, including the direct game surface.
+5. Lock the board-specific firmware and take the 3.5-inch target through safe
+   provisioning and modern-release qualification.
+6. Bring up stock MicroPython and then a display-only LVGL image on the 7-inch
    board.
-6. Make a separate, evidence-based decision about a reduced or SD-assisted
+7. Make a separate, evidence-based decision about a reduced or SD-assisted
    TartLab architecture for the 7-inch board.
 
 ## Hardware comparison
@@ -245,8 +253,10 @@ image and lock unchanged.
 5. Add the smallest reviewed ST77922 TDDI input driver using the vendor register
    protocol at `0x55`. Validate firmware/geometry reads, coordinates,
    press/release behavior, multi-touch reporting, edge coverage, and rotation.
-6. Use RGB565 and first prove portrait 320 x 480. Then qualify landscape
-   480 x 320, because that is the likely TartLab orientation.
+6. Use RGB565 and qualify native portrait 320 x 480 as the TartLab board mode.
+   A software-rotated 480 x 320 landscape proof may be retained as an optional
+   experiment, but it is not a promotion gate unless landscape support is
+   explicitly added later.
 7. Use two small DMA-capable partial buffers rather than allocating full
    internal-memory frames. Record geometry, QSPI clock, buffer sizes and
    capabilities, color order, byte swapping, render time, transfer time, and
@@ -270,7 +280,7 @@ show:
 Exit criteria:
 
 - a reproducible, source-locked combined firmware image;
-- stable LVGL 9 display and touch behavior in landscape;
+- stable LVGL 9 display and touch behavior in native 320 x 480 portrait;
 - native USB REPL remains recoverable;
 - measured performance is adequate for TartLab's IDE and direct game surface;
 - no unreviewed private driver fields are required by the application layer.
@@ -289,7 +299,10 @@ Exit criteria:
    interaction. If that is confusing in classroom use, define a supported
    external button on GPIO45/46 instead.
 4. Preserve exclusive display ownership. Pending QSPI transfers must be
-   drained before switching between LVGL and the direct game surface.
+   drained before switching between LVGL and the direct game surface. The
+   direct surface must use the ST77922 packed QSPI pixel-write command and must
+   safely satisfy the controller requirement that physical CASET start and
+   width are multiples of four for arbitrary TartLab dirty rectangles.
 5. Add clean provisioning first. Do not claim migration support from an
    unknown Elecrow factory filesystem.
 6. Generalize the modern firmware/release metadata from a single firmware hash
@@ -299,9 +312,10 @@ Exit criteria:
 7. Keep board identity and touch calibration under `/device`; OTA packages may
    update the board adapter but must not overwrite the local selector or
    calibration.
-8. Verify the existing browser UI at 480 x 320. Check layout, touch target
-   sizes, status overlays, IDE/recovery pages, examples, and every game or
-   animation that uses the direct surface.
+8. Verify the on-device status UI and the existing browser IDE for the selected
+   320 x 480 portrait board mode. Remove fixed-width LVGL assumptions, then
+   check layout, touch target sizes, status overlays, IDE/recovery pages,
+   examples, and every game or animation that uses the direct surface.
 9. Measure free flash and heap after clean provisioning, first healthy boot,
    IDE startup, a representative program run, OTA staging, and rollback.
    Establish an explicit release margin rather than inheriting the 16 MiB
@@ -315,7 +329,7 @@ must be per board and bound to the exact firmware and release candidate.
 
 Exit criteria:
 
-- TartLab boots directly into a usable 480 x 320 LVGL UI;
+- TartLab boots directly into a usable 320 x 480 portrait LVGL UI;
 - IDE, Wi-Fi, examples, touch, brightness, and direct rendering behave smoothly;
 - provisioning, OTA, interruption recovery, and rollback pass on the exact
   DLE06235B hardware and firmware;

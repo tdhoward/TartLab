@@ -178,6 +178,7 @@ class ModernProvisioningTests(unittest.TestCase):
                 self.release, workspace, "clean", transport)
 
             self.assertEqual(result["stage"], "awaiting_health")
+            self.assertEqual(result["board_id"], "lilygo_t_display_s3_pro")
             self.assertEqual(transport.capture_count, 0)
             self.assertEqual(transport.asserted_firmware, (
                 "tartlab-modern-v1.2.3.bin", "0x0", FIRMWARE_SHA256))
@@ -185,6 +186,11 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertIn(
                 "from t_display_s3_pro_modern import *",
                 (device / "device/hdwconfig.py").read_text(encoding="utf-8"))
+            self.assertEqual(json.loads(
+                (device / "device/board.json").read_text(encoding="utf-8")), {
+                    "schema": 1,
+                    "board_id": "lilygo_t_display_s3_pro",
+                })
             self.assertEqual(
                 (device / "files/user/hello.py").read_text(encoding="utf-8"),
                 "print('clean hello')\n")
@@ -198,6 +204,8 @@ class ModernProvisioningTests(unittest.TestCase):
                 item for item in repos["list"] if item["name"] == "TartLab")
             self.assertEqual(tartlab["repo"], MODERN_REPOSITORY)
             self.assertEqual(tartlab["firmware_sha256"], FIRMWARE_SHA256)
+            self.assertEqual(
+                tartlab["board_id"], "lilygo_t_display_s3_pro")
             self.assertEqual(tartlab["installed_version"], "unprovisioned")
 
             self._complete_health(device)
@@ -260,10 +268,28 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertEqual(tartlab["installed_version"], "v0.13")
             self.assertEqual(tartlab["repo"], MODERN_REPOSITORY)
             self.assertEqual(tartlab["firmware_sha256"], FIRMWARE_SHA256)
+            self.assertEqual(
+                tartlab["board_id"], "lilygo_t_display_s3_pro")
             journal_text = (workspace / "provisioning-journal.json").read_text(
                 encoding="utf-8")
             self.assertNotIn("not-a-real-password", journal_text)
             self.assertTrue((workspace / "device-backup/settings.json").is_file())
+
+    def test_unqualified_board_is_rejected_before_workspace_or_device_change(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            device = root / "device"
+            device.mkdir()
+            sentinel = device / "sentinel.txt"
+            sentinel.write_text("preserve", encoding="utf-8")
+            workspace = root / "workspace"
+            with self.assertRaisesRegex(ValueError, "not qualified"):
+                provision(
+                    self.release, workspace, "clean",
+                    DirectoryTransport(device),
+                    board_id="elecrow_dle06235b")
+            self.assertEqual(sentinel.read_text(encoding="utf-8"), "preserve")
+            self.assertFalse(workspace.exists())
 
     def test_interrupted_upload_resumes_from_the_unchanged_backup(self):
         with tempfile.TemporaryDirectory() as temporary:

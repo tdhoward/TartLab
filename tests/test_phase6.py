@@ -9,6 +9,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,7 @@ from check_release_authenticity import (  # noqa: E402
     verification_command,
 )
 from build_modern_release import build_release as build_modern_release  # noqa: E402
+from board_catalog import load_catalog  # noqa: E402
 from check_modern_release import (  # noqa: E402
     check as check_modern_release, validate_compatibility,
 )
@@ -187,6 +189,13 @@ class ModernReleaseTests(unittest.TestCase):
                 (release / "modern-manifest.json").read_text(encoding="utf-8"))
             self.assertIsInstance(manifest, dict)
             self.assertEqual(manifest["schema"], 1)
+            self.assertEqual(manifest["compatibility"]["schema"], 2)
+            self.assertEqual(
+                manifest["compatibility"]["default_board_id"],
+                "lilygo_t_display_s3_pro")
+            self.assertEqual(
+                set(manifest["compatibility"]["boards"]),
+                {"lilygo_t_display_s3_pro"})
             self.assertEqual(
                 manifest["channel"]["repository"],
                 "tdhoward/TartLab-modern-releases")
@@ -194,6 +203,9 @@ class ModernReleaseTests(unittest.TestCase):
             self.assertEqual(firmware["file_name"], "tartlab-modern-v1.2.3.bin")
             self.assertEqual(firmware["sha256"], self.firmware_sha256)
             self.assertTrue((release / firmware["file_name"]).is_file())
+            self.assertEqual(
+                manifest["published_assets"]["firmwares"],
+                {"lilygo_t_display_s3_pro": firmware})
             self.assertEqual(
                 json.loads((release / "compatibility.json").read_text(
                     encoding="utf-8"))["firmware"], firmware)
@@ -220,6 +232,74 @@ class ModernReleaseTests(unittest.TestCase):
                 check_modern_release(
                     release, "lvgl-modern", self.firmware_sha256)
 
+    def test_builder_emits_separate_assets_for_explicit_candidate_boards(self):
+        default = load_catalog()["lilygo_t_display_s3_pro"]
+        candidate = copy.deepcopy(default)
+        candidate.update({
+            "id": "synthetic_candidate",
+            "name": "Synthetic Candidate",
+            "support_status": "candidate",
+            "qualification": None,
+        })
+
+        def selected(board_id, required_status=None):
+            descriptor = (
+                default if board_id == default["id"] else candidate)
+            if required_status is not None and \
+                    descriptor["support_status"] != required_status:
+                raise ValueError("unexpected status")
+            return descriptor
+
+        with tempfile.TemporaryDirectory() as temporary, mock.patch(
+                "build_modern_release.select_board", side_effect=selected):
+            root = Path(temporary)
+            dist = root / "dist"
+            dist.mkdir()
+            (dist / "main.py").write_text("pass\n", encoding="utf-8")
+            (dist / "defaults/user").mkdir(parents=True)
+            (dist / "defaults/user/hello.py").write_text(
+                "pass\n", encoding="utf-8")
+            packages = root / "packages.json"
+            packages.write_text(json.dumps([
+                {
+                    "name": "rootfiles", "source": "dist/*", "target": "/",
+                    "clear_first": False, "ownership": "system",
+                },
+                {
+                    "name": "defaults", "source": "dist/defaults",
+                    "target": "/defaults", "clear_first": True,
+                    "ownership": "system",
+                },
+            ]), encoding="utf-8")
+            release = root / "release"
+            build_modern_release(
+                dist, release, "modern-v1.2.3", packages_path=packages,
+                source_epoch=1234, allow_dirty=True,
+                board_ids=[default["id"], candidate["id"]])
+            manifest = json.loads(
+                (release / "modern-manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                set(manifest["compatibility"]["boards"]),
+                {default["id"], candidate["id"]})
+            candidate_firmware = manifest["published_assets"]["firmwares"][
+                candidate["id"]]
+            self.assertEqual(candidate_firmware["board_id"], candidate["id"])
+            self.assertTrue(
+                (release / candidate_firmware["file_name"]).is_file())
+            with mock.patch(
+                    "check_modern_release.load_catalog", return_value={
+                        default["id"]: default,
+                        candidate["id"]: candidate,
+                    }):
+                result = check_modern_release(
+                    release, "lvgl-modern",
+                    candidate["firmware"]["sha256"],
+                    board_id=candidate["id"])
+            self.assertEqual(result["board_id"], candidate["id"])
+            self.assertEqual(
+                result["compatible_boards"],
+                sorted((default["id"], candidate["id"])))
+
     def test_provisioning_preflight_rejects_profile_and_firmware_mismatch(self):
         manifest = {
             "compatibility": {
@@ -232,6 +312,22 @@ class ModernReleaseTests(unittest.TestCase):
                 manifest, "legacy-mp123", self.firmware_sha256)
         with self.assertRaisesRegex(ValueError, "Firmware identity mismatch"):
             validate_compatibility(manifest, "lvgl-modern", "0" * 64)
+        matrix = {
+            "compatibility": {
+                "runtime_profile": "lvgl-modern",
+                "boards": {
+                    "board_a": {"firmware": {"sha256": "a" * 64}},
+                    "board_b": {"firmware": {"sha256": "b" * 64}},
+                },
+            },
+        }
+        self.assertEqual(
+            validate_compatibility(
+                matrix, "lvgl-modern", "b" * 64, "board_b")["board_id"],
+            "board_b")
+        with self.assertRaisesRegex(ValueError, "not supported"):
+            validate_compatibility(
+                matrix, "lvgl-modern", "b" * 64, "unknown_board")
 
     def test_modern_builder_rejects_noncanonical_package_targets(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -466,6 +562,42 @@ class ModernQualificationTests(unittest.TestCase):
                 candidate_sha256=self.candidate_sha256,
                 expected_sha256=sha256_file(path))
             self.assertEqual(result["passed_gates"], list(REQUIRED_GATES))
+            self.assertEqual(result["boards"], {
+                "lilygo_t_display_s3_pro": self.firmware_sha256,
+            })
+
+    def test_schema2_qualification_binds_each_board_result(self):
+        legacy = self._evidence()
+        evidence = {
+            "schema": 2,
+            "profile": legacy["profile"],
+            "version": legacy["version"],
+            "target_repository": legacy["target_repository"],
+            "candidate_checksums_sha256": legacy[
+                "candidate_checksums_sha256"],
+            "operator": legacy["operator"],
+            "tested_at_utc": legacy["tested_at_utc"],
+            "boards": {
+                "lilygo_t_display_s3_pro": {
+                    "firmware_sha256": legacy["firmware_sha256"],
+                    "board": legacy["board"],
+                    "artifacts": legacy["artifacts"],
+                    "gates": legacy["gates"],
+                },
+            },
+        }
+        result = validate_modern_qualification(
+            evidence, tag="modern-v1.2.3",
+            candidate_sha256=self.candidate_sha256)
+        self.assertEqual(result["boards"], {
+            "lilygo_t_display_s3_pro": self.firmware_sha256,
+        })
+        evidence["boards"]["lilygo_t_display_s3_pro"][
+            "firmware_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "differs from catalog"):
+            validate_modern_qualification(
+                evidence, tag="modern-v1.2.3",
+                candidate_sha256=self.candidate_sha256)
 
     def test_qualification_rejects_missing_or_failed_gate(self):
         missing = self._evidence()

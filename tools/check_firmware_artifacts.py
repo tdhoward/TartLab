@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import sys
 
+from board_catalog import BoardCatalogError, load_catalog
 from modern_firmware import check_lock as check_modern_firmware_lock
 
 
@@ -174,12 +175,19 @@ def main() -> int:
             modern_count = 1
         except ValueError as exc:
             errors.append(f"{modern_lock.relative_to(ROOT)}: {exc}")
+    board_count = 0
+    try:
+        board_count = len(load_catalog())
+    except BoardCatalogError as exc:
+        errors.append(f"board catalog: {exc}")
     if errors:
         for error in errors:
             print(error, file=sys.stderr)
         return 1
 
-    print(f"Verified {len(manifests) + modern_count} firmware artifacts")
+    print(
+        f"Verified {len(manifests) + modern_count} firmware artifacts and "
+        f"{board_count} board descriptors")
     return 0
 
 

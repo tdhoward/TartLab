@@ -1,6 +1,7 @@
 {
   "schema": 2,
   "profile": "lvgl-modern",
+  "default_board_id": "lilygo_t_display_s3_pro",
   "status": "published",
   "firmware_compatibility": {
     "implementation": "MicroPython",

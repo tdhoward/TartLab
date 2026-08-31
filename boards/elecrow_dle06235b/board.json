@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "id": "elecrow_dle06235b",
+  "name": "Elecrow DLE06235B",
+  "vendor": "Elecrow",
+  "runtime_profile": "lvgl-modern",
+  "support_status": "bringup",
+  "hardware": {
+    "revisions": [
+      "observed-2026-08-29"
+    ],
+    "mcu": "ESP32-S3",
+    "flash_size_bytes": 16777216,
+    "psram_size_bytes": 8388608,
+    "display": {
+      "width": 320,
+      "height": 480,
+      "orientation": "portrait",
+      "transport": "QSPI",
+      "controller": "ST77922"
+    },
+    "touch": {
+      "present": true,
+      "controller": "ST77922 TDDI at I2C 0x55"
+    },
+    "console": "ESP32-S3 native USB Serial/JTAG",
+    "power": "USB-C"
+  },
+  "selector": null,
+  "firmware": null,
+  "qualification": null,
+  "documentation": [
+    "boards/elecrow_dle06235b/README.md",
+    "boards/elecrow_dle06235b/BRINGUP_RESULTS.md",
+    "boards/elecrow/ESP32_S3_BRINGUP_PLAN.md"
+  ]
+}

@@ -70,7 +70,7 @@ jobs:
         shell: bash
         run: |
           python tools/check_modern_profile.py --dist build/qualification/dist-one --compare-dist build/qualification/dist-two
-          python tools/check_modern_release.py --release build/qualification/release --dist build/qualification/dist-one --runtime-profile lvgl-modern --firmware-sha256 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
+          python tools/check_modern_release.py --release build/qualification/release --dist build/qualification/dist-one --runtime-profile lvgl-modern --board lilygo_t_display_s3_pro --firmware-sha256 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
 
       - name: Run qualification host matrix
         run: >-

@@ -11,6 +11,8 @@ import subprocess
 import sys
 from typing import Any, Sequence
 
+from release_utils import sha256_source_file
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_LOCK = ROOT / "firmware/lvgl-modern/reference.lock.json"
@@ -232,7 +234,7 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
     for item in inputs:
         input_path = ROOT / item["path"]
         _require(input_path.is_file(), f"local build input not found: {input_path}")
-        actual_hash = hashlib.sha256(input_path.read_bytes()).hexdigest()
+        actual_hash = sha256_source_file(input_path)
         _require(item.get("sha256") == actual_hash,
                  f"{item['path']}: hash does not match the reference lock")
 
@@ -266,7 +268,7 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
         evidence_path = ROOT / item.get("path", "")
         _require(evidence_path.is_file(),
                  f"hardware evidence is missing: {evidence_path}")
-        _require(item.get("sha256") == sha256_file(evidence_path),
+        _require(item.get("sha256") == sha256_source_file(evidence_path),
                  f"{item.get('path')}: hardware evidence hash mismatch")
     profile = load_lock(ROOT / "profiles/lvgl-modern.json")
     adapter = profile.get("application_adapter", {})
@@ -276,7 +278,7 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
     for item in adapter_inputs:
         path = ROOT / item.get("path", "")
         _require(path.is_file(), f"application adapter input is missing: {path}")
-        _require(item.get("sha256") == sha256_file(path),
+        _require(item.get("sha256") == sha256_source_file(path),
                  f"{item.get('path')}: application adapter hash mismatch")
 
     result = lock.get("result")

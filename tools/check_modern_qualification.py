@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 from typing import Any, Sequence
 
+from board_catalog import default_board, select_board
 from release_utils import read_json, sha256_file, sha256_source_file
 
 
@@ -17,8 +18,8 @@ SUPPORT_WINDOW_POLICY = ROOT / "profiles/modern-support-window.json"
 MODERN_TAG = re.compile(r"^modern-v[0-9]+\.[0-9]+(?:\.[0-9]+)?$")
 PROFILE = "lvgl-modern"
 TARGET_REPOSITORY = "tdhoward/TartLab-modern-releases"
-FIRMWARE_SHA256 = (
-    "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab")
+PROFILE_BOARD = default_board(PROFILE)
+FIRMWARE_SHA256 = PROFILE_BOARD["firmware"]["sha256"]
 REQUIRED_GATES = (
     "adult_provisioning",
     "hardware",
@@ -32,6 +33,11 @@ TOP_LEVEL_KEYS = {
     "candidate_checksums_sha256", "firmware_sha256", "board",
     "operator", "tested_at_utc", "artifacts", "gates",
 }
+MULTI_BOARD_KEYS = {
+    "schema", "profile", "version", "target_repository",
+    "candidate_checksums_sha256", "boards", "operator", "tested_at_utc",
+}
+BOARD_RESULT_KEYS = {"firmware_sha256", "board", "artifacts", "gates"}
 ARTIFACT_KEYS = {
     "clean_provisioning_journal_sha256",
     "migration_provisioning_journal_sha256",
@@ -56,10 +62,59 @@ def _require_sha256(value: Any, label: str) -> str:
 
 
 def validate(evidence: dict[str, Any], *, tag: str, candidate_sha256: str,
-             firmware_sha256: str = FIRMWARE_SHA256) -> dict[str, Any]:
+             firmware_sha256: str = FIRMWARE_SHA256,
+             board_descriptor: dict[str, Any] = PROFILE_BOARD
+             ) -> dict[str, Any]:
     """Validate one candidate-bound, sanitized qualification summary."""
     if not isinstance(evidence, dict):
         raise ValueError("Qualification evidence must be a JSON object")
+    if evidence.get("schema") == 2:
+        _require_exact_keys(evidence, MULTI_BOARD_KEYS, "qualification evidence")
+        boards = evidence["boards"]
+        if not isinstance(boards, dict) or not boards:
+            raise ValueError("Multi-board qualification requires board results")
+        results = {}
+        for board_id, board_result in boards.items():
+            if not isinstance(board_result, dict):
+                raise ValueError("Qualification board result must be an object")
+            _require_exact_keys(
+                board_result, BOARD_RESULT_KEYS,
+                "qualification board result %s" % board_id)
+            descriptor = select_board(board_id)
+            if descriptor["runtime_profile"] != PROFILE or \
+                    descriptor["support_status"] not in ("candidate", "qualified"):
+                raise ValueError("Qualification targets an ineligible board")
+            board_firmware = descriptor["firmware"]["sha256"]
+            if board_result["firmware_sha256"] != board_firmware:
+                raise ValueError("Qualification board firmware differs from catalog")
+            single = {
+                "schema": 1,
+                "profile": evidence["profile"],
+                "version": evidence["version"],
+                "target_repository": evidence["target_repository"],
+                "candidate_checksums_sha256": evidence[
+                    "candidate_checksums_sha256"],
+                "firmware_sha256": board_result["firmware_sha256"],
+                "board": board_result["board"],
+                "operator": evidence["operator"],
+                "tested_at_utc": evidence["tested_at_utc"],
+                "artifacts": board_result["artifacts"],
+                "gates": board_result["gates"],
+            }
+            results[board_id] = validate(
+                single, tag=tag, candidate_sha256=candidate_sha256,
+                firmware_sha256=board_firmware,
+                board_descriptor=descriptor)
+        return {
+            "profile": PROFILE,
+            "version": tag,
+            "candidate_checksums_sha256": candidate_sha256,
+            "boards": {
+                board_id: result["firmware_sha256"]
+                for board_id, result in results.items()
+            },
+            "passed_gates": list(REQUIRED_GATES),
+        }
     _require_exact_keys(evidence, TOP_LEVEL_KEYS, "qualification evidence")
     if evidence["schema"] != 1:
         raise ValueError("Unsupported qualification evidence schema")
@@ -85,10 +140,11 @@ def validate(evidence: dict[str, Any], *, tag: str, candidate_sha256: str,
         "model", "pcb_revision", "chip_revision", "flash_size_bytes",
         "psram_size_bytes",
     }, "board")
-    if board.get("model") != "LilyGO T-Display-S3 Pro" or \
-            board.get("pcb_revision") != "1.1" or \
-            board.get("flash_size_bytes") != 16777216 or \
-            board.get("psram_size_bytes") != 8388608:
+    hardware = board_descriptor["hardware"]
+    if board.get("model") != board_descriptor["name"] or \
+            board.get("pcb_revision") not in hardware["revisions"] or \
+            board.get("flash_size_bytes") != hardware["flash_size_bytes"] or \
+            board.get("psram_size_bytes") != hardware["psram_size_bytes"]:
         raise ValueError("Qualification evidence targets an unapproved board")
     if not isinstance(board.get("chip_revision"), str) or not \
             board["chip_revision"].strip():
@@ -138,6 +194,7 @@ def validate(evidence: dict[str, Any], *, tag: str, candidate_sha256: str,
         "version": tag,
         "candidate_checksums_sha256": candidate_sha256,
         "firmware_sha256": firmware_sha256,
+        "boards": {board_descriptor["id"]: firmware_sha256},
         "support_window_policy_sha256": artifacts[
             "support_window_policy_sha256"],
         "passed_gates": list(REQUIRED_GATES),

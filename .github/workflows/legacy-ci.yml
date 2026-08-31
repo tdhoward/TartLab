@@ -66,6 +66,9 @@ jobs:
       - name: Verify tracked firmware artifacts
         run: python tools/check_firmware_artifacts.py
 
+      - name: Test modern board catalog policy
+        run: python -m unittest tests.test_board_catalog -v
+
       - name: Verify pinned modern firmware reference recipe
         run: python tools/modern_firmware.py check
 
@@ -255,6 +258,7 @@ jobs:
           --release build/modern-one/release
           --dist build/modern-one/dist
           --runtime-profile lvgl-modern
+          --board lilygo_t_display_s3_pro
           --firmware-sha256 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
 
       - name: Run shared filesystem, recovery, platform, and modern-renderer tests
@@ -264,6 +268,7 @@ jobs:
           tests.test_phase2
           tests.test_phase4
           tests.test_phase5
+          tests.test_board_catalog
           tests.test_modern_profile
           tests.test_phase6
           tests.test_phase6_provisioning

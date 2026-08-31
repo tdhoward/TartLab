@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "id": "lilygo_t_display_s3_pro",
+  "name": "LilyGO T-Display-S3 Pro",
+  "vendor": "LilyGO",
+  "runtime_profile": "lvgl-modern",
+  "support_status": "qualified",
+  "hardware": {
+    "revisions": [
+      "1.1"
+    ],
+    "mcu": "ESP32-S3",
+    "flash_size_bytes": 16777216,
+    "psram_size_bytes": 8388608,
+    "display": {
+      "width": 480,
+      "height": 222,
+      "orientation": "landscape",
+      "transport": "SPI",
+      "controller": "ST7796"
+    },
+    "touch": {
+      "present": true,
+      "controller": "CST226"
+    },
+    "console": "ESP32-S3 native USB Serial/JTAG",
+    "power": "USB-C"
+  },
+  "selector": {
+    "module": "t_display_s3_pro_modern",
+    "source": "src/configs/t_display_s3_pro_modern.py",
+    "protected_path": "/device/hdwconfig.py"
+  },
+  "firmware": {
+    "artifact": "firmware/lvgl-modern/reference/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",
+    "sha256": "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab",
+    "image_format": "combined-esp-image",
+    "flash_offset": "0x0",
+    "lock": "firmware/lvgl-modern/reference.lock.json",
+    "provenance": "firmware/lvgl-modern/reference/provenance.json"
+  },
+  "qualification": {
+    "release_version": "modern-v0.14.8",
+    "evidence": "tests/evidence/modern-v0.14.8-qualification.json"
+  },
+  "documentation": [
+    "boards/lilygo_t_display_s3_pro/README.md",
+    "tests/PHASE5_HARDWARE.md",
+    "tests/PHASE6_PROVISIONING.md",
+    "tests/PHASE6_MODERN_QUALIFICATION.md"
+  ]
+}

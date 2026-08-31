@@ -19,6 +19,7 @@ LEGACY_PROFILE = "legacy-mp123"
 MODERN_PROFILE = "lvgl-modern"
 LEGACY_REPOSITORY = "tdhoward/tartlab"
 MODERN_REPOSITORY = "tdhoward/tartlab-modern-releases"
+DEFAULT_MODERN_BOARD_ID = "lilygo_t_display_s3_pro"
 MODERN_FIRMWARE_SHA256 = (
     "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab")
 PROTECTED = (
@@ -177,6 +178,24 @@ def _download_verified(url, path, expected_sha256=None):
         raise
 
 
+def _modern_board_identity(repo):
+    firmware_sha256 = repo.get("firmware_sha256")
+    board_id = repo.get("board_id")
+    if board_id is None:
+        if firmware_sha256 != MODERN_FIRMWARE_SHA256:
+            raise ValueError("Modern release state has the wrong firmware identity")
+        board_id = DEFAULT_MODERN_BOARD_ID
+    if not isinstance(board_id, str) or not board_id or \
+            any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_"
+                for character in board_id):
+        raise ValueError("Modern release state has an invalid board identity")
+    if not isinstance(firmware_sha256, str) or len(firmware_sha256) != 64 or \
+            any(character not in "0123456789abcdef"
+                for character in firmware_sha256):
+        raise ValueError("Modern release state has the wrong firmware identity")
+    return board_id, firmware_sha256
+
+
 def _release_contract(repo):
     if repo.get("name") != "TartLab":
         raise ValueError("Recovery only installs TartLab releases")
@@ -188,8 +207,7 @@ def _release_contract(repo):
             raise ValueError("Modern profile requires the isolated modern feed")
         if manifest_name != "modern-manifest.json":
             raise ValueError("Modern profile requires modern-manifest.json")
-        if repo.get("firmware_sha256") != MODERN_FIRMWARE_SHA256:
-            raise ValueError("Modern release state has the wrong firmware identity")
+        _modern_board_identity(repo)
         return manifest_name, profile
     if profile == LEGACY_PROFILE:
         if repository != LEGACY_REPOSITORY:
@@ -244,8 +262,14 @@ def _manifest_packages(document, repo, version):
             raise ValueError("Modern manifest targets the wrong release feed")
         if compatibility.get("runtime_profile") != MODERN_PROFILE:
             raise ValueError("Modern manifest targets the wrong runtime profile")
-        firmware = compatibility.get("firmware", {})
-        if firmware.get("sha256") != repo["firmware_sha256"]:
+        board_id, firmware_sha256 = _modern_board_identity(repo)
+        boards = compatibility.get("boards")
+        if isinstance(boards, dict):
+            board = boards.get(board_id, {})
+            firmware = board.get("firmware", {})
+        else:
+            firmware = compatibility.get("firmware", {})
+        if firmware.get("sha256") != firmware_sha256:
             raise ValueError("Modern manifest targets the wrong firmware identity")
         manifest = document.get("packages")
     else:

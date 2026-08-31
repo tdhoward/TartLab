@@ -8,10 +8,12 @@ from pathlib import Path
 import re
 from typing import Any, Sequence
 
+from board_catalog import default_board
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POLICY = ROOT / "profiles/modern-support-window.json"
 STABLE_VERSION = re.compile(r"^v([0-9]+)\.([0-9]+)(?:\.([0-9]+))?$")
+PROFILE_BOARD = default_board("lvgl-modern")
 EXPECTED_FIRMWARE_SHA256 = (
     "41a750a8f047224e3e0a7544a626338c252407df420e2b94dcb0d2dad9793212")
 
@@ -65,8 +67,8 @@ def validate_policy(policy: dict[str, Any], *, root: Path = ROOT) -> None:
         "minimum_tartlab_version": "v0.13",
         "version_rule": "stable-at-or-newer",
         "firmware_sha256": EXPECTED_FIRMWARE_SHA256,
-        "board": "LilyGO T-Display-S3 Pro",
-        "pcb_revision": "1.1",
+        "board": PROFILE_BOARD["name"],
+        "pcb_revision": PROFILE_BOARD["hardware"]["revisions"][0],
         "selector_marker": "from t_display_s3_pro import *",
     }
     for name, value in expected.items():

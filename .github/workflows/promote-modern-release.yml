@@ -82,6 +82,7 @@ jobs:
           --release build/promote-modern/release
           --dist build/promote-modern/dist-one
           --runtime-profile lvgl-modern
+          --board lilygo_t_display_s3_pro
           --firmware-sha256 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
 
       - name: Validate candidate-bound modern qualification evidence
@@ -119,6 +120,7 @@ jobs:
           --candidate-checksums-sha256 "$CANDIDATE_HASH"
           --hardware-evidence-sha256 "$EVIDENCE_HASH"
           --hardware-evidence-reference "$EVIDENCE_REFERENCE"
+          --hardware-evidence build/promote-modern/qualification-evidence.json
           --output build/promote-modern/release/promotion_attestation.json
 
       - name: Validate the complete authenticated subject set

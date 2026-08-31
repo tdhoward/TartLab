@@ -10,7 +10,9 @@ evidence.
 TartLab is a browser-based MicroPython IDE hosted by a Wi-Fi microcontroller.
 It is designed for classrooms: students use a browser to edit, save, and run
 programs without installing drivers, desktop IDEs, or firmware tools. The
-qualified board is currently the LilyGO T-Display-S3 Pro PCB v1.1.
+qualified board is currently the LilyGO T-Display-S3 Pro PCB v1.1. The Elecrow
+DLE06235B is recorded separately in `bringup` state and is not a
+supported-board claim.
 
 Two runtime profiles are maintained:
 
@@ -19,9 +21,11 @@ Two runtime profiles are maintained:
 | `legacy-mp123` | Exact MicroPython 1.23.0 octal-SPIRAM image; `tdhoward/TartLab`; legacy `manifest.json` | `v0.15` is published and physically qualified on the exact MicroPython 1.23.0 image. |
 | `lvgl-modern` | Pinned MicroPython 1.27.0/LVGL image; `tdhoward/TartLab-modern-releases`; `modern-manifest.json` | `modern-v0.14.8` is published and physically qualified for the T-Display-S3 Pro. Installation or migration is an adult-admin operation. |
 
-The authoritative identities and status live in
+The authoritative runtime-profile identities and status live in
 [`profiles/legacy-mp123.json`](profiles/legacy-mp123.json) and
-[`profiles/lvgl-modern.json`](profiles/lvgl-modern.json).
+[`profiles/lvgl-modern.json`](profiles/lvgl-modern.json). Modern per-board
+identity, capabilities, firmware binding, and lifecycle state live under
+[`boards`](boards); see [`BOARD_SUPPORT.md`](BOARD_SUPPORT.md).
 
 ## Non-negotiable constraints
 
@@ -51,6 +55,14 @@ The selected hardware module is a local device property. `src/hdwconfig.py`
 provides the clean-install default, while `/device/hdwconfig.py` is
 authoritative after migration. OTA packages may replace board-support modules
 under `/configs`, but must not overwrite the local selector or calibration.
+
+Host-side modern tooling discovers `boards/*/board.json` rather than growing
+new board constants in each script. New release candidates carry a schema-2
+board-to-firmware compatibility matrix while retaining the published schema-1
+firmware alias for an OTA bridge from `modern-v0.14.8`. Adult provisioning
+requires an explicit qualified board ID and records it under protected
+`/device`; new ports proceed independently through `bringup`, `candidate`, and
+`qualified` states.
 
 The modern profile uses one native DMA-capable panel transport with exclusive
 ownership between:

@@ -36,15 +36,21 @@ Run the web build and complete hardware-free suite:
 
 ```powershell
 npm run build --prefix src/ide/www
-.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
 ```
 
 Verify tracked firmware identities when firmware or profile metadata changes:
 
 ```powershell
+.\.venv\Scripts\python.exe tools/check_board_catalog.py
 .\.venv\Scripts\python.exe tools/check_firmware_artifacts.py
 .\.venv\Scripts\python.exe tools/modern_firmware.py check
 ```
+
+Modern board descriptors and the port lifecycle are documented in
+[`BOARD_SUPPORT.md`](BOARD_SUPPORT.md). New ports start in `bringup`; changing a
+descriptor to `candidate` or `qualified` adds enforced artifact and evidence
+requirements.
 
 CI additionally builds pinned MicroPython 1.23 host tools and runs the Tier 2
 compatibility probe. The optional local command and exact claim boundaries are
@@ -100,12 +106,18 @@ protected qualification and promotion workflows target only
 `tdhoward/TartLab-modern-releases`. Detailed authentication commands are in
 [`tests/PHASE6_RELEASE_SECURITY.md`](tests/PHASE6_RELEASE_SECURITY.md).
 
+Candidate builds include the qualified default board unless `--board` is
+provided. Repeat `--board BOARD_ID` to build a deliberate multi-board candidate;
+the default board must always be included. Shared filesystem packages are built
+once, while firmware, locks, provenance, and compatibility entries remain
+board-specific.
+
 ## Adult modern provisioning
 
 Start with a read-only inspection of a complete downloaded release:
 
 ```powershell
-.\.venv\Scripts\python.exe tools/provision_modern.py --release path\to\release --mode migrate
+.\.venv\Scripts\python.exe tools/provision_modern.py --release path\to\release --mode migrate --board lilygo_t_display_s3_pro
 ```
 
 Mutation additionally requires the exact signed source ref, `--execute`,

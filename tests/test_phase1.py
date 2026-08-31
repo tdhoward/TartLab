@@ -494,6 +494,23 @@ class RecoveryUpdaterTests(unittest.TestCase):
             updater._manifest_packages(document, repo, "modern-v2"),
             [package])
 
+        matrix_repo = dict(repo)
+        matrix_repo["board_id"] = "another_board"
+        matrix_repo["firmware_sha256"] = "b" * 64
+        matrix_document = json.loads(json.dumps(document))
+        matrix_document["compatibility"]["boards"] = {
+            "another_board": {"firmware": {"sha256": "b" * 64}},
+        }
+        self.assertEqual(
+            updater._manifest_packages(
+                matrix_document, matrix_repo, "modern-v2"),
+            [package])
+        wrong_board = dict(matrix_repo)
+        wrong_board["board_id"] = "missing_board"
+        with self.assertRaisesRegex(ValueError, "firmware identity"):
+            updater._manifest_packages(
+                matrix_document, wrong_board, "modern-v2")
+
         wrong_feed = dict(repo)
         wrong_feed["repo"] = "tdhoward/TartLab"
         with self.assertRaisesRegex(ValueError, "isolated modern feed"):

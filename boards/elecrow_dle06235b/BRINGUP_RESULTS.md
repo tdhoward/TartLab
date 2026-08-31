@@ -4,6 +4,8 @@ Status: experimental bench result, not a TartLab board qualification
 
 Test date: 2026-08-29
 
+Remaining-work checklist updated: 2026-08-30
+
 ## Outcome
 
 The Elecrow 3.5-inch DLE06235B passed the standard MicroPython gate and booted
@@ -152,20 +154,85 @@ native singleton. From clean state, LVGL reported rotation 270 degrees and
 integration must make SPI teardown/recreation safe rather than relying on this
 bench reset workaround.
 
-## Remaining gates
+## Remaining work
 
-1. Identify or explicitly quarantine the unexplained I2C `0x28` response.
-2. Test repeated soft resets, hard resets, and a cold USB power cycle with the
-   LVGL driver active.
-3. Fix and qualify the pinned native QSPI asynchronous-completion path; do not
-   promote the blocking workaround as the final display transport.
-4. Fix and qualify QSPI bus teardown/recreation across MicroPython soft reset.
-5. Measure transfer and render timing, Wi-Fi coexistence, heap use, and at
-   least 100 LVGL/direct-surface ownership transitions.
-6. Decide whether simultaneous multi-touch must be exposed; the qualified
-   TartLab pointer path currently reports the first active contact only.
-7. Convert the prototype into a pinned reproducible board build before adding
-   a TartLab platform selector or fixture promotion record.
+The selected TartLab mode for this board is native 320 x 480 portrait. The
+earlier
+[`ESP32-S3 bring-up plan`](../elecrow/ESP32_S3_BRINGUP_PLAN.md)'s 480 x 320
+landscape requirement is superseded for the DLE06235B. Landscape remains an
+optional experiment and is not on the critical path to a supported portrait
+target.
+
+There are two distinct milestones. A successful one-off TartLab bench boot is
+not a supported-board claim; release support additionally requires reproducible
+firmware, safe provisioning, recovery, OTA, and board-bound qualification.
+
+### Milestone A: first complete TartLab bench boot
+
+1. Fix and qualify the pinned native QSPI asynchronous-completion path. The
+   prototype currently disables the bus callback and calls LVGL
+   `flush_ready()` synchronously. TartLab's exclusive display-ownership
+   controller requires a real completion signal so it can drain transfers
+   safely when switching between LVGL and the direct game surface.
+2. Fix QSPI bus teardown and recreation. Repeated platform construction must
+   work across MicroPython soft reset without retaining stale SPI pin or bus
+   singletons. Test explicit platform deinitialization and recreation as well
+   as repeated soft resets, hard resets, and a cold USB power cycle.
+3. Adapt TartLab's direct RGB565 surface to the ST77922 transport. Direct pixel
+   writes must use the controller's packed 32-bit QSPI `RAMWR` command rather
+   than the ordinary SPI command used by the existing board. The public dirty
+   rectangle contract must also define how it satisfies the physical CASET
+   rule that both start column and width are multiples of four. Alignment must
+   not read beyond the caller's buffer or send unrelated pixels.
+4. Add `create_elecrow_dle06235b_platform()` behind the existing
+   `tartlabutils.platform` boundary and add a small
+   `elecrow_dle06235b_modern` selector under `src/configs`. Keep the QSPI, I2C,
+   shared reset, backlight, touch, and geometry details out of the IDE,
+   launcher, recovery, and student code.
+5. Make the on-device LVGL status UI geometry-aware. In particular, replace
+   the current 420-pixel fixed progress-bar width before using it on a
+   320-pixel-wide display. Review status overlays, error presentation, and
+   touch targets in portrait.
+6. Qualify an IDE-button choice. Use GPIO0 only if normal post-boot input is
+   reliable and its bootloader interaction is acceptable for classroom use;
+   otherwise document and support an external button on GPIO45 or GPIO46.
+7. Boot the complete TartLab filesystem and verify the status UI, Wi-Fi station
+   and setup AP, browser IDE, touch, brightness, launcher, representative
+   examples, and direct-render games. Exercise clean transitions in both
+   directions between LVGL ownership and the direct surface.
+
+Milestone A means TartLab runs end to end on the bench. It does not authorize
+publishing or provisioning the board as a supported target.
+
+### Milestone B: reproducible supported target
+
+8. Complete the board hardening gates: identify or explicitly quarantine the
+   unexplained I2C `0x28` responder; measure transfer and render timing, Wi-Fi
+   coexistence, heap and flash margins; and complete at least 100
+   LVGL/direct-surface ownership transitions without a crash or corruption.
+9. Decide whether the existing first-active-contact pointer behavior is the
+   supported contract or whether TartLab must expose simultaneous multitouch.
+   The former is sufficient for the current single-pointer UI if it is made an
+   explicit qualification decision.
+10. Integrate the native QSPI fixes and reviewed Python drivers into TartLab's
+    pinned MicroPython 1.27.0 / LVGL 9.4.0 source graph. Produce a reproducible,
+    checksummed DLE06235B firmware artifact with its own build lock and
+    provenance; do not reuse the T-Display-S3 Pro firmware identity.
+11. Generalize the modern profile, release builder, validators, provisioning
+    tool, and tests from one firmware hash and selector to an explicit
+    board-to-firmware compatibility matrix. Clean provisioning must identify
+    or require explicit confirmation of the board, verify 16 MiB flash, write
+    the DLE06235B selector, and reject incompatible images before erase. Do not
+    claim migration from an unknown Elecrow factory filesystem.
+12. Run the repository Tier 0-2 checks and board-specific physical
+    qualification: clean adult provisioning, interrupted provisioning and
+    resume, normal and interrupted OTA, display-independent recovery,
+    rollback, protected-state preservation, release-feed isolation, browser
+    and API regression checks, and future-update availability.
+13. Create and promote a separate sanitized DLE06235B qualification record
+    bound to the exact firmware hash, board identity, release candidate, and
+    durable evidence. Only this milestone permits listing the board as a
+    supported TartLab target.
 
 Raw serial logs, firmware downloads, and vendor resource archives remain under
 the ignored `hardware_test_artifacts` directory. They may contain workstation

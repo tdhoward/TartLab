@@ -24,7 +24,10 @@ updates.
 The currently qualified board is the LilyGO T-Display-S3 Pro PCB v1.1. TartLab
 is intended to support more Wi-Fi-capable MicroPython boards, but other ESP32,
 ESP8266, RP2040, and RP2350 targets are ports requiring their own adapter and
-test evidence.
+test evidence. The machine-checked [`boards`](boards) catalog distinguishes
+bring-up work from candidate and qualified support. The repeatable port layout
+and onboarding process are documented in
+[`BOARD_SUPPORT.md`](BOARD_SUPPORT.md).
 
 TartLab maintains two profiles:
 
@@ -101,7 +104,7 @@ updaters cannot distinguish the profiles and cannot flash firmware.
 The complete hardware-free suite is:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
 ```
 
 Host tests cover deterministic builds, update/recovery behavior, virtual device
