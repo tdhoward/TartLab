@@ -180,8 +180,9 @@ current release status comes from the profile JSON and this summary.
 
 ## Planned modern touchscreen startup and IDE power behavior
 
-This section records the approved implementation plan. The behavior is not yet
-implemented or release-qualified.
+This section records the approved implementation plan. The launcher, confined
+local app chooser, and IDE inactivity controller are implemented and host
+tested as of 2026-08-31, but are not yet physically or release qualified.
 
 ### Profile boundary and startup policy
 

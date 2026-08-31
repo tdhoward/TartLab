@@ -301,6 +301,22 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
         package.__path__ = []
         state = types.ModuleType(package_name + ".state")
         state.get_selected_app = lambda: "games/hello.py"
+        state.path_kind = lambda unused: 0
+        state.save_selected_app = lambda unused: None
+
+        def validate_selected_app(filename):
+            if not isinstance(filename, str) or not filename.endswith(".py"):
+                raise ValueError("invalid app")
+            parts = filename.replace("\\", "/").split("/")
+            if any(not part or part in (".", "..") for part in parts):
+                raise ValueError("invalid app")
+            for index, part in enumerate(parts):
+                value = part[:-3] if index == len(parts) - 1 else part
+                if not value.replace("_", "a").isalnum():
+                    raise ValueError("invalid app")
+            return filename
+
+        state.validate_selected_app = validate_selected_app
         saved = {
             name: sys.modules.get(name)
             for name in (package_name, package_name + ".state")
@@ -322,6 +338,9 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
     class Widget:
         def __init__(self, parent=None):
             self.parent = parent
+            self.children = []
+            if parent is not None:
+                parent.children.append(self)
             self.text = None
             self.size = None
             self.position = None
@@ -371,8 +390,8 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
             self.loaded = []
             self.buttons = []
 
-        def obj(self):
-            return ModernTouchscreenLauncherTests.Widget()
+        def obj(self, parent=None):
+            return ModernTouchscreenLauncherTests.Widget(parent)
 
         def label(self, parent):
             return ModernTouchscreenLauncherTests.Widget(parent)
@@ -391,6 +410,21 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
         def screen_load(self, screen):
             self.active = screen
             self.loaded.append(screen)
+
+    def find_button(self, lvgl, text):
+        def is_active(widget):
+            current = widget
+            while current is not None:
+                if current.deleted:
+                    return False
+                current = current.parent
+            return True
+
+        for button in reversed(lvgl.buttons):
+            if is_active(button) and any(
+                    child.text == text for child in button.children):
+                return button
+        self.fail("button not found: " + text)
 
     def test_layout_keeps_large_targets_inside_landscape_and_portrait(self):
         module = self.load_launcher()
@@ -461,9 +495,10 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
         def sleep_ms(milliseconds):
             clock["now"] += milliseconds
             if clock["now"] == 50:
-                lvgl.buttons[2].click()
+                self.find_button(lvgl, "Choose app").click()
             if clock["now"] == 10500:
-                lvgl.buttons[1].click()
+                self.find_button(lvgl, "Cancel").click()
+                self.find_button(lvgl, "Run selected app").click()
 
         launcher = module.ModernTouchscreenLauncher(
             lvgl, 320, 480, "games/hello.py", timeout_seconds=10,
@@ -473,6 +508,69 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
 
         self.assertEqual(launcher.run(), "APP")
         self.assertGreater(clock["now"], 10000)
+
+    def test_browser_is_confined_and_lists_only_launchable_candidates(self):
+        module = self.load_launcher()
+        listing = {
+            "/files/user": [
+                "games", "hello.py", "bad-name.py", "notes.txt", ".."],
+            "/files/user/games": ["tetris.py"],
+        }
+        kinds = {
+            "/files/user/games": 2,
+            "/files/user/hello.py": 1,
+            "/files/user/bad-name.py": 1,
+            "/files/user/notes.txt": 1,
+            "/files/user/games/tetris.py": 1,
+        }
+        folders, files = module.browser_entries(
+            "", lambda path: listing[path], lambda path: kinds.get(path, 0))
+        self.assertEqual(folders, (("games", "games"),))
+        self.assertEqual(files, (("hello.py", "hello.py"),))
+        with self.assertRaises(ValueError):
+            module.browser_entries(
+                "../escape", lambda path: listing[path],
+                lambda path: kinds.get(path, 0))
+
+    def test_file_confirmation_cancel_recheck_and_commit_workflow(self):
+        module = self.load_launcher()
+        lvgl = self.LVGL()
+        listing = {
+            "/files/user": ["games", "hello.py"],
+            "/files/user/games": ["tetris.py"],
+        }
+        kinds = {
+            "/files/user/games": 2,
+            "/files/user/hello.py": 1,
+            "/files/user/games/tetris.py": 1,
+        }
+        saved = []
+        launcher = module.ModernTouchscreenLauncher(
+            lvgl, 480, 222, "hello.py",
+            list_directory=lambda path: listing[path],
+            get_path_kind=lambda path: kinds.get(path, 0),
+            validate_app=module.validate_selected_app,
+            save_app=saved.append)
+        launcher.show()
+
+        self.find_button(lvgl, "Choose app").click()
+        self.find_button(lvgl, "[Folder] games").click()
+        self.find_button(lvgl, "tetris.py").click()
+        self.find_button(lvgl, "Cancel").click()
+        self.assertEqual(saved, [])
+
+        self.find_button(lvgl, "tetris.py").click()
+        kinds["/files/user/games/tetris.py"] = 0
+        self.find_button(lvgl, "Set as app").click()
+        self.assertEqual(saved, [])
+        self.assertIn("no longer exists", launcher._status.text)
+
+        kinds["/files/user/games/tetris.py"] = 1
+        self.find_button(lvgl, "Set as app").click()
+        self.assertEqual(saved, ["games/tetris.py"])
+        self.assertEqual(launcher._selected_app, "games/tetris.py")
+        self.find_button(lvgl, "Run selected app")
+        launcher.close()
 
 
 class HeadlessStartupTests(unittest.TestCase):
@@ -553,6 +651,9 @@ class HeadlessStartupTests(unittest.TestCase):
         main.save_settings = lambda value: state.write_json(
             state.SETTINGS_FILE, value)
         main.mark_boot_failed = bootstate.mark_boot_failed
+        main._restore_modern_brightness = lambda platform, settings: (
+            platform.set_brightness(1.0)
+            if platform.capabilities.get("lvgl_ui", False) else None)
         main.get_platform = lambda: self.fail(
             "An injected headless platform should be used")
         return device, state, bootstate, main, logs, errors
@@ -664,6 +765,32 @@ class HeadlessStartupTests(unittest.TestCase):
 
             self.assertEqual(routes, ["startup_mode"])
             self.assertEqual(errors, [])
+
+    def test_modern_app_failure_restores_brightness_before_error_display(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, unused_state, unused_bootstate, main, unused_logs, \
+                errors = self.prepare(Path(temp) / "device")
+            platform = HeadlessPlatform()
+            platform.capabilities["lvgl_ui"] = True
+            platform.display.brightness = 0.2
+            routes = []
+
+            def fail_app():
+                self.assertEqual(platform.display.brightness, 1.0)
+                raise RuntimeError("synthetic modern APP failure")
+
+            main.run(
+                platform=platform,
+                start_launcher=lambda unused: "APP",
+                start_ide=lambda: routes.append("IDE"),
+                start_app=fail_app,
+                start_recovery=lambda reason: routes.append(reason),
+            )
+
+            self.assertEqual(routes, ["startup_error"])
+            self.assertEqual(platform.display.brightness, 1.0)
+            self.assertEqual(platform.display.fills, [0, 0xF800])
+            self.assertEqual(len(errors), 1)
 
     def test_explicit_recovery_mode_is_one_shot_without_hardware(self):
         with tempfile.TemporaryDirectory() as temp:

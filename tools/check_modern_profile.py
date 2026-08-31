@@ -29,6 +29,7 @@ REQUIRED_DIST_FILES = (
     "main.py",
     PROFILE_SELECTOR_SOURCE.removeprefix("src/"),
     "lib/tartlabutils/modern_launcher.py",
+    "lib/tartlabutils/modern_power.py",
     "lib/tartlabutils/modern.py",
     "lib/tartlabutils/platform.py",
 )

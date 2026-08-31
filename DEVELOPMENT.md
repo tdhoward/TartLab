@@ -36,7 +36,7 @@ Run the web build and complete hardware-free suite:
 
 ```powershell
 npm run build --prefix src/ide/www
-.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_modern_power tests.test_headless_ide -v
 ```
 
 Verify tracked firmware identities when firmware or profile metadata changes:

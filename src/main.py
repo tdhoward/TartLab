@@ -64,9 +64,17 @@ def _select_mode(settings, platform, start_launcher=None):
     return start_mode
 
 
+def _restore_modern_brightness(platform, settings):
+    if not platform.capabilities.get("lvgl_ui", False):
+        return
+    from tartlabutils.modern_power import restore_normal_brightness
+    restore_normal_brightness(platform, settings)
+
+
 def run(platform=None, start_ide=None, start_app=None, start_recovery=None,
         start_launcher=None):
     display = None
+    settings = None
     try:
         ensure_layout()
         init_logs()
@@ -96,6 +104,7 @@ def run(platform=None, start_ide=None, start_app=None, start_recovery=None,
             (start_recovery or _recovery)("startup_mode")
         elif start_mode == "IDE":
             log("Starting IDE")
+            _restore_modern_brightness(platform, settings)
             enter_ui_mode = getattr(platform, "enter_ui_mode", None)
             if enter_ui_mode is not None:
                 enter_ui_mode()
@@ -105,6 +114,7 @@ def run(platform=None, start_ide=None, start_app=None, start_recovery=None,
             start_ide()
         else:
             log("Starting APP")
+            _restore_modern_brightness(platform, settings)
             enter_game_mode = getattr(platform, "enter_game_mode", None)
             if enter_game_mode is not None:
                 enter_game_mode()
@@ -118,6 +128,14 @@ def run(platform=None, start_ide=None, start_app=None, start_recovery=None,
             mark_boot_failed(error)
         except Exception:
             sys.print_exception(error)
+        try:
+            _restore_modern_brightness(platform, settings)
+        except Exception:
+            try:
+                if platform.capabilities.get("lvgl_ui", False):
+                    platform.set_brightness(1.0)
+            except Exception:
+                pass
         show_error = getattr(platform, "show_error", None)
         if show_error is not None:
             try:

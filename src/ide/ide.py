@@ -787,6 +787,8 @@ async def start_ide_server():
 def main():
     global sta_if, ap_if, ip_address, softAP, app
 
+    power_controller = None
+    power_task = None
     try:
         def handle_exception(loop, context):
             # uncaught exceptions end up here
@@ -795,7 +797,12 @@ def main():
         loop = asyncio.get_event_loop()
         loop.set_exception_handler(handle_exception)
 
-        loop.create_task(check_buttons())
+        if platform.capabilities.get("lvgl_ui", False):
+            from tartlabutils.modern_power import ModernIDEBacklightController
+            power_controller = ModernIDEBacklightController(platform, settings)
+            power_task = loop.create_task(power_controller.run(asyncio))
+        else:
+            loop.create_task(check_buttons())
         loop.create_task(free_memory_task())
         loop.create_task(start_ide_server())
 
@@ -803,6 +810,12 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        if power_controller is not None:
+            power_controller.stop()
+        if power_task is not None:
+            cancel = getattr(power_task, "cancel", None)
+            if cancel is not None:
+                cancel()
         asyncio.run(app.stop())
         asyncio.new_event_loop()
 

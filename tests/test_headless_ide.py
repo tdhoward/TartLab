@@ -351,6 +351,88 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
             self.assertEqual(
                 platform.ide_view.events[-1], ("brightness", 0.75))
 
+    def test_modern_ide_schedules_power_policy_not_button_polling(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, unused_state, platform, ide, unused_logs, \
+                unused_errors = self.prepare(Path(temp) / "device")
+            platform.capabilities["lvgl_ui"] = True
+
+            class FakeTask:
+                def __init__(self, coroutine):
+                    self.coroutine = coroutine
+                    self.cancelled = False
+
+                def cancel(self):
+                    self.cancelled = True
+                    self.coroutine.close()
+
+            class FakeLoop:
+                def __init__(self):
+                    self.tasks = []
+
+                def set_exception_handler(self, handler):
+                    self.handler = handler
+
+                def create_task(self, coroutine):
+                    task = FakeTask(coroutine)
+                    self.tasks.append(task)
+                    return task
+
+                def run_forever(self):
+                    raise KeyboardInterrupt()
+
+            class FakePowerController:
+                instances = []
+
+                def __init__(self, selected_platform, settings):
+                    self.platform = selected_platform
+                    self.settings = settings
+                    self.stop_calls = 0
+                    self.instances.append(self)
+
+                async def run(self, asyncio_module):
+                    return asyncio_module
+
+                def stop(self):
+                    self.stop_calls += 1
+
+            loop = FakeLoop()
+            ide.asyncio = types.SimpleNamespace(
+                get_event_loop=lambda: loop,
+                run=asyncio.run,
+                new_event_loop=lambda: None,
+            )
+            package = types.ModuleType("tartlabutils")
+            package.__path__ = []
+            power = types.ModuleType("tartlabutils.modern_power")
+            power.ModernIDEBacklightController = FakePowerController
+            previous = {
+                name: sys.modules.get(name)
+                for name in ("tartlabutils", "tartlabutils.modern_power")
+            }
+            try:
+                sys.modules["tartlabutils"] = package
+                sys.modules["tartlabutils.modern_power"] = power
+                ide.main()
+            finally:
+                for task in loop.tasks:
+                    if not task.cancelled:
+                        task.coroutine.close()
+                for name, old_module in previous.items():
+                    if old_module is None:
+                        sys.modules.pop(name, None)
+                    else:
+                        sys.modules[name] = old_module
+
+            task_names = [
+                task.coroutine.cr_code.co_name for task in loop.tasks]
+            self.assertNotIn("check_buttons", task_names)
+            self.assertIn("free_memory_task", task_names)
+            self.assertIn("start_ide_server", task_names)
+            self.assertEqual(len(FakePowerController.instances), 1)
+            self.assertEqual(FakePowerController.instances[0].stop_calls, 1)
+            self.assertTrue(loop.tasks[0].cancelled)
+
 
 if __name__ == "__main__":
     unittest.main()
