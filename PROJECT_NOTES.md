@@ -178,7 +178,7 @@ current release status comes from the profile JSON and this summary.
 - The pinned `lvgl_micropython`/`lcd_bus` stack is the selected modern display
   implementation; TartLab owns its public direct-surface adapter.
 
-## Planned modern touchscreen startup and IDE power behavior
+## Modern touchscreen startup and IDE power behavior
 
 This section records the approved implementation plan. The launcher, confined
 local app chooser, and IDE inactivity controller are implemented and host
@@ -294,23 +294,38 @@ platform range, dim brightness cannot exceed maximum brightness, and an
 `auto_dim_seconds` value of `0` disables automatic dimming. No settings gear is
 part of the first implementation.
 
-### Implementation sequence
+### Implementation and qualification status
 
-1. Split startup dispatch by runtime capability: all `lvgl_ui` platforms use
-   the touchscreen launcher; legacy platforms keep the existing button path.
-2. Implement and host-test the responsive launcher home screen, timeout, and
-   IDE/APP route results.
-3. Verify the basic launcher and selected-app boot on physical modern hardware
-   before adding file-navigation complexity.
-4. Add the confined `/files/user` browser and shared set-as-app workflow.
-5. Add the modern IDE inactivity controller and lifecycle hooks for IDE, APP,
-   error, and teardown transitions.
-6. Remove modern startup assumptions about `IDE_BUTTON_PIN` and stop scheduling
-   the IDE button-polling task on modern platforms. Legacy code and tests remain
-   intact.
-7. Run hardware-free, pinned-MicroPython, static, build, and release-package
-   checks, followed by candidate-bound physical qualification on each supported
-   modern board geometry.
+The source implementation and Tier 1 host coverage are complete:
+
+- every `lvgl_ui` platform uses the launcher while legacy startup retains its
+  button path;
+- the responsive home screen, IDE timeout, and touch-unavailable fallback are
+  implemented;
+- the confined local browser, confirmation, existence recheck, and shared
+  selected-app state are implemented;
+- the modern IDE inactivity controller and IDE, APP, error, and teardown hooks
+  are implemented; and
+- modern IDE mode no longer schedules the legacy button-polling task.
+
+The feature is not complete or release-qualified. The remaining sequence is:
+
+1. Run the clean Tier 0 build/static checks and Tier 2 pinned-MicroPython
+   compatibility checks for the exact candidate, including the generated
+   distribution rather than only the source tree.
+2. Build an exact modern release candidate and record its tag/commit,
+   `checksums.json`, filesystem inventory, firmware identity, and selected
+   board set. A local distribution build is not a candidate or deployment.
+3. Run the focused touchscreen/backlight smoke in
+   `tests/MODERN_TOUCHSCREEN_QUALIFICATION.md` on the qualified T-Display-S3
+   Pro and on every additional board deliberately included in that candidate.
+   The Elecrow DLE06235B remains `bringup` and is not a supported-board claim.
+4. Correct any hardware findings, rebuild, and repeat the smoke against the
+   replacement candidate; evidence from an earlier build cannot qualify it.
+5. Run the complete candidate-bound modern provisioning, OTA, recovery,
+   interruption, protected-state, feed-isolation, and future-update gates.
+6. Bind sanitized evidence to the exact candidate and promote only through the
+   protected modern release workflow.
 
 ### Required verification
 
@@ -322,6 +337,9 @@ must cover timeout, activity postponement, wake-touch consumption, settings
 validation, APP handoff, error handling, and repeated task teardown. Legacy
 tests must prove that held-button startup and brightness behavior are
 unchanged.
+
+The Tier 1 suite now covers those behaviors. Tier 2 and exact-candidate CI must
+still pass before the physical result can be treated as release evidence.
 
 For each supported modern board, physical evidence must include an upright and
 usable launcher, file selection without a browser, a visibly distinctive app
@@ -339,6 +357,13 @@ after candidate-content comparison. It was promoted through the protected
 `legacy-release` environment, published only to the legacy feed, and audited
 after publication for signed provenance, feed isolation, recovery continuity,
 and future OTA availability.
+
+The immediate engineering milestone is the modern touchscreen/backlight
+qualification sequence above. No additional first-release UI feature is
+currently planned; a settings gear remains explicitly deferred. Hardware
+findings may still require source changes, and the feature must not be called
+complete until new evidence is bound to its exact candidate. The historical
+`modern-v0.14.8` evidence predates this feature and does not qualify it.
 
 The owner still needs to decide:
 

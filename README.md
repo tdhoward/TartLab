@@ -68,9 +68,14 @@ Source-development and release-candidate commands are in
 
 ### Startup modes
 
-- Normal startup serves the TartLab IDE.
-- Holding the application button during reset runs the selected student app.
-  On the T-Display-S3 Pro this is GPIO 12.
+- The legacy profile and published `modern-v0.14.8` normally start the TartLab
+  IDE. Holding the application button during reset runs the selected student
+  app; on the T-Display-S3 Pro this is GPIO 12.
+- Current unreleased modern source replaces that button choice with an LVGL
+  touchscreen launcher for IDE, selected-app, and local app-selection routes.
+  It is implemented and host-tested but is not yet physically qualified or in
+  a stable modern release. See
+  [`tests/MODERN_TOUCHSCREEN_QUALIFICATION.md`](tests/MODERN_TOUCHSCREEN_QUALIFICATION.md).
 
 ### Connect to the IDE
 
@@ -104,7 +109,7 @@ updaters cannot distinguish the profiles and cannot flash firmware.
 The complete hardware-free suite is:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_modern_power tests.test_headless_ide -v
 ```
 
 Host tests cover deterministic builds, update/recovery behavior, virtual device

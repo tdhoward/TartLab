@@ -132,6 +132,26 @@ and a recognized layout. Validate a captured backup without mutation with
 require clean provisioning and selective reviewed restore, not intermediate
 releases. See [`profiles/lvgl-modern-migration.md`](profiles/lvgl-modern-migration.md).
 
+## Optional physical modern-board work
+
+The touchscreen launcher and IDE backlight behavior require a focused physical
+smoke before they can enter a release candidate's qualification record. Follow
+[`tests/MODERN_TOUCHSCREEN_QUALIFICATION.md`](tests/MODERN_TOUCHSCREEN_QUALIFICATION.md)
+and bind results to the exact candidate and firmware identity. The historical
+`modern-v0.14.8` evidence predates this feature and cannot be reused.
+
+The existing modern helpers can recheck the underlying display, touch, and
+ownership boundary without installing or flashing anything:
+
+```powershell
+.\.venv\Scripts\python.exe tools/phase5_device.py --port COMx probe
+.\.venv\Scripts\python.exe tools/phase5_device.py --port COMx touch --seconds 20
+.\.venv\Scripts\python.exe tools/phase5_device.py --port COMx renderer-cycle --iterations 100
+```
+
+These probes supplement the interactive launcher/backlight checklist; they do
+not qualify a filesystem candidate by themselves.
+
 ## Optional physical legacy-board work
 
 Close programs holding the serial port and discover the current port:

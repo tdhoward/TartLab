@@ -148,7 +148,8 @@ The repeatable path is:
    most of the source graph is shared.
 6. Exercise the complete TartLab filesystem, including at least 100 transitions
    between LVGL and direct rendering, representative examples, Wi-Fi, browser
-   UI, reset cycles, and resource margins.
+   UI, reset cycles, and resource margins. Modern touchscreen candidates also
+   follow `tests/MODERN_TOUCHSCREEN_QUALIFICATION.md`.
 7. Change the descriptor to `candidate`, run the catalog and hardware-free
    suites, and build the exact candidate release.
 8. Run clean provisioning, interruption/resume, OTA, recovery, rollback,
