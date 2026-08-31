@@ -294,6 +294,187 @@ class LauncherHealthTimerTests(unittest.TestCase):
                     sys.modules[name] = previous
 
 
+class ModernTouchscreenLauncherTests(unittest.TestCase):
+    def load_launcher(self):
+        package_name = "modern_launcher_test"
+        package = types.ModuleType(package_name)
+        package.__path__ = []
+        state = types.ModuleType(package_name + ".state")
+        state.get_selected_app = lambda: "games/hello.py"
+        saved = {
+            name: sys.modules.get(name)
+            for name in (package_name, package_name + ".state")
+        }
+        sys.modules[package_name] = package
+        sys.modules[package_name + ".state"] = state
+        try:
+            module = load_module(
+                package_name + ".modern_launcher",
+                ROOT / "src/lib/tartlabutils/modern_launcher.py")
+        finally:
+            for name, previous in saved.items():
+                if previous is None:
+                    sys.modules.pop(name, None)
+                else:
+                    sys.modules[name] = previous
+        return module
+
+    class Widget:
+        def __init__(self, parent=None):
+            self.parent = parent
+            self.text = None
+            self.size = None
+            self.position = None
+            self.callback = None
+            self.deleted = False
+
+        def set_style_bg_color(self, *unused):
+            pass
+
+        def set_text(self, value):
+            self.text = value
+
+        def set_width(self, unused):
+            pass
+
+        def set_style_text_align(self, *unused):
+            pass
+
+        def align(self, *unused):
+            pass
+
+        def center(self):
+            pass
+
+        def set_size(self, width, height):
+            self.size = (width, height)
+
+        def set_pos(self, x, y):
+            self.position = (x, y)
+
+        def add_event_cb(self, callback, *unused):
+            self.callback = callback
+
+        def delete(self):
+            self.deleted = True
+
+        def click(self):
+            self.callback(None)
+
+    class LVGL:
+        ALIGN = types.SimpleNamespace(TOP_MID=1)
+        EVENT = types.SimpleNamespace(CLICKED=2)
+        TEXT_ALIGN = types.SimpleNamespace(CENTER=3)
+
+        def __init__(self):
+            self.active = ModernTouchscreenLauncherTests.Widget()
+            self.loaded = []
+            self.buttons = []
+
+        def obj(self):
+            return ModernTouchscreenLauncherTests.Widget()
+
+        def label(self, parent):
+            return ModernTouchscreenLauncherTests.Widget(parent)
+
+        def button(self, parent):
+            button = ModernTouchscreenLauncherTests.Widget(parent)
+            self.buttons.append(button)
+            return button
+
+        def color_hex(self, value):
+            return value
+
+        def screen_active(self):
+            return self.active
+
+        def screen_load(self, screen):
+            self.active = screen
+            self.loaded.append(screen)
+
+    def test_layout_keeps_large_targets_inside_landscape_and_portrait(self):
+        module = self.load_launcher()
+        for width, height in ((480, 222), (320, 480)):
+            layout = module.launcher_layout(width, height)
+            self.assertEqual(len(layout["buttons"]), 3)
+            for x, y, button_width, button_height in layout["buttons"]:
+                self.assertGreaterEqual(x, 0)
+                self.assertGreaterEqual(y, 0)
+                self.assertGreaterEqual(button_height, 48)
+                self.assertLessEqual(x + button_width, width)
+                self.assertLessEqual(y + button_height, height)
+
+    def test_no_interaction_defaults_to_ide_and_removes_launcher_screen(self):
+        module = self.load_launcher()
+        lvgl = self.LVGL()
+        original = lvgl.active
+        clock = {"now": 0}
+
+        launcher = module.ModernTouchscreenLauncher(
+            lvgl, 480, 222, "hello.py", timeout_seconds=10,
+            ticks_ms=lambda: clock["now"],
+            ticks_diff=lambda new, old: new - old,
+            sleep_ms=lambda milliseconds: clock.__setitem__(
+                "now", clock["now"] + milliseconds))
+        route = launcher.run()
+
+        self.assertEqual(route, "IDE")
+        self.assertGreaterEqual(clock["now"], 10000)
+        self.assertIs(lvgl.active, original)
+        self.assertTrue(lvgl.loaded[0].deleted)
+
+    def test_touch_unavailable_uses_the_same_nonblocking_ide_timeout(self):
+        module = self.load_launcher()
+        lvgl = self.LVGL()
+        clock = {"now": 0}
+        platform = types.SimpleNamespace(
+            capabilities={"lvgl_ui": True, "touch": False},
+            width=480,
+            height=222,
+            _lvgl=lvgl,
+            enter_ui_mode=lambda: None,
+        )
+        original = module.ModernTouchscreenLauncher
+
+        class FastLauncher(original):
+            def __init__(self, *args, **kwargs):
+                kwargs["ticks_ms"] = lambda: clock["now"]
+                kwargs["ticks_diff"] = lambda new, old: new - old
+                kwargs["sleep_ms"] = lambda milliseconds: clock.__setitem__(
+                    "now", clock["now"] + milliseconds)
+                super().__init__(*args, **kwargs)
+
+        module.ModernTouchscreenLauncher = FastLauncher
+        try:
+            route = module.run_startup_launcher(platform, timeout_seconds=10)
+        finally:
+            module.ModernTouchscreenLauncher = original
+
+        self.assertEqual(route, "IDE")
+        self.assertGreaterEqual(clock["now"], 10000)
+
+    def test_choose_app_cancels_timeout_until_an_explicit_route(self):
+        module = self.load_launcher()
+        lvgl = self.LVGL()
+        clock = {"now": 0}
+
+        def sleep_ms(milliseconds):
+            clock["now"] += milliseconds
+            if clock["now"] == 50:
+                lvgl.buttons[2].click()
+            if clock["now"] == 10500:
+                lvgl.buttons[1].click()
+
+        launcher = module.ModernTouchscreenLauncher(
+            lvgl, 320, 480, "games/hello.py", timeout_seconds=10,
+            ticks_ms=lambda: clock["now"],
+            ticks_diff=lambda new, old: new - old,
+            sleep_ms=sleep_ms)
+
+        self.assertEqual(launcher.run(), "APP")
+        self.assertGreater(clock["now"], 10000)
+
+
 class HeadlessStartupTests(unittest.TestCase):
     runtime_number = 0
 
@@ -428,6 +609,61 @@ class HeadlessStartupTests(unittest.TestCase):
             self.assertIn("Starting APP", logs)
             boot = state.read_json(state.BOOT_STATE_FILE)
             self.assertEqual((boot["health"], boot["mode"]), ("healthy", "APP"))
+
+    def test_modern_profile_always_uses_touch_launcher_for_ide_or_app(self):
+        for configured_mode, launcher_route in (("BUTTON", "IDE"),
+                                                 ("IDE", "APP"),
+                                                 ("APP", "IDE")):
+            with self.subTest(configured_mode=configured_mode):
+                with tempfile.TemporaryDirectory() as temp:
+                    unused_device, state, unused_bootstate, main, logs, errors = \
+                        self.prepare(Path(temp) / "device")
+                    settings = state.read_json(state.SETTINGS_FILE)
+                    settings["STARTUP_MODE"] = configured_mode
+                    state.write_json(state.SETTINGS_FILE, settings)
+                    platform = HeadlessPlatform(ide_button_value=0)
+                    platform.capabilities["lvgl_ui"] = True
+                    platform.ide_button_value = lambda: self.fail(
+                        "modern startup must not read the IDE button")
+                    routes = []
+
+                    main.run(
+                        platform=platform,
+                        start_launcher=lambda selected_platform: (
+                            routes.append("LAUNCHER"), launcher_route)[1],
+                        start_ide=lambda: routes.append("IDE"),
+                        start_app=lambda: routes.append("APP"),
+                        start_recovery=lambda reason: routes.append(reason),
+                    )
+
+                    self.assertEqual(routes, ["LAUNCHER", launcher_route])
+                    self.assertEqual(errors, [])
+                    self.assertEqual(
+                        state.read_json(state.SETTINGS_FILE)["STARTUP_MODE"],
+                        "BUTTON")
+
+    def test_modern_recovery_precedes_and_bypasses_touch_launcher(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, state, unused_bootstate, main, unused_logs, errors = \
+                self.prepare(Path(temp) / "device")
+            settings = state.read_json(state.SETTINGS_FILE)
+            settings["STARTUP_MODE"] = "RECOVERY"
+            state.write_json(state.SETTINGS_FILE, settings)
+            platform = HeadlessPlatform()
+            platform.capabilities["lvgl_ui"] = True
+            routes = []
+
+            main.run(
+                platform=platform,
+                start_launcher=lambda unused: self.fail(
+                    "recovery must bypass the launcher"),
+                start_ide=lambda: routes.append("IDE"),
+                start_app=lambda: routes.append("APP"),
+                start_recovery=lambda reason: routes.append(reason),
+            )
+
+            self.assertEqual(routes, ["startup_mode"])
+            self.assertEqual(errors, [])
 
     def test_explicit_recovery_mode_is_one_shot_without_hardware(self):
         with tempfile.TemporaryDirectory() as temp:

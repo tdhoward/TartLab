@@ -40,8 +40,23 @@ def _ensure_repos():
         })
 
 
-def _select_mode(settings, platform):
+def _select_mode(settings, platform, start_launcher=None):
     start_mode = settings.get("STARTUP_MODE", "BUTTON")
+    if start_mode == "RECOVERY":
+        settings["STARTUP_MODE"] = "BUTTON"
+        save_settings(settings)
+        return "RECOVERY"
+    if platform.capabilities.get("lvgl_ui", False):
+        if start_mode != "BUTTON":
+            settings["STARTUP_MODE"] = "BUTTON"
+            save_settings(settings)
+        if start_launcher is None:
+            from tartlabutils.modern_launcher import run_startup_launcher
+            start_launcher = run_startup_launcher
+        selected = start_launcher(platform)
+        if selected not in ("IDE", "APP"):
+            raise ValueError("modern launcher returned an invalid route")
+        return selected
     if start_mode == "BUTTON":
         return "IDE" if platform.ide_button_value() == 1 else "APP"
     settings["STARTUP_MODE"] = "BUTTON"
@@ -49,7 +64,8 @@ def _select_mode(settings, platform):
     return start_mode
 
 
-def run(platform=None, start_ide=None, start_app=None, start_recovery=None):
+def run(platform=None, start_ide=None, start_app=None, start_recovery=None,
+        start_launcher=None):
     display = None
     try:
         ensure_layout()
@@ -75,7 +91,7 @@ def run(platform=None, start_ide=None, start_app=None, start_recovery=None):
             settings = default_settings()
             log("No settings file found.")
 
-        start_mode = _select_mode(settings, platform)
+        start_mode = _select_mode(settings, platform, start_launcher)
         if start_mode == "RECOVERY":
             (start_recovery or _recovery)("startup_mode")
         elif start_mode == "IDE":
