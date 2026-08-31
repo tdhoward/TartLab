@@ -45,10 +45,13 @@ class BoardCatalogTests(unittest.TestCase):
                 BoardCatalogError, "bringup boards cannot claim qualification"):
             validate_descriptor(descriptor)
 
-    def test_candidate_requires_selector_and_firmware(self):
+    def test_bringup_board_has_selector_but_candidate_requires_firmware(self):
         descriptor = deepcopy(self.catalog["elecrow_dle06235b"])
+        self.assertEqual(
+            descriptor["selector"]["module"],
+            "elecrow_dle06235b_modern")
         descriptor["support_status"] = "candidate"
-        with self.assertRaisesRegex(BoardCatalogError, "require a selector"):
+        with self.assertRaisesRegex(BoardCatalogError, "require firmware"):
             validate_descriptor(descriptor)
 
     def test_runtime_profile_selects_an_explicit_qualified_default(self):

@@ -130,11 +130,6 @@ class ST77922(display_driver_framework.DisplayDriver):
             _init_bus=True,
         )
 
-        # The pinned ESP32 QSPI completion callback path crashes before the
-        # Python flush-ready callback runs.  Keep this experimental driver
-        # blocking until that native path is fixed and independently tested.
-        self._data_bus.register_callback(None)
-
         # ST77922 CASET requires both the physical start column and physical
         # window width to be multiples of four.  Round LVGL invalidations before
         # rendering so each flush buffer includes the extra edge pixels.
@@ -143,6 +138,16 @@ class ST77922(display_driver_framework.DisplayDriver):
             lv.EVENT.INVALIDATE_AREA,
             None,
         )
+
+    def __del__(self):
+        """Release the driver-owned DMA scratch buffer exactly once."""
+        rotation_buffer = getattr(self, "_rotation_buffer", None)
+        self._rotation_buffer = None
+        try:
+            super().__del__()
+        finally:
+            if rotation_buffer is not None:
+                lcd_bus.free_buffer(rotation_buffer)
 
     def set_params(self, command, params=None):
         self._data_bus.tx_param(self._qspi_command(command), params)
@@ -278,4 +283,3 @@ class ST77922(display_driver_framework.DisplayDriver):
             0,
             self._disp_drv.flush_is_last(),
         )
-        self._disp_drv.flush_ready()

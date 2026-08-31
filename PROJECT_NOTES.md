@@ -11,8 +11,9 @@ TartLab is a browser-based MicroPython IDE hosted by a Wi-Fi microcontroller.
 It is designed for classrooms: students use a browser to edit, save, and run
 programs without installing drivers, desktop IDEs, or firmware tools. The
 qualified board is currently the LilyGO T-Display-S3 Pro PCB v1.1. The Elecrow
-DLE06235B is recorded separately in `bringup` state and is not a
-supported-board claim.
+DLE06235B has a healthy experimental IDE-mode bench boot with owner-confirmed
+setup-AP, LAN, and browser editing workflows, but remains recorded separately
+in `bringup` state; this is not a supported-board claim.
 
 Two runtime profiles are maintained:
 

@@ -26,7 +26,11 @@
     "console": "ESP32-S3 native USB Serial/JTAG",
     "power": "USB-C"
   },
-  "selector": null,
+  "selector": {
+    "module": "elecrow_dle06235b_modern",
+    "source": "src/configs/elecrow_dle06235b_modern.py",
+    "protected_path": "/device/hdwconfig.py"
+  },
   "firmware": null,
   "qualification": null,
   "documentation": [
