@@ -313,6 +313,7 @@ class FakeLVScreen:
 
 class FakeModernLVGL:
     EVENT = types.SimpleNamespace(FLUSH_START=91)
+    DISPLAY_ROTATION = types.SimpleNamespace(_0=0, _90=1, _180=2, _270=3)
 
     def __init__(self, display, bus):
         self.display = display
@@ -452,6 +453,32 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         self.assertEqual(bus.allocations, [(80, 3)])
         surface.free_buffer(buffer)
         self.assertEqual(bus.freed, [buffer])
+
+    def test_platform_exposes_lvgl_and_logical_game_touch(self):
+        (module, unused_bus, panel, lv_display, lvgl, unused_tasks,
+         unused_pointer, controller) = self.prepare()
+
+        class Pointer:
+            PRESSED = 7
+
+            def __init__(self):
+                self.points = [(7, 20, 100), None]
+
+            def _get_coords(self):
+                return self.points.pop(0)
+
+        pointer = Pointer()
+        platform = module.ModernPlatform(
+            controller, panel, pointer, lvgl=lvgl)
+        lv_display.rotation = lvgl.DISPLAY_ROTATION._270
+        platform.enter_game_mode()
+
+        self.assertIs(platform.lvgl, lvgl)
+        self.assertEqual(platform.read_game_touch(), (100, 201))
+        self.assertIsNone(platform.read_game_touch())
+        platform.enter_ui_mode()
+        with self.assertRaises(module.DisplayOwnershipError):
+            platform.read_game_touch()
 
     def test_platform_deinit_releases_registered_native_objects_once(self):
         (module, bus, unused_panel, unused_lv_display, unused_lvgl,

@@ -21,7 +21,7 @@
 				},
 				{
 					"title":"Drawing basics",
-					"subtitle":"Pixels, lines, rectangles, and explicit refreshes",
+					"subtitle":"Intro to drawing graphics",
 					"file":"drawingbasics.py"
 				}
 			]
@@ -31,47 +31,47 @@
 			"entries": [
 				{
 					"title":"Testris",
-					"subtitle":"Portrait direct-rendered falling blocks",
+					"subtitle":"Tetris game for MicroPython",
 					"file":"testris.py"
 				},
 				{
 					"title":"Snake",
-					"subtitle":"A portrait touch game on the direct canvas",
+					"subtitle":"Feed the hungry snake!",
 					"file":"snake.py"
 				},
 				{
 					"title":"Calculator",
-					"subtitle":"Draw a portrait framebuffer keypad",
+					"subtitle":"A simple calculator",
 					"file":"calculator.py"
 				},
 				{
 					"title":"Face",
-					"subtitle":"Build curves from primitive pixel runs",
+					"subtitle":"A cheerful face",
 					"file":"face.py"
 				},
 				{
 					"title":"Moire (slow)",
-					"subtitle":"Draw lines and refresh after each pair",
+					"subtitle":"Cool line patterns",
 					"file":"moire_slow.py"
 				},
 				{
 					"title":"Moire (fast)",
-					"subtitle":"Draw all lines before one refresh",
+					"subtitle":"Line patterns, but faster",
 					"file":"moire_fast.py"
 				},
 				{
 					"title":"Animation",
-					"subtitle":"Animate with dirty-rectangle transfers",
+					"subtitle":"A ball bounces on the screen",
 					"file":"animation.py"
 				},
 				{
 					"title":"Display bitmap",
-					"subtitle":"Send RGB565 pixels to the direct surface",
+					"subtitle":"Loads and displays a bitmap file",
 					"file":"display_bmp.py"
 				},
 				{
 					"title":"Sprite",
-					"subtitle":"Animate pixels on a direct canvas",
+					"subtitle":"Demonstrates using sprites",
 					"file":"sprite.py"
 				}
 			]

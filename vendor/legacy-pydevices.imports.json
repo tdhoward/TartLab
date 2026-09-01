@@ -53,7 +53,7 @@
       }
     },
     "shipped_examples": {
-      "description": "Vendor dependencies imported by shipped student examples, excluding the separately inventoried hardware boundary.",
+      "description": "Vendor dependencies imported by shipped legacy student examples, excluding the separately inventoried hardware boundary.",
       "files": [
         "add_ons/bmp565.py",
         "add_ons/displaybuf.py",
@@ -71,18 +71,18 @@
         "palettes/wheel.py"
       ],
       "roots": [
-        "src/files/help/animation.py",
-        "src/files/help/calculator.py",
-        "src/files/help/display_bmp.py",
-        "src/files/help/display_qoi.py",
-        "src/files/help/drawingbasics.py",
-        "src/files/help/face.py",
-        "src/files/help/moire_fast.py",
-        "src/files/help/moire_slow.py",
-        "src/files/help/pybasics.py",
-        "src/files/help/snake.py",
-        "src/files/help/sprite.py",
-        "src/files/help/testris.py"
+        "src/files/help-legacy/animation.py",
+        "src/files/help-legacy/calculator.py",
+        "src/files/help-legacy/display_bmp.py",
+        "src/files/help-legacy/display_qoi.py",
+        "src/files/help-legacy/drawingbasics.py",
+        "src/files/help-legacy/face.py",
+        "src/files/help-legacy/moire_fast.py",
+        "src/files/help-legacy/moire_slow.py",
+        "src/files/help-legacy/pybasics.py",
+        "src/files/help-legacy/snake.py",
+        "src/files/help-legacy/sprite.py",
+        "src/files/help-legacy/testris.py"
       ],
       "stop_modules": [
         "hdwconfig"

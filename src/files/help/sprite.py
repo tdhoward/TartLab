@@ -1,97 +1,68 @@
-from hdwconfig import display_drv, broker
-from bmp565 import BMP565
-from time import sleep
+"""Animate one sprite sheet using TartLab's modern direct canvas."""
+
+from framebuf import FrameBuffer, RGB565
 from random import choice
-from collections import namedtuple
-from touch_keypad import Keypad
-from eventsys.keys import Keys
+from time import sleep_ms
+
+from bmp565 import BMP565
+from tartlabutils.modern_app import (
+    DirectCanvas, TouchGrid, framebuffer_color, game_surface,
+    swap565_buffer)
 
 
-display_drv.rotation = 0
-WIDTH = display_drv.width
-HEIGHT = display_drv.height
-if WIDTH > HEIGHT:
-    display_drv.rotation += 90
-display_drv.disable_auto_byteswap(False)
+surface = game_surface()
+canvas = DirectCanvas(surface)
+stop_button = TouchGrid(["stop"], 1, 1)
 
-ESCAPE = Keys.K_ESCAPE
-keypad = Keypad(broker.poll, 0, 0, WIDTH, HEIGHT, rows=1, cols=1, keys=[ESCAPE])
+sheet = BMP565("files/assets/warrior.bmp", streamed=True)
+sprite_width = sheet.width // 3
+sprite_height = sheet.height // 4
+background = framebuffer_color(sheet[0])
 
-image = BMP565("files/assets/warrior.bmp", streamed=True)
-print(f"\n{image.width=}, {image.height=}, {image.bpp=}")
-sprite_height = image.height // 4
-sprite_width = image.width // 3
-bg = image[0]  # top left pixel is the background color
-print(f"{sprite_width=}, {sprite_height=} {bg=:#0x}\n")
-
-back, right, fwd, left = [x * sprite_height for x in range(4)]
-directions = [fwd, left, right, back]
-a, b, c = [x * sprite_width for x in range(3)]
-positions = [a, b, c, b]
-print("Sprite coordinates:")
-for col in [fwd, left, right, back]:
-    print(f"{(a, col)} {(b, col)} {(c, col)} {(b, col)}")
+directions = {
+    "down": sheet.height // 2,
+    "left": sheet.height * 3 // 4,
+    "right": sheet.height // 4,
+    "up": 0,
+}
+frames = (0, sprite_width, sprite_width * 2, sprite_width)
 
 
-def draw_sprite(
-    dest_x,
-    dest_y,
-    source_x,
-    source_y,
-    source_image=image,
-    width=sprite_width,
-    height=sprite_height,
-):
-    display_drv.blit_rect(
-        source_image[source_x : source_x + width, source_y : source_y + height],
-        dest_x,
-        dest_y,
-        width,
-        height,
-    )
+def draw_sprite(x, y, frame_x, frame_y):
+    pixels = sheet[
+        frame_x:frame_x + sprite_width,
+        frame_y:frame_y + sprite_height]
+    swap565_buffer(pixels)
+    sprite = FrameBuffer(pixels, sprite_width, sprite_height, RGB565)
+    canvas.blit(sprite, x, y)
 
 
-display_drv.fill(bg)
-display_drv.show()
-
-point = namedtuple("point", "x y")
-location = point(0, 0)
-sprite = (a, fwd)
-draw_sprite(*location, *sprite)
-
+canvas.fill(background)
+x = 0
+y = 0
 step = 7
-dir = choice(directions)
-while True:
-    if keypad.read() == ESCAPE:
+direction = choice(tuple(directions))
+
+for unused in range(300):
+    if stop_button.read() == "stop":
         break
-    if choice((True, False, False, False, False)):  # 20% chance of changing direction
-        dir = choice(directions)
-    if dir == fwd and location.y + sprite_height > display_drv.height - step * 4:
-        continue
-    elif dir == back and location.y < step * 4:
-        continue
-    elif dir == left and location.x < step * 4:
-        continue
-    elif dir == right and location.x + sprite_width > display_drv.width - step * 4:
+    if direction == "down":
+        next_x, next_y = x, y + step
+    elif direction == "up":
+        next_x, next_y = x, y - step
+    elif direction == "left":
+        next_x, next_y = x - step, y
+    else:
+        next_x, next_y = x + step, y
+
+    if not (0 <= next_x <= surface.width - sprite_width and
+            0 <= next_y <= surface.height - sprite_height):
+        direction = choice(tuple(directions))
         continue
 
-    for pos in positions:
-        if dir == fwd:
-            display_drv.fill_rect(location.x, location.y, sprite_width, step, bg)
-            location = point(location.x, location.y + step)
-        elif dir == back:
-            display_drv.fill_rect(
-                location.x, location.y + sprite_height - step, sprite_width, step, bg
-            )
-            location = point(location.x, location.y - step)
-        elif dir == left:
-            display_drv.fill_rect(
-                location.x + sprite_width - step, location.y, step, sprite_height, bg
-            )
-            location = point(location.x - step, location.y)
-        elif dir == right:
-            display_drv.fill_rect(location.x, location.y, step, sprite_height, bg)
-            location = point(location.x + step, location.y)
-        draw_sprite(*location, pos, dir)
-        display_drv.show()
-        sleep(0.05)
+    for frame_x in frames:
+        canvas.fill_rect(x, y, sprite_width, sprite_height, background)
+        x, y = next_x, next_y
+        draw_sprite(x, y, frame_x, directions[direction])
+        canvas.show()
+        sleep_ms(50)

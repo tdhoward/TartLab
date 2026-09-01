@@ -1,17 +1,19 @@
-from hdwconfig import display_drv
-from displaybuf import DisplayBuffer as SSD
+"""Display an RGB565 bitmap through the modern direct surface."""
+
 from bmp565 import BMP565
-from graphics import FrameBuffer, RGB565
-from time import sleep
+from tartlabutils.modern_app import (
+    fill_surface, game_surface, swap565_buffer)
 
-display_drv.rotation = 0  # Set the display orientation to vertical
-canvas = SSD(display_drv, SSD.RGB565)
-display_drv.disable_auto_byteswap(False)
 
-canvas.fill(0x0)
-canvas.show()
-bmp = BMP565("files/assets/warrior.bmp")
-fb = FrameBuffer(bmp.buffer, bmp.width, bmp.height, RGB565)
+surface = game_surface()
+fill_surface(surface, 0x0000)
 
-canvas.blit(fb, 0, 0)
-canvas.show()
+image = BMP565("files/assets/warrior.bmp")
+if image.width > surface.width or image.height > surface.height:
+    raise ValueError("bitmap is larger than the display")
+
+# BMP565 stores little-endian pixels; the modern surface documents RGB565_BE.
+swap565_buffer(image.buffer)
+x = (surface.width - image.width) // 2
+y = (surface.height - image.height) // 2
+surface.write(image.buffer, x, y, image.width, image.height)

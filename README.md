@@ -38,6 +38,11 @@ TartLab maintains two profiles:
   display transport. Stable `modern-v0.14.8` is published in the isolated
   [modern release repository](https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.14.8).
 
+New source and distribution builds default to `lvgl-modern`. The modern help
+applications live in `src/files/help`; maintained legacy copies live in
+`src/files/help-legacy` and are selected only with
+`--runtime-profile legacy-mp123`.
+
 The normal browser updater changes TartLab filesystem packages only; it cannot
 change firmware. Modern installation or migration is therefore an adult-admin
 task performed with the authenticated provisioning workflow in
@@ -55,7 +60,7 @@ task performed with the authenticated provisioning workflow in
    ```text
    python -m pip install --require-hashes -r requirements-build.txt
    npm ci --prefix src/ide/www
-   python makedist.py --clean
+   python makedist.py --clean --runtime-profile legacy-mp123
    ```
 
 4. Upload the generated `dist` files with
@@ -109,7 +114,7 @@ updaters cannot distinguish the profiles and cannot flash firmware.
 The complete hardware-free suite is:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_modern_power tests.test_headless_ide -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_app tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_modern_power tests.test_headless_ide -v
 ```
 
 Host tests cover deterministic builds, update/recovery behavior, virtual device

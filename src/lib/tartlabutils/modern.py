@@ -399,6 +399,46 @@ class ModernPlatform:
     def enter_game_mode(self):
         return self.controller.acquire_game()
 
+    @property
+    def lvgl(self):
+        """Return the supported LVGL module for modern user interfaces."""
+        return self._lvgl
+
+    def read_game_touch(self):
+        """Return the current logical game-mode touch point, or ``None``.
+
+        Native pointer drivers report panel coordinates.  Keep that private
+        protocol inside the platform boundary and expose coordinates in the
+        same logical orientation used by :attr:`game_surface`.
+        """
+        if self.controller.owner != GAME_OWNER:
+            raise DisplayOwnershipError(
+                "game touch input requires game display ownership")
+        if self.input is None:
+            return None
+        get_coords = getattr(self.input, "_get_coords", None)
+        if get_coords is None:
+            raise RuntimeError("modern pointer does not support game polling")
+        try:
+            point = get_coords()
+        except OSError:
+            return None
+        pressed = getattr(self.input, "PRESSED", 1)
+        if point is None or point[0] != pressed:
+            return None
+        x, y = point[1], point[2]
+        rotations = getattr(self._lvgl, "DISPLAY_ROTATION", None)
+        rotation = self.controller.rotation
+        if rotations is None or rotation == getattr(rotations, "_0", 0):
+            return x, y
+        if rotation == getattr(rotations, "_90", 1):
+            return self.width - 1 - y, x
+        if rotation == getattr(rotations, "_180", 2):
+            return self.width - 1 - x, self.height - 1 - y
+        if rotation == getattr(rotations, "_270", 3):
+            return y, self.height - 1 - x
+        raise RuntimeError("unsupported display rotation")
+
     def create_ide_view(self):
         return ModernIDEView(self.controller, self._lvgl)
 

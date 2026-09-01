@@ -1,300 +1,157 @@
-from hdwconfig import display_drv, broker
-from touch_keypad import Keypad
-from eventsys.keys import Keys
+"""A touch-controlled snake game for the modern direct renderer."""
+
 from random import randint
-from graphics import FrameBuffer,RGB565
-from micropython import const
-from displaybuf import DisplayBuffer as SSD
-import graphics                         # Bring in the drawing functions
-from time import ticks_ms, ticks_diff, sleep
-import ujson as json   # for loading and saving the highscore file
+from time import sleep_ms, ticks_diff, ticks_ms
+import ujson as json
 
-# Display dimensions
-display_drv.rotation = 0
-WIDTH = display_drv.width
-HEIGHT = display_drv.height
-if WIDTH > HEIGHT:
-    display_drv.rotation += 90
-
-# Disable auto byte swap if supported
-if display_drv.requires_byteswap:
-    needs_swap = display_drv.disable_auto_byteswap(True)
-else:
-    needs_swap = False
-
-# Define some colors
-class pal:
-	BLACK   = 0x0000
-	WHITE   = 0xFFFF
-	GREEN   = 0x07E0 if not needs_swap else 0xE007
-	DKGREEN = 0x0600 if not needs_swap else 0x0006
-	RED     = 0xF800 if not needs_swap else 0x00F8
-	ORANGE  = 0xFD20 if not needs_swap else 0x20FD
-	GREY    = 0x8410 if not needs_swap else 0x1084
-
-# Set up block size
-GRID_HEIGHT = const(25)
-GRID_WIDTH  = const(14)
-block_size  = min(WIDTH // GRID_WIDTH, HEIGHT // GRID_HEIGHT)
-half_block = block_size // 2
-BASE_UNIT = block_size // 15
+from tartlabutils.modern_app import (
+    PortraitCanvas, PortraitTouchGrid, game_surface, rgb565)
 
 
-# Offset to center or position the grid
-grid_x_offset = (WIDTH - (GRID_WIDTH * block_size)) // 2
-grid_y_offset = (HEIGHT - (GRID_HEIGHT * block_size)) // 2
+surface = game_surface()
+canvas = PortraitCanvas(surface)
+touch = PortraitTouchGrid((
+    None, "up", None,
+    "left", "pause", "right",
+    "quit", "down", "restart",
+), 3, 3)
 
-# Key mapping
-BT_ROWS = 5
-BT_COLS = 2
-BT_WIDTH = WIDTH // BT_COLS
-BT_HEIGHT = HEIGHT // BT_ROWS
-BT_WIDTH_HALF = BT_WIDTH // 2
-BT_HEIGHT_HALF = BT_HEIGHT // 2
-START = Keys.K_RETURN
-PAUSE = Keys.K_ESCAPE
-LEFT  = Keys.K_LEFT
-RIGHT = Keys.K_RIGHT
-UP    = Keys.K_UP
-DOWN  = Keys.K_DOWN
-keypad = Keypad(broker.poll, 0, 0, WIDTH, HEIGHT, rows=BT_ROWS, cols=BT_COLS,
-                keys=[START, PAUSE, 
-					  UP, UP, 
-					  LEFT, RIGHT,
-					  LEFT, RIGHT,
-					  DOWN, DOWN])
+BLACK = rgb565(0, 0, 0)
+WHITE = rgb565(255, 255, 255)
+GREEN = rgb565(0, 180, 70)
+HEAD = rgb565(120, 255, 120)
+RED = rgb565(244, 67, 54)
+GREY = rgb565(110, 120, 130)
 
-# Create a buffer for the text area
-text_buf_width = WIDTH
-text_buf_height = grid_y_offset - 1
-text_buf    = bytearray(text_buf_width * text_buf_height * 2)
-text_fb     = FrameBuffer(text_buf, text_buf_width, text_buf_height, RGB565)
+WIDTH = canvas.width
+HEIGHT = canvas.height
+COLS = 14
+ROWS = 28
+HEADER = 34
+CELL = min((WIDTH - 4) // COLS, (HEIGHT - HEADER - 4) // ROWS)
+FIELD_WIDTH = COLS * CELL
+FIELD_HEIGHT = ROWS * CELL
+FIELD_X = (WIDTH - FIELD_WIDTH) // 2
+FIELD_Y = HEADER + (HEIGHT - HEADER - FIELD_HEIGHT) // 2
+HIGH_SCORE_FILE = "snake_high_score.json"
 
 
-# Create buffers for apple, snake head, snake body, and black cell
-apple_buf = FrameBuffer(bytearray(block_size * block_size * 2), block_size, block_size, RGB565)
-snake_head_buf = FrameBuffer(bytearray(block_size * block_size * 2), block_size, block_size, RGB565)
-snake_body_buf = FrameBuffer(bytearray(block_size * block_size * 2), block_size, block_size, RGB565)
-black_cell_buf = FrameBuffer(bytearray(block_size * block_size * 2), block_size, block_size, RGB565)
-
-# Draw pre-rendered images
-# - Apple
-apple_buf.fill(pal.BLACK)
-graphics.circle(apple_buf, half_block, half_block, half_block, pal.RED, True)  # the apple
-graphics.arc(apple_buf, half_block, half_block, half_block, 215, 240, pal.WHITE)  # shiny spot
-graphics.fill_rect(apple_buf, half_block + BASE_UNIT, 0, BASE_UNIT * 2, BASE_UNIT * 4, pal.DKGREEN)  # stem
-graphics.fill_rect(apple_buf, half_block, BASE_UNIT * 3, BASE_UNIT * 2, BASE_UNIT * 2, pal.BLACK)
-
-# - Snake
-snake_head_buf.fill(pal.GREEN)
-graphics.fill_rect(snake_head_buf, (half_block // 2), (half_block // 2), 4, 4, pal.BLACK)
-snake_body_buf.fill(pal.DKGREEN)
-black_cell_buf.fill(pal.BLACK)
-
-# Canvas setup
-canvas = SSD(display_drv, SSD.RGB565)
-
-
-# draw the outer border
-def draw_outer_border():
-    outer_x = grid_x_offset - 1
-    outer_y = grid_y_offset - 1
-    outer_width = GRID_WIDTH * block_size + 2
-    outer_height = GRID_HEIGHT * block_size + 2
-    canvas.rect(outer_x, outer_y, outer_width, outer_height, pal.GREY)
-
-
-# Helper to draw pre-rendered images
-def draw_image(buffer, x, y):
-    canvas.blit(buffer, grid_x_offset + x * block_size, grid_y_offset + y * block_size)
-
-
-# Save and load high score
 def load_high_score():
     try:
-        with open("snake_high_score.json", "r") as f:
-            return json.load(f).get("high_score", 0)
+        with open(HIGH_SCORE_FILE, "r") as stream:
+            return json.load(stream).get("high_score", 0)
     except (OSError, ValueError):
         return 0
 
 
-def save_high_score(high_score):
-    with open("snake_high_score.json", "w") as f:
-        json.dump({"high_score": high_score}, f)
+def save_high_score(value):
+    with open(HIGH_SCORE_FILE, "w") as stream:
+        json.dump({"high_score": value}, stream)
 
 
-TEXT_ROW_SIZE = 12
-def show_text(msg, color=pal.WHITE, bg=pal.BLACK):
-    text_fb.fill(bg)
-    lines = msg.split("\n")
-    total_height = len(lines) * TEXT_ROW_SIZE
-    start_y = (text_buf_height - total_height) // 2
-    for i, line in enumerate(lines):
-        text_fb.text(line, 20, start_y + (i * TEXT_ROW_SIZE), color)  # Center vertically
-    canvas.blit(text_fb, 0, 0)
-    canvas.show()
-
-
-# Simple little helper function for drawing centered text on the canvas
-def canvas_text(msg, x, y, color=pal.WHITE, center = True):
-    if center:
-        y -= 4
-        x -= len(msg) * 4
-    graphics.text(canvas, msg, x, y, color, scale=1, inverted=False, font_data=None, height=8)
-
-
-# Place an apple randomly
-def place_apple():
-    global snake, apple_list
+def random_apple(snake):
     while True:
-        apple = (randint(0, GRID_WIDTH - 1), randint(0, GRID_HEIGHT - 1))
-        if apple not in snake and apple not in apple_list:
+        apple = randint(0, COLS - 1), randint(0, ROWS - 1)
+        if apple not in snake:
             return apple
 
-# Main game
-def main():
-    global text_fb, snake, apple_list
 
-    # Load high score
-    high_score = load_high_score()
+def cell(position, color, inset=1):
+    x, y = position
+    canvas.fill_rect(
+        FIELD_X + x * CELL + inset,
+        FIELD_Y + y * CELL + inset,
+        CELL - inset * 2,
+        CELL - inset * 2,
+        color)
 
-    # Show touch-screen control locations
-    canvas.fill(pal.BLACK)
-    graphics.rect(canvas, 0, 0, BT_WIDTH, BT_HEIGHT, pal.GREY)  # Start
-    canvas_text("Start", BT_WIDTH_HALF, BT_HEIGHT_HALF, pal.ORANGE)
-    graphics.rect(canvas, BT_WIDTH, 0, BT_WIDTH, BT_HEIGHT, pal.GREY)  # Pause
-    canvas_text("Pause", BT_WIDTH + BT_WIDTH_HALF, BT_HEIGHT_HALF, pal.ORANGE)
-    graphics.rect(canvas, 0, BT_HEIGHT, WIDTH, BT_HEIGHT, pal.GREY)  # Up
-    canvas_text("Up", BT_WIDTH, BT_HEIGHT + BT_HEIGHT_HALF, pal.ORANGE)
-    graphics.rect(canvas, 0, BT_HEIGHT * 2, WIDTH, BT_HEIGHT * 2, pal.GREY)  # Left
-    canvas_text("Left", BT_WIDTH_HALF, BT_HEIGHT * 3, pal.ORANGE)
-    graphics.rect(canvas, BT_WIDTH, BT_HEIGHT * 2, WIDTH, BT_HEIGHT * 2, pal.GREY)  # Right
-    canvas_text("Right", BT_WIDTH + BT_WIDTH_HALF, BT_HEIGHT * 3, pal.ORANGE)
-    graphics.rect(canvas, 0, BT_HEIGHT * 4, WIDTH, BT_HEIGHT, pal.GREY)  # Down
-    canvas_text("Down", BT_WIDTH, BT_HEIGHT * 4 + BT_HEIGHT_HALF, pal.ORANGE)
+
+def draw(snake, apple, score, message=""):
+    canvas.fill(BLACK)
+    canvas.text("SNAKE  Score %s" % score, 8, 8, WHITE)
+    if message:
+        canvas.text(message, max(0, WIDTH - len(message) * 8 - 8), 20, WHITE)
+    canvas.rect(
+        FIELD_X - 1, FIELD_Y - 1,
+        FIELD_WIDTH + 2, FIELD_HEIGHT + 2, GREY)
+    cell(apple, RED)
+    for segment in snake[:-1]:
+        cell(segment, GREEN)
+    cell(snake[-1], HEAD)
     canvas.show()
 
-    # Wait for START
-    while True:
-        if keypad.read() == START:
-            break
 
-    # Clear screen
-    canvas.fill(pal.BLACK)
-    draw_outer_border()
+def wait_for_touch(message):
+    canvas.fill(BLACK)
+    x = max(4, (WIDTH - len(message) * 8) // 2)
+    canvas.text(message, x, HEIGHT // 2 - 12, WHITE)
+    canvas.text("Use the 3x3 touch grid", 20, HEIGHT // 2 + 8, GREY)
     canvas.show()
+    while touch.read() is None:
+        sleep_ms(20)
 
-    # Create an empty list of apples
-    apple_list = []
 
-    # Initialize snake
-    snake = [(GRID_WIDTH//2, GRID_HEIGHT//2)]
-    direction = (1, 0)  # start moving right
-    snake_length = 3
+high_score = load_high_score()
+wait_for_touch("Touch to start Snake")
+
+running = True
+while running:
+    snake = [(COLS // 2 - 2, ROWS // 2),
+             (COLS // 2 - 1, ROWS // 2),
+             (COLS // 2, ROWS // 2)]
+    apple = random_apple(snake)
+    direction = (1, 0)
     score = 0
-    apple_count = 0
-    apple_bonus = 1
-
-    num_apples = 3  # how many apples should there be?
-    # place and draw all the apples
-    for c in range(num_apples):
-        apple_list.append(place_apple())
-        draw_image(apple_buf, apple_list[-1][0], apple_list[-1][1])
+    move_delay = 190
     last_move = ticks_ms()
-    move_delay = 250  # ms between snake moves
+    alive = True
 
-    show_text(f"Score {score}")
-
-    # Game loop
-    while True:
-        # --- INPUT ---
-        key = keypad.read()
-        if key:
-            # Change direction if valid  (Can't switch 180 degrees)
-            if key == LEFT  and direction != (1, 0):  direction = (-1, 0)
-            if key == RIGHT and direction != (-1,0):  direction = (1, 0)
-            if key == UP    and direction != (0, 1):  direction = (0, -1)
-            if key == DOWN  and direction != (0, -1): direction = (0, 1)
-
-            if key == PAUSE:
-                show_text("Paused.\nPress start 2x to quit,\nAny key to resume.")
-                paused_key = None
-                while paused_key is None:
-                    paused_key = keypad.read()
-                if paused_key == START:  # if they press Start once...
-                    paused_key = None
-                    while paused_key is None:   # check to see if they press it again
-                        paused_key = keypad.read()
-                    if paused_key == START:
-                        return False    # quit if they pressed start twice
-                show_text(f"Score {score}")
-
-        # --- UPDATE SNAKE POSITION ---
-        if ticks_diff(ticks_ms(), last_move) > move_delay:
+    while alive:
+        key = touch.read()
+        if key == "up" and direction != (0, 1):
+            direction = (0, -1)
+        elif key == "down" and direction != (0, -1):
+            direction = (0, 1)
+        elif key == "left" and direction != (1, 0):
+            direction = (-1, 0)
+        elif key == "right" and direction != (-1, 0):
+            direction = (1, 0)
+        elif key == "quit":
+            running = False
+            break
+        elif key == "pause":
+            draw(snake, apple, score, "Paused")
+            while touch.read() is None:
+                sleep_ms(20)
             last_move = ticks_ms()
 
-            # The head is in a new spot
-            head_x, head_y = snake[-1]
-            dx, dy = direction
-            new_head = ((head_x + dx) % GRID_WIDTH, (head_y + dy) % GRID_HEIGHT)
+        if ticks_diff(ticks_ms(), last_move) < move_delay:
+            sleep_ms(10)
+            continue
+        last_move = ticks_ms()
+        head_x, head_y = snake[-1]
+        next_head = (
+            (head_x + direction[0]) % COLS,
+            (head_y + direction[1]) % ROWS)
+        if next_head in snake:
+            alive = False
+            break
+        snake.append(next_head)
+        if next_head == apple:
+            score += 1
+            move_delay = max(75, move_delay - 5)
+            apple = random_apple(snake)
+        else:
+            snake.pop(0)
+        draw(snake, apple, score)
 
-            # Check collision with self
-            if new_head in snake:
-                # Game over
-                break
-
-            # Add the new head to the end of snake
-            snake.append(new_head)
-
-            # Erase the oldest part of the snake's tail
-            if len(snake) > snake_length:
-                tail = snake.pop(0)
-                draw_image(black_cell_buf, tail[0], tail[1])
-
-            # Draw new head
-            draw_image(snake_head_buf, new_head[0], new_head[1])
-
-            # Only draw the new tail segment (right behind the head)
-            if len(snake) > 1:
-                second_to_last = snake[-2]
-                draw_image(snake_body_buf, second_to_last[0], second_to_last[1])
-
-            # Check if we ate an apple
-            if new_head in apple_list:
-                apple_list.remove(new_head)  # get rid of the apple that we ate
-                snake_length += 1
-                score += apple_bonus
-                apple_count += 1
-
-                # Increase apple bonus and adjust move delay every 5 apples
-                if apple_count % 5 == 0:
-                    apple_bonus += 2
-                    move_delay = min(move_delay * 0.8, move_delay - 5)
-
-                # place a new apple
-                apple_list.append(place_apple())
-                draw_image(apple_buf, apple_list[-1][0], apple_list[-1][1])
-                show_text(f"Score {score}")
-
-        # Update the canvas
-        canvas.show()
-
-    # Check for new high score
+    if not running:
+        break
     if score > high_score:
         high_score = score
         save_high_score(high_score)
-        show_text(f"New High Score!\nScore: {score}\nHigh Score: {high_score}", pal.GREEN)
-    else:
-        show_text(f"Game Over\nScore: {score}\nHigh Score: {high_score}")
+    draw(snake, apple, score, "High %s" % high_score)
+    wait_for_touch("Game over - touch to replay")
 
-    # Final wait for START to replay
-    while keypad.read() != START:
-        pass
-    return True
-
-while main() == True:
-    pass
-
-# Clear the screen when they quit
-canvas.fill(pal.BLACK)
+canvas.fill(BLACK)
 canvas.show()
