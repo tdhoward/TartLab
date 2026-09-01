@@ -219,11 +219,7 @@ class ElecrowDisplayController(ModernDisplayController):
 
 
 class ElecrowIDEView(ModernIDEView):
-    """Portrait status view without the qualified board's fixed width."""
-
-    def __init__(self, controller, lvgl):
-        super().__init__(controller, lvgl)
-        self._progress.set_size(max(1, controller.surface.width - 24), 20)
+    """Portrait status view using the shared geometry-aware layout."""
 
 
 class ElecrowPlatform(ModernPlatform):

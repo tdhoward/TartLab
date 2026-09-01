@@ -252,6 +252,10 @@ controller transition to drain LVGL, disable pointer input, and acquire the
 direct `RGB565_BE` surface. Before IDE mode, it must leave LVGL ownership clean
 for the normal IDE status view.
 
+The shared modern IDE view derives geometry-sized controls, including the
+update progress bar, from the controller's logical surface dimensions. Board
+adapters must not compensate for fixed widths in the shared view.
+
 The launcher itself never marks a boot healthy. Crossing into student code
 clears the protected-startup recovery streak so repeated student-app failures
 cannot force recovery, but does not commit a pending update. If student code

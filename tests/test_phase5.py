@@ -653,12 +653,10 @@ class ModernRenderingAdapterTests(unittest.TestCase):
 
         class Bar(Widget):
             def __init__(self):
+                super().__init__()
                 self.values = []
 
             def set_range(self, *unused):
-                pass
-
-            def set_size(self, *unused):
                 pass
 
             def set_value(self, value, animation):
@@ -675,9 +673,11 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             screen_load=lambda unused_screen: None,
         )
         controller = types.SimpleNamespace(acquire_ui=lambda: None)
+        controller.surface = types.SimpleNamespace(width=480, height=222)
 
         view = module.ModernIDEView(controller, lvgl)
         self.assertEqual(view._status.text, "")
+        self.assertEqual(bar.size, (420, 20))
         view.show_update_progress("TEST", 1, 3)
         view.show_app_error()
         view.show_app_error()

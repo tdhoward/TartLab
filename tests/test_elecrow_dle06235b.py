@@ -226,7 +226,7 @@ class ElecrowControllerTests(unittest.TestCase):
             surface=types.SimpleNamespace(width=320),
         )
         module.ElecrowIDEView(controller, lvgl)
-        self.assertEqual(bar.sizes, [(420, 20), (296, 20)])
+        self.assertEqual(bar.sizes, [(280, 20)])
 
 
 class ElecrowDriverSourceTests(unittest.TestCase):

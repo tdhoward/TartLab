@@ -285,7 +285,8 @@ class ModernIDEView:
         animation = getattr(lvgl, "ANIM", None)
         self._animation_off = getattr(animation, "OFF", False)
         self._progress.set_range(0, 1)
-        self._progress.set_size(420, 20)
+        progress_width = max(1, (controller.surface.width * 7) // 8)
+        self._progress.set_size(progress_width, 20)
         self._progress.align(lvgl.ALIGN.BOTTOM_MID, 0, -8)
         lvgl.screen_load(self._screen)
 
