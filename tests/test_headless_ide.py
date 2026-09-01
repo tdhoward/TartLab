@@ -368,6 +368,28 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
             self.assertEqual(
                 platform.ide_view.events[-1], ("brightness", 0.75))
 
+    def test_file_execution_wakes_the_modern_backlight_controller(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, unused_state, platform, ide, unused_logs, \
+                unused_errors = self.prepare(Path(temp) / "device")
+            platform.capabilities["lvgl_ui"] = True
+
+            class FakePowerController:
+                def __init__(self):
+                    self.wake_calls = 0
+
+                def wake(self):
+                    self.wake_calls += 1
+
+            controller = FakePowerController()
+            ide.power_controller = controller
+            ide.os = types.SimpleNamespace(dupterm=lambda unused_stream: None)
+
+            ide.pseudoREPL("pass", "student_app.py")
+            ide.pseudoREPL("pass", "console")
+
+            self.assertEqual(controller.wake_calls, 1)
+
     def test_modern_ide_schedules_power_policy_not_button_polling(self):
         with tempfile.TemporaryDirectory() as temp:
             unused_device, unused_state, platform, ide, unused_logs, \

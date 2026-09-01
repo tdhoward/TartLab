@@ -182,6 +182,17 @@ class ModernIDEBacklightController:
             self._platform.set_brightness(self.dim_brightness)
             self._dimmed = True
 
+    def wake(self):
+        """Restore normal brightness and restart the IDE inactivity clock."""
+        if not self._active:
+            return
+        now = self._ticks_ms()
+        self._touch_pending = False
+        self._last_activity = now
+        self._keep_touch_awake(now)
+        self._platform.set_brightness(self.max_brightness)
+        self._dimmed = False
+
     async def run(self, asyncio_module):
         """Run the policy until stopped by the IDE lifecycle."""
         self.start()

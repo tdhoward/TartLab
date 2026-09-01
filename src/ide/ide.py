@@ -27,6 +27,7 @@ IDE_BASE_DIR = '/ide'
 settings = {}
 repos = {}
 updates_in_progress = False
+power_controller = None
 
 class CaptureOutput(io.IOBase):
     def __init__(self):
@@ -72,6 +73,8 @@ replGlobals = {}
 def pseudoREPL(cmd, source):
     global replGlobals
     error = False
+    if source != 'console':
+        restore_app_execution_brightness()
     # Capture the output
     capture = CaptureOutput()
     try:
@@ -107,6 +110,17 @@ def pseudoREPL(cmd, source):
             res['fname'] = source
             res['err'], res['line'] = extract_error_and_line(cap, source)
         return res
+
+
+def restore_app_execution_brightness():
+    """Wake a dimmed modern IDE before running a file from the editor."""
+    if not platform.capabilities.get("lvgl_ui", False):
+        return
+    if power_controller is not None:
+        power_controller.wake()
+        return
+    from tartlabutils.modern_power import restore_normal_brightness
+    restore_normal_brightness(platform, settings)
 
 
 '''
@@ -813,7 +827,7 @@ def _cancel_background_task(task):
 
 
 def main():
-    global sta_if, ap_if, ip_address, softAP, app
+    global sta_if, ap_if, ip_address, softAP, app, power_controller
 
     power_controller = None
     power_task = None
@@ -840,6 +854,7 @@ def main():
     finally:
         if power_controller is not None:
             power_controller.stop()
+            power_controller = None
         _cancel_background_task(power_task)
         asyncio.run(app.stop())
         asyncio.new_event_loop()

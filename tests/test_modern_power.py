@@ -178,6 +178,28 @@ class ModernBacklightControllerTests(unittest.TestCase):
         controller.check()
         self.assertEqual(platform.brightness, [1.0, 0.2, 1.0])
 
+    def test_app_execution_wakes_and_restarts_the_inactivity_clock(self):
+        clock, input_device, platform, controller = self.controller()
+        controller.start()
+        clock["now"] = 1000
+        controller.check()
+
+        controller.wake()
+
+        self.assertEqual(platform.brightness, [1.0, 0.2, 1.0])
+        self.assertFalse(controller.dimmed)
+        input_device.press()
+        self.assertEqual(input_device.stop_calls, 0)
+        clock["now"] = 1999
+        controller.check()
+        self.assertEqual(platform.brightness, [1.0, 0.2, 1.0])
+        clock["now"] = 2998
+        controller.check()
+        self.assertEqual(platform.brightness, [1.0, 0.2, 1.0])
+        clock["now"] = 2999
+        controller.check()
+        self.assertEqual(platform.brightness, [1.0, 0.2, 1.0, 0.2])
+
     def test_platform_input_is_used_when_binding_cannot_enumerate_inputs(self):
         clock = {"now": 0}
         input_device = FakeInput()
