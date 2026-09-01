@@ -42,6 +42,37 @@ class PlatformContractTests(unittest.TestCase):
         self.platform_module.configure_legacy_paths(paths)
         self.assertEqual(paths, expected)
 
+    def test_protected_board_identity_selects_an_isolated_runtime_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            identity = Path(temporary) / "board.json"
+            identity.write_text(json.dumps({
+                "schema": 1,
+                "board_id": "lilygo_t_display_s3_pro",
+            }), encoding="utf-8")
+            self.assertEqual(
+                self.platform_module.board_runtime_path(str(identity)),
+                "/board/lilygo_t_display_s3_pro",
+            )
+            identity.write_text(
+                json.dumps({"board_id": "../unsafe"}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "board identity"):
+                self.platform_module.board_runtime_path(str(identity))
+
+    def test_board_runtime_precedes_release_root_and_student_imports(self):
+        paths = ["/device", "/lib", "/", "/files/user", "host-library"]
+        original = self.platform_module.board_runtime_path
+        self.platform_module.board_runtime_path = (
+            lambda: "/board/lilygo_t_display_s3_pro")
+        try:
+            self.platform_module.configure_legacy_paths(paths)
+        finally:
+            self.platform_module.board_runtime_path = original
+        self.assertEqual(paths, [
+            "/device", "/board/lilygo_t_display_s3_pro", "/lib", "/",
+            "/files/user", *self.platform_module.LEGACY_SEARCH_PATHS,
+            "host-library",
+        ])
+
     def test_legacy_adapter_exposes_hardware_through_the_contract(self):
         display = HeadlessDisplay(222, 480)
         pointer = HeadlessInput()

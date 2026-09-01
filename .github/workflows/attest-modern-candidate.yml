@@ -60,8 +60,8 @@ jobs:
       - name: Build qualification candidate twice
         shell: bash
         run: |
-          python makedist.py --output build/qualification/dist-one --clean --skip-web-build
-          python makedist.py --output build/qualification/dist-two --clean --skip-web-build
+          python makedist.py --output build/qualification/dist-one --clean --skip-web-build --board lilygo_t_display_s3_pro
+          python makedist.py --output build/qualification/dist-two --clean --skip-web-build --board lilygo_t_display_s3_pro
           python tools/build_modern_release.py --dist build/qualification/dist-one --output build/qualification/release --version "$RELEASE_TAG" --clean
           python tools/build_modern_release.py --dist build/qualification/dist-two --output build/qualification/release-two --version "$RELEASE_TAG" --clean
           python tools/compare_releases.py build/qualification/release build/qualification/release-two

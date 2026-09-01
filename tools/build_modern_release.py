@@ -30,7 +30,7 @@ from release_utils import (  # noqa: E402
 
 
 DEFAULT_PROFILE = ROOT / "profiles/lvgl-modern.json"
-DEFAULT_PACKAGES = ROOT / "tartlab_packages.json"
+DEFAULT_PACKAGES = ROOT / "modern_packages.json"
 MODERN_VERSION = re.compile(r"^modern-v[0-9]+\.[0-9]+(?:\.[0-9]+)?$")
 
 
@@ -172,7 +172,7 @@ def build_release(
         owned_paths.update(paths)
         payload = _payload_inventory(archive_path)
         payloads[package["name"]] = payload
-        package_entries.append({
+        package_entry = {
             "name": package["name"],
             "file_name": archive_path.name,
             "sha256": sha256_file(archive_path),
@@ -181,7 +181,21 @@ def build_release(
             "ownership": package.get("ownership", "system"),
             "archive_size": archive_path.stat().st_size,
             "expanded_size": sum(int(item["size"]) for item in payload),
-        })
+        }
+        if "selection" in package:
+            if package["selection"] != "board-id-subtree" or \
+                    package["target"] != "/board":
+                raise ValueError("Modern package has an invalid selection policy")
+            package_entry["selection"] = package["selection"]
+            selected_sizes: dict[str, int] = {}
+            for item in payload:
+                parts = Path(item["path"]).parts
+                if not parts:
+                    raise ValueError("Board-support payload has an empty path")
+                selected_sizes[parts[0]] = (
+                    selected_sizes.get(parts[0], 0) + int(item["size"]))
+            package_entry["selected_expanded_sizes"] = selected_sizes
+        package_entries.append(package_entry)
 
     dist_inventory = file_inventory(dist)
     required_paths = {
@@ -210,6 +224,20 @@ def build_release(
     if not boards or default_board_id not in {
             descriptor["id"] for descriptor in boards}:
         raise ValueError("modern release must include its qualified default board")
+    board_packages = [
+        item for item in package_entries
+        if item.get("selection") == "board-id-subtree"]
+    if len(board_packages) != 1 or board_packages[0]["name"] != "board-support":
+        raise ValueError("modern release requires one selected board-support package")
+    packaged_board_ids = {
+        Path(item["path"]).parts[0]
+        for item in payloads[board_packages[0]["name"]]
+        if Path(item["path"]).parts
+    }
+    expected_board_ids = {descriptor["id"] for descriptor in boards}
+    if packaged_board_ids != expected_board_ids:
+        raise ValueError(
+            "board-support payload differs from release-compatible boards")
 
     firmware_policies: dict[str, dict[str, Any]] = {}
     published_firmwares: dict[str, dict[str, object]] = {}

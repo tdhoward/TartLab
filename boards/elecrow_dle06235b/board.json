@@ -28,8 +28,12 @@
   },
   "selector": {
     "module": "elecrow_dle06235b_modern",
-    "source": "src/configs/elecrow_dle06235b_modern.py",
+    "source": "boards/elecrow_dle06235b/runtime/elecrow_dle06235b_modern.py",
     "protected_path": "/device/hdwconfig.py"
+  },
+  "runtime": {
+    "source": "boards/elecrow_dle06235b/runtime",
+    "target": "/board/elecrow_dle06235b"
   },
   "firmware": null,
   "qualification": null,

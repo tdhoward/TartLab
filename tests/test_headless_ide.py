@@ -433,6 +433,48 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
             self.assertEqual(FakePowerController.instances[0].stop_calls, 1)
             self.assertTrue(loop.tasks[0].cancelled)
 
+    def test_cleanup_does_not_cancel_the_current_power_task(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, unused_state, unused_platform, ide, unused_logs, \
+                unused_errors = self.prepare(Path(temp) / "device")
+
+            class FakeTask:
+                def __init__(self):
+                    self.cancel_calls = 0
+
+                def cancel(self):
+                    self.cancel_calls += 1
+
+            current = FakeTask()
+            background = FakeTask()
+            ide.asyncio = types.SimpleNamespace(current_task=lambda: current)
+
+            ide._cancel_background_task(current)
+            ide._cancel_background_task(background)
+
+            self.assertEqual(current.cancel_calls, 0)
+            self.assertEqual(background.cancel_calls, 1)
+
+    def test_cleanup_tolerates_pinned_runtime_self_cancel_rejection(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, unused_state, unused_platform, ide, unused_logs, \
+                unused_errors = self.prepare(Path(temp) / "device")
+
+            class SelfTask:
+                def cancel(self):
+                    raise RuntimeError("can't cancel self")
+
+            ide.asyncio = types.SimpleNamespace()
+            ide._cancel_background_task(SelfTask())
+
+            class BrokenTask:
+                def cancel(self):
+                    raise RuntimeError("unexpected cancellation failure")
+
+            with self.assertRaisesRegex(
+                    RuntimeError, "unexpected cancellation failure"):
+                ide._cancel_background_task(BrokenTask())
+
 
 if __name__ == "__main__":
     unittest.main()

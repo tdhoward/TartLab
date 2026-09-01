@@ -70,8 +70,8 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
-          python makedist.py --output build/promote-modern/dist-one --clean --skip-web-build
-          python makedist.py --output build/promote-modern/dist-two --clean --skip-web-build
+          python makedist.py --output build/promote-modern/dist-one --clean --skip-web-build --board lilygo_t_display_s3_pro
+          python makedist.py --output build/promote-modern/dist-two --clean --skip-web-build --board lilygo_t_display_s3_pro
           python tools/build_modern_release.py --dist build/promote-modern/dist-one --output build/promote-modern/release --version "$RELEASE_TAG" --clean
           python tools/build_modern_release.py --dist build/promote-modern/dist-two --output build/promote-modern/release-two --version "$RELEASE_TAG" --clean
           python tools/compare_releases.py build/promote-modern/release build/promote-modern/release-two

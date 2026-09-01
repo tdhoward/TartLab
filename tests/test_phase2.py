@@ -122,6 +122,17 @@ class DistributionBuildTests(unittest.TestCase):
             self.assertEqual(
                 item["sha256"], hashlib.sha256(b"line\n").hexdigest())
 
+    def test_distribution_stages_only_explicit_board_runtimes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            makedist.copy_board_runtimes(
+                output, ["lilygo_t_display_s3_pro"], False)
+            self.assertTrue((
+                output / "board/lilygo_t_display_s3_pro/"
+                "t_display_s3_pro_modern.py").is_file())
+            self.assertFalse(
+                (output / "board/elecrow_dle06235b").exists())
+
     def make_source(self, root):
         source = root / "src"
         for relative in (
@@ -350,13 +361,15 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
                     raise AssertionError("firmware must not be downloaded by OTA")
                 return True
 
-            async def install(filename, target, clear_first):
+            async def install(filename, target, clear_first, member_prefix=None):
+                self.assertIsNone(member_prefix)
                 installed.append((Path(filename).name, target, clear_first))
 
             old = (
                 updater.TMP_UPDATE_FOLDER, updater.check_for_update,
                 updater.download_asset, updater._free_space, updater.begin_update,
-                updater.set_update_pending_health, updater.update_folder,
+                updater.set_update_pending_health, updater.set_update_failed,
+                updater.update_folder,
                 updater.file_exists, updater.rmvdir, updater.mkdirs,
             )
             updater.TMP_UPDATE_FOLDER = (root / "staging").as_posix()
@@ -365,6 +378,7 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
             updater._free_space = lambda: 1_000_000
             updater.begin_update = lambda *args: begun.append(args)
             updater.set_update_pending_health = lambda: None
+            updater.set_update_failed = lambda error: None
             updater.update_folder = install
             updater.file_exists = lambda path: 2 if Path(path).is_dir() else (
                 1 if Path(path).is_file() else 0)
@@ -377,8 +391,8 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
                     updater.TMP_UPDATE_FOLDER, updater.check_for_update,
                     updater.download_asset, updater._free_space,
                     updater.begin_update, updater.set_update_pending_health,
-                    updater.update_folder, updater.file_exists, updater.rmvdir,
-                    updater.mkdirs,
+                    updater.set_update_failed, updater.update_folder,
+                    updater.file_exists, updater.rmvdir, updater.mkdirs,
                 ) = old
             self.assertEqual(result, updater.UPDATE_INSTALLED)
             self.assertEqual(downloaded, ["manifest", "package"])

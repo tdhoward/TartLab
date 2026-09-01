@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import base64
+import io
 import json
 from pathlib import Path
 import shutil
 import sys
 import tempfile
+import tarfile
 import types
 import unittest
 from unittest import mock
@@ -19,7 +21,7 @@ from build_modern_release import build_release  # noqa: E402
 from provision_modern import (  # noqa: E402
     CommandTransport, FIRMWARE_SHA256, LEGACY_FIRMWARE,
     LEGACY_IDENTITY_REGIONS, LEGACY_READ_CHUNK_SIZE, MODERN_REPOSITORY,
-    _verify_attestations, provision,
+    _extract_release_image, _verify_attestations, provision,
 )
 
 
@@ -118,6 +120,10 @@ class ModernProvisioningTests(unittest.TestCase):
         (cls.dist / "defaults/user").mkdir(parents=True)
         (cls.dist / "defaults/user/hello.py").write_text(
             "print('clean hello')\n", encoding="utf-8")
+        board = cls.dist / "board/lilygo_t_display_s3_pro"
+        board.mkdir(parents=True)
+        (board / "t_display_s3_pro_modern.py").write_text(
+            "def create_platform(): pass\n", encoding="utf-8")
         packages = root / "packages.json"
         packages.write_text(json.dumps([
             {
@@ -141,6 +147,14 @@ class ModernProvisioningTests(unittest.TestCase):
                 "clear_first": True,
                 "ownership": "system",
             },
+            {
+                "name": "board-support",
+                "source": "dist/board",
+                "target": "/board",
+                "clear_first": True,
+                "selection": "board-id-subtree",
+                "ownership": "system-board",
+            },
         ]), encoding="utf-8")
         cls.release = root / "release"
         build_release(
@@ -150,6 +164,28 @@ class ModernProvisioningTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.build.cleanup()
+
+    def test_provisioning_extracts_only_the_selected_board_subtree(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            release = root / "release"
+            release.mkdir()
+            archive_path = release / "board-support.tar"
+            with tarfile.open(
+                    archive_path, "w", format=tarfile.USTAR_FORMAT) as archive:
+                for name in ("board_a/platform.py", "board_b/platform.py"):
+                    content = name.encode("utf-8")
+                    info = tarfile.TarInfo(name)
+                    info.size = len(content)
+                    archive.addfile(info, io.BytesIO(content))
+            image = root / "image"
+            _extract_release_image(release, image, {"packages": [{
+                "file_name": "board-support.tar",
+                "target": "/board",
+                "selection": "board-id-subtree",
+            }]}, "board_b")
+            self.assertTrue((image / "board/board_b/platform.py").is_file())
+            self.assertFalse((image / "board/board_a").exists())
 
     def _complete_health(self, device):
         repos_path = device / "state/repos.json"
@@ -191,6 +227,9 @@ class ModernProvisioningTests(unittest.TestCase):
                     "schema": 1,
                     "board_id": "lilygo_t_display_s3_pro",
                 })
+            self.assertTrue((
+                device / "board/lilygo_t_display_s3_pro/"
+                "t_display_s3_pro_modern.py").is_file())
             self.assertEqual(
                 (device / "files/user/hello.py").read_text(encoding="utf-8"),
                 "print('clean hello')\n")

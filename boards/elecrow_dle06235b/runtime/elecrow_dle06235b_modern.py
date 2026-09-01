@@ -1,4 +1,4 @@
-"""Experimental TartLab platform for the Elecrow DLE06235B.
+"""Experimental TartLab board payload for the Elecrow DLE06235B.
 
 Board pins and ST77922 transport constraints live here so applications keep
 using the board-neutral :mod:`tartlabutils.platform` contract.
@@ -12,6 +12,9 @@ from tartlabutils.modern import (
     ModernPlatform,
     UI_OWNER,
 )
+
+
+IDE_BUTTON_PIN = None
 
 
 _WRITE_COLOR = 0x32
@@ -312,3 +315,7 @@ def create_elecrow_dle06235b_platform():
     platform._i2c_bus = i2c_bus
     platform._touch_device = touch_device
     return platform
+
+
+def create_platform():
+    return create_elecrow_dle06235b_platform()

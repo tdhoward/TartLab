@@ -236,8 +236,8 @@ jobs:
       - name: Build modern filesystem twice from clean outputs
         shell: bash
         run: |
-          python makedist.py --output build/modern-one/dist --clean --skip-web-build
-          python makedist.py --output build/modern-two/dist --clean --skip-web-build
+          python makedist.py --output build/modern-one/dist --clean --skip-web-build --board lilygo_t_display_s3_pro
+          python makedist.py --output build/modern-two/dist --clean --skip-web-build --board lilygo_t_display_s3_pro
 
       - name: Verify deterministic modern filesystem and adapter inputs
         run: >-

@@ -28,6 +28,7 @@ MODERN_PROFILE = "lvgl-modern"
 LEGACY_REPOSITORY = "tdhoward/tartlab"
 MODERN_REPOSITORY = "tdhoward/tartlab-modern-releases"
 DEFAULT_MODERN_BOARD_ID = "lilygo_t_display_s3_pro"
+BOARD_IDENTITY_FILE = "/device/board.json"
 MODERN_FIRMWARE_SHA256 = (
     "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab")
 
@@ -54,9 +55,26 @@ def _target_path(target_folder, archive_name):
     return path
 
 
+def _protected_board_id():
+    try:
+        with open(BOARD_IDENTITY_FILE, "r") as stream:
+            identity = ujson.load(stream)
+    except OSError:
+        return None
+    board_id = identity.get("board_id") if isinstance(identity, dict) else None
+    if not isinstance(board_id, str) or not board_id or \
+            any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_"
+                for character in board_id):
+        raise ValueError("Protected board identity is invalid")
+    return board_id
+
+
 def _modern_board_identity(repo):
     firmware_sha256 = repo.get("firmware_sha256")
     board_id = repo.get("board_id")
+    protected_board_id = _protected_board_id()
+    if board_id is None and protected_board_id is not None:
+        board_id = protected_board_id
     if board_id is None:
         if firmware_sha256 != MODERN_FIRMWARE_SHA256:
             raise ValueError("Modern release state has the wrong firmware identity")
@@ -69,6 +87,8 @@ def _modern_board_identity(repo):
             any(character not in "0123456789abcdef"
                 for character in firmware_sha256):
         raise ValueError("Modern release state has the wrong firmware identity")
+    if protected_board_id is not None and board_id != protected_board_id:
+        raise ValueError("Modern release state conflicts with protected board identity")
     return board_id, firmware_sha256
 
 
@@ -141,6 +161,32 @@ def validate_manifest(manifest):
             raise ValueError("Manifest targets protected state: " + target)
         if target == "/recovery" and package["clear_first"]:
             raise ValueError("Recovery package cannot be cleared in place")
+        selection = package.get("selection")
+        if selection is not None and (
+                selection != "board-id-subtree" or target != "/board" or
+                package["clear_first"] is not True):
+            raise ValueError("Invalid package selection policy")
+        if selection is not None and not isinstance(
+                package.get("selected_expanded_sizes"), dict):
+            raise ValueError("Selected package sizes are missing")
+        if selection is not None:
+            for board_id, expanded in package["selected_expanded_sizes"].items():
+                if not isinstance(board_id, str) or not board_id or \
+                        any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_"
+                            for character in board_id) or \
+                        not isinstance(expanded, int) or expanded < 0:
+                    raise ValueError("Selected package sizes are invalid")
+
+
+def _package_member_prefix(package, repo):
+    selection = package.get("selection")
+    if selection is None:
+        return None
+    unused_manifest, profile = release_contract(repo)
+    if profile != MODERN_PROFILE or selection != "board-id-subtree":
+        raise ValueError("Package selection requires a modern board identity")
+    board_id, unused_firmware = _modern_board_identity(repo)
+    return board_id + "/"
 
 
 async def check_for_update(repo):
@@ -214,10 +260,18 @@ async def download_asset(asset_url, target_file):
     raise OSError("Maximum download retries exceeded")
 
 
-def _required_install_space(manifest):
+def _required_install_space(manifest, repo=None):
     required = FILESYSTEM_RESERVE_BYTES
     for package in manifest:
-        expanded = package.get("expanded_size")
+        if package.get("selection") == "board-id-subtree":
+            if repo is None:
+                raise ValueError("Selected package size requires board identity")
+            board_id, unused_firmware = _modern_board_identity(repo)
+            expanded = package.get("selected_expanded_sizes", {}).get(board_id)
+            if expanded is None:
+                raise ValueError("Selected package size is missing for board identity")
+        else:
+            expanded = package.get("expanded_size")
         if expanded is None:
             filename = TMP_UPDATE_FOLDER + "/" + package["file_name"]
             expanded = uos.stat(filename)[6]
@@ -253,7 +307,7 @@ def sha256_hash(file_path):
     return "".join("{:02x}".format(byte) for byte in sha256.digest())
 
 
-def inspect_archive(filename, target_folder):
+def inspect_archive(filename, target_folder, member_prefix=None):
     paths = []
     terminated = False
     with open(filename, "rb") as tar:
@@ -278,7 +332,9 @@ def inspect_archive(filename, target_folder):
             size_text = header[124:136].split(b"\0", 1)[0].strip() or b"0"
             size = int(size_text, 8)
             if "PaxHeader" not in name:
-                paths.append(_target_path(target_folder, name.rstrip("/")))
+                path = _target_path(target_folder, name.rstrip("/"))
+                if member_prefix is None or name.startswith(member_prefix):
+                    paths.append(path)
             remaining = size + ((512 - size % 512) % 512)
             while remaining:
                 chunk = tar.read(min(1024, remaining))
@@ -290,12 +346,15 @@ def inspect_archive(filename, target_folder):
     return paths
 
 
-async def untar(filename, target_folder="/", overwrite=False, verbose=False, chunksize=4096):
-    inspect_archive(filename, target_folder)
+async def untar(filename, target_folder="/", overwrite=False, verbose=False,
+                chunksize=4096, member_prefix=None):
+    inspect_archive(filename, target_folder, member_prefix)
     with open(filename, "rb") as tar:
         for info in TarFile(fileobj=tar):
             await asyncio.sleep(0.01)
             if "PaxHeader" in info.name:
+                continue
+            if member_prefix is not None and not info.name.startswith(member_prefix):
                 continue
             target_path = _target_path(target_folder, info.name)
             if target_path == "/boot.py" and file_exists(PHASE1_MIGRATION_FILE) == 1:
@@ -318,16 +377,17 @@ async def untar(filename, target_folder="/", overwrite=False, verbose=False, chu
                 print("? %s" % target_path)
 
 
-async def update_folder(tar_file, target_folder, replace):
+async def update_folder(tar_file, target_folder, replace, member_prefix=None):
     log("Updating %s" % target_folder)
-    inspect_archive(tar_file, target_folder)
+    inspect_archive(tar_file, target_folder, member_prefix)
     if replace:
         log("Removing contents of %s" % target_folder)
         if file_exists(target_folder) == 2:
             rmvdir(target_folder)
         mkdirs(target_folder)
         await asyncio.sleep(0.25)
-    await untar(tar_file, target_folder, True, True)
+    await untar(
+        tar_file, target_folder, True, True, member_prefix=member_prefix)
     log("Success (%s)" % tar_file)
 
 
@@ -403,8 +463,10 @@ async def update_packages(repo, callback):
             filename = TMP_UPDATE_FOLDER + "/" + package["file_name"]
             if sha256_hash(filename) != package["sha256"]:
                 raise ValueError("Hash did not match: " + package["file_name"])
-            inspect_archive(filename, package["target"])
-        if _required_install_space(manifest) > _free_space():
+            inspect_archive(
+                filename, package["target"],
+                _package_member_prefix(package, repo))
+        if _required_install_space(manifest, repo) > _free_space():
             raise OSError("Not enough disk space to extract release safely")
         log("Downloaded files successfully.")
     except Exception as error:
@@ -431,7 +493,9 @@ async def update_packages(repo, callback):
                 log("Preserving installed recovery runtime")
                 step += 1
                 continue
-            await update_folder(filename, package["target"], package["clear_first"])
+            await update_folder(
+                filename, package["target"], package["clear_first"],
+                _package_member_prefix(package, repo))
             step += 1
         set_update_pending_health()
         clean_up()

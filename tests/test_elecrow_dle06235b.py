@@ -21,7 +21,7 @@ def load_source(name, path):
 _MODULE_NAMES = (
     "tartlabutils",
     "tartlabutils.modern",
-    "tartlabutils.elecrow_dle06235b",
+    "elecrow_dle06235b_modern",
 )
 _SAVED_MODULES = {name: sys.modules.get(name) for name in _MODULE_NAMES}
 try:
@@ -33,8 +33,8 @@ try:
         ROOT / "src/lib/tartlabutils/modern.py",
     )
     module = load_source(
-        "tartlabutils.elecrow_dle06235b",
-        ROOT / "src/lib/tartlabutils/elecrow_dle06235b.py",
+        "elecrow_dle06235b_modern",
+        ROOT / "boards/elecrow_dle06235b/runtime/elecrow_dle06235b_modern.py",
     )
 finally:
     for name, saved in _SAVED_MODULES.items():

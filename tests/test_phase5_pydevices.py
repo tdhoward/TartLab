@@ -2,6 +2,7 @@ import copy
 import importlib.util
 from pathlib import Path
 import sys
+import tempfile
 import types
 import unittest
 
@@ -12,7 +13,11 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from phase5_benchmark import validate_result
 from phase5_pydevices_device import SELECTOR_PATHS, STAGED_FILES
-from pydevices_modern_firmware import check_lock, docker_command
+from pydevices_modern_firmware import (
+    check_lock,
+    docker_command,
+    sha256_source_file,
+)
 
 
 def load_adapter():
@@ -23,7 +28,7 @@ def load_adapter():
     modern_spec.loader.exec_module(modern)
     package = types.ModuleType("tartlabutils")
     package.__path__ = []
-    path = ROOT / "src/lib/tartlabutils/pydevices_modern.py"
+    path = ROOT / "firmware/lvgl-modern/pydevices/runtime/pydevices_modern.py"
     spec = importlib.util.spec_from_file_location("phase5_pydevices_adapter", path)
     module = importlib.util.module_from_spec(spec)
     old_package = sys.modules.get("tartlabutils")
@@ -178,6 +183,7 @@ class PyDevicesRenderingAdapterTests(unittest.TestCase):
         platform = self.module.PyDevicesModernPlatform(
             self.controller, self.display, object(), self.app, lvgl=self.lvgl)
         self.assertTrue(platform.capabilities["direct_rgb565"])
+        self.assertFalse(platform.capabilities["ide_button"])
         self.assertFalse(platform.capabilities["async_direct_rgb565"])
         self.assertEqual(
             platform.capabilities["phase5_benchmark_profile"], "pydevices")
@@ -189,13 +195,27 @@ class PyDevicesRenderingAdapterTests(unittest.TestCase):
 
 
 class PyDevicesFirmwareLockTests(unittest.TestCase):
+    def test_locked_source_hash_is_checkout_line_ending_independent(self):
+        with tempfile.TemporaryDirectory() as temp:
+            lf = Path(temp) / "lf.patch"
+            crlf = Path(temp) / "crlf.patch"
+            lf.write_bytes(b"first\nsecond\n")
+            crlf.write_bytes(b"first\r\nsecond\r\n")
+            self.assertEqual(
+                sha256_source_file(lf), sha256_source_file(crlf))
+
     def test_reversible_staging_covers_both_protected_selectors(self):
         self.assertEqual(
             set(SELECTOR_PATHS), {"/device/hdwconfig.py", "/hdwconfig.py"})
         self.assertEqual(set(STAGED_FILES), {
-            "/lib/tartlabutils/pydevices_modern.py",
+            "/lib/pydevices_modern.py",
+            "/lib/lilygo_t_display_s3_pro_pydevices.py",
             "/configs/t_display_s3_pro_pydevices_modern.py",
         })
+
+    def test_generic_pydevices_adapter_has_no_board_factory(self):
+        module = load_adapter()
+        self.assertFalse(hasattr(module, "create_t_display_s3_pro_platform"))
 
     def test_lock_pins_complete_minimal_research_recipe(self):
         lock = check_lock()
@@ -219,6 +239,14 @@ class PyDevicesFirmwareLockTests(unittest.TestCase):
         self.assertEqual(
             lock["production_selection"]["comparison_outcome"],
             "lcd_bus-reference-wins",
+        )
+        self.assertEqual(
+            {item["path"] for item in lock["application_adapter"]["inputs"]},
+            {
+                "firmware/lvgl-modern/pydevices/runtime/pydevices_modern.py",
+                "firmware/lvgl-modern/pydevices/runtime/lilygo_t_display_s3_pro_pydevices.py",
+                "firmware/lvgl-modern/pydevices/runtime/t_display_s3_pro_pydevices_modern.py",
+            },
         )
 
     def test_container_command_is_digest_pinned_and_non_flashing(self):

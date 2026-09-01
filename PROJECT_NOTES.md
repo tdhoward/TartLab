@@ -54,8 +54,10 @@ board imports.
 
 The selected hardware module is a local device property. `src/hdwconfig.py`
 provides the clean-install default, while `/device/hdwconfig.py` is
-authoritative after migration. OTA packages may replace board-support modules
-under `/configs`, but must not overwrite the local selector or calibration.
+authoritative after migration. Provisioning also records the board ID in
+protected `/device/board.json`. The runtime adds only `/board/<board_id>` to
+the import path; OTA may replace that selected board-support subtree, but must
+not overwrite the local selector, identity, or calibration.
 
 Host-side modern tooling discovers `boards/*/board.json` rather than growing
 new board constants in each script. New release candidates carry a schema-2
@@ -81,6 +83,7 @@ fields as the app API.
 | Paths | Ownership |
 | --- | --- |
 | `/boot.py`, `/main.py`, `/ide`, `/configs`, managed `/lib`, `/files/help`, `/files/assets`, `/recovery` | Release-managed; replace only through the tested update transaction. |
+| `/board/<board_id>` | Release-managed board shim and defaults; only the protected device identity's subtree may be installed. |
 | `/device` | Authoritative board identity and calibration; never cleared by OTA. |
 | `/files/user` | Student work; never cleared or seeded over existing content. |
 | `/state` | Settings, repository/profile state, selected app, migrations, boot/update health, and logs; migrate deliberately. |
@@ -181,8 +184,9 @@ current release status comes from the profile JSON and this summary.
 ## Modern touchscreen startup and IDE power behavior
 
 This section records the approved implementation plan. The launcher, confined
-local app chooser, and IDE inactivity controller are implemented and host
-tested as of 2026-08-31, but are not yet physically or release qualified.
+local app chooser, and IDE inactivity controller are implemented, host tested,
+and engineering-smoked on the T-Display-S3 Pro as of 2026-08-31, but are not
+yet exact-candidate physically or release qualified.
 
 ### Profile boundary and startup policy
 
@@ -308,6 +312,119 @@ The source implementation and Tier 1 host coverage are complete:
   are implemented; and
 - modern IDE mode no longer schedules the legacy button-polling task.
 
+A non-qualifying physical engineering smoke on the qualified T-Display-S3 Pro
+found and corrected three integration defects that the original host fakes did
+not expose:
+
+- the CST226 pointer adapter pre-rotated coordinates that LVGL rotated again,
+  moving visible launcher taps outside their button hitboxes; the adapter now
+  leaves raw portrait coordinates for LVGL's display rotation; and
+- the pinned LVGL binding does not expose `indev_get_next()`, so the power
+  controller now falls back to the platform's native input object when
+  attaching its activity callback; and
+- on this CST226SE fixture, the one-time disable-autosleep write stopped being
+  effective after roughly one minute of inactivity. The T-Display-S3 Pro
+  adapter now reasserts that setting every ten seconds while IDE mode owns the
+  touch input. The policy stays outside the frozen firmware driver because the
+  observed persistence behavior is not yet known to apply to every CST226
+  variant or board.
+
+The follow-up cleanup preserves the intended hardware boundary. Reusable LVGL
+ownership, surface, view, and platform behavior remains in
+`tartlabutils.modern`; T-Display-S3 Pro pins, buses, display/touch construction,
+rotation, and the CST226SE keep-awake policy now live in
+`boards/lilygo_t_display_s3_pro/runtime`. The Elecrow adapter follows the same
+board-owned layout. Rejected PyDevices comparison adapters live under
+`firmware/lvgl-modern/pydevices/runtime`, outside production `src`, and neither
+generic modern platform class assumes the LilyGO GPIO 12 button. IDE teardown
+also avoids
+cancelling the task that is currently unwinding, so a serial interrupt does not
+turn the diagnostic stop into `RuntimeError: can't cancel self`.
+
+The rejected PyDevices comparison lock now canonicalizes line endings for its
+reviewed text inputs while retaining raw byte hashes for firmware artifacts.
+This removes checkout-dependent CRLF failures without weakening binary
+identity checks.
+
+Board support now has a dedicated package and filesystem contract. A modern
+distribution explicitly names its boards and stages their payloads under
+`board/<board_id>`; it no longer discovers production board modules merely
+because they happen to be under `src/lib`. The release publishes one signed
+`board-support.tar` containing the compatible board subtrees. Adult
+provisioning, normal OTA, and recovery download and validate that complete
+archive but apply only the subtree matching protected `/device/board.json`.
+Repository state is cross-checked against that protected identity, `/board` is
+the only writable target for this selection policy, and a missing or conflicting
+subtree rejects the update before installation. This keeps one release/package
+flow while avoiding persistent off-target board shims on student devices.
+Authenticated per-board expanded-size values keep extraction-space checks
+specific to the selected board even though download-space checks cover the
+whole archive.
+
+The first bridge from a selection-unaware modern updater must keep the board
+archive limited to the already-qualified default board. Stable multi-board
+archives wait until the selection-aware updater and recovery client are the
+supported baseline. The detailed source, provisioning, OTA, recovery, and
+new-board rules are maintained in `BOARD_SUPPORT.md`.
+
+The refactored production modules were then staged onto the COM3 engineering
+fixture without replacing its qualified firmware. The device timed out through
+the launcher and reached `HEALTHY mode=IDE`. Deliberately entering the serial
+diagnostic REPL while that IDE task was running left `/state/boot.json` healthy
+in IDE mode with zero consecutive failures, rather than recording the previous
+`can't cancel self` exception. A normal reset afterward again reached
+`HEALTHY mode=IDE`. This is targeted working-tree evidence, not candidate
+qualification.
+
+The later board-package layout was also exercised directly on COM3. Protected
+`/device/board.json` selected `/board/lilygo_t_display_s3_pro`; after the new
+platform boundary and board payload were staged, the obsolete copies under
+`/lib/tartlabutils` and `/configs` were removed. An uninterrupted reset still
+reached `HEALTHY mode=IDE`, demonstrating that startup used only the dedicated
+board-owned subtree. Repeated diagnostic REPL entry during staging temporarily
+raised the boot-failure counter, so recovery retry cleared that engineering
+artifact before the final uninterrupted observation. This remains
+working-tree smoke evidence, not candidate qualification.
+
+A subsequent packaging review closed two additional fail-closed gaps. The
+selected board runtime now precedes the release root and `/files/user` on the
+module search path, preventing student code from shadowing the module imported
+by protected `/device/hdwconfig.py`. Normal OTA and recovery also reject a
+selected board package whose authenticated per-board expanded-size entry is
+missing or malformed instead of falling back to the complete archive's
+compressed size.
+
+The corrected modules were staged on COM3 as another non-qualifying
+working-tree smoke. Before the fix, the selected board path was observed after
+`/files/user`; afterward it was index 1 while `/files/user` was index 3, and the
+loaded selector module still came only from
+`/board/lilygo_t_display_s3_pro`. The native probe reported the 480 by 222
+ST7796/CST226 platform in UI ownership with no pending transfer, and the
+touch-controller identity probe completed. A fresh 100-cycle renderer probe
+could not reopen the native USB endpoint after the preceding diagnostic, so it
+did not produce a new result and the earlier working-tree 100-cycle observation
+was not reused as a current pass. Repeated diagnostic interruptions again
+tripped the expected recovery threshold; recovery retry cleared that artifact,
+and an uninterrupted launcher timeout ended at `HEALTHY mode=IDE`. None of
+these observations are exact-candidate or release qualification.
+
+Deferred guidance for updating the existing lvgl-micropython contribution is
+preserved in [CST226 upstream recommendations](CST226_UPSTREAM_RECOMMENDATIONS.md).
+The upstream PR is not a dependency of the TartLab local fix or qualification
+sequence.
+
+With these corrections installed, physical taps selected APP mode, navigated a
+nested chooser folder, confirmed and ran the selected app, and reached healthy
+APP state. The device-side power smoke observed timeout dimming, a consumed
+first wake touch, a later delivered click, repeated dim/wake behavior, and
+normal-brightness teardown. An unattended reset returned through the launcher
+to a healthy IDE. A later real-IDE test remained idle for more than 65 seconds
+after dimming and then woke on the first touch. That final test used the
+qualified `187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`
+firmware and an application-only working-tree candidate; the frozen driver and
+firmware lock were unchanged. This was not a clean tagged candidate, attested
+artifact, or release qualification record.
+
 The feature is not complete or release-qualified. The remaining sequence is:
 
 1. Run the clean Tier 0 build/static checks and Tier 2 pinned-MicroPython
@@ -333,10 +450,10 @@ Automated coverage must prove modern IDE and APP selection, the IDE timeout,
 touch-unavailable fallback, recovery precedence, confined file navigation,
 filename validation, confirmation/cancellation behavior, selected-app state
 updates, and cleanup before LVGL-to-direct ownership transfer. Backlight tests
-must cover timeout, activity postponement, wake-touch consumption, settings
-validation, APP handoff, error handling, and repeated task teardown. Legacy
-tests must prove that held-button startup and brightness behavior are
-unchanged.
+must cover timeout, activity postponement, wake-touch consumption, long-idle
+touch keep-awake, settings validation, APP handoff, error handling, and
+repeated task teardown. Legacy tests must prove that held-button startup and
+brightness behavior are unchanged.
 
 The Tier 1 suite now covers those behaviors. Tier 2 and exact-candidate CI must
 still pass before the physical result can be treated as release evidence.

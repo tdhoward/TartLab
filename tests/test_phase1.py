@@ -389,7 +389,7 @@ class UpdaterFailureTests(unittest.TestCase):
         updater = self.updater
         logs = []
         old = (updater.inspect_archive, updater.file_exists, updater.untar, updater.log)
-        updater.inspect_archive = lambda filename, target: []
+        updater.inspect_archive = lambda *args: []
         updater.file_exists = lambda path: 0
 
         async def fail(*args, **kwargs):
@@ -420,6 +420,93 @@ class UpdaterFailureTests(unittest.TestCase):
                 updater.file_exists, updater.rmvdir = old
             self.assertEqual(removed, [])
 
+    def test_board_package_inspection_selects_only_provisioned_subtree(self):
+        with tempfile.TemporaryDirectory() as temp:
+            archive = Path(temp) / "boards.tar"
+            with tarfile.open(archive, "w", format=tarfile.USTAR_FORMAT) as output:
+                for name in ("board_a/platform.py", "board_b/platform.py"):
+                    content = name.encode("utf-8")
+                    info = tarfile.TarInfo(name)
+                    info.size = len(content)
+                    output.addfile(info, io.BytesIO(content))
+            self.assertEqual(
+                self.updater.inspect_archive(
+                    str(archive), "/board", "board_b/"),
+                ["/board/board_b/platform.py"],
+            )
+
+    def test_board_selection_manifest_is_confined_to_board_target(self):
+        self.updater.validate_manifest([{
+            "file_name": "board-support.tar", "sha256": "0",
+            "target": "/board", "clear_first": True,
+            "selection": "board-id-subtree",
+            "selected_expanded_sizes": {"board_a": 123},
+        }])
+        with self.assertRaisesRegex(ValueError, "selection"):
+            self.updater.validate_manifest([{
+                "file_name": "bad.tar", "sha256": "0",
+                "target": "/lib", "clear_first": True,
+                "selection": "board-id-subtree",
+                "selected_expanded_sizes": {"board_a": 123},
+            }])
+
+    def test_board_package_space_uses_only_selected_subtree(self):
+        identity = self.updater._modern_board_identity
+        self.updater._modern_board_identity = lambda repo: ("board_b", "a" * 64)
+        try:
+            required = self.updater._required_install_space([{
+                "selection": "board-id-subtree",
+                "selected_expanded_sizes": {"board_a": 1000, "board_b": 25},
+            }], {})
+        finally:
+            self.updater._modern_board_identity = identity
+        self.assertEqual(required, self.updater.FILESYSTEM_RESERVE_BYTES + 25)
+
+    def test_board_package_space_requires_selected_board_metadata(self):
+        identity = self.updater._modern_board_identity
+        self.updater._modern_board_identity = lambda repo: ("board_b", "a" * 64)
+        try:
+            with self.assertRaisesRegex(ValueError, "missing for board identity"):
+                self.updater._required_install_space([{
+                    "selection": "board-id-subtree",
+                    "selected_expanded_sizes": {"board_a": 1000},
+                }], {})
+        finally:
+            self.updater._modern_board_identity = identity
+
+    def test_board_package_rejects_invalid_selected_size_metadata(self):
+        with self.assertRaisesRegex(ValueError, "sizes are invalid"):
+            self.updater.validate_manifest([{
+                "file_name": "board-support.tar", "sha256": "0",
+                "target": "/board", "clear_first": True,
+                "selection": "board-id-subtree",
+                "selected_expanded_sizes": {"../board_a": 123},
+            }])
+        with self.assertRaisesRegex(ValueError, "sizes are invalid"):
+            self.updater.validate_manifest([{
+                "file_name": "board-support.tar", "sha256": "0",
+                "target": "/board", "clear_first": True,
+                "selection": "board-id-subtree",
+                "selected_expanded_sizes": {"board_a": -1},
+            }])
+
+    def test_modern_update_cross_checks_protected_board_identity(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            identity = Path(temporary) / "board.json"
+            identity.write_text(
+                json.dumps({"schema": 1, "board_id": "board_a"}),
+                encoding="utf-8")
+            old = self.updater.BOARD_IDENTITY_FILE
+            self.updater.BOARD_IDENTITY_FILE = str(identity)
+            try:
+                with self.assertRaisesRegex(ValueError, "conflicts"):
+                    self.updater._modern_board_identity({
+                        "board_id": "board_b",
+                        "firmware_sha256": "a" * 64,
+                    })
+            finally:
+                self.updater.BOARD_IDENTITY_FILE = old
+
     def test_recovery_boot_gate_is_preserved_after_phase1_migration(self):
         updater = self.updater
         self.assertEqual(updater.PHASE1_MIGRATION_FILE, "/state/phase1_migration.json")
@@ -442,6 +529,38 @@ class RecoveryUpdaterTests(unittest.TestCase):
             self.recovery_update._target_path("/", "app.py")
         with self.assertRaises(ValueError):
             self.recovery_update._target_path("/ide", "../state/settings.json")
+
+    def test_recovery_board_package_selects_only_matching_subtree(self):
+        with tempfile.TemporaryDirectory() as temp:
+            archive = Path(temp) / "boards.tar"
+            with tarfile.open(archive, "w", format=tarfile.USTAR_FORMAT) as output:
+                for name in ("board_a/platform.py", "board_b/platform.py"):
+                    content = name.encode("utf-8")
+                    info = tarfile.TarInfo(name)
+                    info.size = len(content)
+                    output.addfile(info, io.BytesIO(content))
+            self.assertEqual(
+                self.recovery_update._tar_members(
+                    str(archive), "/board", False, "board_a/"),
+                ["/board/board_a/platform.py"],
+            )
+
+    def test_recovery_cross_checks_protected_board_identity(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            identity = Path(temporary) / "board.json"
+            identity.write_text(
+                json.dumps({"schema": 1, "board_id": "board_a"}),
+                encoding="utf-8")
+            old = self.recovery_update.BOARD_IDENTITY_FILE
+            self.recovery_update.BOARD_IDENTITY_FILE = str(identity)
+            try:
+                with self.assertRaisesRegex(ValueError, "conflicts"):
+                    self.recovery_update._modern_board_identity({
+                        "board_id": "board_b",
+                        "firmware_sha256": "a" * 64,
+                    })
+            finally:
+                self.recovery_update.BOARD_IDENTITY_FILE = old
 
     def test_recovery_extractor_reads_verified_tar_shape(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -602,7 +721,7 @@ class RecoveryUpdaterTests(unittest.TestCase):
                 2 if Path(path).is_dir() else (1 if Path(path).is_file() else 0))
             updater._mkdirs = lambda path: os.makedirs(path, exist_ok=True)
             updater._tar_members = lambda *args: ["/main.py"]
-            updater._required_install_space = lambda manifest: 1
+            updater._required_install_space = lambda manifest, repo=None: 1
             updater._free_space = lambda: 1_000_000
             updater._install_verified_packages = install
             try:
@@ -668,8 +787,9 @@ class RecoveryUpdaterTests(unittest.TestCase):
         updater._write_json = lambda path, value: writes.append(
             json.loads(json.dumps(value)))
         updater._kind = lambda path: 0
-        updater._tar_members = lambda path, target, extract=False: extracted.append(
-            (Path(path).name, target, extract))
+        updater._tar_members = lambda path, target, extract=False, \
+                member_prefix=None: extracted.append(
+                    (Path(path).name, target, extract, member_prefix))
         updater._remove_tree = removed.append
         try:
             result = updater._install_verified_packages(
@@ -678,7 +798,7 @@ class RecoveryUpdaterTests(unittest.TestCase):
             (updater._read_json, updater._write_json, updater._kind,
              updater._tar_members, updater._remove_tree) = old
         self.assertEqual(result, "corrective")
-        self.assertEqual(extracted, [("next.tar", "/files/help", True)])
+        self.assertEqual(extracted, [("next.tar", "/files/help", True, None)])
         self.assertEqual(writes[-1]["status"], "pending_health")
         self.assertEqual(writes[-1]["completed_packages"], ["done.tar", "next.tar"])
         self.assertEqual(removed, [updater.TEMP_DIR])

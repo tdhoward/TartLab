@@ -3,6 +3,11 @@
 Each child directory contains one `board.json` descriptor. Directories are
 discovered automatically; there is no central board list to edit.
 
+Production runtime shims live beside the descriptor in `runtime/`. They are
+staged only when a distribution explicitly selects that board and are packaged
+under the matching `board-support.tar` subtree; they do not belong in
+`src/lib/tartlabutils`.
+
 Use `python tools/check_board_catalog.py` after changing a descriptor. See
 [`BOARD_SUPPORT.md`](../BOARD_SUPPORT.md) for the schema semantics, lifecycle,
 source layout, and new-board workflow.

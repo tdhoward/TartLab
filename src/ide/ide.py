@@ -784,6 +784,32 @@ async def start_ide_server():
     log("HEALTHY mode=IDE update_committed=%s" % committed)
 
 
+def _cancel_background_task(task):
+    """Cancel a task unless teardown is currently running inside that task."""
+    if task is None:
+        return
+    current_task = getattr(asyncio, "current_task", None)
+    if current_task is not None:
+        try:
+            if current_task() is task:
+                return
+        except Exception:
+            # Some constrained asyncio ports expose current_task only while a
+            # loop is actively dispatching. Cancellation is still safe when
+            # no current task can be reported.
+            pass
+    cancel = getattr(task, "cancel", None)
+    if cancel is not None:
+        try:
+            cancel()
+        except RuntimeError as error:
+            # Pinned MicroPython can enter this cleanup from the interrupted
+            # task without exposing asyncio.current_task(). Treat only its
+            # explicit self-cancellation rejection as an already-stopped task.
+            if "can't cancel self" not in str(error):
+                raise
+
+
 def main():
     global sta_if, ap_if, ip_address, softAP, app
 
@@ -812,10 +838,7 @@ def main():
     finally:
         if power_controller is not None:
             power_controller.stop()
-        if power_task is not None:
-            cancel = getattr(power_task, "cancel", None)
-            if cancel is not None:
-                cancel()
+        _cancel_background_task(power_task)
         asyncio.run(app.stop())
         asyncio.new_event_loop()
 

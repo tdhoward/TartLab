@@ -335,6 +335,7 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
         package_names.add(name)
         filename = package.get("file_name")
         target = package.get("target")
+        selection = package.get("selection")
         if not isinstance(filename, str) or Path(filename).name != filename or \
                 not filename.endswith(".tar"):
             raise ValueError("modern package filename is unsafe")
@@ -342,6 +343,10 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
                 not target.startswith("/") or ".." in Path(target).parts or \
                 (target != "/" and target != "/" + target.strip("/")):
             raise ValueError("modern package target is unsafe")
+        if selection is not None and (
+                selection != "board-id-subtree" or name != "board-support" or
+                target != "/board" or package.get("clear_first") is not True):
+            raise ValueError("modern package selection policy is invalid")
         archive_path = release / filename
         if archive_path.name not in checksums:
             raise ValueError("modern package is not checksum authenticated")
@@ -372,6 +377,22 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
                 })
         if actual_payload != payloads.get(name):
             raise ValueError("Modern payload inventory mismatch: %s" % name)
+        if selection == "board-id-subtree":
+            payload_boards = {
+                Path(item["path"]).parts[0] for item in actual_payload
+                if Path(item["path"]).parts
+            }
+            if payload_boards != set(published_firmwares):
+                raise ValueError(
+                    "board-support payload differs from compatible boards")
+            selected_sizes: dict[str, int] = {}
+            for item in actual_payload:
+                board_id = Path(item["path"]).parts[0]
+                selected_sizes[board_id] = (
+                    selected_sizes.get(board_id, 0) + int(item["size"]))
+            if package.get("selected_expanded_sizes") != selected_sizes:
+                raise ValueError(
+                    "board-support selected expanded sizes differ")
         expanded = sum(item["size"] for item in actual_payload)
         if expanded != package.get("expanded_size"):
             raise ValueError("Modern expanded size mismatch: %s" % name)
@@ -387,6 +408,11 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
     if "/defaults/user/hello.py" not in owned_paths:
         raise ValueError(
             "modern release has no authenticated clean user defaults")
+    selected_packages = [
+        item for item in packages
+        if item.get("selection") == "board-id-subtree"]
+    if len(selected_packages) != 1:
+        raise ValueError("modern release has no unique board-support package")
 
     recorded_dist = json.loads(
         (release / "dist_inventory.json").read_text(encoding="utf-8"))

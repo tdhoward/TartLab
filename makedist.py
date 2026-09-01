@@ -20,6 +20,7 @@ import sys
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "tools"))
 from release_utils import canonical_source_bytes, ensure_safe_output, file_inventory
+from board_catalog import select_board
 
 
 IDE_FOLDER = "ide"
@@ -85,6 +86,22 @@ def copy_top_level(source: Path, target: Path, minify_python: bool = False) -> N
             copy_file(path, target / path.name, minify_python)
 
 
+def copy_board_runtimes(output: Path, board_ids, minify_python: bool) -> None:
+    """Copy only explicitly selected board payloads into the distribution."""
+    seen = set()
+    for board_id in board_ids:
+        if board_id in seen:
+            raise ValueError("duplicate board runtime: %s" % board_id)
+        seen.add(board_id)
+        descriptor = select_board(board_id)
+        runtime = descriptor.get("runtime")
+        if not isinstance(runtime, dict):
+            raise ValueError("board has no runtime payload: %s" % board_id)
+        source = ROOT / runtime["source"]
+        target = output / runtime["target"].strip("/")
+        copy_tree(source, target, minify_python)
+
+
 def npm_executable() -> str:
     candidates = ("npm.cmd", "npm") if os.name == "nt" else ("npm", "npm.cmd")
     for candidate in candidates:
@@ -129,6 +146,7 @@ def build_distribution(
         source: Path, output: Path, *, clean: bool = False,
         minify_python: bool = True, build_web: bool = True,
         install_web_dependencies: bool = False, epoch: int | None = None,
+        board_ids=(),
 ) -> dict[str, object]:
     source = source.resolve()
     output = prepare_output(output, source, clean)
@@ -151,6 +169,7 @@ def build_distribution(
     # genuinely empty filesystem without weakening protected-path ownership.
     copy_tree(source / "files" / "user", output / "defaults" / "user", False)
     copy_tree(source / "lib", output / "lib", minify_python)
+    copy_board_runtimes(output, board_ids, minify_python)
     copy_top_level(source / IDE_FOLDER, output / IDE_FOLDER, minify_python)
     copy_tree(web_dist, output / IDE_FOLDER / WEB_FOLDER, False)
     compress_large_files(output / IDE_FOLDER / WEB_FOLDER, epoch)
@@ -164,6 +183,7 @@ def build_distribution(
         "output": str(output),
         "inventory_sha256": hashlib.sha256(json.dumps(
             inventory, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+        "board_ids": sorted(set(board_ids)),
     }
 
 
@@ -184,6 +204,9 @@ def parse_args() -> argparse.Namespace:
         "--install-web-dependencies", action="store_true",
         help="run npm ci before the web build")
     parser.add_argument("--source-date-epoch", type=int)
+    parser.add_argument(
+        "--board", action="append", default=[], dest="board_ids",
+        help="include one board-owned runtime payload (repeatable)")
     return parser.parse_args()
 
 
@@ -194,7 +217,7 @@ def main() -> None:
         minify_python=not args.no_minify,
         build_web=not args.skip_web_build,
         install_web_dependencies=args.install_web_dependencies,
-        epoch=args.source_date_epoch)
+        epoch=args.source_date_epoch, board_ids=args.board_ids)
     print(json.dumps(result, indent=2, sort_keys=True))
 
 

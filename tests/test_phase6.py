@@ -155,6 +155,10 @@ class ModernReleaseTests(unittest.TestCase):
         dist = root / "dist"
         dist.mkdir()
         (dist / "main.py").write_text("print('modern')\n", encoding="utf-8")
+        board = dist / "board/lilygo_t_display_s3_pro"
+        board.mkdir(parents=True)
+        (board / "t_display_s3_pro_modern.py").write_text(
+            "def create_platform(): pass\n", encoding="utf-8")
         package_map = [{
             "name": "rootfiles",
             "source": "dist/*",
@@ -162,6 +166,14 @@ class ModernReleaseTests(unittest.TestCase):
             "clear_first": False,
             "ownership": "system",
         }]
+        package_map.append({
+            "name": "board-support",
+            "source": "dist/board",
+            "target": "/board",
+            "clear_first": True,
+            "selection": "board-id-subtree",
+            "ownership": "system-board",
+        })
         if include_clean_defaults:
             (dist / "defaults/user").mkdir(parents=True)
             (dist / "defaults/user/hello.py").write_text(
@@ -215,7 +227,7 @@ class ModernReleaseTests(unittest.TestCase):
             result = check_modern_release(
                 release, "lvgl-modern", self.firmware_sha256, dist=dist)
             self.assertFalse(result["mutation_performed"])
-            self.assertEqual(result["packages"], 2)
+            self.assertEqual(result["packages"], 3)
             self.assertEqual(result["published_provenance_assets"], 3)
             self.assertEqual(result["support_window_floor"], "v0.13")
             support_window = json.loads(
@@ -259,6 +271,11 @@ class ModernReleaseTests(unittest.TestCase):
             (dist / "defaults/user").mkdir(parents=True)
             (dist / "defaults/user/hello.py").write_text(
                 "pass\n", encoding="utf-8")
+            for board_id in (default["id"], candidate["id"]):
+                board = dist / "board" / board_id
+                board.mkdir(parents=True)
+                (board / "platform.py").write_text(
+                    "pass\n", encoding="utf-8")
             packages = root / "packages.json"
             packages.write_text(json.dumps([
                 {
@@ -269,6 +286,12 @@ class ModernReleaseTests(unittest.TestCase):
                     "name": "defaults", "source": "dist/defaults",
                     "target": "/defaults", "clear_first": True,
                     "ownership": "system",
+                },
+                {
+                    "name": "board-support", "source": "dist/board",
+                    "target": "/board", "clear_first": True,
+                    "selection": "board-id-subtree",
+                    "ownership": "system-board",
                 },
             ]), encoding="utf-8")
             release = root / "release"

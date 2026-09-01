@@ -11,6 +11,27 @@ LEGACY_SEARCH_PATHS = (
     "/lib/pydevices/touch_drv",
     "/lib/pydevices/add_ons",
 )
+BOARD_IDENTITY_FILE = "/device/board.json"
+BOARD_RUNTIME_ROOT = "/board"
+
+
+def board_runtime_path(identity_file=BOARD_IDENTITY_FILE):
+    """Return the provisioned board's isolated runtime path, if present."""
+    try:
+        with open(identity_file, "r") as stream:
+            try:
+                import ujson as json
+            except ImportError:
+                import json
+            identity = json.load(stream)
+    except OSError:
+        return None
+    board_id = identity.get("board_id") if isinstance(identity, dict) else None
+    if not isinstance(board_id, str) or not board_id or any(
+            character not in "abcdefghijklmnopqrstuvwxyz0123456789_"
+            for character in board_id):
+        raise ValueError("protected board identity is invalid")
+    return BOARD_RUNTIME_ROOT + "/" + board_id
 
 
 class NullIDEView:
@@ -110,9 +131,17 @@ class LegacyIDEView:
 
 
 def configure_legacy_paths(paths=None):
-    """Place historical PyDevices paths after TartLab's core import paths."""
+    """Add the selected board runtime, then historical PyDevices paths."""
     if paths is None:
         paths = sys.path
+    runtime_path = board_runtime_path()
+    if runtime_path is not None and runtime_path not in paths:
+        # Protected board support must precede release root and student code.
+        # /device stays first because it owns the generated selector and local
+        # calibration, but /files/user must never be able to shadow its import.
+        insert_at = paths.index("/device") + 1 if "/device" in paths else 0
+        paths.insert(insert_at, runtime_path)
+
     insert_at = 0
     for core_path in ("/device", "/lib", "/", "/files/user"):
         if core_path in paths:
@@ -234,9 +263,8 @@ def set_platform(platform):
 def get_platform():
     global _current_platform
     if _current_platform is None:
-        # Both explicit modern configs and historical hdwconfig modules live
-        # behind /configs.  LegacyPlatform repeats this idempotently before it
-        # imports any remaining flat PyDevices modules.
+        # Adult provisioning identifies the selected board in protected state.
+        # Its isolated runtime is searched before historical /configs modules.
         configure_legacy_paths()
         import hdwconfig as hardware
         factory = getattr(hardware, "create_platform", None)

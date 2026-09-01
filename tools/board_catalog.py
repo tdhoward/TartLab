@@ -20,7 +20,8 @@ _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 _TOP_LEVEL_KEYS = {
     "schema", "id", "name", "vendor", "runtime_profile", "support_status",
-    "hardware", "selector", "firmware", "qualification", "documentation",
+    "hardware", "selector", "runtime", "firmware", "qualification",
+    "documentation",
 }
 _HARDWARE_KEYS = {
     "revisions", "mcu", "flash_size_bytes", "psram_size_bytes", "display",
@@ -31,6 +32,7 @@ _DISPLAY_KEYS = {
 }
 _TOUCH_KEYS = {"present", "controller"}
 _SELECTOR_KEYS = {"module", "source", "protected_path"}
+_RUNTIME_KEYS = {"source", "target"}
 _FIRMWARE_KEYS = {
     "artifact", "sha256", "image_format", "flash_offset", "lock",
     "provenance",
@@ -67,6 +69,17 @@ def _relative_file(root: Path, value: Any, label: str) -> Path:
     path = (root / relative).resolve()
     if root.resolve() not in path.parents or not path.is_file():
         raise BoardCatalogError("%s does not name a repository file: %s" % (label, relative))
+    return path
+
+
+def _relative_directory(root: Path, value: Any, label: str) -> Path:
+    relative = Path(_text(value, label))
+    if relative.is_absolute() or ".." in relative.parts:
+        raise BoardCatalogError("%s must be a repository-relative path" % label)
+    path = (root / relative).resolve()
+    if root.resolve() not in path.parents or not path.is_dir():
+        raise BoardCatalogError(
+            "%s does not name a repository directory: %s" % (label, relative))
     return path
 
 
@@ -136,6 +149,16 @@ def validate_descriptor(descriptor: dict[str, Any], *, root: Path = ROOT,
     elif touch["controller"] is not None:
         raise BoardCatalogError("a board without touch must use a null controller")
 
+    runtime = descriptor["runtime"]
+    if runtime is not None:
+        runtime = _object(runtime, "runtime", _RUNTIME_KEYS)
+        runtime_path = _relative_directory(root, runtime["source"], "runtime.source")
+        if runtime["target"] != "/board/" + board_id:
+            raise BoardCatalogError(
+                "runtime.target must be /board/<board-id>")
+    else:
+        runtime_path = None
+
     selector = descriptor["selector"]
     if selector is not None:
         selector = _object(selector, "selector", _SELECTOR_KEYS)
@@ -145,6 +168,8 @@ def validate_descriptor(descriptor: dict[str, Any], *, root: Path = ROOT,
         selector_path = _relative_file(root, selector["source"], "selector.source")
         if selector_path.stem != module:
             raise BoardCatalogError("selector source name must match selector.module")
+        if runtime_path is None or runtime_path not in selector_path.parents:
+            raise BoardCatalogError("selector source must belong to the board runtime")
         if selector["protected_path"] != "/device/hdwconfig.py":
             raise BoardCatalogError("selector.protected_path must be /device/hdwconfig.py")
 
@@ -177,8 +202,9 @@ def validate_descriptor(descriptor: dict[str, Any], *, root: Path = ROOT,
     for index, path in enumerate(documentation):
         _relative_file(root, path, "documentation[%d]" % index)
 
-    if status in ("candidate", "qualified") and selector is None:
-        raise BoardCatalogError("%s boards require a selector" % status)
+    if status in ("candidate", "qualified") and (
+            selector is None or runtime is None):
+        raise BoardCatalogError("%s boards require a selector and runtime" % status)
     if status in ("candidate", "qualified") and firmware is None:
         raise BoardCatalogError("%s boards require firmware" % status)
     if status == "qualified" and qualification is None:

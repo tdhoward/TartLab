@@ -22,6 +22,7 @@ class FakeInput:
         self.stop_calls = 0
         self.wait_release_calls = 0
         self.remove_calls = 0
+        self.keep_awake_calls = 0
 
     def add_event_cb(self, callback, event, user_data):
         self.callbacks.append((callback, event, user_data))
@@ -42,6 +43,9 @@ class FakeInput:
         for callback, unused_event, unused_data in tuple(self.callbacks):
             callback(None)
 
+    def keep_awake(self):
+        self.keep_awake_calls += 1
+
 
 class FakeLVGL:
     EVENT = types.SimpleNamespace(PRESSED=7)
@@ -59,10 +63,16 @@ class FakeLVGL:
 class FakePlatform:
     def __init__(self, inputs=()):
         self._lvgl = FakeLVGL(inputs)
+        self.input = inputs[0] if inputs else None
         self.brightness = []
 
     def set_brightness(self, value):
         self.brightness.append(value)
+
+    def keep_touch_awake(self):
+        keep_awake = getattr(self.input, "keep_awake", None)
+        if keep_awake is not None:
+            keep_awake()
 
 
 class ModernPowerSettingsTests(unittest.TestCase):
@@ -151,6 +161,47 @@ class ModernBacklightControllerTests(unittest.TestCase):
         clock["now"] = 1900
         controller.check()
         self.assertEqual(platform.brightness, [1.0, 0.2])
+
+    def test_long_idle_reasserts_touch_no_sleep_while_dimmed(self):
+        clock, input_device, platform, controller = self.controller()
+        controller.start()
+        self.assertEqual(input_device.keep_awake_calls, 1)
+        clock["now"] = 1000
+        controller.check()
+        clock["now"] = 9999
+        controller.check()
+        self.assertEqual(input_device.keep_awake_calls, 1)
+        clock["now"] = 10000
+        controller.check()
+        self.assertEqual(input_device.keep_awake_calls, 2)
+        input_device.press()
+        controller.check()
+        self.assertEqual(platform.brightness, [1.0, 0.2, 1.0])
+
+    def test_platform_input_is_used_when_binding_cannot_enumerate_inputs(self):
+        clock = {"now": 0}
+        input_device = FakeInput()
+        platform = FakePlatform()
+        platform._lvgl = types.SimpleNamespace(
+            EVENT=types.SimpleNamespace(PRESSED=7))
+        platform.input = types.SimpleNamespace(_indev_drv=input_device)
+        controller = self.power.ModernIDEBacklightController(
+            platform,
+            {"modern_ui": {"auto_dim_seconds": 1}},
+            ticks_ms=lambda: clock["now"],
+            ticks_diff=lambda new, old: new - old)
+
+        controller.start()
+        clock["now"] = 1000
+        controller.check()
+        input_device.press()
+        controller.check()
+
+        self.assertEqual(platform.brightness, [1.0, 0.2, 1.0])
+        self.assertEqual(input_device.stop_calls, 1)
+        self.assertEqual(input_device.wait_release_calls, 1)
+        controller.stop()
+        self.assertEqual(input_device.remove_calls, 1)
 
     def test_zero_delay_disables_dimming_and_stop_is_repeatable(self):
         settings = {"modern_ui": {

@@ -7,6 +7,7 @@ DEFAULT_MAX_BRIGHTNESS = 1.0
 DEFAULT_DIM_BRIGHTNESS = 0.2
 DEFAULT_AUTO_DIM_SECONDS = 180
 DEFAULT_POLL_MILLISECONDS = 100
+DEFAULT_TOUCH_KEEP_AWAKE_MILLISECONDS = 10000
 
 
 def _ticks_ms():
@@ -58,10 +59,13 @@ def restore_normal_brightness(platform, settings=None):
     return value
 
 
-def _lvgl_inputs(lvgl):
+def _lvgl_inputs(lvgl, platform_input=None):
     get_next = getattr(lvgl, "indev_get_next", None)
     if get_next is None:
-        return ()
+        if platform_input is None:
+            return ()
+        native_input = getattr(platform_input, "_indev_drv", platform_input)
+        return (native_input,)
     devices = []
     current = get_next(None)
     while current is not None:
@@ -89,6 +93,7 @@ class ModernIDEBacklightController:
         self._dimmed = False
         self._touch_pending = False
         self._last_activity = None
+        self._last_touch_keep_awake = None
         self._inputs = ()
         self._touch_callback = self._touch_event
 
@@ -116,13 +121,24 @@ class ModernIDEBacklightController:
             for input_device in self._inputs:
                 self._consume_touch(input_device)
 
+    def _keep_touch_awake(self, now):
+        keep_awake = getattr(self._platform, "keep_touch_awake", None)
+        if keep_awake is None:
+            return
+        if (self._last_touch_keep_awake is None or
+                self._ticks_diff(now, self._last_touch_keep_awake) >=
+                DEFAULT_TOUCH_KEEP_AWAKE_MILLISECONDS):
+            keep_awake()
+            self._last_touch_keep_awake = now
+
     def _attach_inputs(self):
         if self._lvgl is None:
             return
         pressed = getattr(getattr(self._lvgl, "EVENT", None), "PRESSED", None)
         if pressed is None:
             return
-        self._inputs = _lvgl_inputs(self._lvgl)
+        self._inputs = _lvgl_inputs(
+            self._lvgl, getattr(self._platform, "input", None))
         for input_device in self._inputs:
             input_device.add_event_cb(self._touch_callback, pressed, None)
 
@@ -142,6 +158,8 @@ class ModernIDEBacklightController:
         self._dimmed = False
         self._touch_pending = False
         self._last_activity = self._ticks_ms()
+        self._last_touch_keep_awake = None
+        self._keep_touch_awake(self._last_activity)
         self._platform.set_brightness(self.max_brightness)
         self._attach_inputs()
 
@@ -150,6 +168,7 @@ class ModernIDEBacklightController:
         if not self._active:
             return
         now = self._ticks_ms()
+        self._keep_touch_awake(now)
         if self._touch_pending:
             self._touch_pending = False
             self._last_activity = now
@@ -178,8 +197,8 @@ class ModernIDEBacklightController:
         was_active = self._active
         self._active = False
         self._touch_pending = False
+        self._last_touch_keep_awake = None
         self._detach_inputs()
         if was_active or self._dimmed:
             self._platform.set_brightness(self.max_brightness)
         self._dimmed = False
-

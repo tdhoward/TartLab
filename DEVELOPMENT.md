@@ -100,17 +100,32 @@ The build is non-flashing and refuses the wrong commit or dirty upstream tree.
 The upstream build mutates generated source state, so do not reuse its checkout
 for reproducibility claims.
 
+Build a modern filesystem by naming every board payload deliberately:
+
+```powershell
+.\.venv\Scripts\python.exe makedist.py --output build/modern/dist --clean --skip-web-build --board lilygo_t_display_s3_pro
+.\.venv\Scripts\python.exe tools/check_modern_profile.py --dist build/modern/dist
+.\.venv\Scripts\python.exe tools/build_modern_release.py --dist build/modern/dist --output build/modern/release --version modern-vX.Y.Z --clean
+```
+
+Repeat `--board BOARD_ID` on both distribution and release commands for an
+approved multi-board candidate. Production board sources live under
+`boards/<board_id>/runtime`; comparison-only adapters live outside `src` and
+cannot enter a normal distribution accidentally.
+
 Modern releases contain a combined firmware image, filesystem packages,
 compatibility data, locks, provenance, and migration instructions. The
 protected qualification and promotion workflows target only
 `tdhoward/TartLab-modern-releases`. Detailed authentication commands are in
 [`tests/PHASE6_RELEASE_SECURITY.md`](tests/PHASE6_RELEASE_SECURITY.md).
 
-Candidate builds include the qualified default board unless `--board` is
-provided. Repeat `--board BOARD_ID` to build a deliberate multi-board candidate;
-the default board must always be included. Shared filesystem packages are built
-once, while firmware, locks, provenance, and compatibility entries remain
-board-specific.
+Release builds include the qualified default board unless `--board` is
+provided. The distribution build itself has no implicit board and must receive
+the matching `--board` set. The default board must always be included. Shared
+filesystem packages are built once, while firmware, locks, provenance, and
+compatibility entries remain board-specific. `board-support.tar` contains one
+subtree per compatible board; provisioning and selection-aware OTA/recovery
+install only the protected device identity's subtree under `/board`.
 
 ## Adult modern provisioning
 

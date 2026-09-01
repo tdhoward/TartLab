@@ -23,6 +23,20 @@ def load_modern_rendering():
     return module
 
 
+def load_lilygo_platform(modern):
+    path = ROOT / "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py"
+    spec = importlib.util.spec_from_file_location("phase5_lilygo", path)
+    module = importlib.util.module_from_spec(spec)
+    package = types.ModuleType("tartlabutils")
+    package.__path__ = []
+    with mock.patch.dict(sys.modules, {
+        "tartlabutils": package,
+        "tartlabutils.modern": modern,
+    }):
+        spec.loader.exec_module(module)
+    return module
+
+
 class FakePointerDriver:
     PRESSED = 1
     RELEASED = 0
@@ -186,7 +200,7 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
         inputs = profile["application_adapter"]["inputs"]
         self.assertEqual({item["path"] for item in inputs}, {
             "src/lib/tartlabutils/modern.py",
-            "src/configs/t_display_s3_pro_modern.py",
+            "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
         })
 
 
@@ -469,6 +483,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         pointer = Input()
         panel = Panel()
         platform = module.ModernPlatform(controller, panel, pointer)
+        self.assertFalse(platform.capabilities["ide_button"])
 
         platform.deinit()
         platform.deinit()
@@ -480,7 +495,8 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         self.assertEqual(bus.deinit_calls, 1)
 
     def test_pinned_board_factory_uses_native_dual_dma_and_swapped_lvgl(self):
-        module = load_modern_rendering()
+        modern = load_modern_rendering()
+        module = load_lilygo_platform(modern)
         bus = FakeModernBus()
         display = FakeLVDisplay(bus)
         screen = FakeLVScreen()
@@ -515,7 +531,11 @@ class ModernRenderingAdapterTests(unittest.TestCase):
                 super().__init__()
                 self.device = device
                 self.options = kwargs
+                self.register_writes = []
                 pointers.append(self)
+
+            def _write_reg(self, register, value):
+                self.register_writes.append((register, value))
 
         class I2CBus:
             def __init__(self, **kwargs):
@@ -531,7 +551,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         lvgl = types.ModuleType("lvgl")
         lvgl.COLOR_FORMAT = types.SimpleNamespace(
             RGB565_SWAPPED="rgb565-swapped")
-        lvgl.DISPLAY_ROTATION = types.SimpleNamespace(_90=1, _270=3)
+        lvgl.DISPLAY_ROTATION = types.SimpleNamespace(_0=0, _90=1, _270=3)
         lvgl.EVENT = types.SimpleNamespace(FLUSH_START=91)
         lvgl.display_get_default = lambda: display
         lvgl.screen_active = lambda: screen
@@ -580,9 +600,24 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             (panels[0].options["offset_x"], panels[0].options["offset_y"]),
             (0, 49))
         self.assertEqual(pointers[0].options, {
-            "reset_pin": 13, "interrupt_pin": 21, "startup_rotation": 3})
+            "reset_pin": 13, "interrupt_pin": 21, "startup_rotation": 0})
         self.assertEqual((platform.width, platform.height), (480, 222))
         self.assertTrue(platform.capabilities["exclusive_display_ownership"])
+        platform.keep_touch_awake()
+        self.assertEqual(pointers[0].register_writes, [(0xFE, 0x01)])
+
+    def test_generic_modern_adapter_has_no_board_factory(self):
+        module = load_modern_rendering()
+        self.assertFalse(hasattr(module, "create_t_display_s3_pro_platform"))
+
+    def test_t_display_board_entrypoint_delegates_to_factory(self):
+        calls = []
+        module = load_lilygo_platform(load_modern_rendering())
+        module.create_t_display_s3_pro_platform = lambda: (
+            calls.append(True), "platform")[1]
+
+        self.assertEqual(module.create_platform(), "platform")
+        self.assertEqual(calls, [True])
 
     def test_modern_ide_progress_supports_binding_without_anim_enum(self):
         module = load_modern_rendering()

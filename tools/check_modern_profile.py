@@ -24,10 +24,13 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROFILE = ROOT / "profiles/lvgl-modern.json"
 PROFILE_BOARD = default_board("lvgl-modern")
 PROFILE_SELECTOR_SOURCE = PROFILE_BOARD["selector"]["source"]
+PROFILE_RUNTIME_FILE = (
+    PROFILE_BOARD["runtime"]["target"].strip("/") + "/" +
+    Path(PROFILE_SELECTOR_SOURCE).name)
 REQUIRED_DIST_FILES = (
     "boot.py",
     "main.py",
-    PROFILE_SELECTOR_SOURCE.removeprefix("src/"),
+    PROFILE_RUNTIME_FILE,
     "lib/tartlabutils/modern_launcher.py",
     "lib/tartlabutils/modern_power.py",
     "lib/tartlabutils/modern.py",
@@ -109,6 +112,7 @@ def validate_profile(profile: dict[str, Any]) -> None:
     builder = profile.get("release_builder")
     expected_builder = {
         "tool": "tools/build_modern_release.py",
+        "package_map": "modern_packages.json",
         "manifest_schema": 1,
         "validator": "tools/check_modern_release.py",
         "provisioning_preflight": "tools/check_modern_release.py",
@@ -123,7 +127,7 @@ def validate_profile(profile: dict[str, Any]) -> None:
     if builder != expected_builder:
         raise ValueError("modern release builder contract is incomplete")
     for key in (
-            "provisioning_tool", "qualification_attestation_workflow",
+            "package_map", "provisioning_tool", "qualification_attestation_workflow",
             "qualification_validator", "support_window", "migration_instructions",
             "filesystem_vendor_lock"):
         if not (ROOT / builder[key]).is_file():
