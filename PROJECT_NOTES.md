@@ -255,10 +255,12 @@ for the normal IDE status view.
 The launcher itself never marks a boot healthy. Crossing into student code
 clears the protected-startup recovery streak so repeated student-app failures
 cannot force recovery, but does not commit a pending update. If student code
-raises while loading, startup falls back to the IDE. IDE health remains tied to
-the HTTP server becoming ready, and APP health remains tied to the existing
-selected-app health delay. A pending update is therefore committed only after
-the chosen destination proves healthy.
+raises while loading, startup falls back to the IDE and a persistent red status
+dot reports that the previous app run failed. The marker survives IDE health
+and resets, then clears after a later APP run passes its health delay. IDE
+health remains tied to the HTTP server becoming ready, and APP health remains
+tied to the existing selected-app health delay. A pending update is therefore
+committed only after the chosen destination proves healthy.
 
 ### Modern IDE automatic backlight dimming
 

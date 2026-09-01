@@ -276,6 +276,11 @@ class ModernIDEView:
         self._address = lvgl.label(self._screen)
         self._hostname = lvgl.label(self._screen)
         self._status = lvgl.label(self._screen)
+        for label in (
+                self._title, self._network, self._address,
+                self._hostname, self._status):
+            label.set_text("")
+        self._app_error_indicator = None
         self._progress = lvgl.bar(self._screen)
         animation = getattr(lvgl, "ANIM", None)
         self._animation_off = getattr(animation, "OFF", False)
@@ -309,6 +314,17 @@ class ModernIDEView:
             self._lv.ALIGN.BOTTOM_MID, -36)
         self._progress.set_range(0, steps + 1)
         self._progress.set_value(step, self._animation_off)
+
+    def show_app_error(self):
+        if self._app_error_indicator is not None:
+            return
+        indicator = self._lv.obj(self._screen)
+        indicator.set_size(14, 14)
+        indicator.align(self._lv.ALIGN.TOP_RIGHT, -12, 12)
+        indicator.set_style_bg_color(self._lv.color_hex(0xFF0000), 0)
+        indicator.set_style_border_width(0, 0)
+        indicator.set_style_radius(7, 0)
+        self._app_error_indicator = indicator
 
 
 class ModernPlatform:

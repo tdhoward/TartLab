@@ -13,7 +13,7 @@ for path in reversed(SEARCH_PATHS):
 
 import ujson
 from tartlabutils import default_settings, diagnostics, ensure_layout, init_logs, load_settings, log, log_exception, \
-    mark_boot_failed, mark_boot_route_started, save_settings
+    mark_app_failed, mark_boot_failed, mark_boot_route_started, save_settings
 from tartlabutils.platform import get_platform, set_platform
 
 
@@ -159,6 +159,13 @@ def run(platform=None, start_ide=None, start_app=None, start_recovery=None,
         except Exception:
             sys.print_exception(error)
         if app_started:
+            try:
+                mark_app_failed(error)
+            except Exception as state_error:
+                try:
+                    sys.print_exception(state_error)
+                except Exception:
+                    pass
             try:
                 log("Selected APP failed; falling back to IDE")
                 _start_ide_mode(platform, settings, start_ide)

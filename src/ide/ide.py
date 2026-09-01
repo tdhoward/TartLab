@@ -7,7 +7,7 @@ import uasyncio as asyncio
 import io
 from tartlabutils import file_exists, unquote, rmvdir, check_for_update, main_update_routine, \
             log, repl_exception, log_exception, get_logs, load_settings, save_settings, default_settings, \
-            get_selected_app, save_selected_app, validate_selected_app, mark_boot_healthy
+            get_app_failure, get_selected_app, save_selected_app, validate_selected_app, mark_boot_healthy
 from tartlabutils.platform import get_platform
 from tartlabutils.state import REPOS_FILE
 
@@ -237,6 +237,8 @@ initialize()
 # Write the title info on the screen
 version = next((repo['installed_version'] for repo in repos['list'] if repo['name'] == 'TartLab'))
 ide_view.show_startup(version)
+if get_app_failure():
+    ide_view.show_app_error()
 
 platform.set_hostname(settings['hostname'])
 sta_if = platform.station_interface()

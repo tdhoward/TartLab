@@ -183,6 +183,38 @@ class MultipartValidationTests(unittest.TestCase):
 
 
 class BootStateTests(unittest.TestCase):
+    def test_app_failure_survives_ide_health_and_clears_on_healthy_app(self):
+        sys.modules.setdefault("ujson", json)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "state").mkdir()
+            package = types.ModuleType("phase1_app_failure_runtime")
+            package.__path__ = []
+            sys.modules["phase1_app_failure_runtime"] = package
+            state = load_module(
+                "phase1_app_failure_runtime.state",
+                ROOT / "src/lib/tartlabutils/state.py")
+            state.STATE_DIR = (root / "state").as_posix()
+            state.BOOT_STATE_FILE = (root / "state/boot.json").as_posix()
+            state.UPDATE_STATE_FILE = (root / "state/update.json").as_posix()
+            state.REPOS_FILE = (root / "state/repos.json").as_posix()
+            bootstate = load_module(
+                "phase1_app_failure_runtime.bootstate",
+                ROOT / "src/lib/tartlabutils/bootstate.py")
+
+            bootstate.mark_boot_route_started("APP")
+            bootstate.mark_app_failed("student exception")
+            bootstate.mark_boot_healthy("IDE")
+
+            self.assertEqual(bootstate.get_app_failure(), "student exception")
+            self.assertEqual(
+                state.read_json(state.BOOT_STATE_FILE)["health"], "healthy")
+
+            bootstate.mark_boot_route_started("APP")
+            bootstate.mark_boot_healthy("APP")
+
+            self.assertIsNone(bootstate.get_app_failure())
+
     def test_app_route_clears_recovery_streak_without_marking_health(self):
         sys.modules.setdefault("ujson", json)
         with tempfile.TemporaryDirectory() as temp:

@@ -132,6 +132,7 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
         services.save_settings = lambda value: state.write_json(
             state.SETTINGS_FILE, value)
         services.default_settings = lambda: {"STARTUP_MODE": "BUTTON"}
+        services.get_app_failure = bootstate.get_app_failure
         services.get_selected_app = state.get_selected_app
         services.save_selected_app = state.save_selected_app
         services.validate_selected_app = state.validate_selected_app
@@ -169,13 +170,15 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
                     sys.modules[name] = old_module
         return module, logs, errors
 
-    def prepare(self, root, *, wifi=True):
+    def prepare(self, root, *, wifi=True, app_error=None):
         shutil.copytree(
             ROOT / "tests/fixtures/legacy_mp123/layout", root,
             ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
         device = VirtualDeviceFS(root)
         state, bootstate = self.load_state_runtime(device)
         state.ensure_layout()
+        if app_error is not None:
+            bootstate.mark_app_failed(app_error)
         if not wifi:
             settings = state.read_json(state.SETTINGS_FILE)
             settings["wifi_ssids"] = []
@@ -189,6 +192,20 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
         module, logs, errors = self.load_ide(
             device, state, bootstate, platform)
         return device, state, platform, module, logs, errors
+
+    def test_previous_app_failure_adds_ide_status_indicator(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, unused_state, platform, unused_ide, unused_logs, \
+                errors = self.prepare(
+                    Path(temp) / "device", app_error="student app failed")
+
+            self.assertEqual(errors, [])
+            self.assertEqual(platform.ide_view.events[:3], [
+                ("startup", "v0.13"),
+                ("app_error",),
+                ("network", "SYNTHETIC_CLASSROOM", "10.0.0.42",
+                 "tartlab-fixture"),
+            ])
 
     def test_real_ide_initializes_routes_station_and_view_headlessly(self):
         with tempfile.TemporaryDirectory() as temp:

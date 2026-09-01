@@ -204,6 +204,10 @@ class PlatformContractTests(unittest.TestCase):
             def text(self, value, x, y, color, size):
                 self.operations.append(("text", value, x, y, color, size))
 
+            def ellipse(self, x, y, rx, ry, color, fill):
+                self.operations.append(
+                    ("ellipse", x, y, rx, ry, color, fill))
+
         graphics = types.ModuleType("graphics")
         graphics.FrameBuffer = FrameBuffer
         graphics.RGB565 = 1
@@ -233,6 +237,7 @@ class PlatformContractTests(unittest.TestCase):
             view.show_startup("candidate")
             view.show_network("Classroom", "10.0.0.42", "tartlab")
             view.show_update_progress("Installing", 1, 4)
+            view.show_app_error()
         finally:
             if previous is None:
                 sys.modules.pop("graphics", None)
@@ -240,7 +245,7 @@ class PlatformContractTests(unittest.TestCase):
                 sys.modules["graphics"] = previous
 
         self.assertEqual(display.rotation, 90)
-        self.assertEqual(len(framebuffers), 2)
+        self.assertEqual(len(framebuffers), 3)
         text_operations = [
             operation for operation in framebuffers[1].operations
             if operation[0] == "text"
@@ -248,6 +253,8 @@ class PlatformContractTests(unittest.TestCase):
         self.assertTrue(any(item[1] == "TARTLAB candidate" for item in text_operations))
         self.assertTrue(any(item[1] == "WiFi: Classroom" for item in text_operations))
         self.assertTrue(any(item[1] == "Installing" for item in text_operations))
+        self.assertEqual(framebuffers[2].operations[-1][0], "ellipse")
+        self.assertTrue(framebuffers[2].operations[-1][-1])
         self.assertGreaterEqual(len(display.blits), 7)
         self.assertEqual(len(gradients), 1)
 
@@ -632,8 +639,8 @@ class HeadlessStartupTests(unittest.TestCase):
         services.__path__ = []
         for name in (
                 "default_settings", "diagnostics", "ensure_layout", "init_logs",
-                "load_settings", "log", "log_exception", "mark_boot_failed",
-                "mark_boot_route_started", "save_settings"):
+                "load_settings", "log", "log_exception", "mark_app_failed",
+                "mark_boot_failed", "mark_boot_route_started", "save_settings"):
             setattr(services, name, lambda *args, **kwargs: None)
         platform_module = types.ModuleType("tartlabutils.platform")
         platform_module.get_platform = lambda: HeadlessPlatform()
@@ -682,6 +689,7 @@ class HeadlessStartupTests(unittest.TestCase):
         main.save_settings = lambda value: state.write_json(
             state.SETTINGS_FILE, value)
         main.mark_boot_failed = bootstate.mark_boot_failed
+        main.mark_app_failed = bootstate.mark_app_failed
         main.mark_boot_route_started = bootstate.mark_boot_route_started
         main._restore_modern_brightness = lambda platform, settings: (
             platform.set_brightness(1.0)
@@ -827,6 +835,7 @@ class HeadlessStartupTests(unittest.TestCase):
             boot = state.read_json(state.BOOT_STATE_FILE)
             self.assertEqual(boot["mode"], "IDE")
             self.assertEqual(boot["consecutive_failures"], 0)
+            self.assertIn("synthetic modern APP failure", boot["app_error"])
 
     def test_app_and_fallback_ide_failure_routes_to_recovery(self):
         with tempfile.TemporaryDirectory() as temp:

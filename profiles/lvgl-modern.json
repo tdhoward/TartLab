@@ -83,7 +83,7 @@
     "inputs": [
       {
         "path": "src/lib/tartlabutils/modern.py",
-        "sha256": "6f51d8852bcf39ca68d172139171868776c71e8680c1c83bbad84af5e8937642"
+        "sha256": "89de7c2721a3df649b98a0696e6ce55faf931373b66f5cefde24e7c4c5f7a2c9"
       },
       {
         "path": "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",

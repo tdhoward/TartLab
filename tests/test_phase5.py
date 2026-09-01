@@ -623,8 +623,15 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         module = load_modern_rendering()
 
         class Widget:
+            def __init__(self, unused_parent=None):
+                self.size = None
+                self.alignment = None
+                self.background = None
+                self.radius = None
+                self.text = "Text"
+
             def set_style_bg_color(self, *unused):
-                pass
+                self.background = unused[0]
 
             def set_style_border_width(self, *unused):
                 pass
@@ -632,11 +639,17 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             def set_style_border_color(self, *unused):
                 pass
 
-            def set_text(self, *unused):
-                pass
+            def set_style_radius(self, radius, unused_selector):
+                self.radius = radius
 
-            def align(self, *unused):
-                pass
+            def set_text(self, value):
+                self.text = value
+
+            def align(self, *values):
+                self.alignment = values
+
+            def set_size(self, width, height):
+                self.size = (width, height)
 
         class Bar(Widget):
             def __init__(self):
@@ -654,7 +667,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         bar = Bar()
         lvgl = types.SimpleNamespace(
             ALIGN=types.SimpleNamespace(
-                BOTTOM_MID=1, TOP_MID=2, CENTER=3),
+                BOTTOM_MID=1, TOP_MID=2, CENTER=3, TOP_RIGHT=4),
             obj=Widget,
             label=lambda unused_parent: Widget(),
             bar=lambda unused_parent: bar,
@@ -664,9 +677,16 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         controller = types.SimpleNamespace(acquire_ui=lambda: None)
 
         view = module.ModernIDEView(controller, lvgl)
+        self.assertEqual(view._status.text, "")
         view.show_update_progress("TEST", 1, 3)
+        view.show_app_error()
+        view.show_app_error()
 
         self.assertEqual(bar.values, [(1, False)])
+        self.assertEqual(view._app_error_indicator.size, (14, 14))
+        self.assertEqual(view._app_error_indicator.alignment, (4, -12, 12))
+        self.assertEqual(view._app_error_indicator.background, 0xFF0000)
+        self.assertEqual(view._app_error_indicator.radius, 7)
 
 
 class Phase5BenchmarkHarnessTests(unittest.TestCase):

@@ -72,6 +72,8 @@ def mark_boot_healthy(mode):
     state["mode"] = mode
     state["consecutive_failures"] = 0
     state.pop("error", None)
+    if mode == "APP":
+        state.pop("app_error", None)
     write_json(BOOT_STATE_FILE, state)
     committed = commit_pending_update()
     if committed:
@@ -98,6 +100,17 @@ def mark_boot_route_started(mode):
         # toward automatic recovery, but this deliberately does not mark a
         # pending update healthy; the APP health timer still owns that decision.
         state["consecutive_failures"] = 0
+    write_json(BOOT_STATE_FILE, state)
+
+
+def get_app_failure():
+    value = read_json(BOOT_STATE_FILE, {}).get("app_error")
+    return value if isinstance(value, str) and value else None
+
+
+def mark_app_failed(message):
+    state = ensure_boot_started()
+    state["app_error"] = str(message)[:160]
     write_json(BOOT_STATE_FILE, state)
 
 
