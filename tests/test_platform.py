@@ -633,7 +633,7 @@ class HeadlessStartupTests(unittest.TestCase):
         for name in (
                 "default_settings", "diagnostics", "ensure_layout", "init_logs",
                 "load_settings", "log", "log_exception", "mark_boot_failed",
-                "save_settings"):
+                "mark_boot_route_started", "save_settings"):
             setattr(services, name, lambda *args, **kwargs: None)
         platform_module = types.ModuleType("tartlabutils.platform")
         platform_module.get_platform = lambda: HeadlessPlatform()
@@ -682,6 +682,7 @@ class HeadlessStartupTests(unittest.TestCase):
         main.save_settings = lambda value: state.write_json(
             state.SETTINGS_FILE, value)
         main.mark_boot_failed = bootstate.mark_boot_failed
+        main.mark_boot_route_started = bootstate.mark_boot_route_started
         main._restore_modern_brightness = lambda platform, settings: (
             platform.set_brightness(1.0)
             if platform.capabilities.get("lvgl_ui", False) else None)
@@ -797,9 +798,9 @@ class HeadlessStartupTests(unittest.TestCase):
             self.assertEqual(routes, ["startup_mode"])
             self.assertEqual(errors, [])
 
-    def test_modern_app_failure_restores_brightness_before_error_display(self):
+    def test_modern_app_failure_restores_brightness_and_falls_back_to_ide(self):
         with tempfile.TemporaryDirectory() as temp:
-            unused_device, unused_state, unused_bootstate, main, unused_logs, \
+            unused_device, state, unused_bootstate, main, logs, \
                 errors = self.prepare(Path(temp) / "device")
             platform = HeadlessPlatform()
             platform.capabilities["lvgl_ui"] = True
@@ -818,10 +819,43 @@ class HeadlessStartupTests(unittest.TestCase):
                 start_recovery=lambda reason: routes.append(reason),
             )
 
-            self.assertEqual(routes, ["startup_error"])
+            self.assertEqual(routes, ["IDE"])
             self.assertEqual(platform.display.brightness, 1.0)
-            self.assertEqual(platform.display.fills, [0, 0xF800])
+            self.assertEqual(platform.display.fills, [0])
             self.assertEqual(len(errors), 1)
+            self.assertIn("Selected APP failed; falling back to IDE", logs)
+            boot = state.read_json(state.BOOT_STATE_FILE)
+            self.assertEqual(boot["mode"], "IDE")
+            self.assertEqual(boot["consecutive_failures"], 0)
+
+    def test_app_and_fallback_ide_failure_routes_to_recovery(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, state, unused_bootstate, main, unused_logs, errors = \
+                self.prepare(Path(temp) / "device")
+            platform = HeadlessPlatform()
+            platform.capabilities["lvgl_ui"] = True
+            routes = []
+
+            def fail_app():
+                raise RuntimeError("synthetic APP failure")
+
+            def fail_ide():
+                raise RuntimeError("synthetic fallback IDE failure")
+
+            main.run(
+                platform=platform,
+                start_launcher=lambda unused: "APP",
+                start_ide=fail_ide,
+                start_app=fail_app,
+                start_recovery=lambda reason: routes.append(reason),
+            )
+
+            self.assertEqual(routes, ["startup_error"])
+            self.assertEqual(len(errors), 2)
+            boot = state.read_json(state.BOOT_STATE_FILE)
+            self.assertEqual(boot["health"], "failed")
+            self.assertEqual(boot["mode"], "IDE")
+            self.assertIn("fallback IDE failure", boot["error"])
 
     def test_explicit_recovery_mode_is_one_shot_without_hardware(self):
         with tempfile.TemporaryDirectory() as temp:

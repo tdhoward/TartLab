@@ -86,6 +86,21 @@ def mark_boot_healthy(mode):
     return committed
 
 
+def mark_boot_route_started(mode):
+    if mode not in ("IDE", "APP"):
+        raise ValueError("invalid boot route")
+    state = ensure_boot_started()
+    state["mode"] = mode
+    state.pop("error", None)
+    if mode == "APP":
+        # Reaching the student-code boundary proves that TartLab's protected
+        # startup path is usable. Student application failures must not build
+        # toward automatic recovery, but this deliberately does not mark a
+        # pending update healthy; the APP health timer still owns that decision.
+        state["consecutive_failures"] = 0
+    write_json(BOOT_STATE_FILE, state)
+
+
 def mark_boot_failed(message):
     state = ensure_boot_started()
     state["health"] = "failed"

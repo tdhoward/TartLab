@@ -183,6 +183,49 @@ class MultipartValidationTests(unittest.TestCase):
 
 
 class BootStateTests(unittest.TestCase):
+    def test_app_route_clears_recovery_streak_without_marking_health(self):
+        sys.modules.setdefault("ujson", json)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "state").mkdir()
+            package = types.ModuleType("phase1_app_route_runtime")
+            package.__path__ = []
+            sys.modules["phase1_app_route_runtime"] = package
+            state = load_module(
+                "phase1_app_route_runtime.state",
+                ROOT / "src/lib/tartlabutils/state.py")
+            state.STATE_DIR = (root / "state").as_posix()
+            state.BOOT_STATE_FILE = (root / "state/boot.json").as_posix()
+            state.UPDATE_STATE_FILE = (root / "state/update.json").as_posix()
+            state.REPOS_FILE = (root / "state/repos.json").as_posix()
+            bootstate = load_module(
+                "phase1_app_route_runtime.bootstate",
+                ROOT / "src/lib/tartlabutils/bootstate.py")
+            state.write_json(state.BOOT_STATE_FILE, {
+                "health": "starting",
+                "consecutive_failures": 4,
+                "error": "previous protected-startup failure",
+            })
+            state.write_json(state.REPOS_FILE, {
+                "list": [{"name": "TartLab", "installed_version": "old"}],
+            })
+            state.begin_update("TartLab", "old", "candidate")
+            state.set_update_pending_health()
+
+            bootstate.mark_boot_route_started("APP")
+
+            result = state.read_json(state.BOOT_STATE_FILE)
+            self.assertEqual(result["health"], "starting")
+            self.assertEqual(result["mode"], "APP")
+            self.assertEqual(result["consecutive_failures"], 0)
+            self.assertNotIn("error", result)
+            self.assertEqual(
+                state.get_update_state()["status"], "pending_health")
+            self.assertEqual(
+                state.read_json(state.REPOS_FILE)["list"][0][
+                    "installed_version"],
+                "old")
+
     def test_healthy_boot_clears_previous_error(self):
         sys.modules.setdefault("ujson", json)
         with tempfile.TemporaryDirectory() as temp:
@@ -824,9 +867,15 @@ class BootRecoveryGateTests(unittest.TestCase):
             namespace["_read"] = original_read
         self.assertEqual(reason, "update_failed")
 
-    def test_three_consecutive_unhealthy_boots_enter_recovery(self):
+    def test_configured_consecutive_unhealthy_boots_enter_recovery(self):
+        failure_limit = self.namespace["FAILURE_LIMIT"]
+        self.assertIsNone(self.namespace["_recovery_reason"]({
+            "consecutive_failures": failure_limit - 1,
+        }))
         self.assertEqual(
-            self.namespace["_recovery_reason"]({"consecutive_failures": 3}),
+            self.namespace["_recovery_reason"]({
+                "consecutive_failures": failure_limit,
+            }),
             "repeated_boot_failure",
         )
 

@@ -13,7 +13,7 @@ for path in reversed(SEARCH_PATHS):
 
 import ujson
 from tartlabutils import default_settings, diagnostics, ensure_layout, init_logs, load_settings, log, log_exception, \
-    mark_boot_failed, save_settings
+    mark_boot_failed, mark_boot_route_started, save_settings
 from tartlabutils.platform import get_platform, set_platform
 
 
@@ -71,10 +71,47 @@ def _restore_modern_brightness(platform, settings):
     restore_normal_brightness(platform, settings)
 
 
+def _start_ide_mode(platform, settings, start_ide):
+    log("Starting IDE")
+    _restore_modern_brightness(platform, settings)
+    mark_boot_route_started("IDE")
+    enter_ui_mode = getattr(platform, "enter_ui_mode", None)
+    if enter_ui_mode is not None:
+        enter_ui_mode()
+    if start_ide is None:
+        import ide
+        start_ide = ide.main
+    start_ide()
+
+
+def _show_startup_error(platform, display, settings):
+    try:
+        _restore_modern_brightness(platform, settings)
+    except Exception:
+        try:
+            if platform.capabilities.get("lvgl_ui", False):
+                platform.set_brightness(1.0)
+        except Exception:
+            pass
+    show_error = getattr(platform, "show_error", None)
+    if show_error is not None:
+        try:
+            show_error()
+        except Exception:
+            pass
+    elif display is not None:
+        try:
+            display.fill(0xF800)
+        except Exception:
+            pass
+
+
 def run(platform=None, start_ide=None, start_app=None, start_recovery=None,
         start_launcher=None):
     display = None
     settings = None
+    start_mode = None
+    app_started = False
     try:
         ensure_layout()
         init_logs()
@@ -103,15 +140,7 @@ def run(platform=None, start_ide=None, start_app=None, start_recovery=None,
         if start_mode == "RECOVERY":
             (start_recovery or _recovery)("startup_mode")
         elif start_mode == "IDE":
-            log("Starting IDE")
-            _restore_modern_brightness(platform, settings)
-            enter_ui_mode = getattr(platform, "enter_ui_mode", None)
-            if enter_ui_mode is not None:
-                enter_ui_mode()
-            if start_ide is None:
-                import ide
-                start_ide = ide.main
-            start_ide()
+            _start_ide_mode(platform, settings, start_ide)
         else:
             log("Starting APP")
             _restore_modern_brightness(platform, settings)
@@ -121,32 +150,36 @@ def run(platform=None, start_ide=None, start_app=None, start_recovery=None,
             if start_app is None:
                 from tartlabutils.launcher import launch_selected_app
                 start_app = launch_selected_app
+            mark_boot_route_started("APP")
+            app_started = True
             start_app()
     except Exception as error:
         try:
             log_exception(error)
-            mark_boot_failed(error)
         except Exception:
             sys.print_exception(error)
+        if app_started:
+            try:
+                log("Selected APP failed; falling back to IDE")
+                _start_ide_mode(platform, settings, start_ide)
+                return
+            except Exception as ide_error:
+                try:
+                    log_exception(ide_error)
+                    mark_boot_failed(ide_error)
+                except Exception:
+                    sys.print_exception(ide_error)
+                _show_startup_error(platform, display, settings)
+                (start_recovery or _recovery)("startup_error")
+                return
         try:
-            _restore_modern_brightness(platform, settings)
+            mark_boot_failed(error)
         except Exception:
             try:
-                if platform.capabilities.get("lvgl_ui", False):
-                    platform.set_brightness(1.0)
+                sys.print_exception(error)
             except Exception:
                 pass
-        show_error = getattr(platform, "show_error", None)
-        if show_error is not None:
-            try:
-                show_error()
-            except Exception:
-                pass
-        elif display is not None:
-            try:
-                display.fill(0xF800)
-            except Exception:
-                pass
+        _show_startup_error(platform, display, settings)
         (start_recovery or _recovery)("startup_error")
 
 
