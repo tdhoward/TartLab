@@ -122,12 +122,20 @@ def _safe_member_path(image: Path, target: str, member_name: str) -> Path:
 
 
 def _extract_release_image(release: Path, image: Path,
-                           manifest: dict[str, Any]) -> None:
+                           manifest: dict[str, Any], board_id: str) -> None:
     for package in manifest["packages"]:
+        selection = package.get("selection")
+        member_prefix = board_id + "/" if selection == "board-id-subtree" else None
+        if selection not in (None, "board-id-subtree"):
+            raise ValueError("unknown modern package selection policy")
+        selected_files = 0
         archive_path = release / package["file_name"]
         with tarfile.open(archive_path, "r") as archive:
             for member in archive.getmembers():
                 if not member.isfile():
+                    continue
+                if member_prefix is not None and not member.name.startswith(
+                        member_prefix):
                     continue
                 destination = _safe_member_path(
                     image, package["target"], member.name)
@@ -137,6 +145,10 @@ def _extract_release_image(release: Path, image: Path,
                     raise ValueError("modern archive member cannot be read")
                 with destination.open("wb") as output:
                     shutil.copyfileobj(stream, output)
+                selected_files += 1
+        if member_prefix is not None and selected_files == 0:
+            raise ValueError(
+                "board-support package has no payload for %s" % board_id)
 
 
 def _copy_if_present(source: Path, destination: Path) -> bool:
@@ -220,7 +232,7 @@ def prepare_image(release: Path, backup: Path, image: Path, *,
 
     _replace_directory(image, image.parent)
     manifest = _read_object(release / "modern-manifest.json")
-    _extract_release_image(release, image, manifest)
+    _extract_release_image(release, image, manifest, board["id"])
     for required in ("boot.py", "main.py", "recovery/recovery.py"):
         if not (image / required).is_file():
             raise ValueError("modern provisioning image is missing %s" % required)

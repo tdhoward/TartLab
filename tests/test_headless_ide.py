@@ -132,6 +132,7 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
         services.save_settings = lambda value: state.write_json(
             state.SETTINGS_FILE, value)
         services.default_settings = lambda: {"STARTUP_MODE": "BUTTON"}
+        services.get_app_failure = bootstate.get_app_failure
         services.get_selected_app = state.get_selected_app
         services.save_selected_app = state.save_selected_app
         services.validate_selected_app = state.validate_selected_app
@@ -169,13 +170,15 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
                     sys.modules[name] = old_module
         return module, logs, errors
 
-    def prepare(self, root, *, wifi=True):
+    def prepare(self, root, *, wifi=True, app_error=None):
         shutil.copytree(
             ROOT / "tests/fixtures/legacy_mp123/layout", root,
             ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
         device = VirtualDeviceFS(root)
         state, bootstate = self.load_state_runtime(device)
         state.ensure_layout()
+        if app_error is not None:
+            bootstate.mark_app_failed(app_error)
         if not wifi:
             settings = state.read_json(state.SETTINGS_FILE)
             settings["wifi_ssids"] = []
@@ -189,6 +192,20 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
         module, logs, errors = self.load_ide(
             device, state, bootstate, platform)
         return device, state, platform, module, logs, errors
+
+    def test_previous_app_failure_adds_ide_status_indicator(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, unused_state, platform, unused_ide, unused_logs, \
+                errors = self.prepare(
+                    Path(temp) / "device", app_error="student app failed")
+
+            self.assertEqual(errors, [])
+            self.assertEqual(platform.ide_view.events[:3], [
+                ("startup", "v0.13"),
+                ("app_error",),
+                ("network", "SYNTHETIC_CLASSROOM", "10.0.0.42",
+                 "tartlab-fixture"),
+            ])
 
     def test_real_ide_initializes_routes_station_and_view_headlessly(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -350,6 +367,152 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
             self.assertEqual(platform.display.brightness, 0.75)
             self.assertEqual(
                 platform.ide_view.events[-1], ("brightness", 0.75))
+
+    def test_file_execution_wakes_the_modern_backlight_controller(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, unused_state, platform, ide, unused_logs, \
+                unused_errors = self.prepare(Path(temp) / "device")
+            platform.capabilities["lvgl_ui"] = True
+
+            class FakePowerController:
+                def __init__(self):
+                    self.wake_calls = 0
+
+                def wake(self):
+                    self.wake_calls += 1
+
+            controller = FakePowerController()
+            ide.power_controller = controller
+            ide.os = types.SimpleNamespace(dupterm=lambda unused_stream: None)
+
+            ide.pseudoREPL("pass", "student_app.py")
+            ide.pseudoREPL("pass", "console")
+
+            self.assertEqual(controller.wake_calls, 1)
+
+    def test_modern_ide_schedules_power_policy_not_button_polling(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, unused_state, platform, ide, unused_logs, \
+                unused_errors = self.prepare(Path(temp) / "device")
+            platform.capabilities["lvgl_ui"] = True
+
+            class FakeTask:
+                def __init__(self, coroutine):
+                    self.coroutine = coroutine
+                    self.cancelled = False
+
+                def cancel(self):
+                    self.cancelled = True
+                    self.coroutine.close()
+
+            class FakeLoop:
+                def __init__(self):
+                    self.tasks = []
+
+                def set_exception_handler(self, handler):
+                    self.handler = handler
+
+                def create_task(self, coroutine):
+                    task = FakeTask(coroutine)
+                    self.tasks.append(task)
+                    return task
+
+                def run_forever(self):
+                    raise KeyboardInterrupt()
+
+            class FakePowerController:
+                instances = []
+
+                def __init__(self, selected_platform, settings):
+                    self.platform = selected_platform
+                    self.settings = settings
+                    self.stop_calls = 0
+                    self.instances.append(self)
+
+                async def run(self, asyncio_module):
+                    return asyncio_module
+
+                def stop(self):
+                    self.stop_calls += 1
+
+            loop = FakeLoop()
+            ide.asyncio = types.SimpleNamespace(
+                get_event_loop=lambda: loop,
+                run=asyncio.run,
+                new_event_loop=lambda: None,
+            )
+            package = types.ModuleType("tartlabutils")
+            package.__path__ = []
+            power = types.ModuleType("tartlabutils.modern_power")
+            power.ModernIDEBacklightController = FakePowerController
+            previous = {
+                name: sys.modules.get(name)
+                for name in ("tartlabutils", "tartlabutils.modern_power")
+            }
+            try:
+                sys.modules["tartlabutils"] = package
+                sys.modules["tartlabutils.modern_power"] = power
+                ide.main()
+            finally:
+                for task in loop.tasks:
+                    if not task.cancelled:
+                        task.coroutine.close()
+                for name, old_module in previous.items():
+                    if old_module is None:
+                        sys.modules.pop(name, None)
+                    else:
+                        sys.modules[name] = old_module
+
+            task_names = [
+                task.coroutine.cr_code.co_name for task in loop.tasks]
+            self.assertNotIn("check_buttons", task_names)
+            self.assertIn("free_memory_task", task_names)
+            self.assertIn("start_ide_server", task_names)
+            self.assertEqual(len(FakePowerController.instances), 1)
+            self.assertEqual(FakePowerController.instances[0].stop_calls, 1)
+            self.assertTrue(loop.tasks[0].cancelled)
+
+    def test_cleanup_does_not_cancel_the_current_power_task(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, unused_state, unused_platform, ide, unused_logs, \
+                unused_errors = self.prepare(Path(temp) / "device")
+
+            class FakeTask:
+                def __init__(self):
+                    self.cancel_calls = 0
+
+                def cancel(self):
+                    self.cancel_calls += 1
+
+            current = FakeTask()
+            background = FakeTask()
+            ide.asyncio = types.SimpleNamespace(current_task=lambda: current)
+
+            ide._cancel_background_task(current)
+            ide._cancel_background_task(background)
+
+            self.assertEqual(current.cancel_calls, 0)
+            self.assertEqual(background.cancel_calls, 1)
+
+    def test_cleanup_tolerates_pinned_runtime_self_cancel_rejection(self):
+        with tempfile.TemporaryDirectory() as temp:
+            unused_device, unused_state, unused_platform, ide, unused_logs, \
+                unused_errors = self.prepare(Path(temp) / "device")
+
+            class SelfTask:
+                def cancel(self):
+                    raise RuntimeError("can't cancel self")
+
+            ide.asyncio = types.SimpleNamespace()
+            ide._cancel_background_task(SelfTask())
+
+            class BrokenTask:
+                def cancel(self):
+                    raise RuntimeError("unexpected cancellation failure")
+
+            with self.assertRaisesRegex(
+                    RuntimeError, "unexpected cancellation failure"):
+                ide._cancel_background_task(BrokenTask())
 
 
 if __name__ == "__main__":

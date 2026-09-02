@@ -48,6 +48,9 @@ class HeadlessIDEView:
     def show_update_progress(self, status, step, steps):
         self.events.append(("update", status, step, max(step, steps)))
 
+    def show_app_error(self):
+        self.events.append(("app_error",))
+
 
 class HeadlessWLAN:
     def __init__(self, networks=None, address="0.0.0.0"):

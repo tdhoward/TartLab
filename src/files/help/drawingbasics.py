@@ -1,62 +1,35 @@
-# Example of basic drawing functions.
+"""Draw pixels and primitive shapes on the modern direct canvas."""
 
-from hdwconfig import display_drv    # Get the display ready
-import graphics                         # Bring in the drawing functions
-
-# Set the display orientation to horizontal
-display_drv.rotation = 90
-
-HEIGHT = display_drv.height
-WIDTH = display_drv.width
-
-if display_drv.requires_byteswap:
-    needs_swap = display_drv.disable_auto_byteswap(True)
-else:
-    needs_swap = False
-
-# define the palette of colors
-class pal:
-    BLACK = 0x0000
-    WHITE = 0xFFFF
-    RED = 0xF800 if not needs_swap else 0x00F8
-    GREEN = 0x07E0 if not needs_swap else 0xE007
-    BLUE = 0x001F if not needs_swap else 0xF800
-    CYAN = 0x07FF if not needs_swap else 0xFF07
-    MAGENTA = 0xF81F if not needs_swap else 0x1FF8
-    YELLOW = 0xFFE0 if not needs_swap else 0xE0FF
-    ORANGE = 0xFD20 if not needs_swap else 0x20FD
-    PURPLE = 0x8010 if not needs_swap else 0x1080
-    GREY = 0x8410 if not needs_swap else 0x1084
+from tartlabutils.modern_app import DirectCanvas, game_surface, rgb565
 
 
-# Figure out some reference points
-CENTER_X = display_drv.width // 2
-CENTER_Y = display_drv.height // 2
-BASE_UNIT = min([display_drv.width, display_drv.height]) // 2
+surface = game_surface()
+canvas = DirectCanvas(surface)
 
-# Fill the screen with a solid color
-display_drv.fill(pal.BLACK)
+BACKGROUND = rgb565(16, 24, 32)
+BLUE = rgb565(21, 101, 192)
+RED = rgb565(211, 47, 47)
+YELLOW = rgb565(253, 216, 53)
+WHITE = rgb565(255, 255, 255)
 
-# Draw a filled circle
-# graphics.circle(canvas, x, y, radius, color, is_it_filled)
-graphics.circle(display_drv, CENTER_X, CENTER_Y, BASE_UNIT, pal.BLUE, True)
+# FrameBuffer drawing changes RAM only. Nothing reaches the LCD until show().
+canvas.fill(BACKGROUND)
+canvas.fill_rect(20, 28, 76, 150, RED)
+canvas.rect(surface.width - 140, 48, 120, 120, YELLOW)
+canvas.line(0, 0, surface.width - 1, surface.height - 1, WHITE)
+for x in range(108, 148, 3):
+    canvas.pixel(x, 24, WHITE)
 
-# Draw a rounded rectangle
-# graphics.round_rect(canvas, x, y, w, h, corner_radius, color, is_it_filled)
-graphics.round_rect(display_drv, 20, 20, 75, 150, BASE_UNIT//7, pal.RED, True)
+# A filled circle is just a set of horizontal pixel runs.
+center_x = surface.width // 2
+center_y = surface.height // 2
+radius = min(surface.width, surface.height) // 3
+radius_squared = radius * radius
+for y in range(-radius, radius + 1):
+    half_width = int((radius_squared - y * y) ** 0.5)
+    canvas.hline(
+        center_x - half_width, center_y + y,
+        half_width * 2 + 1, BLUE)
 
-# Draw a square
-# graphics.rect(canvas, x, y, w, h, color)
-graphics.rect(display_drv, 300, 50, 120, 120, pal.YELLOW)
-
-# Write some text
-# graphics.text(canvas, text_string, x, y, color, scale)
-graphics.text(display_drv, "Drawing demo!", 100, 110, pal.WHITE, 2)
-
-# Other drawing functions to try:
-# graphics.line(canvas, x0, y0, x1, y1, color)
-# graphics.pixel(canvas, x, y, color)
-# graphics.fill_rect(canvas, x, y, w, h, color)
-# graphics.gradient_rect(canvas, x, y, w, h, color1, color2, vertical=True):
-# graphics.arc(canvas, x, y, radius, angle0, angle1, color)
-# graphics.ellipse(canvas, x0, y0, radius1, radius2, color, is_it_filled)
+canvas.text("DIRECT RGB565 DRAWING", 132, center_y - 4, WHITE)
+canvas.show()

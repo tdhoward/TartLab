@@ -75,8 +75,8 @@ jobs:
       - name: Build historical base distributions twice from clean outputs
         shell: bash
         run: |
-          python makedist.py --output build/base-one/dist --clean --skip-web-build
-          python makedist.py --output build/base-two/dist --clean --skip-web-build
+          python makedist.py --output build/base-one/dist --clean --skip-web-build --runtime-profile legacy-mp123
+          python makedist.py --output build/base-two/dist --clean --skip-web-build --runtime-profile legacy-mp123
 
       - name: Verify historical PyDevices import and payload inventory
         run: python tools/pydevices_inventory.py --dist build/base-one/dist
@@ -149,7 +149,7 @@ jobs:
         run: python -m unittest tests.test_phase4 -v
 
       - name: Run Phase 5 reference lock tests
-        run: python -m unittest tests.test_phase5 -v
+        run: python -m unittest tests.test_phase5 tests.test_modern_app -v
 
       - name: Validate Phase 6 release-authenticity policy
         run: |
@@ -236,8 +236,8 @@ jobs:
       - name: Build modern filesystem twice from clean outputs
         shell: bash
         run: |
-          python makedist.py --output build/modern-one/dist --clean --skip-web-build
-          python makedist.py --output build/modern-two/dist --clean --skip-web-build
+          python makedist.py --output build/modern-one/dist --clean --skip-web-build --board lilygo_t_display_s3_pro
+          python makedist.py --output build/modern-two/dist --clean --skip-web-build --board lilygo_t_display_s3_pro
 
       - name: Verify deterministic modern filesystem and adapter inputs
         run: >-
@@ -268,6 +268,7 @@ jobs:
           tests.test_phase2
           tests.test_phase4
           tests.test_phase5
+          tests.test_modern_app
           tests.test_board_catalog
           tests.test_modern_profile
           tests.test_phase6

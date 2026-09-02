@@ -166,10 +166,10 @@ runtime; free heap stabilized at 8,298,704 bytes for cycles 4 through 10.
 
 The experimental board integration now consists of:
 
-- `src/configs/elecrow_dle06235b_modern.py`, selected through the board
-  catalog's protected `/device/hdwconfig.py` boundary;
-- `tartlabutils.elecrow_dle06235b`, which owns the QSPI, I2C, reset,
-  backlight, portrait geometry, touch, and lifecycle details;
+- `boards/elecrow_dle06235b/runtime/elecrow_dle06235b_modern.py`, selected
+  through the board catalog's protected `/device/hdwconfig.py` boundary and
+  installed only for that board; it owns the QSPI, I2C, reset, backlight,
+  portrait geometry, touch, and lifecycle details;
 - a packed-QSPI direct RGB565 surface using command `0x32002C00`;
 - a full-frame SPIRAM shadow plus a 24-row internal-DMA scratch buffer. Games
   must seed the shadow with one full-frame synchronous write after each

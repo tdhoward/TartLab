@@ -50,8 +50,13 @@ def copy_source_dist(target):
     for path in source.iterdir():
         if path.is_file():
             shutil.copy2(path, target / path.name)
-    for relative in ("files", "configs", "defaults", "recovery", "lib"):
-        shutil.copytree(source / relative, target / relative)
+    for relative in ("configs", "defaults", "recovery", "lib"):
+        ignore = shutil.ignore_patterns("modern_app.py") \
+            if relative == "lib" else None
+        shutil.copytree(source / relative, target / relative, ignore=ignore)
+    shutil.copytree(source / "files/assets", target / "files/assets")
+    shutil.copytree(source / "files/help-legacy", target / "files/help")
+    shutil.copytree(source / "files/user", target / "files/user")
     (target / "ide/www").mkdir(parents=True)
     for path in (source / "ide").iterdir():
         if path.is_file():

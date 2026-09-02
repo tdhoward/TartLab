@@ -31,7 +31,7 @@ These are source and policy claims, not hardware claims.
 Run the complete hardware-free suite:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_modern_power tests.test_headless_ide -v
 ```
 
 The suite exercises real TartLab update, migration, recovery, startup, and IDE
@@ -39,7 +39,10 @@ logic against isolated host filesystems and injected platform/network objects.
 It covers protected-state preservation, interrupted installs, staged resume,
 health-gated version commits, clean modern provisioning, v0.13 migration,
 support-window rejection, profile/feed isolation, startup routing, and
-headless IDE route registration.
+headless IDE route registration. The modern startup coverage includes the
+touchscreen timeout and chooser, confined app navigation, wake-touch
+consumption, settings validation, brightness lifecycle, and preservation of
+legacy button behavior.
 
 It does not emulate ESP32 flash physics, MicroPython heap constraints, reset
 behavior, GPIO, display/touch, or radio behavior.
@@ -74,6 +77,8 @@ Relevant records and helpers:
 - `PHASE4_HARDWARE.md`: generated legacy PyDevices comparison.
 - `PHASE5_HARDWARE.md`: modern lifecycle and renderer ownership.
 - `PHASE5_BENCHMARKS.md`: locked legacy/modern graphics matrix.
+- `MODERN_TOUCHSCREEN_QUALIFICATION.md`: current launcher, local chooser, and
+  IDE backlight smoke and evidence checklist.
 - `tools/phase1_device.py`, `tools/phase5_device.py`, and
   `tools/phase5_benchmark.py`: repeatable probes.
 

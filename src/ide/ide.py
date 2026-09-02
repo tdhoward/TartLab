@@ -7,7 +7,7 @@ import uasyncio as asyncio
 import io
 from tartlabutils import file_exists, unquote, rmvdir, check_for_update, main_update_routine, \
             log, repl_exception, log_exception, get_logs, load_settings, save_settings, default_settings, \
-            get_selected_app, save_selected_app, validate_selected_app, mark_boot_healthy
+            get_app_failure, get_selected_app, save_selected_app, validate_selected_app, mark_boot_healthy
 from tartlabutils.platform import get_platform
 from tartlabutils.state import REPOS_FILE
 
@@ -27,6 +27,7 @@ IDE_BASE_DIR = '/ide'
 settings = {}
 repos = {}
 updates_in_progress = False
+power_controller = None
 
 class CaptureOutput(io.IOBase):
     def __init__(self):
@@ -72,6 +73,8 @@ replGlobals = {}
 def pseudoREPL(cmd, source):
     global replGlobals
     error = False
+    if source != 'console':
+        restore_app_execution_brightness()
     # Capture the output
     capture = CaptureOutput()
     try:
@@ -107,6 +110,17 @@ def pseudoREPL(cmd, source):
             res['fname'] = source
             res['err'], res['line'] = extract_error_and_line(cap, source)
         return res
+
+
+def restore_app_execution_brightness():
+    """Wake a dimmed modern IDE before running a file from the editor."""
+    if not platform.capabilities.get("lvgl_ui", False):
+        return
+    if power_controller is not None:
+        power_controller.wake()
+        return
+    from tartlabutils.modern_power import restore_normal_brightness
+    restore_normal_brightness(platform, settings)
 
 
 '''
@@ -237,6 +251,8 @@ initialize()
 # Write the title info on the screen
 version = next((repo['installed_version'] for repo in repos['list'] if repo['name'] == 'TartLab'))
 ide_view.show_startup(version)
+if get_app_failure():
+    ide_view.show_app_error()
 
 platform.set_hostname(settings['hostname'])
 sta_if = platform.station_interface()
@@ -784,9 +800,37 @@ async def start_ide_server():
     log("HEALTHY mode=IDE update_committed=%s" % committed)
 
 
-def main():
-    global sta_if, ap_if, ip_address, softAP, app
+def _cancel_background_task(task):
+    """Cancel a task unless teardown is currently running inside that task."""
+    if task is None:
+        return
+    current_task = getattr(asyncio, "current_task", None)
+    if current_task is not None:
+        try:
+            if current_task() is task:
+                return
+        except Exception:
+            # Some constrained asyncio ports expose current_task only while a
+            # loop is actively dispatching. Cancellation is still safe when
+            # no current task can be reported.
+            pass
+    cancel = getattr(task, "cancel", None)
+    if cancel is not None:
+        try:
+            cancel()
+        except RuntimeError as error:
+            # Pinned MicroPython can enter this cleanup from the interrupted
+            # task without exposing asyncio.current_task(). Treat only its
+            # explicit self-cancellation rejection as an already-stopped task.
+            if "can't cancel self" not in str(error):
+                raise
 
+
+def main():
+    global sta_if, ap_if, ip_address, softAP, app, power_controller
+
+    power_controller = None
+    power_task = None
     try:
         def handle_exception(loop, context):
             # uncaught exceptions end up here
@@ -795,7 +839,12 @@ def main():
         loop = asyncio.get_event_loop()
         loop.set_exception_handler(handle_exception)
 
-        loop.create_task(check_buttons())
+        if platform.capabilities.get("lvgl_ui", False):
+            from tartlabutils.modern_power import ModernIDEBacklightController
+            power_controller = ModernIDEBacklightController(platform, settings)
+            power_task = loop.create_task(power_controller.run(asyncio))
+        else:
+            loop.create_task(check_buttons())
         loop.create_task(free_memory_task())
         loop.create_task(start_ide_server())
 
@@ -803,6 +852,10 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        if power_controller is not None:
+            power_controller.stop()
+            power_controller = None
+        _cancel_background_task(power_task)
         asyncio.run(app.stop())
         asyncio.new_event_loop()
 

@@ -22,16 +22,15 @@ The intended layout is:
 boards/
   <board_id>/
     board.json                 Host-side identity and lifecycle record
+    runtime/
+      <selector_module>.py     Board constructor, pins, and hardware policy
 src/
-  configs/
-    <selector_module>.py       Tiny protected-device selector target
   lib/
-    tartlabboards/
-      <board_id>.py            Board constructor and hardware-only policy
-  lib/tartlabutils/
-    platform.py                Stable application-facing platform boundary
-    modern.py                  Shared LVGL/direct-surface implementation
+    tartlabutils/
+      platform.py              Stable application-facing platform boundary
+      modern.py                Shared LVGL/direct-surface implementation
 firmware/lvgl-modern/
+  pydevices/runtime/           Non-production comparison adapters
   boards/
     <board_id>/                Board-only native overlays, locks, and provenance
 tests/
@@ -39,10 +38,10 @@ tests/
     <board_id>/                Board contract tests and sanitized evidence
 ```
 
-Existing qualified files remain in their historical locations until a normal
-release candidate moves them. Moving hash-bound sources only for tidiness would
-invalidate the current qualification without improving device behavior. Board
-descriptors may therefore point at a historical path during this transition.
+Board runtime source belongs beside its descriptor. It is not copied into
+`src/lib/tartlabutils`, and experimental comparison adapters do not live under
+`src` at all. A distribution build must name its board IDs explicitly; the
+builder stages only those runtime directories beneath `dist/board/<board_id>`.
 
 `boards/<board_id>/board.json` is the source of truth for board-specific host
 tooling. The catalog is discovered by directory scan, so adding a board does
@@ -91,9 +90,13 @@ rules such as QSPI command packing or dirty-rectangle alignment belong behind a
 small transport strategy, not in games or the IDE.
 
 The selector stored at `/device/hdwconfig.py` remains a protected local device
-property. A selector should contain only a generated comment and an import from
-one module under `/configs`. OTA may update that module and its shared adapter,
-but it must not overwrite the selector or local calibration.
+property. It contains only a generated comment and an import of the module
+named by the descriptor. Before importing it, `tartlabutils.platform` reads the
+protected `/device/board.json` identity and adds only `/board/<board_id>` to the
+module search path. That protected board path precedes the release root and
+`/files/user`, so student modules cannot shadow the selected hardware shim. OTA
+may update that board-owned directory and shared runtime, but it must not
+overwrite the selector, identity, or local calibration.
 
 ## Compatibility and releases
 
@@ -114,20 +117,40 @@ same board IDs. Protected promotion requires its board set and firmware hashes
 to match the release matrix exactly, so a multi-board release cannot inherit
 evidence from only the default board.
 
-Shared filesystem packages should be built once. Board adapters may be separate
-packages only when that materially reduces device payload; the release manifest
-still owns all files and validates the complete plan before mutation. Device
-OTA continues to update filesystem content only. Firmware changes remain an
-authenticated adult-provisioning operation.
+Shared filesystem packages are built once. Modern releases additionally carry
+one authenticated `board-support.tar` with one top-level directory per board in
+the compatibility matrix. Its manifest entry uses the
+`board-id-subtree` selection policy. Provisioning, normal OTA, and recovery all
+download and validate the complete archive, cross-check release state against
+protected `/device/board.json`, clear the dedicated `/board` destination, and
+extract only the matching subtree. An absent, malformed, incompatible, or
+conflicting board identity fails closed before active board files are changed.
+The full archive remains simple to publish and authenticate while an individual
+device stores only its own shim and board defaults. Authenticated per-board
+expanded-size metadata makes the install-space check reserve room for the
+selected subtree rather than every board in the archive; download-space checks
+still account for the complete archive. A missing or invalid size for the
+protected board identity rejects the manifest; it must not fall back to the
+compressed size of the complete archive.
+
+The first bridge from a selection-unaware modern updater must contain only the
+already-qualified default board in `board-support.tar`; an older updater may
+ignore the new selection field and extract the whole archive. Multi-board
+stable packages are permitted only after the selection-aware updater and
+recovery path are the supported baseline. Device OTA continues to update
+filesystem content only. Firmware changes remain an authenticated
+adult-provisioning operation.
 
 Provisioning must select a descriptor explicitly, verify its support state,
 check observable hardware properties before erase, and install only the bound
 firmware and selector. When a board cannot be identified uniquely in software,
 the tool must require an explicit adult confirmation rather than guessing.
 The selected identity is stored in protected `/device/board.json`, the
-repository state, and the resumable provisioning journal. Use `--board` for
-provisioning and repeat `--board` when building a candidate that deliberately
-contains more than one candidate or qualified board.
+repository state, and the resumable provisioning journal. The protected value
+is authoritative; a mismatch with repository state rejects an update. Use
+`--board` for provisioning and repeat `--board` when building both the
+distribution and candidate that deliberately contain more than one candidate
+or qualified board.
 
 ## Adding a board
 
@@ -141,14 +164,17 @@ The repeatable path is:
 3. Prove display and input independently on TartLab's pinned runtime. Record
    geometry, orientation, transport, clocks, buffering, color order, touch,
    heap, reset behavior, and all controller constraints.
-4. Add the board constructor and tiny selector. Keep common UI and ownership
-   behavior in `tartlabutils`; keep pins and drivers in board-owned code.
+4. Add `boards/<board_id>/runtime/<selector_module>.py` and declare its runtime
+   source and `/board/<board_id>` target in the descriptor. Keep common UI and
+   ownership behavior in `tartlabutils`; keep pins, buses, drivers, rotation,
+   and hardware quirks in the board-owned payload.
 5. Add a reproducible firmware overlay only when the board needs native changes.
    Pin every source and license and record a unique firmware identity even when
    most of the source graph is shared.
 6. Exercise the complete TartLab filesystem, including at least 100 transitions
    between LVGL and direct rendering, representative examples, Wi-Fi, browser
-   UI, reset cycles, and resource margins.
+   UI, reset cycles, and resource margins. Modern touchscreen candidates also
+   follow `tests/MODERN_TOUCHSCREEN_QUALIFICATION.md`.
 7. Change the descriptor to `candidate`, run the catalog and hardware-free
    suites, and build the exact candidate release.
 8. Run clean provisioning, interruption/resume, OTA, recovery, rollback,
@@ -168,6 +194,10 @@ release pipeline are what keep the routine parts from becoming repetitive.
 - Do not use display resolution or flash size as a unique board identity.
 - Do not let an unqualified descriptor appear in provisioning defaults or a
   stable compatibility matrix.
+- Do not copy board payloads or comparison-only adapters into
+  `src/lib/tartlabutils`.
+- Do not derive the installed board subtree from student settings, archive
+  names, or hardware guesses; use the protected provisioned identity.
 - Do not edit historical evidence to match current structure; add new evidence
   for the new candidate.
 - Keep raw logs, dumps, credentials, USB mappings, and unit identifiers out of

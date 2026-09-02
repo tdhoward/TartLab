@@ -276,11 +276,17 @@ class ModernIDEView:
         self._address = lvgl.label(self._screen)
         self._hostname = lvgl.label(self._screen)
         self._status = lvgl.label(self._screen)
+        for label in (
+                self._title, self._network, self._address,
+                self._hostname, self._status):
+            label.set_text("")
+        self._app_error_indicator = None
         self._progress = lvgl.bar(self._screen)
         animation = getattr(lvgl, "ANIM", None)
         self._animation_off = getattr(animation, "OFF", False)
         self._progress.set_range(0, 1)
-        self._progress.set_size(420, 20)
+        progress_width = max(1, (controller.surface.width * 7) // 8)
+        self._progress.set_size(progress_width, 20)
         self._progress.align(lvgl.ALIGN.BOTTOM_MID, 0, -8)
         lvgl.screen_load(self._screen)
 
@@ -310,12 +316,24 @@ class ModernIDEView:
         self._progress.set_range(0, steps + 1)
         self._progress.set_value(step, self._animation_off)
 
+    def show_app_error(self):
+        if self._app_error_indicator is not None:
+            return
+        indicator = self._lv.obj(self._screen)
+        indicator.set_size(14, 14)
+        indicator.align(self._lv.ALIGN.TOP_RIGHT, -12, 12)
+        indicator.set_style_bg_color(self._lv.color_hex(0xFF0000), 0)
+        indicator.set_style_border_width(0, 0)
+        indicator.set_style_radius(7, 0)
+        self._app_error_indicator = indicator
+
 
 class ModernPlatform:
     """TartLab platform implementation for the pinned modern LVGL firmware."""
 
-    def __init__(self, controller, panel, input_device, ide_button_pin=12,
-                 pin_factory=None, network_module=None, lvgl=None):
+    def __init__(self, controller, panel, input_device, ide_button_pin=None,
+                 pin_factory=None, network_module=None, lvgl=None,
+                 touch_keep_awake=None):
         self.controller = controller
         self.display = panel
         self.input = input_device
@@ -327,6 +345,7 @@ class ModernPlatform:
         self._button = None
         self._network_module = network_module
         self._lvgl = lvgl or controller._lvgl
+        self._touch_keep_awake = touch_keep_awake
         self._deinitialized = False
         self.capabilities = {
             "display": True,
@@ -380,8 +399,52 @@ class ModernPlatform:
     def enter_game_mode(self):
         return self.controller.acquire_game()
 
+    @property
+    def lvgl(self):
+        """Return the supported LVGL module for modern user interfaces."""
+        return self._lvgl
+
+    def read_game_touch(self):
+        """Return the current logical game-mode touch point, or ``None``.
+
+        Native pointer drivers report panel coordinates.  Keep that private
+        protocol inside the platform boundary and expose coordinates in the
+        same logical orientation used by :attr:`game_surface`.
+        """
+        if self.controller.owner != GAME_OWNER:
+            raise DisplayOwnershipError(
+                "game touch input requires game display ownership")
+        if self.input is None:
+            return None
+        get_coords = getattr(self.input, "_get_coords", None)
+        if get_coords is None:
+            raise RuntimeError("modern pointer does not support game polling")
+        try:
+            point = get_coords()
+        except OSError:
+            return None
+        pressed = getattr(self.input, "PRESSED", 1)
+        if point is None or point[0] != pressed:
+            return None
+        x, y = point[1], point[2]
+        rotations = getattr(self._lvgl, "DISPLAY_ROTATION", None)
+        rotation = self.controller.rotation
+        if rotations is None or rotation == getattr(rotations, "_0", 0):
+            return x, y
+        if rotation == getattr(rotations, "_90", 1):
+            return self.width - 1 - y, x
+        if rotation == getattr(rotations, "_180", 2):
+            return self.width - 1 - x, self.height - 1 - y
+        if rotation == getattr(rotations, "_270", 3):
+            return y, self.height - 1 - x
+        raise RuntimeError("unsupported display rotation")
+
     def create_ide_view(self):
         return ModernIDEView(self.controller, self._lvgl)
+
+    def keep_touch_awake(self):
+        if self._touch_keep_awake is not None:
+            self._touch_keep_awake()
 
     def clear_display(self):
         self.enter_ui_mode()
@@ -439,64 +502,3 @@ class ModernPlatform:
 
     def _bus(self):
         return self.controller._bus
-
-
-def create_t_display_s3_pro_platform():
-    """Construct the pinned T-Display-S3 Pro native LVGL platform."""
-    import cst226
-    import i2c
-    import lcd_bus
-    import lvgl as lv
-    import machine
-    import st7796
-    import task_handler
-
-    spi = machine.SPI.Bus(host=1, mosi=17, miso=8, sck=18)
-    bus = lcd_bus.SPIBus(spi_bus=spi, freq=60_000_000, dc=9, cs=39)
-    flags = lcd_bus.MEMORY_INTERNAL | lcd_bus.MEMORY_DMA
-    buffer_size = 480 * 24 * 2
-    frame_buffer1 = bus.allocate_framebuffer(buffer_size, flags)
-    frame_buffer2 = bus.allocate_framebuffer(buffer_size, flags)
-    if frame_buffer1 is None or frame_buffer2 is None:
-        raise MemoryError("unable to allocate dual DMA display buffers")
-
-    panel = st7796.ST7796(
-        data_bus=bus,
-        display_width=222,
-        display_height=480,
-        frame_buffer1=frame_buffer1,
-        frame_buffer2=frame_buffer2,
-        reset_pin=47,
-        reset_state=st7796.STATE_LOW,
-        backlight_pin=48,
-        backlight_on_state=st7796.STATE_PWM,
-        offset_x=0,
-        offset_y=49,
-        color_space=lv.COLOR_FORMAT.RGB565_SWAPPED,
-        color_byte_order=st7796.BYTE_ORDER_BGR,
-        rgb565_byte_swap=False,
-    )
-    panel.reset()
-    panel.init()
-    panel.set_color_inversion(True)
-
-    i2c_bus = i2c.I2C.Bus(
-        host=0, scl=6, sda=5, freq=100000, use_locks=False)
-    touch_device = i2c.I2C.Device(
-        bus=i2c_bus, dev_id=cst226.I2C_ADDR, reg_bits=cst226.BITS)
-    pointer = cst226.CST226(
-        touch_device, reset_pin=13, interrupt_pin=21,
-        startup_rotation=lv.DISPLAY_ROTATION._270)
-
-    panel.set_rotation(lv.DISPLAY_ROTATION._270)
-    panel.set_backlight(100)
-    handler = task_handler.TaskHandler()
-    lv_display = lv.display_get_default()
-    controller = ModernDisplayController(
-        bus, panel, lv_display, lv, handler, pointer,
-        width=480, height=222, offset_x=0, offset_y=49,
-        allocation_flags=flags,
-        buffer_allocator=lcd_bus.allocate_buffer,
-        buffer_free=lcd_bus.free_buffer)
-    return ModernPlatform(
-        controller, panel, pointer, ide_button_pin=12, lvgl=lv)

@@ -39,8 +39,13 @@ def copy_source_dist(target):
     for path in source.iterdir():
         if path.is_file():
             shutil.copy2(path, target / path.name)
-    for relative in ("files", "configs", "defaults", "recovery", "lib"):
-        shutil.copytree(source / relative, target / relative)
+    for relative in ("configs", "defaults", "recovery", "lib"):
+        ignore = shutil.ignore_patterns("modern_app.py") \
+            if relative == "lib" else None
+        shutil.copytree(source / relative, target / relative, ignore=ignore)
+    shutil.copytree(source / "files/assets", target / "files/assets")
+    shutil.copytree(source / "files/help-legacy", target / "files/help")
+    shutil.copytree(source / "files/user", target / "files/user")
     (target / "ide/www").mkdir(parents=True)
     for path in (source / "ide").iterdir():
         if path.is_file():
@@ -122,20 +127,34 @@ class DistributionBuildTests(unittest.TestCase):
             self.assertEqual(
                 item["sha256"], hashlib.sha256(b"line\n").hexdigest())
 
+    def test_distribution_stages_only_explicit_board_runtimes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            makedist.copy_board_runtimes(
+                output, ["lilygo_t_display_s3_pro"], False)
+            self.assertTrue((
+                output / "board/lilygo_t_display_s3_pro/"
+                "t_display_s3_pro_modern.py").is_file())
+            self.assertFalse(
+                (output / "board/elecrow_dle06235b").exists())
+
     def make_source(self, root):
         source = root / "src"
         for relative in (
-                "files/help", "files/user", "configs", "defaults", "recovery",
-                "lib/pydevices",
+                "files/help", "files/help-legacy", "files/assets",
+                "files/user", "configs", "defaults", "recovery",
+                "lib/pydevices", "lib/tartlabutils",
                 "ide/www/dist"):
             (source / relative).mkdir(parents=True)
         (source / "main.py").write_text("print('main')\n")
-        (source / "files/help/help.py").write_text("VALUE = 1\n")
+        (source / "files/help/help.py").write_text("VALUE = 2\n")
+        (source / "files/help-legacy/help.py").write_text("VALUE = 1\n")
         (source / "files/user/hello.py").write_text("print('hello')\n")
         (source / "configs/board.py").write_text("BOARD = 1\n")
         (source / "defaults/default.json").write_text("{}\n")
         (source / "recovery/recovery.py").write_text("def run(): pass\n")
         (source / "lib/pydevices/driver.py").write_text("VALUE = 2\n")
+        (source / "lib/tartlabutils/modern_app.py").write_text("MODERN = 1\n")
         (source / "ide/ide.py").write_text("def main(): pass\n")
         (source / "ide/www/dist/index.html").write_text("x" * 4096)
         return source
@@ -160,6 +179,37 @@ class DistributionBuildTests(unittest.TestCase):
             gzip_path = output / "ide/www/index.html.gz"
             self.assertTrue(gzip_path.is_file())
             self.assertEqual(int.from_bytes(gzip_path.read_bytes()[4:8], "little"), 123)
+
+    def test_distribution_selects_help_tree_for_runtime_profile(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = self.make_source(root)
+            modern = root / "modern"
+            legacy = root / "legacy"
+            makedist.build_distribution(
+                source, modern, minify_python=False, build_web=False,
+                epoch=123)
+            result = makedist.build_distribution(
+                source, legacy, minify_python=False, build_web=False,
+                epoch=123, runtime_profile="legacy-mp123")
+
+            self.assertEqual(
+                (legacy / "files/help/help.py").read_text(), "VALUE = 1\n")
+            self.assertEqual(
+                (modern / "files/help/help.py").read_text(), "VALUE = 2\n")
+            self.assertFalse((modern / "files/help-legacy").exists())
+            self.assertFalse(
+                (legacy / "lib/tartlabutils/modern_app.py").exists())
+            self.assertTrue(
+                (modern / "lib/tartlabutils/modern_app.py").is_file())
+            self.assertEqual(result["runtime_profile"], "legacy-mp123")
+
+            with self.assertRaisesRegex(ValueError, "requires runtime profile"):
+                makedist.build_distribution(
+                    source, root / "mismatched", minify_python=False,
+                    build_web=False, epoch=123,
+                    runtime_profile="legacy-mp123",
+                    board_ids=["lilygo_t_display_s3_pro"])
 
 
 class ReleaseBuildTests(unittest.TestCase):
@@ -350,13 +400,15 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
                     raise AssertionError("firmware must not be downloaded by OTA")
                 return True
 
-            async def install(filename, target, clear_first):
+            async def install(filename, target, clear_first, member_prefix=None):
+                self.assertIsNone(member_prefix)
                 installed.append((Path(filename).name, target, clear_first))
 
             old = (
                 updater.TMP_UPDATE_FOLDER, updater.check_for_update,
                 updater.download_asset, updater._free_space, updater.begin_update,
-                updater.set_update_pending_health, updater.update_folder,
+                updater.set_update_pending_health, updater.set_update_failed,
+                updater.update_folder,
                 updater.file_exists, updater.rmvdir, updater.mkdirs,
             )
             updater.TMP_UPDATE_FOLDER = (root / "staging").as_posix()
@@ -365,6 +417,7 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
             updater._free_space = lambda: 1_000_000
             updater.begin_update = lambda *args: begun.append(args)
             updater.set_update_pending_health = lambda: None
+            updater.set_update_failed = lambda error: None
             updater.update_folder = install
             updater.file_exists = lambda path: 2 if Path(path).is_dir() else (
                 1 if Path(path).is_file() else 0)
@@ -377,8 +430,8 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
                     updater.TMP_UPDATE_FOLDER, updater.check_for_update,
                     updater.download_asset, updater._free_space,
                     updater.begin_update, updater.set_update_pending_health,
-                    updater.update_folder, updater.file_exists, updater.rmvdir,
-                    updater.mkdirs,
+                    updater.set_update_failed, updater.update_folder,
+                    updater.file_exists, updater.rmvdir, updater.mkdirs,
                 ) = old
             self.assertEqual(result, updater.UPDATE_INSTALLED)
             self.assertEqual(downloaded, ["manifest", "package"])

@@ -36,7 +36,7 @@ Run the web build and complete hardware-free suite:
 
 ```powershell
 npm run build --prefix src/ide/www
-.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_headless_ide -v
+.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_app tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_modern_power tests.test_headless_ide -v
 ```
 
 Verify tracked firmware identities when firmware or profile metadata changes:
@@ -62,7 +62,7 @@ applicable physical smoke or release gate.
 Builds must start from clean output. After the web build:
 
 ```powershell
-.\.venv\Scripts\python.exe makedist.py --output build/legacy/dist --clean --skip-web-build
+.\.venv\Scripts\python.exe makedist.py --output build/legacy/dist --clean --skip-web-build --runtime-profile legacy-mp123
 .\.venv\Scripts\python.exe tools/pydevices_inventory.py --dist build/legacy/dist
 .\.venv\Scripts\python.exe tools/pydevices_upstream.py
 .\.venv\Scripts\python.exe tools/vendor_pydevices.py --fetch --output build/vendor/pydevices-candidate --clean
@@ -100,17 +100,36 @@ The build is non-flashing and refuses the wrong commit or dirty upstream tree.
 The upstream build mutates generated source state, so do not reuse its checkout
 for reproducibility claims.
 
+Build a modern filesystem by naming every board payload deliberately:
+
+```powershell
+.\.venv\Scripts\python.exe makedist.py --output build/modern/dist --clean --skip-web-build --board lilygo_t_display_s3_pro
+.\.venv\Scripts\python.exe tools/check_modern_profile.py --dist build/modern/dist
+.\.venv\Scripts\python.exe tools/build_modern_release.py --dist build/modern/dist --output build/modern/release --version modern-vX.Y.Z --clean
+```
+
+Repeat `--board BOARD_ID` on both distribution and release commands for an
+approved multi-board candidate. Production board sources live under
+`boards/<board_id>/runtime`; comparison-only adapters live outside `src` and
+cannot enter a normal distribution accidentally.
+
+The modern runtime is the distribution default and deploys `src/files/help`.
+Legacy builds must explicitly select `legacy-mp123`; they deploy
+`src/files/help-legacy` to the same `/files/help` device path.
+
 Modern releases contain a combined firmware image, filesystem packages,
 compatibility data, locks, provenance, and migration instructions. The
 protected qualification and promotion workflows target only
 `tdhoward/TartLab-modern-releases`. Detailed authentication commands are in
 [`tests/PHASE6_RELEASE_SECURITY.md`](tests/PHASE6_RELEASE_SECURITY.md).
 
-Candidate builds include the qualified default board unless `--board` is
-provided. Repeat `--board BOARD_ID` to build a deliberate multi-board candidate;
-the default board must always be included. Shared filesystem packages are built
-once, while firmware, locks, provenance, and compatibility entries remain
-board-specific.
+Release builds include the qualified default board unless `--board` is
+provided. The distribution build itself has no implicit board and must receive
+the matching `--board` set. The default board must always be included. Shared
+filesystem packages are built once, while firmware, locks, provenance, and
+compatibility entries remain board-specific. `board-support.tar` contains one
+subtree per compatible board; provisioning and selection-aware OTA/recovery
+install only the protected device identity's subtree under `/board`.
 
 ## Adult modern provisioning
 
@@ -131,6 +150,26 @@ and a recognized layout. Validate a captured backup without mutation with
 `tools/check_modern_support_window.py --backup PATH`. Older or unknown layouts
 require clean provisioning and selective reviewed restore, not intermediate
 releases. See [`profiles/lvgl-modern-migration.md`](profiles/lvgl-modern-migration.md).
+
+## Optional physical modern-board work
+
+The touchscreen launcher and IDE backlight behavior require a focused physical
+smoke before they can enter a release candidate's qualification record. Follow
+[`tests/MODERN_TOUCHSCREEN_QUALIFICATION.md`](tests/MODERN_TOUCHSCREEN_QUALIFICATION.md)
+and bind results to the exact candidate and firmware identity. The historical
+`modern-v0.14.8` evidence predates this feature and cannot be reused.
+
+The existing modern helpers can recheck the underlying display, touch, and
+ownership boundary without installing or flashing anything:
+
+```powershell
+.\.venv\Scripts\python.exe tools/phase5_device.py --port COMx probe
+.\.venv\Scripts\python.exe tools/phase5_device.py --port COMx touch --seconds 20
+.\.venv\Scripts\python.exe tools/phase5_device.py --port COMx renderer-cycle --iterations 100
+```
+
+These probes supplement the interactive launcher/backlight checklist; they do
+not qualify a filesystem candidate by themselves.
 
 ## Optional physical legacy-board work
 

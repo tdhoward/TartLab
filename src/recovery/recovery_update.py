@@ -20,6 +20,7 @@ MODERN_PROFILE = "lvgl-modern"
 LEGACY_REPOSITORY = "tdhoward/tartlab"
 MODERN_REPOSITORY = "tdhoward/tartlab-modern-releases"
 DEFAULT_MODERN_BOARD_ID = "lilygo_t_display_s3_pro"
+BOARD_IDENTITY_FILE = "/device/board.json"
 MODERN_FIRMWARE_SHA256 = (
     "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab")
 PROTECTED = (
@@ -88,7 +89,7 @@ def _target_path(target, member):
     return path
 
 
-def _tar_members(filename, target, extract=False):
+def _tar_members(filename, target, extract=False, member_prefix=None):
     paths = []
     with open(filename, "rb") as stream:
         while True:
@@ -105,9 +106,12 @@ def _tar_members(filename, target, extract=False):
             size = int(size_text, 8)
             type_flag = header[156:157]
             path = _target_path(target, name.rstrip("/"))
-            paths.append(path)
+            selected = member_prefix is None or name.startswith(member_prefix)
+            if selected:
+                paths.append(path)
             preserve_boot = path == "/boot.py" and _kind(PHASE1_MIGRATION_FILE) == 1
-            if extract and not preserve_boot and type_flag in (b"", b"0", b"\0"):
+            if extract and selected and not preserve_boot and \
+                    type_flag in (b"", b"0", b"\0"):
                 _mkdirs(path.rsplit("/", 1)[0])
                 remaining = size
                 with open(path, "wb") as output:
@@ -127,6 +131,8 @@ def _tar_members(filename, target, extract=False):
             padding = (512 - size % 512) % 512
             if padding and len(stream.read(padding)) != padding:
                 raise ValueError("Truncated tar padding")
+    if not paths:
+        raise ValueError("Archive has no files for the selected board")
     return paths
 
 
@@ -178,9 +184,26 @@ def _download_verified(url, path, expected_sha256=None):
         raise
 
 
+def _protected_board_id():
+    try:
+        with open(BOARD_IDENTITY_FILE, "r") as stream:
+            identity = ujson.load(stream)
+    except OSError:
+        return None
+    board_id = identity.get("board_id") if isinstance(identity, dict) else None
+    if not isinstance(board_id, str) or not board_id or \
+            any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_"
+                for character in board_id):
+        raise ValueError("Protected board identity is invalid")
+    return board_id
+
+
 def _modern_board_identity(repo):
     firmware_sha256 = repo.get("firmware_sha256")
     board_id = repo.get("board_id")
+    protected_board_id = _protected_board_id()
+    if board_id is None and protected_board_id is not None:
+        board_id = protected_board_id
     if board_id is None:
         if firmware_sha256 != MODERN_FIRMWARE_SHA256:
             raise ValueError("Modern release state has the wrong firmware identity")
@@ -193,6 +216,8 @@ def _modern_board_identity(repo):
             any(character not in "0123456789abcdef"
                 for character in firmware_sha256):
         raise ValueError("Modern release state has the wrong firmware identity")
+    if protected_board_id is not None and board_id != protected_board_id:
+        raise ValueError("Modern release state conflicts with protected board identity")
     return board_id, firmware_sha256
 
 
@@ -246,6 +271,33 @@ def _validate_manifest(manifest):
             raise ValueError("Manifest targets protected state")
         if package["target"].rstrip("/") == "/recovery" and package["clear_first"]:
             raise ValueError("Recovery cannot clear itself")
+        selection = package.get("selection")
+        if selection is not None and (
+                selection != "board-id-subtree" or
+                package["target"].rstrip("/") != "/board" or
+                package["clear_first"] is not True):
+            raise ValueError("Invalid package selection policy")
+        if selection is not None and not isinstance(
+                package.get("selected_expanded_sizes"), dict):
+            raise ValueError("Selected package sizes are missing")
+        if selection is not None:
+            for board_id, expanded in package["selected_expanded_sizes"].items():
+                if not isinstance(board_id, str) or not board_id or \
+                        any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_"
+                            for character in board_id) or \
+                        not isinstance(expanded, int) or expanded < 0:
+                    raise ValueError("Selected package sizes are invalid")
+
+
+def _package_member_prefix(package, repo):
+    selection = package.get("selection")
+    if selection is None:
+        return None
+    unused_manifest, profile = _release_contract(repo)
+    if profile != MODERN_PROFILE or selection != "board-id-subtree":
+        raise ValueError("Package selection requires a modern board identity")
+    board_id, unused_firmware = _modern_board_identity(repo)
+    return board_id + "/"
 
 
 def _manifest_packages(document, repo, version):
@@ -283,10 +335,18 @@ def _free_space():
     return stats[1] * stats[3]
 
 
-def _required_install_space(manifest):
+def _required_install_space(manifest, repo=None):
     required = FILESYSTEM_RESERVE_BYTES
     for package in manifest:
-        expanded = package.get("expanded_size")
+        if package.get("selection") == "board-id-subtree":
+            if repo is None:
+                raise ValueError("Selected package size requires board identity")
+            board_id, unused_firmware = _modern_board_identity(repo)
+            expanded = package.get("selected_expanded_sizes", {}).get(board_id)
+            if expanded is None:
+                raise ValueError("Selected package size is missing for board identity")
+        else:
+            expanded = package.get("expanded_size")
         if expanded is None:
             expanded = os.stat(TEMP_DIR + "/" + package["file_name"])[6]
         if not isinstance(expanded, int) or expanded < 0:
@@ -338,7 +398,9 @@ def _install_verified_packages(tartlab, version, manifest, progress):
             if package["clear_first"] and _kind(target) != 0:
                 _remove_tree(target)
                 _mkdirs(target)
-            _tar_members(TEMP_DIR + "/" + filename, target, True)
+            _tar_members(
+                TEMP_DIR + "/" + filename, target, True,
+                _package_member_prefix(package, tartlab))
             completed.append(filename)
             _write_json(UPDATE_STATE, marker)
         marker["status"] = "pending_health"
@@ -373,8 +435,10 @@ def resume_staged_update(progress=print):
         path = TEMP_DIR + "/" + package["file_name"]
         if _kind(path) != 1 or _sha256(path) != package["sha256"]:
             raise ValueError("Staged package hash mismatch")
-        _tar_members(path, package["target"], False)
-    if _required_install_space(manifest) > _free_space():
+        _tar_members(
+            path, package["target"], False,
+            _package_member_prefix(package, tartlab))
+    if _required_install_space(manifest, tartlab) > _free_space():
         raise OSError("Not enough disk space to extract release safely")
     return _install_verified_packages(tartlab, version, manifest, progress)
 
@@ -410,9 +474,11 @@ def update_to_latest(progress=print):
         else:
             progress("Downloading " + package["file_name"])
             _download_verified(asset["browser_download_url"], path, package["sha256"])
-        _tar_members(path, package["target"], False)
+        _tar_members(
+            path, package["target"], False,
+            _package_member_prefix(package, tartlab))
 
-    if _required_install_space(manifest) > _free_space():
+    if _required_install_space(manifest, tartlab) > _free_space():
         raise OSError("Not enough disk space to extract release safely")
 
     return _install_verified_packages(tartlab, version, manifest, progress)

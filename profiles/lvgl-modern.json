@@ -33,6 +33,7 @@
   },
   "release_builder": {
     "tool": "tools/build_modern_release.py",
+    "package_map": "modern_packages.json",
     "manifest_schema": 1,
     "validator": "tools/check_modern_release.py",
     "provisioning_preflight": "tools/check_modern_release.py",
@@ -75,18 +76,18 @@
   "application_adapter": {
     "status": "implemented-hardware-qualified",
     "platform": "src/lib/tartlabutils/modern.py",
-    "board_config": "src/configs/t_display_s3_pro_modern.py",
+    "board_config": "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
     "ui_renderer": "LVGL 9",
     "game_surface": "RGB565_BE dirty rectangles",
     "ownership": "exclusive completion-signaled UI/game transitions",
     "inputs": [
       {
         "path": "src/lib/tartlabutils/modern.py",
-        "sha256": "bca6731673279a8a1914886fd9fe6f99b40705b233497659154fc03617c372cc"
+        "sha256": "611d0e264a9d638ede89a769fce78b8cbe3bfad046c1179e68e1e86cb289202b"
       },
       {
-        "path": "src/configs/t_display_s3_pro_modern.py",
-        "sha256": "e3344b1209898de687d1439670b1c7756520c74d4265f7c1f3b838393c08d982"
+        "path": "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
+        "sha256": "50945cc5f15e67b6ad9fd45165235e2ffbdfed2ead1d1d6f236e7428a2c635e9"
       }
     ]
   }

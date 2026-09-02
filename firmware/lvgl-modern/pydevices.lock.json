@@ -181,12 +181,16 @@
     "selection": "from t_display_s3_pro_pydevices_modern import *",
     "inputs": [
       {
-        "path": "src/lib/tartlabutils/pydevices_modern.py",
-        "sha256": "4d6f41d8465b66df48816ca73f85b621804c87428b8c91bd00bc089cd5e68787"
+        "path": "firmware/lvgl-modern/pydevices/runtime/pydevices_modern.py",
+        "sha256": "732fe5726c4cc67cd187dbf9ab70f133dbf26372e130009aa74723f60b99710c"
       },
       {
-        "path": "src/configs/t_display_s3_pro_pydevices_modern.py",
-        "sha256": "82a07d8df0e5426b48bf567fbe955ae71aaa89114aee77f6f4d7f7b5243dca80"
+        "path": "firmware/lvgl-modern/pydevices/runtime/lilygo_t_display_s3_pro_pydevices.py",
+        "sha256": "53e187bb0862ea329650537564cf7880e6baf786d3a215e1e4fb622c2f2e5afa"
+      },
+      {
+        "path": "firmware/lvgl-modern/pydevices/runtime/t_display_s3_pro_pydevices_modern.py",
+        "sha256": "e7ccf2073fa04bc079e7e7c5bc5465e46d6d9eacae1d85144f3a1edc89dc0e64"
       }
     ],
     "public_surface": "480x222 RGB565_BE synchronous dirty rectangles",

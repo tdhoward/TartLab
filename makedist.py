@@ -20,6 +20,7 @@ import sys
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "tools"))
 from release_utils import canonical_source_bytes, ensure_safe_output, file_inventory
+from board_catalog import select_board
 
 
 IDE_FOLDER = "ide"
@@ -70,19 +71,40 @@ def copy_file(source: Path, target: Path, minify_python: bool) -> None:
         _write_source_file(source, target)
 
 
-def copy_tree(source: Path, target: Path, minify_python: bool) -> None:
+def copy_tree(
+        source: Path, target: Path, minify_python: bool,
+        excludes=()) -> None:
     if not source.is_dir():
         raise FileNotFoundError("Source directory does not exist: %s" % source)
+    excludes = {str(path).replace("\\", "/") for path in excludes}
     for path in sorted(source.rglob("*")):
-        if not path.is_file() or _is_excluded(path.relative_to(source)):
+        relative = path.relative_to(source)
+        if not path.is_file() or _is_excluded(relative) or \
+                relative.as_posix() in excludes:
             continue
-        copy_file(path, target / path.relative_to(source), minify_python)
+        copy_file(path, target / relative, minify_python)
 
 
 def copy_top_level(source: Path, target: Path, minify_python: bool = False) -> None:
     for path in sorted(item for item in source.iterdir() if item.is_file()):
         if not _is_excluded(path.relative_to(source)):
             copy_file(path, target / path.name, minify_python)
+
+
+def copy_board_runtimes(output: Path, board_ids, minify_python: bool) -> None:
+    """Copy only explicitly selected board payloads into the distribution."""
+    seen = set()
+    for board_id in board_ids:
+        if board_id in seen:
+            raise ValueError("duplicate board runtime: %s" % board_id)
+        seen.add(board_id)
+        descriptor = select_board(board_id)
+        runtime = descriptor.get("runtime")
+        if not isinstance(runtime, dict):
+            raise ValueError("board has no runtime payload: %s" % board_id)
+        source = ROOT / runtime["source"]
+        target = output / runtime["target"].strip("/")
+        copy_tree(source, target, minify_python)
 
 
 def npm_executable() -> str:
@@ -129,8 +151,18 @@ def build_distribution(
         source: Path, output: Path, *, clean: bool = False,
         minify_python: bool = True, build_web: bool = True,
         install_web_dependencies: bool = False, epoch: int | None = None,
+        board_ids=(), runtime_profile: str = "lvgl-modern",
 ) -> dict[str, object]:
     source = source.resolve()
+    if runtime_profile not in ("legacy-mp123", "lvgl-modern"):
+        raise ValueError("unsupported runtime profile: %s" % runtime_profile)
+    for board_id in board_ids:
+        board_profile = select_board(board_id)["runtime_profile"]
+        if board_profile != runtime_profile:
+            raise ValueError(
+                "board %s requires runtime profile %s" %
+                (board_id, board_profile))
+
     output = prepare_output(output, source, clean)
     epoch = source_date_epoch() if epoch is None else epoch
     web_source = source / IDE_FOLDER / WEB_FOLDER
@@ -143,14 +175,24 @@ def build_distribution(
             "Web output is missing. Run without --skip-web-build: %s" % web_dist)
 
     copy_top_level(source, output)
-    for relative in ("files", "configs", "defaults", "recovery"):
+    for relative in ("configs", "defaults", "recovery"):
         copy_tree(source / relative, output / relative, False)
+    copy_tree(source / "files" / "assets", output / "files" / "assets", False)
+    copy_tree(source / "files" / "user", output / "files" / "user", False)
+    help_source = "help" if runtime_profile == "lvgl-modern" else "help-legacy"
+    copy_tree(source / "files" / help_source, output / "files" / "help", False)
     # OTA archives must never target /files/user, but authenticated clean
     # provisioning still needs a starter application.  Duplicate the source
     # seed under update-managed defaults so a signed release can initialize a
     # genuinely empty filesystem without weakening protected-path ownership.
     copy_tree(source / "files" / "user", output / "defaults" / "user", False)
-    copy_tree(source / "lib", output / "lib", minify_python)
+    lib_excludes = (
+        ("tartlabutils/modern_app.py",)
+        if runtime_profile == "legacy-mp123" else ())
+    copy_tree(
+        source / "lib", output / "lib", minify_python,
+        excludes=lib_excludes)
+    copy_board_runtimes(output, board_ids, minify_python)
     copy_top_level(source / IDE_FOLDER, output / IDE_FOLDER, minify_python)
     copy_tree(web_dist, output / IDE_FOLDER / WEB_FOLDER, False)
     compress_large_files(output / IDE_FOLDER / WEB_FOLDER, epoch)
@@ -164,6 +206,8 @@ def build_distribution(
         "output": str(output),
         "inventory_sha256": hashlib.sha256(json.dumps(
             inventory, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+        "board_ids": sorted(set(board_ids)),
+        "runtime_profile": runtime_profile,
     }
 
 
@@ -184,6 +228,13 @@ def parse_args() -> argparse.Namespace:
         "--install-web-dependencies", action="store_true",
         help="run npm ci before the web build")
     parser.add_argument("--source-date-epoch", type=int)
+    parser.add_argument(
+        "--board", action="append", default=[], dest="board_ids",
+        help="include one board-owned runtime payload (repeatable)")
+    parser.add_argument(
+        "--runtime-profile", choices=("legacy-mp123", "lvgl-modern"),
+        default="lvgl-modern",
+        help="select the platform-specific help application tree")
     return parser.parse_args()
 
 
@@ -194,7 +245,8 @@ def main() -> None:
         minify_python=not args.no_minify,
         build_web=not args.skip_web_build,
         install_web_dependencies=args.install_web_dependencies,
-        epoch=args.source_date_epoch)
+        epoch=args.source_date_epoch, board_ids=args.board_ids,
+        runtime_profile=args.runtime_profile)
     print(json.dumps(result, indent=2, sort_keys=True))
 
 

@@ -39,6 +39,12 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def sha256_source_file(path: Path) -> str:
+    """Hash reviewed text inputs independently of checkout line endings."""
+    data = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return hashlib.sha256(data).hexdigest()
+
+
 def load_lock(path: Path = DEFAULT_LOCK) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -148,7 +154,7 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
     for item in build.get("local_inputs", []):
         path = ROOT / item.get("path", "")
         _require(path.is_file(), f"local build input is missing: {path}")
-        _require(item.get("sha256") == sha256_file(path),
+        _require(item.get("sha256") == sha256_source_file(path),
                  f"{item.get('path')}: local build input hash mismatch")
 
     transport = lock.get("transport", {})
@@ -163,7 +169,7 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
     for item in adapter.get("inputs", []):
         path = ROOT / item.get("path", "")
         _require(path.is_file(), f"adapter input is missing: {path}")
-        _require(item.get("sha256") == sha256_file(path),
+        _require(item.get("sha256") == sha256_source_file(path),
                  f"{item.get('path')}: adapter input hash mismatch")
 
     gate = lock.get("capability_gate", {})
@@ -227,7 +233,8 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
         evidence_path = ROOT / evidence_identity.get("path", "")
         _require(evidence_path.is_file(),
                  f"comparison evidence missing: {evidence_path}")
-        _require(sha256_file(evidence_path) == evidence_identity.get("sha256"),
+        _require(
+            sha256_source_file(evidence_path) == evidence_identity.get("sha256"),
                  "comparison evidence hash mismatch")
         _require(
             provenance.get("benchmark_evidence", {}).get(

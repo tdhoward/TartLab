@@ -48,11 +48,11 @@ CATEGORY_CONFIG = (
         "shipped_examples",
         tuple(
             path.relative_to(ROOT).as_posix()
-            for path in sorted((ROOT / "src/files/help").glob("*.py"))
+            for path in sorted((ROOT / "src/files/help-legacy").glob("*.py"))
         ),
         ("hdwconfig",),
-        "Vendor dependencies imported by shipped student examples, excluding "
-        "the separately inventoried hardware boundary.",
+        "Vendor dependencies imported by shipped legacy student examples, "
+        "excluding the separately inventoried hardware boundary.",
     ),
 )
 

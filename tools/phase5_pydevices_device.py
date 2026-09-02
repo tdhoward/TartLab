@@ -21,10 +21,12 @@ MARKER_PATH = "/state/phase5_pydevices_comparison.json"
 SELECTOR = b"from t_display_s3_pro_pydevices_modern import *\n"
 SELECTOR_PATHS = ("/device/hdwconfig.py", "/hdwconfig.py")
 STAGED_FILES = {
-    "/lib/tartlabutils/pydevices_modern.py":
-        ROOT / "src/lib/tartlabutils/pydevices_modern.py",
+    "/lib/pydevices_modern.py":
+        ROOT / "firmware/lvgl-modern/pydevices/runtime/pydevices_modern.py",
+    "/lib/lilygo_t_display_s3_pro_pydevices.py":
+        ROOT / "firmware/lvgl-modern/pydevices/runtime/lilygo_t_display_s3_pro_pydevices.py",
     "/configs/t_display_s3_pro_pydevices_modern.py":
-        ROOT / "src/configs/t_display_s3_pro_pydevices_modern.py",
+        ROOT / "firmware/lvgl-modern/pydevices/runtime/t_display_s3_pro_pydevices_modern.py",
 }
 
 

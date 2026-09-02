@@ -28,8 +28,12 @@
   },
   "selector": {
     "module": "t_display_s3_pro_modern",
-    "source": "src/configs/t_display_s3_pro_modern.py",
+    "source": "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
     "protected_path": "/device/hdwconfig.py"
+  },
+  "runtime": {
+    "source": "boards/lilygo_t_display_s3_pro/runtime",
+    "target": "/board/lilygo_t_display_s3_pro"
   },
   "firmware": {
     "artifact": "firmware/lvgl-modern/reference/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",

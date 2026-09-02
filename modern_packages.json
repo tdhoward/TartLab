@@ -1,0 +1,88 @@
+[
+  {
+    "name": "recovery",
+    "source": "dist/recovery",
+    "target": "/recovery",
+    "clear_first": false,
+    "ownership": "protected-recovery"
+  },
+  {
+    "name": "defaults",
+    "source": "dist/defaults",
+    "target": "/defaults",
+    "clear_first": true,
+    "ownership": "system"
+  },
+  {
+    "name": "rootfiles",
+    "source": "dist/*",
+    "target": "/",
+    "clear_first": false,
+    "exclude": ["app.py", "hdwconfig.py"],
+    "ownership": "system"
+  },
+  {
+    "name": "tartlab",
+    "source": "dist/ide",
+    "target": "/ide",
+    "clear_first": true,
+    "ownership": "system"
+  },
+  {
+    "name": "helpfiles",
+    "source": "dist/files/help",
+    "target": "/files/help",
+    "clear_first": true,
+    "ownership": "system"
+  },
+  {
+    "name": "assetfiles",
+    "source": "dist/files/assets",
+    "target": "/files/assets",
+    "clear_first": true,
+    "ownership": "system"
+  },
+  {
+    "name": "libahttpserver",
+    "source": "dist/lib/ahttpserver",
+    "target": "/lib/ahttpserver",
+    "clear_first": true,
+    "ownership": "system"
+  },
+  {
+    "name": "pydevices",
+    "source": "dist/lib/pydevices",
+    "target": "/lib/pydevices",
+    "clear_first": true,
+    "ownership": "vendor"
+  },
+  {
+    "name": "configs",
+    "source": "dist/configs",
+    "target": "/configs",
+    "clear_first": true,
+    "ownership": "system"
+  },
+  {
+    "name": "board-support",
+    "source": "dist/board",
+    "target": "/board",
+    "clear_first": true,
+    "selection": "board-id-subtree",
+    "ownership": "system-board"
+  },
+  {
+    "name": "libtarfile",
+    "source": "dist/lib/tarfile",
+    "target": "/lib/tarfile",
+    "clear_first": true,
+    "ownership": "system"
+  },
+  {
+    "name": "tartlabutils",
+    "source": "dist/lib/tartlabutils",
+    "target": "/lib/tartlabutils",
+    "clear_first": true,
+    "ownership": "system"
+  }
+]

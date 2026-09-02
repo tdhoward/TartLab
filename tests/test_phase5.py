@@ -23,6 +23,20 @@ def load_modern_rendering():
     return module
 
 
+def load_lilygo_platform(modern):
+    path = ROOT / "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py"
+    spec = importlib.util.spec_from_file_location("phase5_lilygo", path)
+    module = importlib.util.module_from_spec(spec)
+    package = types.ModuleType("tartlabutils")
+    package.__path__ = []
+    with mock.patch.dict(sys.modules, {
+        "tartlabutils": package,
+        "tartlabutils.modern": modern,
+    }):
+        spec.loader.exec_module(module)
+    return module
+
+
 class FakePointerDriver:
     PRESSED = 1
     RELEASED = 0
@@ -186,7 +200,7 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
         inputs = profile["application_adapter"]["inputs"]
         self.assertEqual({item["path"] for item in inputs}, {
             "src/lib/tartlabutils/modern.py",
-            "src/configs/t_display_s3_pro_modern.py",
+            "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
         })
 
 
@@ -299,6 +313,7 @@ class FakeLVScreen:
 
 class FakeModernLVGL:
     EVENT = types.SimpleNamespace(FLUSH_START=91)
+    DISPLAY_ROTATION = types.SimpleNamespace(_0=0, _90=1, _180=2, _270=3)
 
     def __init__(self, display, bus):
         self.display = display
@@ -439,6 +454,32 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         surface.free_buffer(buffer)
         self.assertEqual(bus.freed, [buffer])
 
+    def test_platform_exposes_lvgl_and_logical_game_touch(self):
+        (module, unused_bus, panel, lv_display, lvgl, unused_tasks,
+         unused_pointer, controller) = self.prepare()
+
+        class Pointer:
+            PRESSED = 7
+
+            def __init__(self):
+                self.points = [(7, 20, 100), None]
+
+            def _get_coords(self):
+                return self.points.pop(0)
+
+        pointer = Pointer()
+        platform = module.ModernPlatform(
+            controller, panel, pointer, lvgl=lvgl)
+        lv_display.rotation = lvgl.DISPLAY_ROTATION._270
+        platform.enter_game_mode()
+
+        self.assertIs(platform.lvgl, lvgl)
+        self.assertEqual(platform.read_game_touch(), (100, 201))
+        self.assertIsNone(platform.read_game_touch())
+        platform.enter_ui_mode()
+        with self.assertRaises(module.DisplayOwnershipError):
+            platform.read_game_touch()
+
     def test_platform_deinit_releases_registered_native_objects_once(self):
         (module, bus, unused_panel, unused_lv_display, unused_lvgl,
          unused_tasks, unused_pointer, controller) = self.prepare()
@@ -469,6 +510,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         pointer = Input()
         panel = Panel()
         platform = module.ModernPlatform(controller, panel, pointer)
+        self.assertFalse(platform.capabilities["ide_button"])
 
         platform.deinit()
         platform.deinit()
@@ -480,7 +522,8 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         self.assertEqual(bus.deinit_calls, 1)
 
     def test_pinned_board_factory_uses_native_dual_dma_and_swapped_lvgl(self):
-        module = load_modern_rendering()
+        modern = load_modern_rendering()
+        module = load_lilygo_platform(modern)
         bus = FakeModernBus()
         display = FakeLVDisplay(bus)
         screen = FakeLVScreen()
@@ -515,7 +558,11 @@ class ModernRenderingAdapterTests(unittest.TestCase):
                 super().__init__()
                 self.device = device
                 self.options = kwargs
+                self.register_writes = []
                 pointers.append(self)
+
+            def _write_reg(self, register, value):
+                self.register_writes.append((register, value))
 
         class I2CBus:
             def __init__(self, **kwargs):
@@ -531,7 +578,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         lvgl = types.ModuleType("lvgl")
         lvgl.COLOR_FORMAT = types.SimpleNamespace(
             RGB565_SWAPPED="rgb565-swapped")
-        lvgl.DISPLAY_ROTATION = types.SimpleNamespace(_90=1, _270=3)
+        lvgl.DISPLAY_ROTATION = types.SimpleNamespace(_0=0, _90=1, _270=3)
         lvgl.EVENT = types.SimpleNamespace(FLUSH_START=91)
         lvgl.display_get_default = lambda: display
         lvgl.screen_active = lambda: screen
@@ -580,16 +627,38 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             (panels[0].options["offset_x"], panels[0].options["offset_y"]),
             (0, 49))
         self.assertEqual(pointers[0].options, {
-            "reset_pin": 13, "interrupt_pin": 21, "startup_rotation": 3})
+            "reset_pin": 13, "interrupt_pin": 21, "startup_rotation": 0})
         self.assertEqual((platform.width, platform.height), (480, 222))
         self.assertTrue(platform.capabilities["exclusive_display_ownership"])
+        platform.keep_touch_awake()
+        self.assertEqual(pointers[0].register_writes, [(0xFE, 0x01)])
+
+    def test_generic_modern_adapter_has_no_board_factory(self):
+        module = load_modern_rendering()
+        self.assertFalse(hasattr(module, "create_t_display_s3_pro_platform"))
+
+    def test_t_display_board_entrypoint_delegates_to_factory(self):
+        calls = []
+        module = load_lilygo_platform(load_modern_rendering())
+        module.create_t_display_s3_pro_platform = lambda: (
+            calls.append(True), "platform")[1]
+
+        self.assertEqual(module.create_platform(), "platform")
+        self.assertEqual(calls, [True])
 
     def test_modern_ide_progress_supports_binding_without_anim_enum(self):
         module = load_modern_rendering()
 
         class Widget:
+            def __init__(self, unused_parent=None):
+                self.size = None
+                self.alignment = None
+                self.background = None
+                self.radius = None
+                self.text = "Text"
+
             def set_style_bg_color(self, *unused):
-                pass
+                self.background = unused[0]
 
             def set_style_border_width(self, *unused):
                 pass
@@ -597,20 +666,24 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             def set_style_border_color(self, *unused):
                 pass
 
-            def set_text(self, *unused):
-                pass
+            def set_style_radius(self, radius, unused_selector):
+                self.radius = radius
 
-            def align(self, *unused):
-                pass
+            def set_text(self, value):
+                self.text = value
+
+            def align(self, *values):
+                self.alignment = values
+
+            def set_size(self, width, height):
+                self.size = (width, height)
 
         class Bar(Widget):
             def __init__(self):
+                super().__init__()
                 self.values = []
 
             def set_range(self, *unused):
-                pass
-
-            def set_size(self, *unused):
                 pass
 
             def set_value(self, value, animation):
@@ -619,7 +692,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         bar = Bar()
         lvgl = types.SimpleNamespace(
             ALIGN=types.SimpleNamespace(
-                BOTTOM_MID=1, TOP_MID=2, CENTER=3),
+                BOTTOM_MID=1, TOP_MID=2, CENTER=3, TOP_RIGHT=4),
             obj=Widget,
             label=lambda unused_parent: Widget(),
             bar=lambda unused_parent: bar,
@@ -627,11 +700,20 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             screen_load=lambda unused_screen: None,
         )
         controller = types.SimpleNamespace(acquire_ui=lambda: None)
+        controller.surface = types.SimpleNamespace(width=480, height=222)
 
         view = module.ModernIDEView(controller, lvgl)
+        self.assertEqual(view._status.text, "")
+        self.assertEqual(bar.size, (420, 20))
         view.show_update_progress("TEST", 1, 3)
+        view.show_app_error()
+        view.show_app_error()
 
         self.assertEqual(bar.values, [(1, False)])
+        self.assertEqual(view._app_error_indicator.size, (14, 14))
+        self.assertEqual(view._app_error_indicator.alignment, (4, -12, 12))
+        self.assertEqual(view._app_error_indicator.background, 0xFF0000)
+        self.assertEqual(view._app_error_indicator.radius, 7)
 
 
 class Phase5BenchmarkHarnessTests(unittest.TestCase):

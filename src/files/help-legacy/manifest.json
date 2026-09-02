@@ -1,0 +1,80 @@
+{
+	"help_system_version": 1,
+	"folders": [
+		{
+			"folder name":"TartLab",
+			"entries": [
+				{
+					"title":"Getting started",
+					"subtitle":"Using the TartLab web app",
+					"file":"tartlab1.html"
+				}
+			]
+		},
+		{
+			"folder name":"Intro to Python",
+			"entries": [
+				{
+					"title":"Basics",
+					"subtitle":"Rules, common examples, etc",
+					"file":"pybasics.py"
+				},
+				{
+					"title":"Drawing basics",
+					"subtitle":"Intro to drawing graphics",
+					"file":"drawingbasics.py"
+				}
+			]
+		},
+		{
+			"folder name":"Examples",
+			"entries": [
+				{
+					"title":"Testris",
+					"subtitle":"Tetris game for MicroPython",
+					"file":"testris.py"
+				},
+				{
+					"title":"Snake",
+					"subtitle":"Feed the hungry snake!",
+					"file":"snake.py"
+				},
+				{
+					"title":"Calculator",
+					"subtitle":"A simple calculator",
+					"file":"calculator.py"
+				},
+				{
+					"title":"Face",
+					"subtitle":"A cheerful face",
+					"file":"face.py"
+				},
+				{
+					"title":"Moire (slow)",
+					"subtitle":"Cool line patterns",
+					"file":"moire_slow.py"
+				},
+				{
+					"title":"Moire (fast)",
+					"subtitle":"Line patterns, but faster",
+					"file":"moire_fast.py"
+				},
+				{
+					"title":"Animation",
+					"subtitle":"A ball bounces on the screen",
+					"file":"animation.py"
+				},
+				{
+					"title":"Display bitmap",
+					"subtitle":"Loads and displays a bitmap file",
+					"file":"display_bmp.py"
+				},
+				{
+					"title":"Sprite",
+					"subtitle":"Demonstrates using sprites",
+					"file":"sprite.py"
+				}
+			]
+		}
+	]
+}
