@@ -451,6 +451,8 @@ class ModernPlatform:
         screen = self._lvgl.screen_active()
         screen.set_style_bg_color(self._lvgl.color_hex(0x000000), 0)
         screen.invalidate()
+        self._lvgl.refr_now(self.controller._lv_display)
+        self.controller.wait_for_transfer()
 
     def show_error(self):
         self.enter_ui_mode()

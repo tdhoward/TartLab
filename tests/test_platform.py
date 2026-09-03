@@ -1,4 +1,5 @@
 import importlib.util
+import ast
 import json
 from pathlib import Path
 import shutil
@@ -182,6 +183,58 @@ class PlatformContractTests(unittest.TestCase):
                 sys.modules.pop("hdwconfig", None)
             else:
                 sys.modules["hdwconfig"] = previous
+
+    def test_declarative_board_payload_uses_shared_platform_factory(self):
+        selected = object()
+        board = {"id": "synthetic_modern", "pins": ()}
+        hardware = types.ModuleType("hdwconfig")
+        hardware.BOARD_CONFIG = board
+        factory_module = types.ModuleType("tartlabutils.modern_factory")
+        calls = []
+        factory_module.create_platform = lambda value: (
+            calls.append(value), selected)[1]
+        previous_hardware = sys.modules.get("hdwconfig")
+        previous_factory = sys.modules.get("tartlabutils.modern_factory")
+        self.platform_module.set_platform(None)
+        sys.modules["hdwconfig"] = hardware
+        sys.modules["tartlabutils.modern_factory"] = factory_module
+        try:
+            self.assertIs(self.platform_module.get_platform(), selected)
+            self.assertEqual(calls, [board])
+        finally:
+            self.platform_module.set_platform(None)
+            if previous_hardware is None:
+                sys.modules.pop("hdwconfig", None)
+            else:
+                sys.modules["hdwconfig"] = previous_hardware
+            if previous_factory is None:
+                sys.modules.pop("tartlabutils.modern_factory", None)
+            else:
+                sys.modules["tartlabutils.modern_factory"] = previous_factory
+
+    def test_modern_board_payloads_are_single_declarative_objects(self):
+        paths = (
+            ROOT / "boards/lilygo_t_display_s3_pro/runtime/"
+            "t_display_s3_pro_modern.py",
+            ROOT / "boards/elecrow_dle06235b/runtime/"
+            "elecrow_dle06235b_modern.py",
+        )
+        for path in paths:
+            with self.subTest(path=path):
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+                statements = [
+                    item for item in tree.body
+                    if not (isinstance(item, ast.Expr) and
+                            isinstance(item.value, ast.Constant) and
+                            isinstance(item.value.value, str))
+                ]
+                self.assertEqual(len(statements), 1)
+                assignment = statements[0]
+                self.assertIsInstance(assignment, ast.Assign)
+                self.assertEqual(
+                    [target.id for target in assignment.targets],
+                    ["BOARD_CONFIG"],
+                )
 
     def test_legacy_ide_view_preserves_rendering_operations(self):
         framebuffers = []

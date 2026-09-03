@@ -21,6 +21,7 @@ def load_source(name, path):
 _MODULE_NAMES = (
     "tartlabutils",
     "tartlabutils.modern",
+    "tartlabutils.modern_st77922",
     "elecrow_dle06235b_modern",
 )
 _SAVED_MODULES = {name: sys.modules.get(name) for name in _MODULE_NAMES}
@@ -33,6 +34,10 @@ try:
         ROOT / "src/lib/tartlabutils/modern.py",
     )
     module = load_source(
+        "tartlabutils.modern_st77922",
+        ROOT / "src/lib/tartlabutils/modern_st77922.py",
+    )
+    board_payload = load_source(
         "elecrow_dle06235b_modern",
         ROOT / "boards/elecrow_dle06235b/runtime/elecrow_dle06235b_modern.py",
     )
@@ -97,7 +102,7 @@ class ElecrowDirectSurfaceTests(unittest.TestCase):
             return bytearray(size)
 
         surface = module.ST77922DirectRGB565Surface(
-            controller, bus, panel, 8, 2, 3, allocate, freed.append, 4)
+            controller, bus, panel, 8, 2, 2, 3, allocate, freed.append, 4)
         return controller, bus, panel, freed, surface
 
     def test_partial_write_requires_full_frame_seed(self):
@@ -160,8 +165,8 @@ class ElecrowDirectSurfaceTests(unittest.TestCase):
 
 class ElecrowControllerTests(unittest.TestCase):
     def test_callback_error_is_contained_until_main_thread_wait(self):
-        controller = module.ElecrowDisplayController.__new__(
-            module.ElecrowDisplayController)
+        controller = module.ST77922DisplayController.__new__(
+            module.ST77922DisplayController)
         controller._transfer_pending = True
         controller._owner = module.UI_OWNER
         controller._callback_failed = False
@@ -184,49 +189,16 @@ class ElecrowControllerTests(unittest.TestCase):
         self.assertFalse(controller._callback_failed)
         self.assertFalse(controller.surface.shadow_valid)
 
-    def test_portrait_progress_bar_fits_the_display(self):
-        class Widget:
-            def set_style_bg_color(self, *unused):
-                pass
-
-            def set_style_border_width(self, *unused):
-                pass
-
-            def set_style_border_color(self, *unused):
-                pass
-
-            def set_text(self, *unused):
-                pass
-
-            def align(self, *unused):
-                pass
-
-        class Bar(Widget):
-            def __init__(self):
-                self.sizes = []
-
-            def set_range(self, *unused):
-                pass
-
-            def set_size(self, width, height):
-                self.sizes.append((width, height))
-
-        bar = Bar()
-        lvgl = types.SimpleNamespace(
-            ALIGN=types.SimpleNamespace(
-                BOTTOM_MID=1, TOP_MID=2, CENTER=3),
-            obj=Widget,
-            label=lambda unused_parent: Widget(),
-            bar=lambda unused_parent: bar,
-            color_hex=lambda value: value,
-            screen_load=lambda unused_screen: None,
+    def test_board_payload_references_shared_st77922_adapter(self):
+        board = board_payload.BOARD_CONFIG
+        pins = {item["type"]: item for item in board["pins"]}
+        self.assertEqual(board["id"], "elecrow_dle06235b")
+        self.assertEqual(pins["BACKLIGHT"]["number"], 41)
+        self.assertEqual(board["display"]["driver"], "st77922.ST77922")
+        self.assertEqual(
+            board["display"]["adapter"],
+            "tartlabutils.modern_st77922",
         )
-        controller = types.SimpleNamespace(
-            acquire_ui=lambda: None,
-            surface=types.SimpleNamespace(width=320),
-        )
-        module.ElecrowIDEView(controller, lvgl)
-        self.assertEqual(bar.sizes, [(280, 20)])
 
 
 class ElecrowDriverSourceTests(unittest.TestCase):
@@ -236,6 +208,17 @@ class ElecrowDriverSourceTests(unittest.TestCase):
         self.assertNotIn("register_callback(None)", source)
         self.assertNotIn("self._disp_drv.flush_ready()", source)
         self.assertIn("lcd_bus.free_buffer(rotation_buffer)", source)
+
+    def test_shared_factory_clears_while_backlight_is_off(self):
+        source = (ROOT / "src/lib/tartlabutils/modern_factory.py").read_text(
+            encoding="utf-8")
+        backlight_off = source.index("panel.set_backlight(0)")
+        panel_init = source.index("panel.init()")
+        clear = source.index("platform.clear_display()")
+        backlight_on = source.index("panel.set_backlight(100)")
+        self.assertLess(backlight_off, panel_init)
+        self.assertLess(panel_init, clear)
+        self.assertLess(clear, backlight_on)
 
 
 if __name__ == "__main__":

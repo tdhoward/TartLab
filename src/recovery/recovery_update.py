@@ -19,10 +19,7 @@ LEGACY_PROFILE = "legacy-mp123"
 MODERN_PROFILE = "lvgl-modern"
 LEGACY_REPOSITORY = "tdhoward/tartlab"
 MODERN_REPOSITORY = "tdhoward/tartlab-modern-releases"
-DEFAULT_MODERN_BOARD_ID = "lilygo_t_display_s3_pro"
 BOARD_IDENTITY_FILE = "/device/board.json"
-MODERN_FIRMWARE_SHA256 = (
-    "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab")
 PROTECTED = (
     "/app.py", "/hdwconfig.py", "/settings.json", "/repos.json", "/logs",
     "/device", "/state", "/files/user",
@@ -205,9 +202,7 @@ def _modern_board_identity(repo):
     if board_id is None and protected_board_id is not None:
         board_id = protected_board_id
     if board_id is None:
-        if firmware_sha256 != MODERN_FIRMWARE_SHA256:
-            raise ValueError("Modern release state has the wrong firmware identity")
-        board_id = DEFAULT_MODERN_BOARD_ID
+        raise ValueError("Modern release state has no board identity")
     if not isinstance(board_id, str) or not board_id or \
             any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_"
                 for character in board_id):

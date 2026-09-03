@@ -582,6 +582,12 @@ class UpdaterFailureTests(unittest.TestCase):
             finally:
                 self.updater.BOARD_IDENTITY_FILE = old
 
+    def test_modern_update_never_guesses_a_board_identity(self):
+        with self.assertRaisesRegex(ValueError, "no board identity"):
+            self.updater._modern_board_identity({
+                "firmware_sha256": "a" * 64,
+            })
+
     def test_recovery_boot_gate_is_preserved_after_phase1_migration(self):
         updater = self.updater
         self.assertEqual(updater.PHASE1_MIGRATION_FILE, "/state/phase1_migration.json")
@@ -637,6 +643,12 @@ class RecoveryUpdaterTests(unittest.TestCase):
             finally:
                 self.recovery_update.BOARD_IDENTITY_FILE = old
 
+    def test_recovery_never_guesses_a_board_identity(self):
+        with self.assertRaisesRegex(ValueError, "no board identity"):
+            self.recovery_update._modern_board_identity({
+                "firmware_sha256": "a" * 64,
+            })
+
     def test_recovery_extractor_reads_verified_tar_shape(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -665,7 +677,8 @@ class RecoveryUpdaterTests(unittest.TestCase):
             "installed_version": "modern-v1",
             "runtime_profile": "lvgl-modern",
             "manifest": "modern-manifest.json",
-            "firmware_sha256": updater.MODERN_FIRMWARE_SHA256,
+            "board_id": "board_a",
+            "firmware_sha256": "b" * 64,
         }
         package = {
             "file_name": "rootfiles.tar", "sha256": "a" * 64,
@@ -680,7 +693,7 @@ class RecoveryUpdaterTests(unittest.TestCase):
             },
             "compatibility": {
                 "runtime_profile": "lvgl-modern",
-                "firmware": {"sha256": updater.MODERN_FIRMWARE_SHA256},
+                "firmware": {"sha256": "b" * 64},
             },
             "packages": [package],
         }
@@ -733,7 +746,8 @@ class RecoveryUpdaterTests(unittest.TestCase):
             "installed_version": "modern-v1",
             "runtime_profile": "lvgl-modern",
             "manifest": "modern-manifest.json",
-            "firmware_sha256": updater.MODERN_FIRMWARE_SHA256,
+            "board_id": "board_a",
+            "firmware_sha256": "b" * 64,
         }
         package = {
             "file_name": "rootfiles.tar", "sha256": "a" * 64,
@@ -748,7 +762,7 @@ class RecoveryUpdaterTests(unittest.TestCase):
             },
             "compatibility": {
                 "runtime_profile": "lvgl-modern",
-                "firmware": {"sha256": updater.MODERN_FIRMWARE_SHA256},
+                "firmware": {"sha256": "b" * 64},
             },
             "packages": [package],
         }
@@ -910,6 +924,39 @@ class BootRecoveryGateTests(unittest.TestCase):
             }),
             "repeated_boot_failure",
         )
+
+    def test_known_modern_board_blanks_backlight_during_early_boot(self):
+        namespace = self.namespace
+        original_loader = namespace["_load_board_config"]
+        previous_machine = sys.modules.get("machine")
+        calls = []
+
+        class Pin:
+            OUT = 1
+
+            def __init__(self, number, mode, value=None):
+                calls.append((number, mode, value))
+
+        namespace["_load_board_config"] = lambda: {
+            "id": "synthetic_modern_board",
+            "pins": ({
+                "type": "BACKLIGHT",
+                "number": 48,
+                "active_high": True,
+            },),
+        }
+        sys.modules["machine"] = types.SimpleNamespace(Pin=Pin)
+        try:
+            pin = namespace["_blank_retained_display"]()
+        finally:
+            namespace["_load_board_config"] = original_loader
+            if previous_machine is None:
+                sys.modules.pop("machine", None)
+            else:
+                sys.modules["machine"] = previous_machine
+
+        self.assertIsInstance(pin, Pin)
+        self.assertEqual(calls, [(48, Pin.OUT, 0)])
 
 
 class FixtureTests(unittest.TestCase):

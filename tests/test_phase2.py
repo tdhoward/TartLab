@@ -363,7 +363,7 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
                 },
                 "compatibility": {
                     "runtime_profile": "lvgl-modern",
-                    "firmware": {"sha256": updater.MODERN_FIRMWARE_SHA256},
+                    "firmware": {"sha256": "a" * 64},
                 },
                 "packages": [package],
             }
@@ -381,7 +381,8 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
                 "installed_version": "modern-v1",
                 "runtime_profile": "lvgl-modern",
                 "manifest": "modern-manifest.json",
-                "firmware_sha256": updater.MODERN_FIRMWARE_SHA256,
+                "board_id": "board_a",
+                "firmware_sha256": "a" * 64,
             }
             downloaded = []
             installed = []
@@ -444,7 +445,8 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
             "name": "TartLab", "repo": "tdhoward/TartLab",
             "runtime_profile": "lvgl-modern",
             "manifest": "modern-manifest.json",
-            "firmware_sha256": updater.MODERN_FIRMWARE_SHA256,
+            "board_id": "board_a",
+            "firmware_sha256": "a" * 64,
         }
         legacy_on_modern = {
             "name": "TartLab", "repo": "tdhoward/TartLab-modern-releases",
@@ -458,7 +460,7 @@ class UpdaterFailureInjectionTests(unittest.TestCase):
 
         wrong_firmware = dict(modern_on_legacy)
         wrong_firmware["repo"] = "tdhoward/TartLab-modern-releases"
-        wrong_firmware["firmware_sha256"] = "0" * 64
+        wrong_firmware["firmware_sha256"] = "not-a-sha256"
         with self.assertRaisesRegex(ValueError, "firmware identity"):
             updater.release_contract(wrong_firmware)
 

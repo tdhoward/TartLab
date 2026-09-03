@@ -82,12 +82,20 @@
     "ownership": "exclusive completion-signaled UI/game transitions",
     "inputs": [
       {
+        "path": "src/lib/tartlabutils/board.py",
+        "sha256": "7f0977b3a3c87f5149227d376f9882202de38848560bec3466cd04e321294d17"
+      },
+      {
         "path": "src/lib/tartlabutils/modern.py",
-        "sha256": "611d0e264a9d638ede89a769fce78b8cbe3bfad046c1179e68e1e86cb289202b"
+        "sha256": "b9e1e3473c405aa45f9b13df69739d46826b458563542d84a6d21bf7eb3a68eb"
+      },
+      {
+        "path": "src/lib/tartlabutils/modern_factory.py",
+        "sha256": "0936ccbb49d834b26652383c1e8762a1f3bf5c76c462d252bcc55d5471003dbc"
       },
       {
         "path": "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
-        "sha256": "50945cc5f15e67b6ad9fd45165235e2ffbdfed2ead1d1d6f236e7428a2c635e9"
+        "sha256": "25ce3bb66b970f8b7eea46611fa26e21d229acfdc22634c67aa5ce7d7162e6b9"
       }
     ]
   }

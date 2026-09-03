@@ -13,6 +13,7 @@ STATE_DIR = "/state"
 BOOT_STATE = STATE_DIR + "/boot.json"
 UPDATE_STATE = STATE_DIR + "/update.json"
 RECOVERY_FLAG = STATE_DIR + "/recovery.flag"
+BOARD_IDENTITY = "/device/board.json"
 FAILURE_LIMIT = 3
 
 
@@ -42,6 +43,53 @@ def _write(path, value):
     if _kind(path) == 1:
         os.remove(path)
     os.rename(temporary, path)
+
+
+def _load_board_config():
+    identity = _read(BOARD_IDENTITY, {})
+    board_id = identity.get("board_id") if isinstance(identity, dict) else None
+    if not isinstance(board_id, str) or not board_id or any(
+            character not in "abcdefghijklmnopqrstuvwxyz0123456789_"
+            for character in board_id):
+        return None
+    runtime_path = "/board/" + board_id
+    for path in (runtime_path, "/device"):
+        if path in sys.path:
+            sys.path.remove(path)
+        sys.path.insert(0, path)
+    try:
+        hardware = __import__("hdwconfig")
+        board = getattr(hardware, "BOARD_CONFIG", None)
+        if isinstance(board, dict) and board.get("id") == board_id:
+            return board
+    except Exception:
+        pass
+    return None
+
+
+def _blank_retained_display():
+    board = _load_board_config()
+    if board is None:
+        return None
+    backlights = [
+        pin for pin in board.get("pins", ())
+        if pin.get("type") == "BACKLIGHT"
+    ]
+    if len(backlights) != 1:
+        return None
+    backlight = backlights[0]
+    inactive = 0 if backlight.get("active_high", True) else 1
+    try:
+        from machine import Pin
+        try:
+            return Pin(backlight["number"], Pin.OUT, value=inactive)
+        except TypeError:
+            pin = Pin(backlight["number"], Pin.OUT)
+            pin.value(inactive)
+            return pin
+    except Exception:
+        # Display blanking is best effort and must never prevent recovery.
+        return None
 
 
 def _start_boot():
@@ -76,6 +124,7 @@ def _run_recovery(reason):
         print("TartLab recovery failed:", error)
 
 
+_early_backlight = _blank_retained_display()
 _reason = _recovery_reason(_start_boot())
 if _reason:
     _run_recovery(_reason)

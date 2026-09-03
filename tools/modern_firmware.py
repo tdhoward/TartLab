@@ -273,7 +273,7 @@ def validate_lock(lock: dict[str, Any]) -> dict[str, Any]:
     profile = load_lock(ROOT / "profiles/lvgl-modern.json")
     adapter = profile.get("application_adapter", {})
     adapter_inputs = adapter.get("inputs", [])
-    _require(isinstance(adapter_inputs, list) and len(adapter_inputs) == 2,
+    _require(isinstance(adapter_inputs, list) and len(adapter_inputs) == 4,
              "Phase 5 item 3 adapter inputs are not locked")
     for item in adapter_inputs:
         path = ROOT / item.get("path", "")

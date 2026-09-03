@@ -31,11 +31,19 @@ REQUIRED_DIST_FILES = (
     "boot.py",
     "main.py",
     PROFILE_RUNTIME_FILE,
+    "lib/tartlabutils/board.py",
     "lib/tartlabutils/modern_launcher.py",
     "lib/tartlabutils/modern_power.py",
     "lib/tartlabutils/modern.py",
+    "lib/tartlabutils/modern_factory.py",
     "lib/tartlabutils/platform.py",
 )
+APPLICATION_ADAPTER_INPUTS = {
+    "src/lib/tartlabutils/board.py",
+    "src/lib/tartlabutils/modern.py",
+    "src/lib/tartlabutils/modern_factory.py",
+    PROFILE_SELECTOR_SOURCE,
+}
 
 
 def sha256_file(path: Path) -> str:
@@ -178,14 +186,11 @@ def validate_profile(profile: dict[str, Any]) -> None:
             adapter.get("status") != "implemented-hardware-qualified":
         raise ValueError("modern application adapter is not hardware-qualified")
     inputs = adapter.get("inputs")
-    if not isinstance(inputs, list) or len(inputs) != 2:
+    if not isinstance(inputs, list) or len(inputs) != len(
+            APPLICATION_ADAPTER_INPUTS):
         raise ValueError("modern application adapter inputs are incomplete")
-    expected_paths = {
-        "src/lib/tartlabutils/modern.py",
-        PROFILE_SELECTOR_SOURCE,
-    }
     actual_paths = {item.get("path") for item in inputs if isinstance(item, dict)}
-    if actual_paths != expected_paths:
+    if actual_paths != APPLICATION_ADAPTER_INPUTS:
         raise ValueError("modern application adapter input paths do not match")
     for item in inputs:
         if not isinstance(item, dict):

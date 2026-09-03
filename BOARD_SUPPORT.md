@@ -23,12 +23,14 @@ boards/
   <board_id>/
     board.json                 Host-side identity and lifecycle record
     runtime/
-      <selector_module>.py     Board constructor, pins, and hardware policy
+      <selector_module>.py     One declarative BOARD_CONFIG object
 src/
   lib/
     tartlabutils/
+      board.py                 Typed-pin and board-reference helpers
       platform.py              Stable application-facing platform boundary
       modern.py                Shared LVGL/direct-surface implementation
+      modern_factory.py        Shared declarative board constructor
 firmware/lvgl-modern/
   pydevices/runtime/           Non-production comparison adapters
   boards/
@@ -84,10 +86,18 @@ Every modern board adapter exposes the same capabilities:
 - an `RGB565_BE` direct dirty-rectangle surface; and
 - exclusive, completion-signaled ownership between LVGL and direct rendering.
 
-Board modules construct buses, displays, input devices, and reset/backlight
-policy. Reusable transport behavior belongs in shared code. Controller-specific
-rules such as QSPI command packing or dirty-rectangle alignment belong behind a
-small transport strategy, not in games or the IDE.
+Each board module contains one hard-coded `BOARD_CONFIG` object and no runtime
+implementation. Its typed `pins` entries describe GPIO purpose, number, and
+electrical polarity; its display and touch records reference the appropriate
+drivers and any reusable adapter. Shared factory code constructs buses,
+displays, input devices, and reset/backlight policy from that object.
+Controller-specific behavior that can apply to another board, such as QSPI
+command packing or dirty-rectangle alignment, belongs in a shared driver
+adapter rather than the board payload, games, or IDE.
+
+The early recovery gate reads this same object through the protected selector
+to turn off a typed `BACKLIGHT` pin. Shared startup code therefore never
+contains a board ID, board-specific GPIO number, or per-board lookup table.
 
 The selector stored at `/device/hdwconfig.py` remains a protected local device
 property. It contains only a generated comment and an import of the module
@@ -164,10 +174,12 @@ The repeatable path is:
 3. Prove display and input independently on TartLab's pinned runtime. Record
    geometry, orientation, transport, clocks, buffering, color order, touch,
    heap, reset behavior, and all controller constraints.
-4. Add `boards/<board_id>/runtime/<selector_module>.py` and declare its runtime
-   source and `/board/<board_id>` target in the descriptor. Keep common UI and
-   ownership behavior in `tartlabutils`; keep pins, buses, drivers, rotation,
-   and hardware quirks in the board-owned payload.
+4. Add `boards/<board_id>/runtime/<selector_module>.py` containing only one
+   `BOARD_CONFIG` assignment, and declare its runtime source and
+   `/board/<board_id>` target in the descriptor. Put pins, bus parameters,
+   driver references, geometry, rotation, electrical policy, and true
+   board-specific quirks in that object. Put construction, UI, ownership,
+   transport, and driver behavior in reusable `tartlabutils` modules.
 5. Add a reproducible firmware overlay only when the board needs native changes.
    Pin every source and license and record a unique firmware identity even when
    most of the source graph is shared.
@@ -188,8 +200,9 @@ release pipeline are what keep the routine parts from becoming repetitive.
 
 ## Review rules
 
-- A new board should normally add one descriptor, one adapter, focused tests,
-  and—only if needed—one firmware overlay.
+- A new board should normally add one descriptor, one declarative payload,
+  focused tests, and—only if needed—a reusable driver adapter or firmware
+  overlay.
 - Do not fork the IDE, updater, recovery flow, or release repository per board.
 - Do not use display resolution or flash size as a unique board identity.
 - Do not let an unqualified descriptor appear in provisioning defaults or a

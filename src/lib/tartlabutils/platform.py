@@ -282,9 +282,14 @@ def get_platform():
         # Its isolated runtime is searched before historical /configs modules.
         configure_legacy_paths()
         import hdwconfig as hardware
-        factory = getattr(hardware, "create_platform", None)
-        if factory is None:
-            _current_platform = LegacyPlatform(hardware=hardware)
+        board = getattr(hardware, "BOARD_CONFIG", None)
+        if board is not None:
+            from tartlabutils.modern_factory import create_platform
+            _current_platform = create_platform(board)
         else:
-            _current_platform = factory()
+            factory = getattr(hardware, "create_platform", None)
+            if factory is not None:
+                _current_platform = factory()
+            else:
+                _current_platform = LegacyPlatform(hardware=hardware)
     return _current_platform

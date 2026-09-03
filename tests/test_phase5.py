@@ -27,14 +27,29 @@ def load_lilygo_platform(modern):
     path = ROOT / "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py"
     spec = importlib.util.spec_from_file_location("phase5_lilygo", path)
     module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_modern_factory(modern):
     package = types.ModuleType("tartlabutils")
     package.__path__ = []
+    board_path = ROOT / "src/lib/tartlabutils/board.py"
+    board_spec = importlib.util.spec_from_file_location(
+        "tartlabutils.board", board_path)
+    board = importlib.util.module_from_spec(board_spec)
+    factory_path = ROOT / "src/lib/tartlabutils/modern_factory.py"
+    factory_spec = importlib.util.spec_from_file_location(
+        "phase5_modern_factory", factory_path)
+    factory = importlib.util.module_from_spec(factory_spec)
     with mock.patch.dict(sys.modules, {
         "tartlabutils": package,
+        "tartlabutils.board": board,
         "tartlabutils.modern": modern,
     }):
-        spec.loader.exec_module(module)
-    return module
+        board_spec.loader.exec_module(board)
+        factory_spec.loader.exec_module(factory)
+    return factory
 
 
 class FakePointerDriver:
@@ -199,7 +214,9 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
             (ROOT / "profiles/lvgl-modern.json").read_text(encoding="utf-8"))
         inputs = profile["application_adapter"]["inputs"]
         self.assertEqual({item["path"] for item in inputs}, {
+            "src/lib/tartlabutils/board.py",
             "src/lib/tartlabutils/modern.py",
+            "src/lib/tartlabutils/modern_factory.py",
             "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
         })
 
@@ -306,6 +323,10 @@ class FakeLVDisplay:
 class FakeLVScreen:
     def __init__(self):
         self.invalidations = 0
+        self.background = None
+
+    def set_style_bg_color(self, color, unused_selector):
+        self.background = color
 
     def invalidate(self):
         self.invalidations += 1
@@ -480,6 +501,20 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         with self.assertRaises(module.DisplayOwnershipError):
             platform.read_game_touch()
 
+    def test_platform_clear_display_flushes_black_before_returning(self):
+        (module, unused_bus, panel, unused_lv_display, lvgl, unused_tasks,
+         pointer, controller) = self.prepare()
+        platform = module.ModernPlatform(
+            controller, panel, pointer, lvgl=lvgl)
+        lvgl.color_hex = lambda value: value
+
+        platform.clear_display()
+
+        self.assertEqual(lvgl.screen.background, 0)
+        self.assertEqual(lvgl.screen.invalidations, 1)
+        self.assertEqual(lvgl.refreshes, 1)
+        self.assertFalse(controller.transfer_pending)
+
     def test_platform_deinit_releases_registered_native_objects_once(self):
         (module, bus, unused_panel, unused_lv_display, unused_lvgl,
          unused_tasks, unused_pointer, controller) = self.prepare()
@@ -524,6 +559,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
     def test_pinned_board_factory_uses_native_dual_dma_and_swapped_lvgl(self):
         modern = load_modern_rendering()
         module = load_lilygo_platform(modern)
+        factory = load_modern_factory(modern)
         bus = FakeModernBus()
         display = FakeLVDisplay(bus)
         screen = FakeLVScreen()
@@ -582,6 +618,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         lvgl.EVENT = types.SimpleNamespace(FLUSH_START=91)
         lvgl.display_get_default = lambda: display
         lvgl.screen_active = lambda: screen
+        lvgl.color_hex = lambda value: value
         lvgl.refr_now = lambda unused: None
 
         machine = types.ModuleType("machine")
@@ -616,7 +653,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             "st7796": st7796,
             "task_handler": task_handler,
         }):
-            platform = module.create_t_display_s3_pro_platform()
+            platform = factory.create_platform(module.BOARD_CONFIG)
 
         self.assertEqual(spi_calls, [
             {"host": 1, "mosi": 17, "miso": 8, "sck": 18}])
@@ -630,6 +667,11 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             "reset_pin": 13, "interrupt_pin": 21, "startup_rotation": 0})
         self.assertEqual((platform.width, platform.height), (480, 222))
         self.assertTrue(platform.capabilities["exclusive_display_ownership"])
+        self.assertEqual(screen.background, 0)
+        self.assertEqual(screen.invalidations, 1)
+        self.assertEqual(
+            [event for event in panels[0].events if event[0] == "backlight"],
+            [("backlight", 0), ("backlight", 100)])
         platform.keep_touch_awake()
         self.assertEqual(pointers[0].register_writes, [(0xFE, 0x01)])
 
@@ -637,14 +679,15 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         module = load_modern_rendering()
         self.assertFalse(hasattr(module, "create_t_display_s3_pro_platform"))
 
-    def test_t_display_board_entrypoint_delegates_to_factory(self):
-        calls = []
+    def test_t_display_board_payload_declares_typed_pins_and_drivers(self):
         module = load_lilygo_platform(load_modern_rendering())
-        module.create_t_display_s3_pro_platform = lambda: (
-            calls.append(True), "platform")[1]
-
-        self.assertEqual(module.create_platform(), "platform")
-        self.assertEqual(calls, [True])
+        board = module.BOARD_CONFIG
+        pins = {item["type"]: item for item in board["pins"]}
+        self.assertEqual(board["id"], "lilygo_t_display_s3_pro")
+        self.assertEqual(pins["BUTTON"]["number"], 12)
+        self.assertEqual(pins["BACKLIGHT"]["number"], 48)
+        self.assertEqual(board["display"]["driver"], "st7796.ST7796")
+        self.assertEqual(board["touch"]["driver"], "cst226.CST226")
 
     def test_modern_ide_progress_supports_binding_without_anim_enum(self):
         module = load_modern_rendering()
