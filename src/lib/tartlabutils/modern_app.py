@@ -18,6 +18,7 @@ except ImportError:
 
 
 TRANSFER_ROWS = 16
+_TEXT_CHUNK_CHARS = 24
 
 
 def _ticks_ms():
@@ -92,6 +93,58 @@ class _PreparedSprite:
         self.framebuffer = framebuffer
         self.width = width
         self.height = height
+
+
+def _buffer_view(value):
+    """Return a byte view for a buffer or a FrameBuffer wrapping one."""
+    try:
+        return memoryview(value)
+    except TypeError:
+        return memoryview(value.buffer)
+
+
+def _rotate_rgb565(source, target, width, height,
+                   source_stride=None, target_stride=None):
+    """Rotate one tightly packed RGB565 buffer into portrait orientation."""
+    if _lv is None:
+        return False
+    is_initialized = getattr(_lv, "is_initialized", None)
+    if is_initialized is not None and not is_initialized():
+        return False
+    try:
+        # Rotation does not inspect the two bytes within a pixel.  The pinned
+        # binding's software rotator accepts RGB565, but not its byte-swapped
+        # alias, so the stored framebuffer byte order remains unchanged.
+        _lv.draw_sw_rotate(
+            source, target, width, height,
+            width * 2 if source_stride is None else source_stride,
+            height * 2 if target_stride is None else target_stride, 1,
+            _lv.COLOR_FORMAT.RGB565)
+        return True
+    except Exception:
+        return False
+
+
+class _RotatedTextWorkspace:
+    """Bounded scratch buffers for compiled rotation of framebuf text."""
+
+    def __init__(self):
+        self.width = _TEXT_CHUNK_CHARS * 8
+        size = self.width * 8 * 2
+        self.source_data = bytearray(size)
+        self.rotated_data = bytearray(size)
+        self.source = FrameBuffer(self.source_data, self.width, 8, RGB565)
+
+    def render(self, value, color):
+        width = len(value) * 8
+        transparent = 0 if (color & 0xFFFF) != 0 else 0xFFFF
+        self.source.fill(transparent)
+        self.source.text(value, 0, 0, color)
+        if not _rotate_rgb565(
+                self.source_data, self.rotated_data, width, 8,
+                self.width * 2):
+            return None, None
+        return FrameBuffer(self.rotated_data, 8, width, RGB565), transparent
 
 
 class DirectCanvas(FrameBuffer):
@@ -268,6 +321,8 @@ class PortraitCanvas:
         else:
             self.width = self.surface.width
             self.height = self.surface.height
+        self._text_workspace = None
+        self._compiled_text = self._rotated
 
     def _point(self, x, y):
         if not self._rotated:
@@ -291,6 +346,14 @@ class PortraitCanvas:
 
         buffer = bytearray(width * height * 2)
         rotated = FrameBuffer(buffer, height, width, RGB565)
+        try:
+            source = _buffer_view(framebuffer)
+        except (AttributeError, TypeError):
+            source = None
+        if (source is not None and len(source) == len(buffer) and
+                _rotate_rgb565(source, buffer, width, height)):
+            return _PreparedSprite(rotated, width, height)
+
         for source_y in range(height):
             for source_x in range(width):
                 rotated.pixel(
@@ -342,6 +405,44 @@ class PortraitCanvas:
         width = len(value) * 8
         if not self._rotated:
             return self._canvas.text(value, x, y, color)
+        if self._compiled_text and self._text_with_compiled_rotation(
+                value, x, y, color):
+            return
+        self._text_with_python_rotation(value, x, y, color, width)
+
+    def _text_with_compiled_rotation(self, value, x, y, color):
+        """Render and rotate visible text chunks using compiled operations."""
+        if y <= -8 or y >= self.height:
+            return True
+        first = max(0, (-x) // 8)
+        stop = min(len(value), (self.width - x + 7) // 8)
+        if stop <= first:
+            return True
+        if self._text_workspace is None:
+            try:
+                self._text_workspace = _RotatedTextWorkspace()
+            except Exception:
+                self._compiled_text = False
+                return False
+
+        index = first
+        while index < stop:
+            end = min(index + _TEXT_CHUNK_CHARS, stop)
+            chunk = value[index:end]
+            sprite, transparent = self._text_workspace.render(chunk, color)
+            if sprite is None:
+                self._compiled_text = False
+                self._text_workspace = None
+                return False
+            chunk_x = x + index * 8
+            target_x, target_y, unused_width, unused_height = self._area(
+                chunk_x, y, len(chunk) * 8, 8)
+            self._canvas.blit(sprite, target_x, target_y, transparent)
+            index = end
+        return True
+
+    def _text_with_python_rotation(self, value, x, y, color, width):
+        """Reference fallback for bindings without software rotation."""
         mask = bytearray(((width + 7) // 8) * 8)
         glyphs = FrameBuffer(mask, width, 8, MONO_HLSB)
         glyphs.text(value, 0, 0, 1)
@@ -358,6 +459,7 @@ class PortraitCanvas:
         return self._canvas.show(self._area(x, y, width, height))
 
     def close(self):
+        self._text_workspace = None
         self._canvas.close()
 
 

@@ -22,11 +22,41 @@ class FakeFrameBuffer:
 
     def pixel(self, x, y, color=None):
         if color is None:
-            return self.pixels.get((x, y), 0)
+            if (x, y) in self.pixels:
+                return self.pixels[(x, y)]
+            if (self.format == 1 and 0 <= x < self.width and
+                    0 <= y < self.height):
+                offset = (y * self.width + x) * 2
+                return self.buffer[offset] | self.buffer[offset + 1] << 8
+            return 0
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            return
         self.pixels[(x, y)] = color
+        if self.format == 1:
+            offset = (y * self.width + x) * 2
+            self.buffer[offset] = color & 0xFF
+            self.buffer[offset + 1] = (color >> 8) & 0xFF
 
-    def blit(self, source, x, y):
+    def fill(self, color):
+        for y in range(self.height):
+            for x in range(self.width):
+                self.pixel(x, y, color)
+
+    def text(self, value, x, y, color):
+        # A small deterministic test glyph. Both optimized and reference paths
+        # consume the same pixels; the production device supplies the real font.
+        for index, unused_character in enumerate(value):
+            glyph_x = x + index * 8
+            for offset_x, offset_y in ((0, 0), (1, 2), (6, 4), (7, 7)):
+                self.pixel(glyph_x + offset_x, y + offset_y, color)
+
+    def blit(self, source, x, y, key=-1):
         self.blits.append((source, x, y))
+        for source_y in range(source.height):
+            for source_x in range(source.width):
+                color = source.pixel(source_x, source_y)
+                if color != key:
+                    self.pixel(x + source_x, y + source_y, color)
 
 
 class FakeSurface:
@@ -57,11 +87,13 @@ class FakeArea:
         self.y2 = values.get("y2", 0)
 
 
-def fake_lvgl(initialized=True, fail_copy=False):
+def fake_lvgl(initialized=True, fail_copy=False, fail_rotate=False):
     module = types.ModuleType("lvgl")
-    module.COLOR_FORMAT = types.SimpleNamespace(RGB565_SWAPPED=27)
+    module.COLOR_FORMAT = types.SimpleNamespace(
+        RGB565=26, RGB565_SWAPPED=27)
     module.is_initialized = lambda: initialized
     module.draw_buffers = []
+    module.rotate_calls = []
 
     class FakeDrawBuffer:
         def __init__(self):
@@ -115,6 +147,28 @@ def fake_lvgl(initialized=True, fail_copy=False):
 
     module.draw_buf_t = FakeDrawBuffer
     module.area_t = FakeArea
+
+    def draw_sw_rotate(source, target, width, height, source_stride,
+                       target_stride, rotation, color_format):
+        module.rotate_calls.append((
+            width, height, source_stride, target_stride,
+            rotation, color_format))
+        if fail_rotate:
+            raise RuntimeError("simulated LVGL rotation failure")
+        if rotation != 1:
+            raise ValueError("test fake only implements quarter-turn rotation")
+        source_view = memoryview(source)
+        target_view = memoryview(target)
+        for source_y in range(height):
+            for source_x in range(width):
+                source_offset = source_y * source_stride + source_x * 2
+                target_x = source_y
+                target_y = width - 1 - source_x
+                target_offset = target_y * target_stride + target_x * 2
+                target_view[target_offset:target_offset + 2] = \
+                    source_view[source_offset:source_offset + 2]
+
+    module.draw_sw_rotate = draw_sw_rotate
     return module
 
 
@@ -341,6 +395,72 @@ class ModernAppDrawingTests(unittest.TestCase):
             [[2, 4, 6], [1, 3, 5]])
         self.assertEqual(
             canvas._canvas.blits, [(sprite.framebuffer, 0, 0)])
+
+    def test_portrait_canvas_uses_compiled_rotation_for_tight_sprite(self):
+        surface = FakeSurface(width=4, height=3)
+        lvgl = fake_lvgl()
+        module = load_modern_app(types.SimpleNamespace(), lvgl)
+        canvas = module.PortraitCanvas(surface)
+        source = FakeFrameBuffer(bytearray(12), 2, 3, 1)
+        for y, row in enumerate(((1, 2), (3, 4), (5, 6))):
+            for x, color in enumerate(row):
+                source.pixel(x, y, color)
+
+        sprite = canvas.prepare_sprite(source, 2, 3)
+
+        self.assertEqual(lvgl.rotate_calls, [(2, 3, 4, 6, 1, 26)])
+        self.assertEqual(
+            [[sprite.framebuffer.pixel(x, y) for x in range(3)]
+             for y in range(2)],
+            [[2, 4, 6], [1, 3, 5]])
+
+    def test_portrait_text_compiled_output_matches_reference_and_is_bounded(self):
+        cases = (
+            ("Ab", 2, 3, 0xFFFF, 0),
+            ("Black", -5, 8, 0, 0xFFFF),
+            ("clip-right", 17, 20, 0x1234, 0xABCD),
+            ("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+             -80, 0, 0x1357, 0x2468),
+        )
+        for value, x, y, color, background in cases:
+            with self.subTest(value=value, x=x, y=y):
+                lvgl = fake_lvgl()
+                module = load_modern_app(types.SimpleNamespace(), lvgl)
+                optimized = module.PortraitCanvas(
+                    FakeSurface(width=40, height=24))
+                reference = module.PortraitCanvas(
+                    FakeSurface(width=40, height=24))
+                reference._compiled_text = False
+                optimized.fill(background)
+                reference.fill(background)
+
+                optimized.text(value, x, y, color)
+                reference.text(value, x, y, color)
+
+                self.assertEqual(
+                    bytes(optimized._canvas.buffer),
+                    bytes(reference._canvas.buffer))
+                workspace = optimized._text_workspace
+                self.assertLessEqual(
+                    len(workspace.source_data) + len(workspace.rotated_data),
+                    module._TEXT_CHUNK_CHARS * 8 * 8 * 4)
+                self.assertTrue(lvgl.rotate_calls)
+
+    def test_portrait_text_disables_compiled_path_after_rotation_error(self):
+        surface = FakeSurface(width=40, height=24)
+        module = load_modern_app(
+            types.SimpleNamespace(), fake_lvgl(fail_rotate=True))
+        canvas = module.PortraitCanvas(surface)
+        reference = module.PortraitCanvas(FakeSurface(width=40, height=24))
+        reference._compiled_text = False
+
+        canvas.text("fallback", 1, 2, 0x4321)
+        reference.text("fallback", 1, 2, 0x4321)
+
+        self.assertFalse(canvas._compiled_text)
+        self.assertIsNone(canvas._text_workspace)
+        self.assertEqual(
+            bytes(canvas._canvas.buffer), bytes(reference._canvas.buffer))
 
     def test_portrait_touch_grid_maps_landscape_points(self):
         points = [(100, 201), None, (400, 10)]

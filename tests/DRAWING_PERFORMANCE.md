@@ -83,3 +83,31 @@ Python pixel rotation. The cached-sprite case rotates once before timing.
   owner `ui`, no pending transfer, and heap change -480 bytes.
 
 Diagnostics collected: `2026-09-02T23:52:04.566736+00:00`
+
+## Phase 2 compiled-rotation prototype
+
+The first Phase 2 implementation renders the built-in framebuf text into a
+bounded RGB565 scratch tile, rotates that tile with `lv.draw_sw_rotate()`, and
+uses transparent `framebuf.blit()` to preserve the existing text behavior. The
+same compiled rotator prepares tightly packed portrait sprites, with the prior
+Python mapper retained as a fallback.
+
+On the same modern fixture, the pixel-correct implementation reduced median
+portrait text render-only time from 31.15 ms to 4.95 ms (6.3x faster), meeting
+the project's 5x target. Median end-to-end portrait text redraw was 7.72 ms.
+The 10-sample workload medians were:
+
+| API | Orientation | Full grid (ms) | Piece move (ms) | Text redraw (ms) |
+| --- | --- | ---: | ---: | ---: |
+| DirectCanvas | Landscape | 86.88 | 6.64 | 4.45 |
+| PortraitCanvas | Portrait | 188.05 | 10.04 | 7.72 |
+
+Compiled output was compared byte-for-byte on-device with the Python reference
+for normal, black, left-clipped, right-clipped, fully off-screen, and long
+multi-chunk text. Twelve portrait construct/text/show/close cycles returned to
+UI ownership with no pending transfer and a 48-byte heap range after collection.
+
+- Prototype diagnostics collected: `2026-09-03T19:14:31.297683+00:00`
+- Prototype workload collected: `2026-09-03T19:15:07.612450+00:00`
+- Firmware: MicroPython 1.27.0, build `ESP32_GENERIC_S3-SPIRAM_OCT`
+- Device writes: none; working-tree source was injected through raw REPL
