@@ -1,6 +1,6 @@
 # Modern direct-display class improvement project
 
-Status: Proposed
+Status: In progress (Phase 3 rotation consolidation started)
 
 Related evidence: [`tests/DRAWING_PERFORMANCE.md`](tests/DRAWING_PERFORMANCE.md)
 
@@ -166,6 +166,28 @@ help applications should continue to work unchanged during that period. A later
 cleanup may migrate examples to `DirectCanvas(rotation=...)` and deprecate the
 old class deliberately; removal is not part of this project unless separately
 approved.
+
+#### Initial implementation checkpoint
+
+The first Phase 3 slice was implemented on 2026-09-03:
+
+- `DirectCanvas` accepts `0`, `90`, `180`, and `270` degrees or zero through
+  three quarter turns, and exposes logical `width`, `height`, and normalized
+  degree-valued `rotation` attributes.
+- Pixel reads and writes, lines, rectangles, text, prepared sprites, and dirty
+  rectangles share one logical-to-physical mapper without rotating the full
+  framebuffer.
+- `TouchGrid(rotation=...)` applies the inverse mapper to physical touch input.
+- `PortraitCanvas` and `PortraitTouchGrid` are now compatibility subclasses
+  that select the historical portrait rotation.
+- Host reference tests cover primitives, clipping, text, sprites, dirty areas,
+  and touch mapping at every rotation. A temporary raw-REPL probe on the COM3
+  modern fixture also passed pixel, sprite, compiled-text, logical-dimension,
+  and dirty-area checks at all four rotations without device writes.
+
+This checkpoint does not yet broaden rotation support to every optional
+`framebuf` operation such as polygons, ellipses, or scrolling, and therefore
+does not mark the full rotation-consolidation acceptance criterion complete.
 
 ### Phase 4: MicroPython code emitters only where needed
 

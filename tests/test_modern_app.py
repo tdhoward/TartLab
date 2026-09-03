@@ -16,6 +16,8 @@ class FakeFrameBuffer:
         self.buffer = buffer
         self.width = width
         self.height = height
+        self._framebuf_width = width
+        self._framebuf_height = height
         self.format = format
         self.pixels = {}
         self.blits = []
@@ -24,23 +26,62 @@ class FakeFrameBuffer:
         if color is None:
             if (x, y) in self.pixels:
                 return self.pixels[(x, y)]
-            if (self.format == 1 and 0 <= x < self.width and
-                    0 <= y < self.height):
-                offset = (y * self.width + x) * 2
+            if (self.format == 1 and 0 <= x < self._framebuf_width and
+                    0 <= y < self._framebuf_height):
+                offset = (y * self._framebuf_width + x) * 2
                 return self.buffer[offset] | self.buffer[offset + 1] << 8
             return 0
-        if not (0 <= x < self.width and 0 <= y < self.height):
+        if not (0 <= x < self._framebuf_width and
+                0 <= y < self._framebuf_height):
             return
         self.pixels[(x, y)] = color
         if self.format == 1:
-            offset = (y * self.width + x) * 2
+            offset = (y * self._framebuf_width + x) * 2
             self.buffer[offset] = color & 0xFF
             self.buffer[offset + 1] = (color >> 8) & 0xFF
 
     def fill(self, color):
-        for y in range(self.height):
-            for x in range(self.width):
-                self.pixel(x, y, color)
+        for y in range(self._framebuf_height):
+            for x in range(self._framebuf_width):
+                FakeFrameBuffer.pixel(self, x, y, color)
+
+    def fill_rect(self, x, y, width, height, color):
+        for target_y in range(y, y + height):
+            for target_x in range(x, x + width):
+                FakeFrameBuffer.pixel(self, target_x, target_y, color)
+
+    def hline(self, x, y, width, color):
+        FakeFrameBuffer.fill_rect(self, x, y, width, 1, color)
+
+    def vline(self, x, y, height, color):
+        FakeFrameBuffer.fill_rect(self, x, y, 1, height, color)
+
+    def rect(self, x, y, width, height, color, fill=False):
+        if fill:
+            return FakeFrameBuffer.fill_rect(
+                self, x, y, width, height, color)
+        FakeFrameBuffer.hline(self, x, y, width, color)
+        FakeFrameBuffer.hline(self, x, y + height - 1, width, color)
+        FakeFrameBuffer.vline(self, x, y, height, color)
+        FakeFrameBuffer.vline(self, x + width - 1, y, height, color)
+
+    def line(self, x1, y1, x2, y2, color):
+        dx = abs(x2 - x1)
+        step_x = 1 if x1 < x2 else -1
+        dy = -abs(y2 - y1)
+        step_y = 1 if y1 < y2 else -1
+        error = dx + dy
+        while True:
+            FakeFrameBuffer.pixel(self, x1, y1, color)
+            if x1 == x2 and y1 == y2:
+                break
+            twice_error = 2 * error
+            if twice_error >= dy:
+                error += dy
+                x1 += step_x
+            if twice_error <= dx:
+                error += dx
+                y1 += step_y
 
     def text(self, value, x, y, color):
         # A small deterministic test glyph. Both optimized and reference paths
@@ -48,15 +89,17 @@ class FakeFrameBuffer:
         for index, unused_character in enumerate(value):
             glyph_x = x + index * 8
             for offset_x, offset_y in ((0, 0), (1, 2), (6, 4), (7, 7)):
-                self.pixel(glyph_x + offset_x, y + offset_y, color)
+                FakeFrameBuffer.pixel(
+                    self, glyph_x + offset_x, y + offset_y, color)
 
     def blit(self, source, x, y, key=-1):
         self.blits.append((source, x, y))
-        for source_y in range(source.height):
-            for source_x in range(source.width):
-                color = source.pixel(source_x, source_y)
+        for source_y in range(source._framebuf_height):
+            for source_x in range(source._framebuf_width):
+                color = FakeFrameBuffer.pixel(source, source_x, source_y)
                 if color != key:
-                    self.pixel(x + source_x, y + source_y, color)
+                    FakeFrameBuffer.pixel(
+                        self, x + source_x, y + source_y, color)
 
 
 class FakeSurface:
@@ -155,15 +198,22 @@ def fake_lvgl(initialized=True, fail_copy=False, fail_rotate=False):
             rotation, color_format))
         if fail_rotate:
             raise RuntimeError("simulated LVGL rotation failure")
-        if rotation != 1:
-            raise ValueError("test fake only implements quarter-turn rotation")
         source_view = memoryview(source)
         target_view = memoryview(target)
         for source_y in range(height):
             for source_x in range(width):
                 source_offset = source_y * source_stride + source_x * 2
-                target_x = source_y
-                target_y = width - 1 - source_x
+                if rotation == 1:
+                    target_x = source_y
+                    target_y = width - 1 - source_x
+                elif rotation == 2:
+                    target_x = width - 1 - source_x
+                    target_y = height - 1 - source_y
+                elif rotation == 3:
+                    target_x = height - 1 - source_y
+                    target_y = source_x
+                else:
+                    raise ValueError("rotation must be 1, 2, or 3")
                 target_offset = target_y * target_stride + target_x * 2
                 target_view[target_offset:target_offset + 2] = \
                     source_view[source_offset:source_offset + 2]
@@ -340,28 +390,94 @@ class ModernAppDrawingTests(unittest.TestCase):
         self.assertIsNone(keypad.read())
         self.assertEqual(keypad.read(), "left")
 
-    def test_portrait_canvas_maps_primitives_and_dirty_regions(self):
+    def test_portrait_canvas_is_rotation_compatibility_layer(self):
         surface = FakeSurface(width=4, height=3)
         module = load_modern_app(types.SimpleNamespace())
         canvas = module.PortraitCanvas(surface, transfer_rows=2)
-        calls = []
-        canvas._canvas = types.SimpleNamespace(
-            fill_rect=lambda *values: calls.append(("fill_rect", values)),
-            pixel=lambda *values: calls.append(("pixel", values)),
-            show=lambda area=None: calls.append(("show", area)),
-            close=lambda: None,
-        )
 
         canvas.fill_rect(0, 1, 2, 3, 9)
         canvas.pixel(2, 3, 7)
         canvas.show((0, 1, 2, 3))
 
+        self.assertIsInstance(canvas, module.DirectCanvas)
+        self.assertIs(canvas._canvas, canvas)
+        self.assertEqual(canvas.rotation, 90)
         self.assertEqual((canvas.width, canvas.height), (3, 4))
-        self.assertEqual(calls, [
-            ("fill_rect", (1, 1, 3, 2, 9)),
-            ("pixel", (3, 0, 7)),
-            ("show", (1, 1, 3, 2)),
-        ])
+        self.assertEqual(FakeFrameBuffer.pixel(canvas, 3, 0), 7)
+        self.assertEqual(surface.writes[0][1:], (1, 1, 3, 2))
+
+    def test_direct_canvas_normalizes_rotation_and_reports_logical_size(self):
+        module = load_modern_app(types.SimpleNamespace())
+        for value, degrees in ((0, 0), (1, 90), (2, 180), (3, 270),
+                               (90, 90), (180, 180), (270, 270)):
+            with self.subTest(rotation=value):
+                canvas = module.DirectCanvas(
+                    FakeSurface(width=5, height=3), rotation=value)
+                self.assertEqual(canvas.rotation, degrees)
+                expected = (3, 5) if degrees in (90, 270) else (5, 3)
+                self.assertEqual((canvas.width, canvas.height), expected)
+
+        for value in (-90, 4, 360, "90", None):
+            with self.subTest(rotation=value):
+                with self.assertRaisesRegex(ValueError, "rotation must be"):
+                    module.DirectCanvas(FakeSurface(), rotation=value)
+
+    def test_direct_canvas_maps_pixels_and_dirty_regions_at_every_rotation(self):
+        module = load_modern_app(types.SimpleNamespace())
+        point_maps = {
+            0: lambda x, y: (x, y),
+            90: lambda x, y: (y, 2 - x),
+            180: lambda x, y: (4 - x, 2 - y),
+            270: lambda x, y: (4 - y, x),
+        }
+        area_maps = {
+            0: lambda x, y, w, h: (x, y, w, h),
+            90: lambda x, y, w, h: (y, 3 - x - w, h, w),
+            180: lambda x, y, w, h: (5 - x - w, 3 - y - h, w, h),
+            270: lambda x, y, w, h: (5 - y - h, x, h, w),
+        }
+        for rotation in (0, 90, 180, 270):
+            with self.subTest(rotation=rotation):
+                surface = FakeSurface(width=5, height=3)
+                canvas = module.DirectCanvas(surface, rotation=rotation)
+                logical_width, logical_height = canvas.width, canvas.height
+                x, y = logical_width - 1, logical_height - 1
+                canvas.pixel(x, y, 0x1234)
+                physical = point_maps[rotation](x, y)
+                self.assertEqual(
+                    FakeFrameBuffer.pixel(canvas, *physical), 0x1234)
+                self.assertEqual(canvas.pixel(x, y), 0x1234)
+
+                area = (1, 1, logical_width, logical_height)
+                clipped = (1, 1, logical_width - 1, logical_height - 1)
+                canvas.show(area)
+                self.assertEqual(
+                    surface.writes[0][1:], area_maps[rotation](*clipped))
+
+    def test_direct_canvas_primitives_clip_in_logical_space_at_every_rotation(self):
+        module = load_modern_app(types.SimpleNamespace())
+        for rotation in (0, 90, 180, 270):
+            with self.subTest(rotation=rotation):
+                canvas = module.DirectCanvas(
+                    FakeSurface(width=9, height=7), rotation=rotation)
+                data = bytearray(canvas.width * canvas.height * 2)
+                reference = FakeFrameBuffer(
+                    data, canvas.width, canvas.height, 1)
+                operations = (
+                    ("fill_rect", (-2, 1, 5, 4, 1)),
+                    ("rect", (1, -1, 6, 5, 2)),
+                    ("hline", (-1, canvas.height - 2, 6, 3)),
+                    ("vline", (canvas.width - 2, -2, 6, 4)),
+                    ("line", (-2, 0, canvas.width, canvas.height - 1, 5)),
+                )
+                for name, arguments in operations:
+                    getattr(canvas, name)(*arguments)
+                    getattr(reference, name)(*arguments)
+                for y in range(canvas.height):
+                    for x in range(canvas.width):
+                        self.assertEqual(
+                            canvas.pixel(x, y), reference.pixel(x, y),
+                            (rotation, x, y))
 
     def test_direct_canvas_draws_prepared_sprite_without_copying_it(self):
         surface = FakeSurface(width=4, height=3)
@@ -414,6 +530,36 @@ class ModernAppDrawingTests(unittest.TestCase):
              for y in range(2)],
             [[2, 4, 6], [1, 3, 5]])
 
+    def test_direct_canvas_prepares_sprites_at_every_rotation(self):
+        module = load_modern_app(types.SimpleNamespace(), fake_lvgl())
+        expected = {
+            0: [[1, 2], [3, 4], [5, 6]],
+            90: [[2, 4, 6], [1, 3, 5]],
+            180: [[6, 5], [4, 3], [2, 1]],
+            270: [[5, 3, 1], [6, 4, 2]],
+        }
+        for rotation in (0, 90, 180, 270):
+            with self.subTest(rotation=rotation):
+                canvas = module.DirectCanvas(
+                    FakeSurface(width=8, height=7), rotation=rotation)
+                source = FakeFrameBuffer(bytearray(12), 2, 3, 1)
+                for y, row in enumerate(((1, 2), (3, 4), (5, 6))):
+                    for x, color in enumerate(row):
+                        source.pixel(x, y, color)
+
+                sprite = canvas.prepare_sprite(source, 2, 3)
+                actual = [
+                    [sprite.framebuffer.pixel(x, y)
+                     for x in range(sprite.framebuffer._framebuf_width)]
+                    for y in range(sprite.framebuffer._framebuf_height)
+                ]
+                self.assertEqual(actual, expected[rotation])
+                canvas.draw_sprite(sprite, 1, 2)
+                for source_y, row in enumerate(((1, 2), (3, 4), (5, 6))):
+                    for source_x, color in enumerate(row):
+                        self.assertEqual(
+                            canvas.pixel(1 + source_x, 2 + source_y), color)
+
     def test_portrait_text_compiled_output_matches_reference_and_is_bounded(self):
         cases = (
             ("Ab", 2, 3, 0xFFFF, 0),
@@ -462,6 +608,26 @@ class ModernAppDrawingTests(unittest.TestCase):
         self.assertEqual(
             bytes(canvas._canvas.buffer), bytes(reference._canvas.buffer))
 
+    def test_direct_canvas_compiled_text_matches_reference_at_every_rotation(self):
+        for rotation in (90, 180, 270):
+            with self.subTest(rotation=rotation):
+                lvgl = fake_lvgl()
+                module = load_modern_app(types.SimpleNamespace(), lvgl)
+                optimized = module.DirectCanvas(
+                    FakeSurface(width=40, height=24), rotation=rotation)
+                reference = module.DirectCanvas(
+                    FakeSurface(width=40, height=24), rotation=rotation)
+                reference._compiled_text = False
+                optimized.fill(0x2468)
+                reference.fill(0x2468)
+
+                optimized.text("rotate", -3, 5, 0x1357)
+                reference.text("rotate", -3, 5, 0x1357)
+
+                self.assertEqual(
+                    bytes(optimized.buffer), bytes(reference.buffer))
+                self.assertEqual(lvgl.rotate_calls[-1][-2], rotation // 90)
+
     def test_portrait_touch_grid_maps_landscape_points(self):
         points = [(100, 201), None, (400, 10)]
         platform = types.SimpleNamespace(
@@ -479,6 +645,31 @@ class ModernAppDrawingTests(unittest.TestCase):
         self.assertEqual(keypad.read(), "top-left")
         self.assertIsNone(keypad.read())
         self.assertEqual(keypad.read(), "bottom-right")
+
+    def test_touch_grid_is_inverse_of_canvas_rotation(self):
+        point_maps = {
+            0: lambda x, y: (x, y),
+            90: lambda x, y: (y, 2 - x),
+            180: lambda x, y: (4 - x, 2 - y),
+            270: lambda x, y: (4 - y, x),
+        }
+        for rotation in (0, 90, 180, 270):
+            with self.subTest(rotation=rotation):
+                platform = types.SimpleNamespace(
+                    width=5, height=3, input=object(),
+                    read_game_touch=lambda: None,
+                    keep_touch_awake=lambda: None,
+                )
+                module = load_modern_app(platform)
+                canvas = module.DirectCanvas(
+                    FakeSurface(width=5, height=3), rotation=rotation)
+                grid = module.TouchGrid(
+                    ("only",), 1, 1, rotation=rotation)
+                logical = (canvas.width - 1, canvas.height - 1)
+                physical = point_maps[rotation](*logical)
+                self.assertEqual(grid._logical_point(physical), logical)
+                self.assertEqual(
+                    (grid.width, grid.height), (canvas.width, canvas.height))
 
 
 class ModernHelpSourceTests(unittest.TestCase):

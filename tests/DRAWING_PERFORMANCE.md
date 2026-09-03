@@ -111,3 +111,30 @@ UI ownership with no pending transfer and a 48-byte heap range after collection.
 - Prototype workload collected: `2026-09-03T19:15:07.612450+00:00`
 - Firmware: MicroPython 1.27.0, build `ESP32_GENERIC_S3-SPIRAM_OCT`
 - Device writes: none; working-tree source was injected through raw REPL
+
+## Phase 3 initial rotation consolidation
+
+The initial Phase 3 implementation moved the existing portrait mapper into
+`DirectCanvas(rotation=...)`, extended it to all four quarter turns, added the
+inverse mapping to `TouchGrid`, and reduced the portrait classes to
+compatibility subclasses.
+
+A focused raw-REPL check on the modern COM3 fixture verified logical dimensions,
+pixel reads and writes, prepared sprites, dirty-region coordinates, and compiled
+text against its Python reference at `0`, `90`, `180`, and `270` degrees. A
+second probe exercised clipped lines and rectangles through the pinned
+MicroPython `framebuf` binding. Both checks used injected working-tree code and
+did not write the device filesystem or flash firmware.
+
+The normal seven-sample workload remained within the established performance
+targets:
+
+| API | Orientation | Full grid (ms) | Piece move (ms) | Text redraw (ms) |
+| --- | --- | ---: | ---: | ---: |
+| DirectCanvas | Landscape | 70.46 | 5.58 | 4.95 |
+| PortraitCanvas | Portrait | 188.80 | 11.15 | 7.89 |
+
+- Rotation probe: `2026-09-03T21:29Z`
+- Workload collected: `2026-09-03T21:32:52.296377+00:00`
+- Firmware: MicroPython 1.27.0, build `ESP32_GENERIC_S3-SPIRAM_OCT`
+- Device writes: none; working-tree source was injected through raw REPL

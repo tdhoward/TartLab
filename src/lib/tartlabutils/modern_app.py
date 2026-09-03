@@ -103,9 +103,9 @@ def _buffer_view(value):
         return memoryview(value.buffer)
 
 
-def _rotate_rgb565(source, target, width, height,
+def _rotate_rgb565(source, target, width, height, rotation,
                    source_stride=None, target_stride=None):
-    """Rotate one tightly packed RGB565 buffer into portrait orientation."""
+    """Rotate an RGB565 buffer counter-clockwise by quarter turns."""
     if _lv is None:
         return False
     is_initialized = getattr(_lv, "is_initialized", None)
@@ -115,10 +115,12 @@ def _rotate_rgb565(source, target, width, height,
         # Rotation does not inspect the two bytes within a pixel.  The pinned
         # binding's software rotator accepts RGB565, but not its byte-swapped
         # alias, so the stored framebuffer byte order remains unchanged.
+        target_width = height if rotation & 1 else width
         _lv.draw_sw_rotate(
             source, target, width, height,
             width * 2 if source_stride is None else source_stride,
-            height * 2 if target_stride is None else target_stride, 1,
+            target_width * 2 if target_stride is None else target_stride,
+            rotation,
             _lv.COLOR_FORMAT.RGB565)
         return True
     except Exception:
@@ -135,22 +137,44 @@ class _RotatedTextWorkspace:
         self.rotated_data = bytearray(size)
         self.source = FrameBuffer(self.source_data, self.width, 8, RGB565)
 
-    def render(self, value, color):
+    def render(self, value, color, rotation):
         width = len(value) * 8
         transparent = 0 if (color & 0xFFFF) != 0 else 0xFFFF
         self.source.fill(transparent)
         self.source.text(value, 0, 0, color)
         if not _rotate_rgb565(
                 self.source_data, self.rotated_data, width, 8,
-                self.width * 2):
+                rotation, self.width * 2):
             return None, None
-        return FrameBuffer(self.rotated_data, 8, width, RGB565), transparent
+        target_width = 8 if rotation & 1 else width
+        target_height = width if rotation & 1 else 8
+        return FrameBuffer(
+            self.rotated_data, target_width, target_height, RGB565), \
+            transparent
 
 
 class DirectCanvas(FrameBuffer):
-    """A PSRAM-friendly framebuffer flushed through a small DMA bounce tile."""
+    """A rotation-aware framebuffer flushed through a DMA bounce tile.
 
-    def __init__(self, surface=None, transfer_rows=TRANSFER_ROWS):
+    ``rotation`` accepts degrees (0, 90, 180, or 270) or the equivalent
+    number of quarter turns (0 through 3). Positive rotation describes the
+    clockwise rotation of the physical display from its native position. For
+    example, at 90 degrees logical ``(x, y)`` maps to surface
+    ``(y, surface.height - 1 - x)``. This is the orientation historically
+    exposed by :class:`PortraitCanvas` on a landscape surface.
+    """
+
+    _ROTATIONS = {0: 0, 1: 1, 2: 2, 3: 3,
+                  90: 1, 180: 2, 270: 3}
+
+    def __init__(self, surface=None, transfer_rows=TRANSFER_ROWS, rotation=0):
+        try:
+            self._quarter_turns = self._ROTATIONS[rotation]
+        except (KeyError, TypeError):
+            raise ValueError(
+                "rotation must be 0, 90, 180, or 270 degrees "
+                "(or 0 through 3 quarter turns)")
+        self.rotation = self._quarter_turns * 90
         self.surface = surface or game_surface()
         width = self.surface.width
         height = self.surface.height
@@ -170,6 +194,26 @@ class DirectCanvas(FrameBuffer):
         self._draw_buffer_format = None
         self._init_draw_buffer_copy()
         super().__init__(self.buffer, width, height, RGB565)
+        if self._quarter_turns & 1:
+            self.width = height
+            self.height = width
+        else:
+            self.width = width
+            self.height = height
+        self._text_workspace = None
+        self._compiled_text = self._quarter_turns != 0
+        # Retain this private spelling during the PortraitCanvas transition.
+        self._canvas = self
+        if self._quarter_turns == 0:
+            # Avoid adding Python dispatch to the native-orientation hot path.
+            self.fill = super().fill
+            self.pixel = super().pixel
+            self.fill_rect = super().fill_rect
+            self.rect = super().rect
+            self.hline = super().hline
+            self.vline = super().vline
+            self.line = super().line
+            self.text = super().text
 
     def _init_draw_buffer_copy(self):
         """Wrap the owned buffers for compiled, strided LVGL copies."""
@@ -207,14 +251,174 @@ class DirectCanvas(FrameBuffer):
         self._draw_buffer_format = None
 
     def prepare_sprite(self, framebuffer, width, height):
-        """Prepare an RGB565 framebuffer for repeated drawing."""
+        """Prepare an RGB565 framebuffer for repeated logical drawing."""
         if width <= 0 or height <= 0:
             raise ValueError("sprite width and height must be positive")
-        return _PreparedSprite(framebuffer, width, height)
+        rotation = self._quarter_turns
+        if rotation == 0:
+            return _PreparedSprite(framebuffer, width, height)
+
+        target_width = height if rotation & 1 else width
+        target_height = width if rotation & 1 else height
+        buffer = bytearray(width * height * 2)
+        rotated = FrameBuffer(buffer, target_width, target_height, RGB565)
+        try:
+            source = _buffer_view(framebuffer)
+        except (AttributeError, TypeError):
+            source = None
+        if (source is not None and len(source) == len(buffer) and
+                _rotate_rgb565(source, buffer, width, height, rotation)):
+            return _PreparedSprite(rotated, width, height)
+
+        for source_y in range(height):
+            for source_x in range(width):
+                target_x, target_y = self._sprite_point(
+                    source_x, source_y, width, height)
+                rotated.pixel(
+                    target_x, target_y,
+                    framebuffer.pixel(source_x, source_y))
+        return _PreparedSprite(rotated, width, height)
 
     def draw_sprite(self, sprite, x, y):
-        """Copy a prepared opaque sprite into the canvas framebuffer."""
-        return self.blit(sprite.framebuffer, x, y)
+        """Copy a prepared opaque sprite using logical coordinates."""
+        if self._quarter_turns == 0:
+            return super().blit(sprite.framebuffer, x, y)
+        target_x, target_y, unused_width, unused_height = self._area(
+            x, y, sprite.width, sprite.height)
+        return super().blit(sprite.framebuffer, target_x, target_y)
+
+    def _point(self, x, y):
+        rotation = self._quarter_turns
+        if rotation == 0:
+            return x, y
+        if rotation == 1:
+            return y, self._height - 1 - x
+        if rotation == 2:
+            return self._width - 1 - x, self._height - 1 - y
+        return self._width - 1 - y, x
+
+    def _sprite_point(self, x, y, width, height):
+        rotation = self._quarter_turns
+        if rotation == 1:
+            return y, width - 1 - x
+        if rotation == 2:
+            return width - 1 - x, height - 1 - y
+        return height - 1 - y, x
+
+    def _area(self, x, y, width, height):
+        rotation = self._quarter_turns
+        if rotation == 0:
+            return x, y, width, height
+        if rotation == 1:
+            return y, self._height - x - width, height, width
+        if rotation == 2:
+            return (self._width - x - width,
+                    self._height - y - height, width, height)
+        return self._width - y - height, x, height, width
+
+    def fill(self, color):
+        return super().fill(color)
+
+    def pixel(self, x, y, color=None):
+        target_x, target_y = self._point(x, y)
+        if color is None:
+            return super().pixel(target_x, target_y)
+        return super().pixel(target_x, target_y, color)
+
+    def fill_rect(self, x, y, width, height, color):
+        x, y, width, height = self._area(x, y, width, height)
+        return super().fill_rect(x, y, width, height, color)
+
+    def rect(self, x, y, width, height, color, fill=False):
+        x, y, width, height = self._area(x, y, width, height)
+        return super().rect(x, y, width, height, color, fill)
+
+    def hline(self, x, y, width, color):
+        rotation = self._quarter_turns
+        if rotation == 0:
+            return super().hline(x, y, width, color)
+        if rotation == 1:
+            return super().vline(
+                y, self._height - x - width, width, color)
+        if rotation == 2:
+            return super().hline(
+                self._width - x - width,
+                self._height - 1 - y, width, color)
+        return super().vline(
+            self._width - 1 - y, x, width, color)
+
+    def vline(self, x, y, height, color):
+        rotation = self._quarter_turns
+        if rotation == 0:
+            return super().vline(x, y, height, color)
+        if rotation == 1:
+            return super().hline(
+                y, self._height - 1 - x, height, color)
+        if rotation == 2:
+            return super().vline(
+                self._width - 1 - x,
+                self._height - y - height, height, color)
+        return super().hline(
+            self._width - y - height, x, height, color)
+
+    def line(self, x1, y1, x2, y2, color):
+        x1, y1 = self._point(x1, y1)
+        x2, y2 = self._point(x2, y2)
+        return super().line(x1, y1, x2, y2, color)
+
+    def text(self, value, x, y, color):
+        """Draw the built-in 8-pixel font in logical orientation."""
+        if not value:
+            return
+        if self._quarter_turns == 0:
+            return super().text(value, x, y, color)
+        if self._compiled_text and self._text_with_compiled_rotation(
+                value, x, y, color):
+            return
+        self._text_with_python_rotation(value, x, y, color)
+
+    def _text_with_compiled_rotation(self, value, x, y, color):
+        """Render and rotate visible text chunks using compiled operations."""
+        if y <= -8 or y >= self.height:
+            return True
+        first = max(0, (-x) // 8)
+        stop = min(len(value), (self.width - x + 7) // 8)
+        if stop <= first:
+            return True
+        if self._text_workspace is None:
+            try:
+                self._text_workspace = _RotatedTextWorkspace()
+            except Exception:
+                self._compiled_text = False
+                return False
+
+        index = first
+        while index < stop:
+            end = min(index + _TEXT_CHUNK_CHARS, stop)
+            chunk = value[index:end]
+            sprite, transparent = self._text_workspace.render(
+                chunk, color, self._quarter_turns)
+            if sprite is None:
+                self._compiled_text = False
+                self._text_workspace = None
+                return False
+            chunk_x = x + index * 8
+            target_x, target_y, unused_width, unused_height = self._area(
+                chunk_x, y, len(chunk) * 8, 8)
+            super().blit(sprite, target_x, target_y, transparent)
+            index = end
+        return True
+
+    def _text_with_python_rotation(self, value, x, y, color):
+        """Reference fallback for bindings without software rotation."""
+        width = len(value) * 8
+        mask = bytearray(((width + 7) // 8) * 8)
+        glyphs = FrameBuffer(mask, width, 8, MONO_HLSB)
+        glyphs.text(value, 0, 0, 1)
+        for glyph_y in range(8):
+            for glyph_x in range(width):
+                if glyphs.pixel(glyph_x, glyph_y):
+                    self.pixel(x + glyph_x, y + glyph_y, color)
 
     @staticmethod
     def _area_values(area, width, height):
@@ -272,13 +476,14 @@ class DirectCanvas(FrameBuffer):
                 self._buffer_view[source_start:source_start + row_bytes]
 
     def show(self, area=None):
-        """Flush all or part of the framebuffer to the modern surface."""
+        """Flush all or part of the logical framebuffer to the surface."""
         if self._closed:
             raise RuntimeError("canvas is closed")
         x, y, width, height = self._clip_area(
-            area, self._width, self._height)
+            area, self.width, self.height)
         if width <= 0 or height <= 0:
             return
+        x, y, width, height = self._area(x, y, width, height)
 
         target = self._transfer_view
         row_bytes = width * 2
@@ -296,6 +501,7 @@ class DirectCanvas(FrameBuffer):
 
     def close(self):
         if not self._closed:
+            self._text_workspace = None
             self._disable_draw_buffer_copy()
             try:
                 self.surface.free_buffer(self._transfer)
@@ -303,180 +509,44 @@ class DirectCanvas(FrameBuffer):
                 self._closed = True
 
 
-class PortraitCanvas:
-    """Direct canvas with portrait coordinates over any surface orientation.
-
-    A landscape surface is treated as a clockwise-rotated portrait panel. The
-    primitive coordinates are mapped into the underlying framebuffer, so
-    rectangles and dirty refreshes remain fast and require no second buffer.
-    """
+class PortraitCanvas(DirectCanvas):
+    """Compatibility spelling for a portrait-oriented DirectCanvas."""
 
     def __init__(self, surface=None, transfer_rows=TRANSFER_ROWS):
-        self._canvas = DirectCanvas(surface, transfer_rows)
-        self.surface = self._canvas.surface
-        self._rotated = self.surface.width > self.surface.height
-        if self._rotated:
-            self.width = self.surface.height
-            self.height = self.surface.width
-        else:
-            self.width = self.surface.width
-            self.height = self.surface.height
-        self._text_workspace = None
-        self._compiled_text = self._rotated
-
-    def _point(self, x, y):
-        if not self._rotated:
-            return x, y
-        return y, self.width - 1 - x
-
-    def _area(self, x, y, width, height):
-        if not self._rotated:
-            return x, y, width, height
-        return y, self.width - x - width, height, width
-
-    def fill(self, color):
-        return self._canvas.fill(color)
-
-    def prepare_sprite(self, framebuffer, width, height):
-        """Prepare an RGB565 framebuffer for repeated portrait drawing."""
-        if width <= 0 or height <= 0:
-            raise ValueError("sprite width and height must be positive")
-        if not self._rotated:
-            return self._canvas.prepare_sprite(framebuffer, width, height)
-
-        buffer = bytearray(width * height * 2)
-        rotated = FrameBuffer(buffer, height, width, RGB565)
-        try:
-            source = _buffer_view(framebuffer)
-        except (AttributeError, TypeError):
-            source = None
-        if (source is not None and len(source) == len(buffer) and
-                _rotate_rgb565(source, buffer, width, height)):
-            return _PreparedSprite(rotated, width, height)
-
-        for source_y in range(height):
-            for source_x in range(width):
-                rotated.pixel(
-                    source_y, width - 1 - source_x,
-                    framebuffer.pixel(source_x, source_y))
-        return _PreparedSprite(rotated, width, height)
-
-    def draw_sprite(self, sprite, x, y):
-        """Copy a prepared opaque sprite using portrait coordinates."""
-        if not self._rotated:
-            return self._canvas.draw_sprite(sprite, x, y)
-        x, y, unused_width, unused_height = self._area(
-            x, y, sprite.width, sprite.height)
-        return self._canvas.blit(sprite.framebuffer, x, y)
-
-    def pixel(self, x, y, color=None):
-        target_x, target_y = self._point(x, y)
-        if color is None:
-            return self._canvas.pixel(target_x, target_y)
-        return self._canvas.pixel(target_x, target_y, color)
-
-    def fill_rect(self, x, y, width, height, color):
-        x, y, width, height = self._area(x, y, width, height)
-        return self._canvas.fill_rect(x, y, width, height, color)
-
-    def rect(self, x, y, width, height, color):
-        x, y, width, height = self._area(x, y, width, height)
-        return self._canvas.rect(x, y, width, height, color)
-
-    def hline(self, x, y, width, color):
-        if not self._rotated:
-            return self._canvas.hline(x, y, width, color)
-        return self._canvas.vline(y, self.width - x - width, width, color)
-
-    def vline(self, x, y, height, color):
-        if not self._rotated:
-            return self._canvas.vline(x, y, height, color)
-        return self._canvas.hline(y, self.width - 1 - x, height, color)
-
-    def line(self, x1, y1, x2, y2, color):
-        x1, y1 = self._point(x1, y1)
-        x2, y2 = self._point(x2, y2)
-        return self._canvas.line(x1, y1, x2, y2, color)
-
-    def text(self, value, x, y, color):
-        """Draw the built-in 8-pixel font in logical portrait orientation."""
-        if not value:
-            return
-        width = len(value) * 8
-        if not self._rotated:
-            return self._canvas.text(value, x, y, color)
-        if self._compiled_text and self._text_with_compiled_rotation(
-                value, x, y, color):
-            return
-        self._text_with_python_rotation(value, x, y, color, width)
-
-    def _text_with_compiled_rotation(self, value, x, y, color):
-        """Render and rotate visible text chunks using compiled operations."""
-        if y <= -8 or y >= self.height:
-            return True
-        first = max(0, (-x) // 8)
-        stop = min(len(value), (self.width - x + 7) // 8)
-        if stop <= first:
-            return True
-        if self._text_workspace is None:
-            try:
-                self._text_workspace = _RotatedTextWorkspace()
-            except Exception:
-                self._compiled_text = False
-                return False
-
-        index = first
-        while index < stop:
-            end = min(index + _TEXT_CHUNK_CHARS, stop)
-            chunk = value[index:end]
-            sprite, transparent = self._text_workspace.render(chunk, color)
-            if sprite is None:
-                self._compiled_text = False
-                self._text_workspace = None
-                return False
-            chunk_x = x + index * 8
-            target_x, target_y, unused_width, unused_height = self._area(
-                chunk_x, y, len(chunk) * 8, 8)
-            self._canvas.blit(sprite, target_x, target_y, transparent)
-            index = end
-        return True
-
-    def _text_with_python_rotation(self, value, x, y, color, width):
-        """Reference fallback for bindings without software rotation."""
-        mask = bytearray(((width + 7) // 8) * 8)
-        glyphs = FrameBuffer(mask, width, 8, MONO_HLSB)
-        glyphs.text(value, 0, 0, 1)
-        for glyph_y in range(8):
-            for glyph_x in range(width):
-                if glyphs.pixel(glyph_x, glyph_y):
-                    self.pixel(x + glyph_x, y + glyph_y, color)
-
-    def show(self, area=None):
-        if area is None or not self._rotated:
-            return self._canvas.show(area)
-        x, y, width, height = DirectCanvas._area_values(
-            area, self.width, self.height)
-        return self._canvas.show(self._area(x, y, width, height))
-
-    def close(self):
-        self._text_workspace = None
-        self._canvas.close()
+        surface = surface or game_surface()
+        rotation = 90 if surface.width > surface.height else 0
+        super().__init__(surface, transfer_rows, rotation=rotation)
+        self._rotated = rotation != 0
 
 
 class TouchGrid:
     """Edge-triggered grid input for an exclusive direct-rendering app."""
 
-    def __init__(self, keys, cols, rows, x=0, y=0, width=None, height=None):
+    def __init__(self, keys, cols, rows, x=0, y=0,
+                 width=None, height=None, rotation=0):
         self._platform = get_platform()
         if self._platform.input is None:
             raise RuntimeError("the modern platform has no touch input")
+        try:
+            self._quarter_turns = DirectCanvas._ROTATIONS[rotation]
+        except (KeyError, TypeError):
+            raise ValueError(
+                "rotation must be 0, 90, 180, or 270 degrees "
+                "(or 0 through 3 quarter turns)")
+        self.rotation = self._quarter_turns * 90
         self._keys = keys
         self.cols = cols
         self.rows = rows
         self.x = x
         self.y = y
-        self.width = width if width is not None else self._platform.width
-        self.height = height if height is not None else self._platform.height
+        if self._quarter_turns & 1:
+            logical_width = self._platform.height
+            logical_height = self._platform.width
+        else:
+            logical_width = self._platform.width
+            logical_height = self._platform.height
+        self.width = width if width is not None else logical_width
+        self.height = height if height is not None else logical_height
         self._down = False
         self._last_keep_awake = None
         self._keep_awake()
@@ -488,7 +558,16 @@ class TouchGrid:
         self._last_keep_awake = _ticks_ms()
 
     def _logical_point(self, point):
-        return point
+        x, y = point
+        rotation = self._quarter_turns
+        if rotation == 0:
+            return x, y
+        if rotation == 1:
+            return self._platform.height - 1 - y, x
+        if rotation == 2:
+            return (self._platform.width - 1 - x,
+                    self._platform.height - 1 - y)
+        return y, self._platform.width - 1 - x
 
     def read(self):
         now = _ticks_ms()
@@ -518,17 +597,7 @@ class PortraitTouchGrid(TouchGrid):
                  width=None, height=None):
         platform = get_platform()
         self._portrait_rotated = platform.width > platform.height
-        logical_width = platform.height if self._portrait_rotated \
-            else platform.width
-        logical_height = platform.width if self._portrait_rotated \
-            else platform.height
+        rotation = 90 if self._portrait_rotated else 0
         super().__init__(
             keys, cols, rows, x, y,
-            logical_width if width is None else width,
-            logical_height if height is None else height)
-
-    def _logical_point(self, point):
-        if not self._portrait_rotated:
-            return point
-        x, y = point
-        return self._platform.height - 1 - y, x
+            width, height, rotation=rotation)
