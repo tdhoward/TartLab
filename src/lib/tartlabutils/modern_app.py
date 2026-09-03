@@ -11,6 +11,11 @@ from .platform import get_platform
 
 from framebuf import FrameBuffer, MONO_HLSB, RGB565
 
+try:
+    import lvgl as _lv
+except ImportError:
+    _lv = None
+
 
 TRANSFER_ROWS = 16
 
@@ -80,6 +85,15 @@ def fill_surface(surface, color):
         surface.free_buffer(buffer)
 
 
+class _PreparedSprite:
+    """An RGB565 framebuffer prepared for a canvas's native orientation."""
+
+    def __init__(self, framebuffer, width, height):
+        self.framebuffer = framebuffer
+        self.width = width
+        self.height = height
+
+
 class DirectCanvas(FrameBuffer):
     """A PSRAM-friendly framebuffer flushed through a small DMA bounce tile."""
 
@@ -96,7 +110,58 @@ class DirectCanvas(FrameBuffer):
             width, self._transfer_rows)
         self._transfer_view = memoryview(self._transfer)
         self._closed = False
+        self._source_draw_buffer = None
+        self._transfer_draw_buffer = None
+        self._source_area = None
+        self._transfer_area = None
+        self._draw_buffer_format = None
+        self._init_draw_buffer_copy()
         super().__init__(self.buffer, width, height, RGB565)
+
+    def _init_draw_buffer_copy(self):
+        """Wrap the owned buffers for compiled, strided LVGL copies."""
+        if _lv is None:
+            return
+        is_initialized = getattr(_lv, "is_initialized", None)
+        if is_initialized is not None and not is_initialized():
+            return
+        try:
+            color_format = _lv.COLOR_FORMAT.RGB565_SWAPPED
+            source = _lv.draw_buf_t()
+            target = _lv.draw_buf_t()
+            if not source.init(
+                    self._width, self._height, color_format,
+                    self._width * 2, self.buffer, len(self.buffer)):
+                return
+            if not target.init(
+                    self._width, self._transfer_rows, color_format,
+                    self._width * 2, self._transfer,
+                    len(self._transfer_view)):
+                return
+            self._source_draw_buffer = source
+            self._transfer_draw_buffer = target
+            self._source_area = _lv.area_t()
+            self._transfer_area = _lv.area_t()
+            self._draw_buffer_format = color_format
+        except Exception:
+            self._disable_draw_buffer_copy()
+
+    def _disable_draw_buffer_copy(self):
+        self._source_draw_buffer = None
+        self._transfer_draw_buffer = None
+        self._source_area = None
+        self._transfer_area = None
+        self._draw_buffer_format = None
+
+    def prepare_sprite(self, framebuffer, width, height):
+        """Prepare an RGB565 framebuffer for repeated drawing."""
+        if width <= 0 or height <= 0:
+            raise ValueError("sprite width and height must be positive")
+        return _PreparedSprite(framebuffer, width, height)
+
+    def draw_sprite(self, sprite, x, y):
+        """Copy a prepared opaque sprite into the canvas framebuffer."""
+        return self.blit(sprite.framebuffer, x, y)
 
     @staticmethod
     def _area_values(area, width, height):
@@ -106,40 +171,83 @@ class DirectCanvas(FrameBuffer):
             return area.x, area.y, area.w, area.h
         return area
 
+    @staticmethod
+    def _clip_area(area, canvas_width, canvas_height):
+        x, y, width, height = DirectCanvas._area_values(
+            area, canvas_width, canvas_height)
+        x = int(x)
+        y = int(y)
+        width = int(width)
+        height = int(height)
+        right = min(canvas_width, x + width)
+        bottom = min(canvas_height, y + height)
+        x = max(0, x)
+        y = max(0, y)
+        return x, y, right - x, bottom - y
+
+    def _copy_with_lvgl(self, x, y, width, rows):
+        target = self._transfer_draw_buffer
+        if target is None:
+            return False
+        try:
+            if target.reshape(
+                    self._draw_buffer_format, width, rows, width * 2) is None:
+                raise RuntimeError("LVGL could not reshape the transfer buffer")
+            source_area = self._source_area
+            source_area.x1 = x
+            source_area.y1 = y
+            source_area.x2 = x + width - 1
+            source_area.y2 = y + rows - 1
+            transfer_area = self._transfer_area
+            transfer_area.x1 = 0
+            transfer_area.y1 = 0
+            transfer_area.x2 = width - 1
+            transfer_area.y2 = rows - 1
+            target.copy(
+                transfer_area, self._source_draw_buffer, source_area)
+            return True
+        except Exception:
+            self._disable_draw_buffer_copy()
+            return False
+
+    def _copy_with_python(self, x, y, width, rows):
+        row_bytes = width * 2
+        for row in range(rows):
+            source_start = ((y + row) * self._width + x) * 2
+            target_start = row * row_bytes
+            self._transfer_view[target_start:target_start + row_bytes] = \
+                self._buffer_view[source_start:source_start + row_bytes]
+
     def show(self, area=None):
         """Flush all or part of the framebuffer to the modern surface."""
         if self._closed:
             raise RuntimeError("canvas is closed")
-        x, y, width, height = self._area_values(
+        x, y, width, height = self._clip_area(
             area, self._width, self._height)
-        x = max(0, int(x))
-        y = max(0, int(y))
-        width = min(int(width), self._width - x)
-        height = min(int(height), self._height - y)
         if width <= 0 or height <= 0:
             return
 
-        source = self._buffer_view
         target = self._transfer_view
         row_bytes = width * 2
+        rows_per_transfer = len(target) // row_bytes
         sent_rows = 0
         while sent_rows < height:
-            rows = min(self._transfer_rows, height - sent_rows)
-            for row in range(rows):
-                source_start = (
-                    (y + sent_rows + row) * self._width + x) * 2
-                target_start = row * row_bytes
-                target[target_start:target_start + row_bytes] = \
-                    source[source_start:source_start + row_bytes]
+            rows = min(rows_per_transfer, height - sent_rows)
+            source_y = y + sent_rows
+            if not self._copy_with_lvgl(x, source_y, width, rows):
+                self._copy_with_python(x, source_y, width, rows)
             size = row_bytes * rows
             self.surface.write(
-                target[:size], x, y + sent_rows, width, rows)
+                target[:size], x, source_y, width, rows)
             sent_rows += rows
 
     def close(self):
         if not self._closed:
-            self.surface.free_buffer(self._transfer)
-            self._closed = True
+            self._disable_draw_buffer_copy()
+            try:
+                self.surface.free_buffer(self._transfer)
+            finally:
+                self._closed = True
 
 
 class PortraitCanvas:
@@ -173,6 +281,30 @@ class PortraitCanvas:
 
     def fill(self, color):
         return self._canvas.fill(color)
+
+    def prepare_sprite(self, framebuffer, width, height):
+        """Prepare an RGB565 framebuffer for repeated portrait drawing."""
+        if width <= 0 or height <= 0:
+            raise ValueError("sprite width and height must be positive")
+        if not self._rotated:
+            return self._canvas.prepare_sprite(framebuffer, width, height)
+
+        buffer = bytearray(width * height * 2)
+        rotated = FrameBuffer(buffer, height, width, RGB565)
+        for source_y in range(height):
+            for source_x in range(width):
+                rotated.pixel(
+                    source_y, width - 1 - source_x,
+                    framebuffer.pixel(source_x, source_y))
+        return _PreparedSprite(rotated, width, height)
+
+    def draw_sprite(self, sprite, x, y):
+        """Copy a prepared opaque sprite using portrait coordinates."""
+        if not self._rotated:
+            return self._canvas.draw_sprite(sprite, x, y)
+        x, y, unused_width, unused_height = self._area(
+            x, y, sprite.width, sprite.height)
+        return self._canvas.blit(sprite.framebuffer, x, y)
 
     def pixel(self, x, y, color=None):
         target_x, target_y = self._point(x, y)
