@@ -348,7 +348,7 @@ def fake_lvgl(initialized=True, fail_copy=False, fail_rotate=False):
     return module
 
 
-def load_modern_app(platform, lvgl=None):
+def load_modern_app(platform, lvgl=None, viper_swap=None):
     package = types.ModuleType("tartlabutils")
     package.__path__ = []
     platform_module = types.ModuleType("tartlabutils.platform")
@@ -357,6 +357,10 @@ def load_modern_app(platform, lvgl=None):
     framebuf.FrameBuffer = FakeFrameBuffer
     framebuf.MONO_HLSB = 0
     framebuf.RGB565 = 1
+    emitters = None
+    if viper_swap is not None:
+        emitters = types.ModuleType("tartlabutils._modern_emitters")
+        emitters.swap565 = viper_swap
     path = ROOT / "src/lib/tartlabutils/modern_app.py"
     spec = importlib.util.spec_from_file_location(
         "tartlabutils.modern_app", path)
@@ -366,6 +370,7 @@ def load_modern_app(platform, lvgl=None):
             "tartlabutils.platform": platform_module,
             "framebuf": framebuf,
             "lvgl": lvgl,
+            "tartlabutils._modern_emitters": emitters,
     }
     with mock.patch.dict(sys.modules, imports):
         spec.loader.exec_module(module)
@@ -498,6 +503,38 @@ class ModernAppDrawingTests(unittest.TestCase):
         surface = FakeSurface(width=2, height=1)
         module.fill_surface(surface, 0xF800)
         self.assertEqual(surface.writes[0][0], b"\xF8\x00\xF8\x00")
+
+        failed_surface = FakeSurface(width=2, height=1)
+        failed_surface.write = mock.Mock(
+            side_effect=RuntimeError("write failed"))
+        with self.assertRaisesRegex(RuntimeError, "write failed"):
+            module.fill_surface(failed_surface, 0xF800)
+        self.assertEqual(len(failed_surface.freed), 1)
+
+    def test_swap565_buffer_uses_validated_viper_helper_when_available(self):
+        calls = []
+
+        def viper_swap(buffer, size):
+            calls.append((buffer, size))
+            for offset in range(0, size, 2):
+                buffer[offset], buffer[offset + 1] = (
+                    buffer[offset + 1], buffer[offset])
+
+        module = load_modern_app(
+            types.SimpleNamespace(), viper_swap=viper_swap)
+        pixels = bytearray((0x00, 0xF8, 0xE0, 0x07))
+
+        self.assertIs(module.swap565_buffer(pixels), pixels)
+        self.assertEqual(pixels, bytearray((0xF8, 0x00, 0x07, 0xE0)))
+        self.assertEqual(len(calls), 1)
+        self.assertIsInstance(calls[0][0], memoryview)
+        self.assertEqual(calls[0][1], 4)
+
+        with self.assertRaises(ValueError):
+            module.swap565_buffer(bytearray(3))
+        with self.assertRaises(TypeError):
+            module.swap565_buffer(bytes(4))
+        self.assertEqual(len(calls), 1)
 
     def test_touch_grid_uses_public_platform_poll_and_debounces(self):
         points = [(100, 201), (100, 201), None, (100, 201)]

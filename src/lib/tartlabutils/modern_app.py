@@ -17,6 +17,11 @@ try:
 except ImportError:
     _lv = None
 
+try:
+    from ._modern_emitters import swap565 as _swap565_viper
+except ImportError:
+    _swap565_viper = None
+
 
 TRANSFER_ROWS = 16
 _TEXT_CHUNK_CHARS = 24
@@ -55,13 +60,26 @@ def rgb565(red, green, blue):
     return framebuffer_color(native)
 
 
+def _swap565_python(view):
+    """Reference byte-swap implementation for hosts without Viper."""
+    for offset in range(0, len(view), 2):
+        view[offset], view[offset + 1] = view[offset + 1], view[offset]
+
+
 def swap565_buffer(buffer):
     """Swap every RGB565 byte pair in a writable buffer, in place."""
     view = memoryview(buffer)
-    if len(view) & 1:
+    size = len(view)
+    if size & 1:
         raise ValueError("an RGB565 buffer must contain an even byte count")
-    for offset in range(0, len(view), 2):
-        view[offset], view[offset + 1] = view[offset + 1], view[offset]
+    if size:
+        # Viper pointer writes are unchecked. Validate writability in ordinary
+        # Python before entering the optimized helper.
+        view[0] = view[0]
+    if _swap565_viper is None:
+        _swap565_python(view)
+    else:
+        _swap565_viper(view, size)
     return buffer
 
 
@@ -78,13 +96,10 @@ def fill_surface(surface, color):
     """Fill a direct surface with a standard 16-bit RGB565 color."""
     rows = min(TRANSFER_ROWS, surface.height)
     buffer = surface.allocate_buffer(surface.width, rows)
-    view = memoryview(buffer)
-    high = (color >> 8) & 0xFF
-    low = color & 0xFF
-    for offset in range(0, len(view), 2):
-        view[offset] = high
-        view[offset + 1] = low
     try:
+        view = memoryview(buffer)
+        tile = FrameBuffer(buffer, surface.width, rows, RGB565)
+        tile.fill(framebuffer_color(color))
         y = 0
         while y < surface.height:
             height = min(rows, surface.height - y)

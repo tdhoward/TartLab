@@ -8,8 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from drawing_diagnostics import (
-    SHAPES, STAGE_CASES, TEXT_VARIANTS, device_program, extract_result,
-    render_section, validate_result)
+    EMITTER_SWAP_SIZES, SHAPES, STAGE_CASES, TEXT_VARIANTS, device_program,
+    extract_result, render_section, validate_result)
 
 
 def result():
@@ -56,6 +56,24 @@ def result():
         "shapes": shapes,
         "text_rendering": {
             key: [1000, 1100, 1200] for key in TEXT_VARIANTS},
+        "emitters": {
+            "byte_swap": {
+                str(size): {
+                    "repeats": 2,
+                    "python_us": [1000, 1100, 1200],
+                    "native_us": [700, 710, 720],
+                    "viper_us": [100, 110, 120],
+                }
+                for size in EMITTER_SWAP_SIZES
+            },
+            "byte_swap_correct": [True, True, True],
+            "fill_tile": {
+                "bytes": 15_360,
+                "python_us": [1000, 1100, 1200],
+                "compiled_us": [10, 11, 12],
+                "same_prefix": True,
+            },
+        },
         "lifecycle": {
             "iterations": 10,
             "allocation_balance": 0,
@@ -75,6 +93,8 @@ class DrawingDiagnosticTests(unittest.TestCase):
         self.assertNotIn("__SAMPLES__", source)
         self.assertIn("working_modern_app.__dict__", source)
         self.assertNotIn("__MODERN_APP_SOURCE__", source)
+        self.assertNotIn("__MODERN_EMITTER_SOURCE__", source)
+        self.assertNotIn("__EMITTER_SWAP_SIZES__", source)
 
     def test_program_rejects_too_few_samples(self):
         with self.assertRaisesRegex(ValueError, "at least 3"):
@@ -90,6 +110,9 @@ class DrawingDiagnosticTests(unittest.TestCase):
         self.assertIn("| 144 x 36 | 3 | 6.30 | 2.10 | 3.0x |", report)
         self.assertIn("15,360-byte bounce buffer", report)
         self.assertIn("PortraitCanvas cached sprite", report)
+        self.assertIn("Phase 4 emitter experiments", report)
+        self.assertIn("| 213,120 | 1100 | 710 | 110 | 10.0x |", report)
+        self.assertIn("compiled `framebuf.fill()` (100.0x faster)", report)
         self.assertIn("allocation balance 0", report)
 
     def test_validation_rejects_changed_matrix(self):

@@ -28,15 +28,18 @@ SHAPES = ("wide_144x36", "square_72x72", "tall_36x144")
 TEXT_VARIANTS = (
     "direct_native", "portrait_current", "portrait_reused_mask",
     "portrait_cached_sprite")
+EMITTER_SWAP_SIZES = (128, 2048, 32_768, 213_120)
 
 
 DEVICE_PROGRAM = r'''
-import gc, machine, os, sys, time, ujson
+import gc, machine, micropython, os, sys, time, ujson
 for search_path in reversed(('/device', '/lib', '/', '/files/user')):
     if search_path not in sys.path:
         sys.path.insert(0, search_path)
 _MODERN_APP_SOURCE = __MODERN_APP_SOURCE__
+_MODERN_EMITTER_SOURCE = __MODERN_EMITTER_SOURCE__
 import tartlabutils.modern_app as _working_modern_app
+exec(_MODERN_EMITTER_SOURCE, _working_modern_app.__dict__)
 exec(_MODERN_APP_SOURCE, _working_modern_app.__dict__)
 from framebuf import FrameBuffer, MONO_HLSB, RGB565
 from tartlabutils.modern_app import DirectCanvas, PortraitCanvas, game_surface
@@ -336,6 +339,97 @@ text_rendering = {
     'portrait_cached_sprite': render_samples(cached_sprite_text),
 }
 
+def python_swap(buffer, size):
+    view = memoryview(buffer)
+    for offset in range(0, size, 2):
+        view[offset], view[offset + 1] = view[offset + 1], view[offset]
+
+@micropython.native
+def native_swap(buffer, size):
+    view = memoryview(buffer)
+    for offset in range(0, size, 2):
+        view[offset], view[offset + 1] = view[offset + 1], view[offset]
+
+def swap_correct(function):
+    buffer = bytearray(range(32))
+    expected = bytearray(32)
+    for offset in range(0, 32, 2):
+        expected[offset] = buffer[offset + 1]
+        expected[offset + 1] = buffer[offset]
+    function(buffer, len(buffer))
+    return buffer == expected
+
+def public_viper_swap(buffer, unused_size):
+    _working_modern_app.swap565_buffer(buffer)
+
+def swap_samples(function, size, repeats):
+    buffer = bytearray(size)
+    values = []
+    for unused_sample in range(SAMPLES):
+        gc.collect()
+        started = ticks()
+        for unused_repeat in range(repeats):
+            function(buffer, size)
+            function(buffer, size)
+        values.append(elapsed(started) // (repeats * 2))
+    return values
+
+swap_sizes = __EMITTER_SWAP_SIZES__
+swap_repeats = (50, 10, 2, 1)
+byte_swap = {}
+for index in range(len(swap_sizes)):
+    size = swap_sizes[index]
+    repeats = swap_repeats[index]
+    byte_swap[str(size)] = {
+        'repeats': repeats,
+        'python_us': swap_samples(python_swap, size, repeats),
+        'native_us': swap_samples(native_swap, size, repeats),
+        'viper_us': swap_samples(public_viper_swap, size, repeats),
+    }
+
+FILL_WIDTH = 480
+FILL_HEIGHT = 16
+FILL_COLOR = 0x34AB
+
+def python_fill(buffer):
+    view = memoryview(buffer)
+    high = (FILL_COLOR >> 8) & 0xFF
+    low = FILL_COLOR & 0xFF
+    for offset in range(0, len(view), 2):
+        view[offset] = high
+        view[offset + 1] = low
+
+def compiled_fill(buffer):
+    FrameBuffer(buffer, FILL_WIDTH, FILL_HEIGHT, RGB565).fill(
+        _working_modern_app.framebuffer_color(FILL_COLOR))
+
+def fill_samples(function):
+    buffer = bytearray(FILL_WIDTH * FILL_HEIGHT * 2)
+    values = []
+    for unused_sample in range(SAMPLES):
+        gc.collect()
+        started = ticks()
+        function(buffer)
+        values.append(elapsed(started))
+    return values, list(buffer[:8])
+
+python_fill_us, python_fill_head = fill_samples(python_fill)
+compiled_fill_us, compiled_fill_head = fill_samples(compiled_fill)
+emitters = {
+    'byte_swap': byte_swap,
+    'byte_swap_correct': [
+        swap_correct(python_swap),
+        swap_correct(native_swap),
+        swap_correct(public_viper_swap),
+    ],
+    'fill_tile': {
+        'bytes': FILL_WIDTH * FILL_HEIGHT * 2,
+        'python_us': python_fill_us,
+        'compiled_us': compiled_fill_us,
+        'same_prefix': python_fill_head == compiled_fill_head,
+    },
+}
+
 direct.close()
 portrait.close()
 lifecycle_heap = []
@@ -376,6 +470,7 @@ result = {
     'stages': stages,
     'shapes': shapes,
     'text_rendering': text_rendering,
+    'emitters': emitters,
     'lifecycle': lifecycle,
 }
 print('DRAWING_DIAGNOSTICS=' + ujson.dumps(result))
@@ -387,9 +482,16 @@ def device_program(samples: int) -> str:
         raise ValueError("samples must be at least 3")
     modern_app_source = (ROOT / "src/lib/tartlabutils/modern_app.py").read_text(
         encoding="utf-8")
+    emitter_source = (ROOT / "src/lib/tartlabutils/_modern_emitters.py").read_text(
+        encoding="utf-8")
+    modern_app_source = modern_app_source.replace(
+        "from ._modern_emitters import swap565 as _swap565_viper",
+        "_swap565_viper = swap565")
     return (DEVICE_PROGRAM
             .replace("__SAMPLES__", str(samples))
-            .replace("__MODERN_APP_SOURCE__", repr(modern_app_source)))
+            .replace("__MODERN_APP_SOURCE__", repr(modern_app_source))
+            .replace("__MODERN_EMITTER_SOURCE__", repr(emitter_source))
+            .replace("__EMITTER_SWAP_SIZES__", repr(EMITTER_SWAP_SIZES)))
 
 
 def extract_result(output: bytes) -> dict:
@@ -452,6 +554,27 @@ def validate_result(result: dict) -> None:
         raise ValueError("diagnostic text variants differ")
     for variant in TEXT_VARIANTS:
         _positive_samples(text[variant], samples, "text." + variant)
+    emitters = result.get("emitters", {})
+    if emitters.get("byte_swap_correct") != [True, True, True]:
+        raise ValueError("emitter byte-swap output differs")
+    byte_swap = emitters.get("byte_swap", {})
+    if set(byte_swap) != {str(size) for size in EMITTER_SWAP_SIZES}:
+        raise ValueError("emitter byte-swap sizes differ")
+    for size in EMITTER_SWAP_SIZES:
+        item = byte_swap[str(size)]
+        if not isinstance(item.get("repeats"), int) or item["repeats"] < 1:
+            raise ValueError("invalid emitter repeats")
+        for metric in ("python_us", "native_us", "viper_us"):
+            _positive_samples(
+                item.get(metric), samples,
+                "emitters.byte_swap.%s.%s" % (size, metric))
+    fill_tile = emitters.get("fill_tile", {})
+    if (fill_tile.get("bytes") != 15_360 or
+            fill_tile.get("same_prefix") is not True):
+        raise ValueError("emitter fill output differs")
+    for metric in ("python_us", "compiled_us"):
+        _positive_samples(
+            fill_tile.get(metric), samples, "emitters.fill_tile." + metric)
     lifecycle = result.get("lifecycle", {})
     if (lifecycle.get("iterations") != 10
             or lifecycle.get("allocation_balance") != 0
@@ -507,6 +630,20 @@ def render_section(result: dict) -> str:
             text_labels[key], median_ms(result["text_rendering"][key]))
         for key in TEXT_VARIANTS
     ]
+    emitters = result["emitters"]
+    swap_rows = []
+    for size in EMITTER_SWAP_SIZES:
+        item = emitters["byte_swap"][str(size)]
+        python_us = statistics.median(item["python_us"])
+        native_us = statistics.median(item["native_us"])
+        viper_us = statistics.median(item["viper_us"])
+        swap_rows.append(
+            "| %s | %.0f | %.0f | %.0f | %.1fx |" % (
+                f"{size:,}", python_us, native_us, viper_us,
+                python_us / viper_us))
+    fill_tile = emitters["fill_tile"]
+    fill_python_us = statistics.median(fill_tile["python_us"])
+    fill_compiled_us = statistics.median(fill_tile["compiled_us"])
     pack_shares = []
     for case in STAGE_CASES:
         item = result["stages"][case]
@@ -560,6 +697,20 @@ def render_section(result: dict) -> str:
         "| Text renderer | Render time |",
         "| --- | ---: |",
         *text_rows,
+        "",
+        "### Phase 4 emitter experiments",
+        "",
+        "Byte swapping compares the Python reference, a rejected `native`",
+        "candidate, and the validated private Viper path. Times are microseconds.",
+        "",
+        "| Buffer bytes | Python | Native | Viper | Python/Viper |",
+        "| ---: | ---: | ---: | ---: | ---: |",
+        *swap_rows,
+        "",
+        "The 15,360-byte transfer-tile fill took %.0f us in Python and %.0f us" % (
+            fill_python_us, fill_compiled_us),
+        "with compiled `framebuf.fill()` (%.1fx faster), with matching bytes." % (
+            fill_python_us / fill_compiled_us),
         "",
         "### Findings",
         "",

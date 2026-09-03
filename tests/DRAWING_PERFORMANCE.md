@@ -166,3 +166,30 @@ targets after the completion changes:
 - Workload collected: `2026-09-03T23:09:30.002821+00:00`
 - Firmware: MicroPython 1.27.0, build `ESP32_GENERIC_S3-SPIRAM_OCT`
 - Device writes: none; working-tree source was injected through raw REPL
+
+## Phase 4 focused emitters
+
+The Phase 4 diagnostic compared the remaining general-purpose Python byte-swap
+loop with `native` and a private Viper kernel. The public optimized path first
+validates an even-length writable buffer in ordinary Python, while host builds
+and runtimes without the emitter retain the Python reference implementation.
+
+| Buffer bytes | Python (us) | Native (us) | Viper (us) | Python/Viper |
+| ---: | ---: | ---: | ---: | ---: |
+| 128 | 431 | 257 | 47 | 9.2x |
+| 2,048 | 6,676 | 3,950 | 273 | 24.5x |
+| 32,768 | 106,685 | 63,057 | 3,962 | 26.9x |
+| 213,120 | 694,436 | 410,534 | 26,183 | 26.5x |
+
+The `native` candidate improved the loop by only about 1.7x and was rejected.
+Viper produced the same bytes and materially improved every tested size.
+
+`fill_surface()` had another per-pixel Python initialization loop, but did not
+need an emitter. Filling its 15,360-byte transfer tile with the compiled
+`framebuf.fill()` operation reduced the median from 34,728 us to 523 us, or
+66.4x, with identical RGB565 byte order. The pinned runtime also accepted the
+DMA-capable surface buffer as a `FrameBuffer` backing store.
+
+- Diagnostics collected: `2026-09-03T23:30:02.266839+00:00`
+- Firmware: MicroPython 1.27.0, build `ESP32_GENERIC_S3-SPIRAM_OCT`
+- Device writes: none; working-tree sources were injected through raw REPL

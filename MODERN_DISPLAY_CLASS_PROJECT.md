@@ -1,6 +1,6 @@
 # Modern direct-display class improvement project
 
-Status: Phase 3 rotation consolidation complete
+Status: Phase 4 complete (optional panel-scroll track remains independent)
 
 Related evidence: [`tests/DRAWING_PERFORMANCE.md`](tests/DRAWING_PERFORMANCE.md)
 
@@ -295,6 +295,30 @@ format expansion. A Viper helper must:
 
 No optimization is accepted merely because it uses `native` or `viper`; it must
 win the focused device benchmark and remain correct at all supported rotations.
+
+#### Implementation result
+
+Phase 4 was completed on 2026-09-03 with two narrowly scoped changes:
+
+- `swap565_buffer()` validates the buffer in ordinary Python and then uses a
+  private Viper byte-pair kernel. The existing Python implementation remains
+  the host and unavailable-emitter fallback.
+- `fill_surface()` now prepares its reusable transfer tile with compiled
+  `framebuf.fill()` instead of visiting every RGB565 pixel in Python.
+
+No drawing orchestration method was decorated. The existing LVGL draw-buffer
+copy and software rotation remain the preferred compiled operations for dirty
+regions, text, and prepared sprites. Python and `native` byte-swap candidates
+were retained only in the repeatable diagnostic comparison; `native` did not
+provide enough improvement to ship.
+
+On the COM3 modern fixture, Viper reduced median byte-swap time from 694.44 ms
+to 26.18 ms for a 213,120-byte full-display buffer (26.5x faster). It ranged
+from 9.2x to 26.9x faster over the tested 128-byte through 213,120-byte sizes.
+Compiled filling reduced a 15,360-byte transfer tile from 34.73 ms to 0.52 ms
+(66.4x faster). All variants produced matching bytes, the public wrapper
+rejected odd-length and read-only buffers before entering Viper, and the
+DMA-capable surface buffer was accepted by `framebuf` on-device.
 
 ## Testing strategy
 
