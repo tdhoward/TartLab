@@ -1,6 +1,6 @@
 # Modern direct-display class improvement project
 
-Status: In progress (Phase 3 rotation consolidation started)
+Status: Phase 3 rotation consolidation complete
 
 Related evidence: [`tests/DRAWING_PERFORMANCE.md`](tests/DRAWING_PERFORMANCE.md)
 
@@ -91,6 +91,30 @@ cover `0`, `90`, `180`, and `270` degrees. Existing `PortraitCanvas` output and
 touch coordinates are the compatibility reference for its corresponding
 quarter turn. Unsupported values should fail clearly at construction time.
 
+`DirectCanvas.scroll(dx, dy)` retains ordinary deferred framebuffer semantics:
+it moves pixels in the owned RAM buffer in logical canvas coordinates, leaves
+the newly exposed pixels unspecified as `framebuf` does, and becomes visible
+through a later `show()`. Panel scanout scrolling is a different operation and
+must not silently change those semantics.
+
+A later portable canvas operation may combine a region scroll, deterministic
+filling of its exposed band, and presentation in one call:
+
+```python
+canvas.scroll_region(
+    (0, 24, canvas.width, canvas.height - 24),
+    dx=0,
+    dy=-8,
+    fill=background,
+)
+```
+
+The exact name and signature should be finalized with its tests, but its
+contract must be identical on every board. A capable surface may accelerate
+the operation; every other surface must provide a pixel-equivalent software
+copy and flush. Students must not call controller registers or choose a
+board-specific path.
+
 Applications should never call `lv.draw_buf_t.copy()`, `lv.draw_label()`,
 `lv.draw_sw_rotate()`, or the underlying surface transport directly for routine
 drawing. Those are private implementation options of `DirectCanvas`.
@@ -153,7 +177,7 @@ After the performance paths are stable, move coordinate mapping into
 - Add a rotation setting expressed in quarter turns or degrees.
 - Make `width` and `height` report logical dimensions.
 - Apply the same logical coordinate system to pixels, lines, rectangles, text,
-  sprites, dirty rectangles, and pixel reads.
+  sprites, framebuffer scrolling, dirty rectangles, and pixel reads.
 - Ensure clipping and partially off-screen drawing behave consistently at every
   rotation.
 - Align touch-coordinate helpers with the same rotation definition so drawing
@@ -167,27 +191,84 @@ cleanup may migrate examples to `DirectCanvas(rotation=...)` and deprecate the
 old class deliberately; removal is not part of this project unless separately
 approved.
 
-#### Initial implementation checkpoint
+#### Implementation result
 
-The first Phase 3 slice was implemented on 2026-09-03:
+Phase 3 was completed on 2026-09-03:
 
 - `DirectCanvas` accepts `0`, `90`, `180`, and `270` degrees or zero through
   three quarter turns, and exposes logical `width`, `height`, and normalized
   degree-valued `rotation` attributes.
-- Pixel reads and writes, lines, rectangles, text, prepared sprites, and dirty
-  rectangles share one logical-to-physical mapper without rotating the full
-  framebuffer.
+- Pixel reads and writes, lines, rectangles, ellipses, polygon outlines, text,
+  prepared sprites, framebuffer scrolling, and dirty rectangles share one
+  logical-to-physical mapper without rotating the full framebuffer.
+- Filled polygons use logical scanlines so the pinned `framebuf` edge-rounding
+  behavior remains pixel-exact after rotation. Native-orientation canvases and
+  rotated polygon outlines continue to use compiled `framebuf` operations.
 - `TouchGrid(rotation=...)` applies the inverse mapper to physical touch input.
 - `PortraitCanvas` and `PortraitTouchGrid` are now compatibility subclasses
   that select the historical portrait rotation.
 - Host reference tests cover primitives, clipping, text, sprites, dirty areas,
-  and touch mapping at every rotation. A temporary raw-REPL probe on the COM3
-  modern fixture also passed pixel, sprite, compiled-text, logical-dimension,
-  and dirty-area checks at all four rotations without device writes.
+  scrolling, and touch mapping at every rotation. Temporary raw-REPL probes on
+  the COM3 modern fixture passed these checks against the pinned MicroPython
+  `framebuf` implementation without device writes.
 
-This checkpoint does not yet broaden rotation support to every optional
-`framebuf` operation such as polygons, ellipses, or scrolling, and therefore
-does not mark the full rotation-consolidation acceptance criterion complete.
+`DirectCanvas.scroll(dx, dy)` now maps the logical vector to the underlying RAM
+framebuffer and remains deferred until `show()`. It does not issue panel scroll
+commands. The optional presentation accelerator below remains independent of
+the completed rotation-consolidation gate.
+
+### Independent track: capability-driven scroll presentation
+
+Some panel controllers can change the scanout start address without
+retransmitting the retained pixels. This is a presentation accelerator, not an
+alternate definition of `framebuf.scroll()`. It is optional per board and is
+not a prerequisite for completing Phase 3.
+
+The implementation should use these boundaries:
+
+- Keep the full RAM framebuffer canonical at first. An accelerated scroll may
+  still move its RAM pixels, but it should use panel scrolling to avoid sending
+  the retained display region and transfer only the newly exposed band.
+- Put the capability below `DirectCanvas`, on the direct surface or a helper it
+  owns. The surface must advertise supported logical axes, region constraints,
+  fixed-area support, wrapping behavior, and any rotation restrictions.
+- Let shared canvas code ask whether one concrete region, vector, and composite
+  rotation can be accelerated. Unsupported axes, regions, rotations, and
+  distances must take the normal software path without an application change.
+- Keep controller command bytes and scanout behavior in a reusable controller-
+  family adapter. A board's declarative `BOARD_CONFIG` may reference that
+  adapter and contain unavoidable geometry or wiring constraints, but must not
+  implement scrolling or duplicate driver behavior.
+- Express advertised directions in final logical canvas coordinates. The
+  implementation must compose the panel's native memory axis, the configured
+  panel rotation, and the additional `DirectCanvas` rotation instead of
+  assuming that controller-vertical means application-vertical.
+- Serialize scroll-register commands with DMA transfers and require direct-game
+  ownership. Never send them while LVGL owns the display or a transfer is in
+  flight.
+- Once panel scanout has moved, retain the scanout origin and translate every
+  later dirty write. Writes that cross the wrap seam must be split correctly so
+  the RAM framebuffer, pixel reads, and visible panel remain coherent.
+- Restore the neutral scanout origin before LVGL ownership resumes, then force
+  the normal LVGL invalidation/redraw. Also restore or invalidate the state on
+  rotation changes, canvas closure, reset, and exceptional cleanup.
+
+The first accelerated version deliberately optimizes transfer volume rather
+than eliminating the RAM move. A ring-backed framebuffer would require
+wrap-aware implementations of drawing, reads, clipping, and dirty-region
+packing; it should be considered only if a focused benchmark demonstrates that
+the remaining RAM copy is important.
+
+The LilyGO T-Display-S3 Pro is the first candidate, not a special case in shared
+canvas code. Its ST7796 panel is native `222 x 480`, while its current TartLab
+surface is `480 x 222` at panel rotation `270`. The native vertical-scroll axis
+may therefore become a logical horizontal axis, and another `DirectCanvas`
+rotation may transform it again. In addition, the ST7796S documentation says
+vertical scrolling mode should use `MADCTL.MV = 0`; the current landscape
+configuration must be physically tested before the adapter advertises support
+for it. If that configuration is unsupported or unreliable, it must fall back
+to software rather than changing the established display orientation solely to
+claim acceleration.
 
 ### Phase 4: MicroPython code emitters only where needed
 
@@ -228,7 +309,14 @@ cover:
 - cleanup after normal use and exceptions;
 - non-symmetric RGB565 colors that expose byte swapping;
 - text and sprite output against a pixel-exact reference; and
-- eventually, every primitive and dirty-area transform at all four rotations.
+- eventually, every primitive, framebuffer-scroll vector, and dirty-area
+  transform at all four rotations.
+
+For the optional presentation-scrolling path, use a fake capability adapter and
+compare every result with the software reference. Cover positive and negative
+movement, distances at and beyond the region extent, every composite rotation,
+unsupported-axis fallback, fixed regions, exposed-band filling, dirty writes on
+both sides of the wrap seam, and cleanup during ownership changes and errors.
 
 Keep a simple Python reference mapper for rotation tests. Compare optimized
 output to that reference rather than duplicating optimized implementation logic
@@ -242,6 +330,7 @@ repeatable benchmark entry points. Add focused cases when necessary to compare:
 - current Python packing versus LVGL draw-buffer copying;
 - fixed-row versus byte-capacity-based transfer tiling;
 - candidate rotated-text implementations;
+- software region scrolling versus any capability-selected panel accelerator;
 - Python, `native`, and Viper implementations of any remaining hot helper; and
 - output checksums or sampled pixels as well as timing.
 
@@ -253,6 +342,13 @@ startup and allocation costs.
 Device benchmarking must run temporary code through raw REPL and must not flash
 firmware. If a comparison requires different firmware, stop and ask the owner to
 swap devices. Do not change firmware on the test fixture as part of this project.
+
+A panel-scroll experiment must additionally record the controller orientation,
+effective logical axis, fixed and scrolling areas, start-address sequence,
+bytes avoided, exposed-band transfers, and behavior after a dirty write crosses
+the wrap seam. Verify ownership handoff back to LVGL and repeat the test after
+reset. Datasheet restrictions are hypotheses until the exact board and pinned
+driver configuration pass this focused physical check.
 
 ### Regression coverage
 
@@ -284,8 +380,17 @@ The first two phases are complete when all of the following are true:
 - No new C code, firmware change, or student-facing LVGL dependency is introduced.
 
 The rotation-consolidation phase is complete when `DirectCanvas` passes the same
-primitive, text, sprite, dirty-region, and touch-alignment tests at all four
-rotations, and `PortraitCanvas` has become only a compatibility layer.
+primitive, text, sprite, framebuffer-scroll, dirty-region, and touch-alignment
+tests at all four rotations, and `PortraitCanvas` has become only a
+compatibility layer. Hardware scrolling is not part of this gate.
+
+A hardware scrolling path is accepted for an individual board and orientation
+only when its declarative payload selects a reusable adapter, accelerated and
+software results are pixel-equivalent, unsupported cases fall back correctly,
+post-scroll dirty writes and ownership restoration remain coherent, a focused
+device benchmark shows a material transfer or latency improvement, and the
+exact panel configuration satisfies its documented constraints. Boards without
+this capability continue to meet the common canvas contract through software.
 
 ## Explicit non-goals
 
@@ -306,3 +411,5 @@ rotations, and `PortraitCanvas` has become only a compatibility layer.
 - [LVGL 9.4 canvas documentation](https://docs.lvgl.io/9.4/details/widgets/canvas.html)
 - [LVGL 9.4 label drawing API](https://docs.lvgl.io/9.4/API/draw/lv_draw_label_h.html)
 - [MicroPython performance guide](https://docs.micropython.org/en/latest/reference/speed_python.html)
+- [ST7796S controller datasheet](https://files.waveshare.com/wiki/common/ST7796S_Datasheet.pdf)
+- [LilyGO T-Display-S3 Pro hardware repository](https://github.com/Xinyuan-LilyGO/T-Display-S3-Pro)

@@ -6,6 +6,7 @@ target the public exclusive surface without exposing the native display bus.
 """
 
 import time
+from array import array
 
 from .platform import get_platform
 
@@ -33,6 +34,14 @@ def _ticks_diff(new, old):
     if ticks_diff is not None:
         return ticks_diff(new, old)
     return new - old
+
+
+def _trunc_division(numerator, denominator):
+    """Return integer division truncated toward zero, as C does."""
+    quotient = abs(numerator) // abs(denominator)
+    if (numerator < 0) != (denominator < 0):
+        return -quotient
+    return quotient
 
 
 def framebuffer_color(color):
@@ -213,6 +222,9 @@ class DirectCanvas(FrameBuffer):
             self.hline = super().hline
             self.vline = super().vline
             self.line = super().line
+            self.ellipse = super().ellipse
+            self.poly = super().poly
+            self.scroll = super().scroll
             self.text = super().text
 
     def _init_draw_buffer_copy(self):
@@ -365,6 +377,103 @@ class DirectCanvas(FrameBuffer):
         x1, y1 = self._point(x1, y1)
         x2, y2 = self._point(x2, y2)
         return super().line(x1, y1, x2, y2, color)
+
+    def ellipse(self, x, y, x_radius, y_radius, color,
+                fill=False, mask=0xF):
+        """Draw an ellipse in logical coordinates."""
+        x, y = self._point(x, y)
+        rotation = self._quarter_turns
+        if rotation & 1:
+            x_radius, y_radius = y_radius, x_radius
+        mask &= 0xF
+        mask = ((mask << rotation) |
+                (mask >> (4 - rotation))) & 0xF
+        return super().ellipse(
+            x, y, x_radius, y_radius, color, fill, mask)
+
+    def poly(self, x, y, coordinates, color, fill=False):
+        """Draw a polygon whose origin and vertices are logical."""
+        # framebuf ignores a trailing unmatched coordinate and treats fewer
+        # than one complete point as a no-op.
+        length = len(coordinates) & ~1
+        if not length:
+            return
+        if fill:
+            return self._fill_poly(x, y, coordinates, length, color)
+        rotation = self._quarter_turns
+        transformed = []
+        for index in range(0, length, 2):
+            point_x = coordinates[index]
+            point_y = coordinates[index + 1]
+            if rotation == 1:
+                point_x, point_y = point_y, -point_x
+            elif rotation == 2:
+                point_x, point_y = -point_x, -point_y
+            else:
+                point_x, point_y = -point_y, point_x
+            transformed.append(point_x)
+            transformed.append(point_y)
+        x, y = self._point(x, y)
+        return super().poly(
+            x, y, array("i", transformed), color, False)
+
+    def _fill_poly(self, x, y, coordinates, length, color):
+        """Match framebuf's scanline fill while drawing logical spans."""
+        y_min = coordinates[1]
+        y_max = y_min
+        for index in range(3, length, 2):
+            point_y = coordinates[index]
+            y_min = min(y_min, point_y)
+            y_max = max(y_max, point_y)
+
+        for row in range(y_min, y_max + 1):
+            nodes = []
+            point_x_1 = coordinates[0]
+            point_y_1 = coordinates[1]
+            index = length - 1
+            while index >= 0:
+                point_y_2 = coordinates[index]
+                point_x_2 = coordinates[index - 1]
+                index -= 2
+                if (point_y_1 != point_y_2 and
+                        ((point_y_1 > row and point_y_2 <= row) or
+                         (point_y_1 <= row and point_y_2 > row))):
+                    crossing = _trunc_division(
+                        32 * (point_x_2 - point_x_1) *
+                        (row - point_y_1),
+                        point_y_2 - point_y_1)
+                    nodes.append(_trunc_division(
+                        32 * point_x_1 + crossing + 16, 32))
+                elif row == max(point_y_1, point_y_2):
+                    if point_y_1 < point_y_2:
+                        self.pixel(
+                            x + point_x_2, y + point_y_2, color)
+                    elif point_y_2 < point_y_1:
+                        self.pixel(
+                            x + point_x_1, y + point_y_1, color)
+                    else:
+                        self.line(
+                            x + point_x_1, y + point_y_1,
+                            x + point_x_2, y + point_y_2, color)
+                point_x_1 = point_x_2
+                point_y_1 = point_y_2
+
+            nodes.sort()
+            for index in range(0, len(nodes), 2):
+                self.hline(
+                    x + nodes[index], y + row,
+                    nodes[index + 1] - nodes[index] + 1, color)
+
+    def scroll(self, x_step, y_step):
+        """Move pixels in RAM by a logical vector; presentation is deferred."""
+        rotation = self._quarter_turns
+        if rotation == 1:
+            x_step, y_step = y_step, -x_step
+        elif rotation == 2:
+            x_step, y_step = -x_step, -y_step
+        else:
+            x_step, y_step = -y_step, x_step
+        return super().scroll(x_step, y_step)
 
     def text(self, value, x, y, color):
         """Draw the built-in 8-pixel font in logical orientation."""

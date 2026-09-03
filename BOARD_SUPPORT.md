@@ -95,6 +95,17 @@ Controller-specific behavior that can apply to another board, such as QSPI
 command packing or dirty-rectangle alignment, belongs in a shared driver
 adapter rather than the board payload, games, or IDE.
 
+Optional display accelerators follow the same boundary. The public canvas
+operation must have a correct software implementation on every board. A
+`BOARD_CONFIG` display record may declaratively select a reusable accelerator
+adapter and provide unavoidable hardware constraints, while shared surface code
+negotiates whether a concrete operation is supported. Capabilities such as
+panel scanout scrolling must be reported in final logical coordinates after
+panel and canvas rotation; they must not be inferred from a board ID, display
+resolution, or driver name. Register commands, wraparound address translation,
+transfer serialization, and ownership cleanup belong in the reusable adapter
+and shared controller code.
+
 The early recovery gate reads this same object through the protected selector
 to turn off a typed `BACKLIGHT` pin. Shared startup code therefore never
 contains a board ID, board-specific GPIO number, or per-board lookup table.
@@ -173,7 +184,9 @@ The repeatable path is:
    Wi-Fi, reset, and power.
 3. Prove display and input independently on TartLab's pinned runtime. Record
    geometry, orientation, transport, clocks, buffering, color order, touch,
-   heap, reset behavior, and all controller constraints.
+   heap, reset behavior, all controller constraints, and any optional
+   acceleration claimed by the board. Qualify an accelerator independently for
+   every advertised orientation and fallback case.
 4. Add `boards/<board_id>/runtime/<selector_module>.py` containing only one
    `BOARD_CONFIG` assignment, and declare its runtime source and
    `/board/<board_id>` target in the descriptor. Put pins, bus parameters,
@@ -205,6 +218,9 @@ release pipeline are what keep the routine parts from becoming repetitive.
   overlay.
 - Do not fork the IDE, updater, recovery flow, or release repository per board.
 - Do not use display resolution or flash size as a unique board identity.
+- Do not infer or special-case an optional hardware accelerator from board
+  identity, geometry, or controller name; select and qualify a reusable adapter
+  through the declarative payload.
 - Do not let an unqualified descriptor appear in provisioning defaults or a
   stable compatibility matrix.
 - Do not copy board payloads or comparison-only adapters into

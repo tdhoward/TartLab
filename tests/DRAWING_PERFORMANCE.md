@@ -138,3 +138,31 @@ targets:
 - Workload collected: `2026-09-03T21:32:52.296377+00:00`
 - Firmware: MicroPython 1.27.0, build `ESP32_GENERIC_S3-SPIRAM_OCT`
 - Device writes: none; working-tree source was injected through raw REPL
+
+## Phase 3 completion
+
+The remaining `framebuf` operations were added to the rotation-aware canvas on
+2026-09-03. Ellipse centers, radii, and quadrant masks are transformed for the
+native primitive. Polygon outlines likewise use transformed native vertices;
+filled polygons retain the pinned binding's exact logical scanline rounding.
+`scroll(dx, dy)` transforms its vector and moves only the canonical RAM
+framebuffer, leaving presentation deferred until `show()`.
+
+A temporary COM3 raw-REPL probe compared ellipses, outline and filled polygons,
+and six positive, negative, axial, and diagonal scroll vectors with native
+logical `framebuf` references at all four rotations. All 36 checks passed. The
+probe used an in-memory surface, made no panel or filesystem writes, and also
+verified that each canvas released its transfer buffer.
+
+The established seven-sample workload still met its relevant performance
+targets after the completion changes:
+
+| API | Orientation | Full grid (ms) | Piece move (ms) | Text redraw (ms) |
+| --- | --- | ---: | ---: | ---: |
+| DirectCanvas | Landscape | 72.51 | 7.47 | 4.57 |
+| PortraitCanvas | Portrait | 208.22 | 12.24 | 8.17 |
+
+- Completion probe: `2026-09-03T23:08Z`
+- Workload collected: `2026-09-03T23:09:30.002821+00:00`
+- Firmware: MicroPython 1.27.0, build `ESP32_GENERIC_S3-SPIRAM_OCT`
+- Device writes: none; working-tree source was injected through raw REPL

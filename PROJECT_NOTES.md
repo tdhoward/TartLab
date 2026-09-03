@@ -78,6 +78,14 @@ ownership, and redraw or invalidate the destination. Never let LVGL and the
 direct surface drive the panel concurrently or expose private upstream driver
 fields as the app API.
 
+Optional panel acceleration remains behind this same surface boundary. Common
+canvas operations must retain software-correct behavior on every board; a
+declarative board payload may select a reusable accelerator adapter where the
+hardware supports one. Shared code must compose native panel, configured
+surface, and canvas rotations before advertising logical axes, preserve
+framebuffer/display coherence across wrapped addressing, serialize commands
+with DMA ownership, and restore neutral panel state before returning to LVGL.
+
 ## Filesystem ownership
 
 | Paths | Ownership |

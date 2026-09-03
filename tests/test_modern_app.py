@@ -1,5 +1,6 @@
 import importlib.util
 import ast
+from array import array
 import json
 from pathlib import Path
 import sys
@@ -9,6 +10,13 @@ from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def trunc_division(numerator, denominator):
+    quotient = abs(numerator) // abs(denominator)
+    if (numerator < 0) != (denominator < 0):
+        return -quotient
+    return quotient
 
 
 class FakeFrameBuffer:
@@ -82,6 +90,124 @@ class FakeFrameBuffer:
             if twice_error <= dx:
                 error += dx
                 y1 += step_y
+
+    @staticmethod
+    def _ellipse_quadrants(x, y):
+        quadrants = 0
+        if x >= 0 and y <= 0:
+            quadrants |= 0x1
+        if x <= 0 and y <= 0:
+            quadrants |= 0x2
+        if x <= 0 and y >= 0:
+            quadrants |= 0x4
+        if x >= 0 and y >= 0:
+            quadrants |= 0x8
+        return quadrants
+
+    def ellipse(self, x, y, x_radius, y_radius, color,
+                fill=False, mask=0xF):
+        if x_radius < 1 or y_radius < 1:
+            return
+        x_squared = x_radius * x_radius
+        y_squared = y_radius * y_radius
+        limit = x_squared * y_squared
+        for offset_y in range(-y_radius, y_radius + 1):
+            for offset_x in range(-x_radius, x_radius + 1):
+                distance = (offset_x * offset_x * y_squared +
+                            offset_y * offset_y * x_squared)
+                if distance > limit:
+                    continue
+                if not fill:
+                    inner_x = max(0, x_radius - 1)
+                    inner_y = max(0, y_radius - 1)
+                    if inner_x and inner_y:
+                        inner_limit = inner_x * inner_x * inner_y * inner_y
+                        inner_distance = (
+                            offset_x * offset_x * inner_y * inner_y +
+                            offset_y * offset_y * inner_x * inner_x)
+                        if inner_distance < inner_limit:
+                            continue
+                if mask & self._ellipse_quadrants(offset_x, offset_y):
+                    FakeFrameBuffer.pixel(
+                        self, x + offset_x, y + offset_y, color)
+
+    def poly(self, x, y, coordinates, color, fill=False):
+        length = len(coordinates) & ~1
+        if not length:
+            return
+        if fill:
+            y_values = [coordinates[index]
+                        for index in range(1, length, 2)]
+            for row in range(min(y_values), max(y_values) + 1):
+                nodes = []
+                point_x_1 = coordinates[0]
+                point_y_1 = coordinates[1]
+                index = length - 1
+                while index >= 0:
+                    point_y_2 = coordinates[index]
+                    point_x_2 = coordinates[index - 1]
+                    index -= 2
+                    if (point_y_1 != point_y_2 and
+                            ((point_y_1 > row and point_y_2 <= row) or
+                             (point_y_1 <= row and point_y_2 > row))):
+                        crossing = trunc_division(
+                            32 * (point_x_2 - point_x_1) *
+                            (row - point_y_1),
+                            point_y_2 - point_y_1)
+                        nodes.append(trunc_division(
+                            32 * point_x_1 + crossing + 16, 32))
+                    elif row == max(point_y_1, point_y_2):
+                        if point_y_1 < point_y_2:
+                            FakeFrameBuffer.pixel(
+                                self, x + point_x_2, y + point_y_2,
+                                color)
+                        elif point_y_2 < point_y_1:
+                            FakeFrameBuffer.pixel(
+                                self, x + point_x_1, y + point_y_1,
+                                color)
+                        else:
+                            FakeFrameBuffer.line(
+                                self,
+                                x + point_x_1, y + point_y_1,
+                                x + point_x_2, y + point_y_2, color)
+                    point_x_1 = point_x_2
+                    point_y_1 = point_y_2
+                nodes.sort()
+                for index in range(0, len(nodes), 2):
+                    FakeFrameBuffer.hline(
+                        self, x + nodes[index], y + row,
+                        nodes[index + 1] - nodes[index] + 1, color)
+            return
+
+        point_x_1 = coordinates[0]
+        point_y_1 = coordinates[1]
+        index = length - 1
+        while index >= 0:
+            point_y_2 = coordinates[index]
+            point_x_2 = coordinates[index - 1]
+            index -= 2
+            FakeFrameBuffer.line(
+                self, x + point_x_1, y + point_y_1,
+                x + point_x_2, y + point_y_2, color)
+            point_x_1 = point_x_2
+            point_y_1 = point_y_2
+
+    def scroll(self, x_step, y_step):
+        original = [
+            [FakeFrameBuffer.pixel(self, x, y)
+             for x in range(self._framebuf_width)]
+            for y in range(self._framebuf_height)
+        ]
+        for target_y in range(self._framebuf_height):
+            source_y = target_y - y_step
+            if not 0 <= source_y < self._framebuf_height:
+                continue
+            for target_x in range(self._framebuf_width):
+                source_x = target_x - x_step
+                if 0 <= source_x < self._framebuf_width:
+                    FakeFrameBuffer.pixel(
+                        self, target_x, target_y,
+                        original[source_y][source_x])
 
     def text(self, value, x, y, color):
         # A small deterministic test glyph. Both optimized and reference paths
@@ -478,6 +604,87 @@ class ModernAppDrawingTests(unittest.TestCase):
                         self.assertEqual(
                             canvas.pixel(x, y), reference.pixel(x, y),
                             (rotation, x, y))
+
+    def test_direct_canvas_maps_ellipses_at_every_rotation(self):
+        module = load_modern_app(types.SimpleNamespace())
+        operations = (
+            (4, 4, 3, 2, 1, False, 0xF),
+            (1, 2, 3, 2, 2, True, 0x5),
+            (7, 5, 2, 3, 3, False, 0xA),
+        )
+        for rotation in (0, 90, 180, 270):
+            with self.subTest(rotation=rotation):
+                canvas = module.DirectCanvas(
+                    FakeSurface(width=11, height=9), rotation=rotation)
+                reference = FakeFrameBuffer(
+                    bytearray(canvas.width * canvas.height * 2),
+                    canvas.width, canvas.height, 1)
+                for arguments in operations:
+                    canvas.ellipse(*arguments)
+                    reference.ellipse(*arguments)
+                for y in range(canvas.height):
+                    for x in range(canvas.width):
+                        self.assertEqual(
+                            canvas.pixel(x, y), reference.pixel(x, y),
+                            (rotation, x, y))
+
+    def test_direct_canvas_maps_polygons_at_every_rotation(self):
+        module = load_modern_app(types.SimpleNamespace())
+        coordinates = array("h", (0, 0, 5, 1, 3, 5, -1, 3))
+        clipped = array("h", (0, 0, 6, -2, 8, 3, 3, 6, -2, 3))
+        for rotation in (0, 90, 180, 270):
+            with self.subTest(rotation=rotation):
+                canvas = module.DirectCanvas(
+                    FakeSurface(width=11, height=9), rotation=rotation)
+                reference = FakeFrameBuffer(
+                    bytearray(canvas.width * canvas.height * 2),
+                    canvas.width, canvas.height, 1)
+                for fill, color in ((False, 4), (True, 5)):
+                    canvas.poly(2, 1, coordinates, color, fill)
+                    reference.poly(2, 1, coordinates, color, fill)
+                canvas.poly(-2, -1, clipped, 6, True)
+                reference.poly(-2, -1, clipped, 6, True)
+                for y in range(canvas.height):
+                    for x in range(canvas.width):
+                        self.assertEqual(
+                            canvas.pixel(x, y), reference.pixel(x, y),
+                            (rotation, x, y))
+
+    def test_direct_canvas_scrolls_in_logical_space_at_every_rotation(self):
+        module = load_modern_app(types.SimpleNamespace())
+        for rotation in (0, 90, 180, 270):
+            for x_step, y_step in ((2, 0), (-2, 0), (0, 1), (0, -1),
+                                   (2, -1), (-1, 2)):
+                with self.subTest(
+                        rotation=rotation, x_step=x_step, y_step=y_step):
+                    surface = FakeSurface(width=7, height=5)
+                    canvas = module.DirectCanvas(surface, rotation=rotation)
+                    reference = FakeFrameBuffer(
+                        bytearray(canvas.width * canvas.height * 2),
+                        canvas.width, canvas.height, 1)
+                    vectors = (
+                        (x_step, y_step),
+                        (canvas.width, 0),
+                        (0, -canvas.height),
+                    )
+                    for actual_x_step, actual_y_step in vectors:
+                        for y in range(canvas.height):
+                            for x in range(canvas.width):
+                                color = y * canvas.width + x + 1
+                                canvas.pixel(x, y, color)
+                                reference.pixel(x, y, color)
+
+                        canvas.scroll(actual_x_step, actual_y_step)
+                        reference.scroll(actual_x_step, actual_y_step)
+
+                        self.assertEqual(surface.writes, [])
+                        for y in range(canvas.height):
+                            for x in range(canvas.width):
+                                self.assertEqual(
+                                    canvas.pixel(x, y),
+                                    reference.pixel(x, y),
+                                    (rotation, actual_x_step, actual_y_step,
+                                     x, y))
 
     def test_direct_canvas_draws_prepared_sprite_without_copying_it(self):
         surface = FakeSurface(width=4, height=3)
