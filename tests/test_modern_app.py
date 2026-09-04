@@ -32,12 +32,12 @@ class FakeFrameBuffer:
 
     def pixel(self, x, y, color=None):
         if color is None:
-            if (x, y) in self.pixels:
-                return self.pixels[(x, y)]
             if (self.format == 1 and 0 <= x < self._framebuf_width and
                     0 <= y < self._framebuf_height):
                 offset = (y * self._framebuf_width + x) * 2
                 return self.buffer[offset] | self.buffer[offset + 1] << 8
+            if (x, y) in self.pixels:
+                return self.pixels[(x, y)]
             return 0
         if not (0 <= x < self._framebuf_width and
                 0 <= y < self._framebuf_height):
@@ -245,6 +245,21 @@ class FakeSurface:
 
     def write(self, buffer, x, y, width, height):
         self.writes.append((bytes(buffer), x, y, width, height))
+
+
+class FakeScrollSurface(FakeSurface):
+    def __init__(self, width=4, height=3, accelerate=True):
+        super().__init__(width, height)
+        self.accelerate = accelerate
+        self.scrolls = []
+        self.resets = 0
+
+    def present_scroll(self, area, dx, dy, rotation=0):
+        self.scrolls.append((area, dx, dy, rotation))
+        return self.accelerate
+
+    def reset_scroll(self):
+        self.resets += 1
 
 
 class FakeArea:
@@ -722,6 +737,102 @@ class ModernAppDrawingTests(unittest.TestCase):
                                     reference.pixel(x, y),
                                     (rotation, actual_x_step, actual_y_step,
                                      x, y))
+
+    def test_scroll_region_matches_portable_reference_at_every_rotation(self):
+        module = load_modern_app(types.SimpleNamespace())
+        for rotation in (0, 90, 180, 270):
+            with self.subTest(rotation=rotation):
+                surface = FakeScrollSurface(width=7, height=5,
+                                            accelerate=False)
+                canvas = module.DirectCanvas(surface, rotation=rotation)
+                original = []
+                for y in range(canvas.height):
+                    row = []
+                    for x in range(canvas.width):
+                        value = 1 + y * canvas.width + x
+                        canvas.pixel(x, y, value)
+                        row.append(value)
+                    original.append(row)
+                area = (1, 1, canvas.width - 2, canvas.height - 2)
+                dx, dy, fill = 1, -1, 0x7ACE
+                expected = [row[:] for row in original]
+                ax, ay, width, height = area
+                for target_y in range(ay, ay + height):
+                    for target_x in range(ax, ax + width):
+                        source_x = target_x - dx
+                        source_y = target_y - dy
+                        if (ax <= source_x < ax + width and
+                                ay <= source_y < ay + height):
+                            expected[target_y][target_x] = \
+                                original[source_y][source_x]
+                        else:
+                            expected[target_y][target_x] = fill
+
+                canvas.scroll_region(area, dx=dx, dy=dy, fill=fill)
+
+                for y in range(canvas.height):
+                    for x in range(canvas.width):
+                        self.assertEqual(
+                            canvas.pixel(x, y), expected[y][x],
+                            (rotation, x, y))
+                self.assertEqual(surface.scrolls, [])
+                self.assertEqual(surface.writes[-1][1:], canvas._area(*area))
+
+    def test_scroll_region_accelerates_only_an_exposed_band(self):
+        module = load_modern_app(types.SimpleNamespace())
+        surface = FakeScrollSurface(width=8, height=6)
+        canvas = module.DirectCanvas(surface)
+        canvas.fill(0x1234)
+
+        canvas.scroll_region((0, 1, 8, 4), dy=-1, fill=0xBEEF)
+
+        self.assertEqual(surface.scrolls, [((0, 1, 8, 4), 0, -1, 0)])
+        self.assertEqual([write[1:] for write in surface.writes], [
+            (0, 4, 8, 1),
+        ])
+        for x in range(8):
+            self.assertEqual(canvas.pixel(x, 4), 0xBEEF)
+
+    def test_scroll_region_falls_back_for_overlong_and_diagonal_moves(self):
+        module = load_modern_app(types.SimpleNamespace())
+        surface = FakeScrollSurface(width=8, height=6)
+        canvas = module.DirectCanvas(surface)
+
+        canvas.scroll_region((1, 1, 5, 3), dx=5, fill=0x0102)
+        canvas.scroll_region((1, 1, 5, 3), dx=1, dy=1, fill=0x0304)
+
+        self.assertEqual(surface.scrolls, [])
+        self.assertEqual([write[1:] for write in surface.writes], [
+            (1, 1, 5, 3),
+            (1, 1, 5, 3),
+        ])
+
+    def test_canvas_close_restores_surface_scroll_before_freeing(self):
+        module = load_modern_app(types.SimpleNamespace())
+        surface = FakeScrollSurface()
+        canvas = module.DirectCanvas(surface)
+
+        canvas.close()
+        canvas.close()
+
+        self.assertEqual(surface.resets, 1)
+        self.assertEqual(surface.freed, [canvas._transfer])
+
+    def test_scroll_command_failure_flushes_software_result_and_reraises(self):
+        module = load_modern_app(types.SimpleNamespace())
+        surface = FakeScrollSurface(width=8, height=6)
+        canvas = module.DirectCanvas(surface)
+
+        def fail(*unused):
+            raise RuntimeError("synthetic scroll failure")
+
+        surface.present_scroll = fail
+        with self.assertRaisesRegex(RuntimeError, "synthetic scroll failure"):
+            canvas.scroll_region((0, 0, 8, 6), dx=1, fill=0x1234)
+
+        self.assertEqual([write[1:] for write in surface.writes], [
+            (0, 0, 8, 6),
+        ])
 
     def test_direct_canvas_draws_prepared_sprite_without_copying_it(self):
         surface = FakeSurface(width=4, height=3)

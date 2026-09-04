@@ -42,14 +42,20 @@ def load_modern_factory(modern):
     factory_spec = importlib.util.spec_from_file_location(
         "phase5_modern_factory", factory_path)
     factory = importlib.util.module_from_spec(factory_spec)
+    adapter_path = ROOT / "src/lib/tartlabutils/modern_st7796.py"
+    adapter_spec = importlib.util.spec_from_file_location(
+        "tartlabutils.modern_st7796", adapter_path)
+    adapter = importlib.util.module_from_spec(adapter_spec)
     with mock.patch.dict(sys.modules, {
         "tartlabutils": package,
         "tartlabutils.board": board,
         "tartlabutils.modern": modern,
+        "tartlabutils.modern_st7796": adapter,
     }):
         board_spec.loader.exec_module(board)
+        adapter_spec.loader.exec_module(adapter)
         factory_spec.loader.exec_module(factory)
-    return factory
+    return factory, package, adapter
 
 
 class FakePointerDriver:
@@ -217,6 +223,7 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
             "src/lib/tartlabutils/board.py",
             "src/lib/tartlabutils/modern.py",
             "src/lib/tartlabutils/modern_factory.py",
+            "src/lib/tartlabutils/modern_st7796.py",
             "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
         })
 
@@ -559,7 +566,8 @@ class ModernRenderingAdapterTests(unittest.TestCase):
     def test_pinned_board_factory_uses_native_dual_dma_and_swapped_lvgl(self):
         modern = load_modern_rendering()
         module = load_lilygo_platform(modern)
-        factory = load_modern_factory(modern)
+        factory, tartlabutils_package, st7796_adapter = \
+            load_modern_factory(modern)
         bus = FakeModernBus()
         display = FakeLVDisplay(bus)
         screen = FakeLVScreen()
@@ -645,6 +653,8 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         task_handler.TaskHandler = Handler
 
         with mock.patch.dict(sys.modules, {
+            "tartlabutils": tartlabutils_package,
+            "tartlabutils.modern_st7796": st7796_adapter,
             "cst226": cst226,
             "i2c": i2c,
             "lcd_bus": lcd_bus,
@@ -667,6 +677,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             "reset_pin": 13, "interrupt_pin": 21, "startup_rotation": 0})
         self.assertEqual((platform.width, platform.height), (480, 222))
         self.assertTrue(platform.capabilities["exclusive_display_ownership"])
+        self.assertTrue(platform.capabilities["panel_scroll"])
         self.assertEqual(screen.background, 0)
         self.assertEqual(screen.invalidations, 1)
         self.assertEqual(
@@ -687,6 +698,11 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         self.assertEqual(pins["BUTTON"]["number"], 12)
         self.assertEqual(pins["BACKLIGHT"]["number"], 48)
         self.assertEqual(board["display"]["driver"], "st7796.ST7796")
+        self.assertEqual(
+            board["display"]["adapter"],
+            "tartlabutils.modern_st7796")
+        self.assertEqual(
+            board["display"]["scroll"]["qualified_rotations"], (270,))
         self.assertEqual(board["touch"]["driver"], "cst226.CST226")
 
     def test_modern_ide_progress_supports_binding_without_anim_enum(self):

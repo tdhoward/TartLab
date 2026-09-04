@@ -490,6 +490,114 @@ class DirectCanvas(FrameBuffer):
             x_step, y_step = -y_step, x_step
         return super().scroll(x_step, y_step)
 
+    def _scroll_physical_region(self, x, y, width, height, dx, dy):
+        """Move one clipped physical rectangle using one bounded scanline."""
+        if (x == 0 and y == 0 and
+                width == self._width and height == self._height):
+            return super().scroll(dx, dy)
+        retained_width = width - abs(dx)
+        retained_height = height - abs(dy)
+        if retained_width <= 0 or retained_height <= 0:
+            return
+        source_x = x + max(-dx, 0)
+        source_y = y + max(-dy, 0)
+        target_x = x + max(dx, 0)
+        target_y = y + max(dy, 0)
+        row_bytes = retained_width * 2
+        scratch = bytearray(row_bytes)
+        scratch_view = memoryview(scratch)
+        if dy > 0:
+            rows = range(retained_height - 1, -1, -1)
+        else:
+            rows = range(retained_height)
+        stride = self._width * 2
+        for row in rows:
+            source_start = (
+                (source_y + row) * stride + source_x * 2)
+            target_start = (
+                (target_y + row) * stride + target_x * 2)
+            scratch_view[:] = self._buffer_view[
+                source_start:source_start + row_bytes]
+            self._buffer_view[target_start:target_start + row_bytes] = \
+                scratch_view
+
+    @staticmethod
+    def _exposed_regions(x, y, width, height, dx, dy):
+        regions = []
+        vertical = min(abs(dy), height)
+        horizontal = min(abs(dx), width)
+        if dy > 0:
+            regions.append((x, y, width, vertical))
+            middle_y = y + vertical
+        else:
+            middle_y = y
+            if dy < 0:
+                regions.append(
+                    (x, y + height - vertical, width, vertical))
+        middle_height = height - vertical
+        if middle_height > 0 and dx > 0:
+            regions.append((x, middle_y, horizontal, middle_height))
+        elif middle_height > 0 and dx < 0:
+            regions.append((
+                x + width - horizontal, middle_y,
+                horizontal, middle_height))
+        return regions
+
+    def scroll_region(self, area, dx=0, dy=0, fill=0):
+        """Move, fill, and present a logical region.
+
+        A capable surface may change its scanout origin and upload only the
+        newly exposed bands. Unsupported cases perform the same RAM operation
+        and flush the complete changed region.
+        """
+        if self._closed:
+            raise RuntimeError("canvas is closed")
+        dx = int(dx)
+        dy = int(dy)
+        if not dx and not dy:
+            return
+        x, y, width, height = self._clip_area(
+            area, self.width, self.height)
+        if width <= 0 or height <= 0:
+            return
+
+        physical_x, physical_y, physical_width, physical_height = self._area(
+            x, y, width, height)
+        physical_dx, physical_dy = dx, dy
+        rotation = self._quarter_turns
+        if rotation == 1:
+            physical_dx, physical_dy = dy, -dx
+        elif rotation == 2:
+            physical_dx, physical_dy = -dx, -dy
+        elif rotation == 3:
+            physical_dx, physical_dy = -dy, dx
+        self._scroll_physical_region(
+            physical_x, physical_y, physical_width, physical_height,
+            physical_dx, physical_dy)
+
+        exposed = self._exposed_regions(x, y, width, height, dx, dy)
+        if abs(dx) >= width or abs(dy) >= height:
+            exposed = [(x, y, width, height)]
+        for exposed_area in exposed:
+            self.fill_rect(
+                exposed_area[0], exposed_area[1],
+                exposed_area[2], exposed_area[3], fill)
+
+        presenter = getattr(self.surface, "present_scroll", None)
+        accelerated = False
+        if presenter is not None and len(exposed) == 1 and \
+                abs(dx) < width and abs(dy) < height:
+            try:
+                accelerated = presenter(
+                    (x, y, width, height), dx, dy, self.rotation)
+            except Exception:
+                self.show((x, y, width, height))
+                raise
+        if accelerated:
+            self.show(exposed[0])
+        else:
+            self.show((x, y, width, height))
+
     def text(self, value, x, y, color):
         """Draw the built-in 8-pixel font in logical orientation."""
         if not value:
@@ -628,9 +736,14 @@ class DirectCanvas(FrameBuffer):
             self._text_workspace = None
             self._disable_draw_buffer_copy()
             try:
-                self.surface.free_buffer(self._transfer)
+                reset_scroll = getattr(self.surface, "reset_scroll", None)
+                if reset_scroll is not None:
+                    reset_scroll()
             finally:
-                self._closed = True
+                try:
+                    self.surface.free_buffer(self._transfer)
+                finally:
+                    self._closed = True
 
 
 class PortraitCanvas(DirectCanvas):

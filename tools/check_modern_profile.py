@@ -36,12 +36,14 @@ REQUIRED_DIST_FILES = (
     "lib/tartlabutils/modern_power.py",
     "lib/tartlabutils/modern.py",
     "lib/tartlabutils/modern_factory.py",
+    "lib/tartlabutils/modern_st7796.py",
     "lib/tartlabutils/platform.py",
 )
 APPLICATION_ADAPTER_INPUTS = {
     "src/lib/tartlabutils/board.py",
     "src/lib/tartlabutils/modern.py",
     "src/lib/tartlabutils/modern_factory.py",
+    "src/lib/tartlabutils/modern_st7796.py",
     PROFILE_SELECTOR_SOURCE,
 }
 

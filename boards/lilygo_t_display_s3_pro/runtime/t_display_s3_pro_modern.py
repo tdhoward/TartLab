@@ -19,6 +19,7 @@ BOARD_CONFIG = {
     ),
     "display": {
         "driver": "st7796.ST7796",
+        "adapter": "tartlabutils.modern_st7796",
         "native_size": (222, 480),
         "logical_size": (480, 222),
         "offset": (0, 49),
@@ -28,6 +29,10 @@ BOARD_CONFIG = {
         "backlight_state": "STATE_PWM",
         "color_order": "BGR",
         "inversion": True,
+        # The ST7796 native vertical-scroll axis becomes logical horizontal at
+        # rotation 270. This exact MV=1 configuration passed the focused COM3
+        # automated and visual qualification documented in the repository.
+        "scroll": {"qualified_rotations": (270,)},
         "spi": {
             "host": 1,
             "frequency": 60_000_000,

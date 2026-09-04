@@ -1,6 +1,6 @@
 # Modern direct-display class improvement project
 
-Status: Phase 4 complete (optional panel-scroll track remains independent)
+Status: Complete, including ST7796 rotation-270 panel-scroll qualification
 
 Related evidence: [`tests/DRAWING_PERFORMANCE.md`](tests/DRAWING_PERFORMANCE.md)
 

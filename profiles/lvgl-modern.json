@@ -94,8 +94,12 @@
         "sha256": "0936ccbb49d834b26652383c1e8762a1f3bf5c76c462d252bcc55d5471003dbc"
       },
       {
+        "path": "src/lib/tartlabutils/modern_st7796.py",
+        "sha256": "69198a700e4bd2732c5f1ede012572a4ed75362890734e93c9de13a6a3fd430a"
+      },
+      {
         "path": "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
-        "sha256": "25ce3bb66b970f8b7eea46611fa26e21d229acfdc22634c67aa5ce7d7162e6b9"
+        "sha256": "9810e1f99de5ebfe4c7a6b016a0c452c7d62c49ef1484f1156876e283a9b91b9"
       }
     ]
   }
