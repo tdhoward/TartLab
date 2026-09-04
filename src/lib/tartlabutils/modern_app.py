@@ -22,6 +22,11 @@ try:
 except ImportError:
     _swap565_viper = None
 
+try:
+    from ._modern_emitters import copy_rgb565_rows as _copy_rows_viper
+except ImportError:
+    _copy_rows_viper = None
+
 
 TRANSFER_ROWS = 16
 _TEXT_CHUNK_CHARS = 24
@@ -491,7 +496,7 @@ class DirectCanvas(FrameBuffer):
         return super().scroll(x_step, y_step)
 
     def _scroll_physical_region(self, x, y, width, height, dx, dy):
-        """Move one clipped physical rectangle using one bounded scanline."""
+        """Move one clipped physical rectangle in overlap-safe row order."""
         if (x == 0 and y == 0 and
                 width == self._width and height == self._height):
             return super().scroll(dx, dy)
@@ -504,21 +509,37 @@ class DirectCanvas(FrameBuffer):
         target_x = x + max(dx, 0)
         target_y = y + max(dy, 0)
         row_bytes = retained_width * 2
+        stride = self._width * 2
+        source_start = source_y * stride + source_x * 2
+        target_start = target_y * stride + target_x * 2
+
+        # The region above was clipped to the owned framebuffer, but keep the
+        # pointer kernel's safety contract explicit in ordinary Python. Viper
+        # pointer reads and writes do not perform their own bounds checks.
+        final_source = source_start + (retained_height - 1) * stride
+        final_target = target_start + (retained_height - 1) * stride
+        buffer_size = len(self._buffer_view)
+        if (source_start < 0 or target_start < 0 or
+                final_source + row_bytes > buffer_size or
+                final_target + row_bytes > buffer_size):
+            raise ValueError("scroll region exceeds the framebuffer")
+
+        if _copy_rows_viper is not None:
+            _copy_rows_viper(
+                self._buffer_view, source_start, target_start,
+                row_bytes, retained_height, stride, int(dy > 0))
+            return
+
         scratch = bytearray(row_bytes)
         scratch_view = memoryview(scratch)
-        if dy > 0:
-            rows = range(retained_height - 1, -1, -1)
-        else:
-            rows = range(retained_height)
-        stride = self._width * 2
+        rows = range(retained_height - 1, -1, -1) if dy > 0 else \
+            range(retained_height)
         for row in rows:
-            source_start = (
-                (source_y + row) * stride + source_x * 2)
-            target_start = (
-                (target_y + row) * stride + target_x * 2)
+            source_row = source_start + row * stride
+            target_row = target_start + row * stride
             scratch_view[:] = self._buffer_view[
-                source_start:source_start + row_bytes]
-            self._buffer_view[target_start:target_start + row_bytes] = \
+                source_row:source_row + row_bytes]
+            self._buffer_view[target_row:target_row + row_bytes] = \
                 scratch_view
 
     @staticmethod

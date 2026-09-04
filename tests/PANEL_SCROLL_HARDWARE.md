@@ -65,3 +65,25 @@ the held hardware-scrolled frame. A two-second solid blue fill then separates
 it from the held, fully transmitted software reference. The striped holds must
 be pixel-identical. A black `VISUAL TEST COMPLETE` screen explicitly marks the
 end before the ordinary LVGL UI returns.
+
+## Compiled partial-region follow-up
+
+On 2026-09-04 UTC, the same diagnostic was extended to inject the working-tree
+Viper emitter and an exact physical equivalent of the portrait racer's fixed
+24-pixel header. The partial framebuffer move now uses an overlap-safe compiled
+strided copy instead of allocating and copying one scanline at a time in
+Python.
+
+| Case | Accelerated | Software | Transfer reduction | Accelerated time | Software time |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Fixed 40-pixel sides, `dx=16` | 7,104 bytes | 177,600 bytes | 25.0x | 35.84 ms | 94.88 ms |
+| Fixed 40-pixel sides, `dx=-16` | 7,104 bytes | 177,600 bytes | 25.0x | 42.24 ms | 101.18 ms |
+| Portrait fixed header, `x=24`, `dx=4` | 1,776 bytes | 202,464 bytes | 114.0x | 38.96 ms | 111.01 ms |
+
+The fixed-sides accelerated case fell from 1466.47 ms to 35.84 ms (40.9x),
+while retaining the same RAM-buffer checksum as the non-panel-accelerated
+reference. Both overlapping-copy directions passed. All six automated cases
+matched checksums, the wrap-seam regions
+remained correct, repeated scroll coordinates matched, and scanout was restored
+before returning to the UI. The working-tree test did not write the device
+filesystem or firmware.

@@ -30,6 +30,8 @@ for search_path in reversed(('/device', '/lib', '/', '/files/user')):
 
 adapter_scope = {'__name__': 'tartlabutils.modern_st7796_probe'}
 exec(__ADAPTER_SOURCE__, adapter_scope)
+import tartlabutils._modern_emitters as modern_emitters
+exec(__EMITTER_SOURCE__, modern_emitters.__dict__)
 modern_app = sys.modules.get('tartlabutils.modern_app')
 if modern_app is None:
     import tartlabutils.modern_app as modern_app
@@ -196,6 +198,10 @@ try:
         run_case('negative_full', full_area, -32, True),
         run_case('positive_full', full_area, 32),
         run_case('fixed_sides', (40, 0, width - 80, height), 16),
+        run_case('fixed_sides_negative', (40, 0, width - 80, height), -16),
+        # Physical equivalent of the portrait racer's 24-pixel fixed header
+        # and four-pixel logical downward move.
+        run_case('portrait_fixed_header', (24, 0, width - 24, height), 4),
         run_case('negative_full_repeat', full_area, -32),
     )
     visual_case = None
@@ -211,7 +217,7 @@ try:
             item['buffer_checksums_match'] for item in cases),
         'repeat_regions_match': (
             cases[0]['accelerated_regions'] ==
-            cases[3]['accelerated_regions']),
+            cases[5]['accelerated_regions']),
         'visual_case': visual_case,
         'scanout_restored': True,
         'visual_confirmation_required': True,
@@ -226,11 +232,14 @@ finally:
 def device_program(visual_hold_seconds: int = 0) -> str:
     adapter = (ROOT / "src/lib/tartlabutils/modern_st7796.py").read_text(
         encoding="utf-8")
+    emitters = (ROOT / "src/lib/tartlabutils/_modern_emitters.py").read_text(
+        encoding="utf-8")
     modern_app = (ROOT / "src/lib/tartlabutils/modern_app.py").read_text(
         encoding="utf-8")
     return DEVICE_PROGRAM.replace(
         "__VISUAL_HOLD_MS__", str(max(0, visual_hold_seconds) * 1000)).replace(
         "__ADAPTER_SOURCE__", repr(adapter)).replace(
+        "__EMITTER_SOURCE__", repr(emitters)).replace(
         "__MODERN_APP_SOURCE__", repr(modern_app)).replace(
         "__BOARD_SOURCE__", repr((
             ROOT / "boards/lilygo_t_display_s3_pro/runtime/"

@@ -45,7 +45,6 @@ OBSTACLE_GAP = 92
 
 center_phase = 0
 spawn_distance = 0
-scroll_offset = 0
 car_x = WIDTH // 2
 obstacles = []
 
@@ -89,16 +88,6 @@ def draw_header():
     """Redraw the header so it appears fixed over the scrolling canvas."""
     canvas.fill_rect(0, 0, WIDTH, HEADER_HEIGHT, BLACK)
     canvas.text("RACER  TAP LEFT / RIGHT", 8, 8, WHITE)
-
-
-def show_header():
-    """Present the header without making the surface repack a wrap seam."""
-    seam = scroll_offset % HEIGHT
-    if 0 < seam < HEADER_HEIGHT:
-        canvas.show((0, 0, WIDTH, seam))
-        canvas.show((0, seam, WIDTH, HEADER_HEIGHT - seam))
-    else:
-        canvas.show((0, 0, WIDTH, HEADER_HEIGHT))
 
 
 def draw_obstacle(obstacle):
@@ -184,14 +173,14 @@ while True:
     elif key == "right":
         car_x = min(ROAD_RIGHT - CAR_RADIUS - 3, car_x + STEER_STEP)
 
-    # Scroll the complete canvas so its RAM move uses framebuf's native fast
-    # path.  Qualified hardware also moves the panel scanout and uploads only
-    # the exposed band; other displays use the portable software fallback.
+    # Keep the header fixed and scroll only the track. The canvas uses its
+    # compiled strided-copy path for this partial framebuffer region. Qualified
+    # hardware also moves panel scanout and uploads only the exposed band;
+    # other displays use the portable software fallback.
     canvas.scroll_region(
-        (0, 0, WIDTH, HEIGHT),
+        (0, TRACK_TOP, WIDTH, TRACK_HEIGHT),
         dy=SCROLL_STEP,
         fill=GREEN)
-    scroll_offset = (scroll_offset + SCROLL_STEP) % HEIGHT
 
     center_phase = (center_phase + SCROLL_STEP) % CENTER_PERIOD
     for obstacle in obstacles:
@@ -200,12 +189,9 @@ while True:
         obstacle for obstacle in obstacles
         if obstacle[1] - obstacle[2] < HEIGHT]
 
-    # The full-canvas move also shifted the header's bottom rows into the
-    # track, so rebuild that road seam and repaint the header in place.
+    # Rebuild the newly exposed track band with the road and centerline.
     draw_track_band(TRACK_TOP, SCROLL_STEP)
     canvas.show((0, TRACK_TOP, WIDTH, SCROLL_STEP))
-    draw_header()
-    show_header()
 
     spawn_distance += SCROLL_STEP
     if spawn_distance >= OBSTACLE_GAP:

@@ -363,7 +363,7 @@ def fake_lvgl(initialized=True, fail_copy=False, fail_rotate=False):
     return module
 
 
-def load_modern_app(platform, lvgl=None, viper_swap=None):
+def load_modern_app(platform, lvgl=None, viper_swap=None, viper_copy=None):
     package = types.ModuleType("tartlabutils")
     package.__path__ = []
     platform_module = types.ModuleType("tartlabutils.platform")
@@ -373,9 +373,12 @@ def load_modern_app(platform, lvgl=None, viper_swap=None):
     framebuf.MONO_HLSB = 0
     framebuf.RGB565 = 1
     emitters = None
-    if viper_swap is not None:
+    if viper_swap is not None or viper_copy is not None:
         emitters = types.ModuleType("tartlabutils._modern_emitters")
-        emitters.swap565 = viper_swap
+        if viper_swap is not None:
+            emitters.swap565 = viper_swap
+        if viper_copy is not None:
+            emitters.copy_rgb565_rows = viper_copy
     path = ROOT / "src/lib/tartlabutils/modern_app.py"
     spec = importlib.util.spec_from_file_location(
         "tartlabutils.modern_app", path)
@@ -778,6 +781,39 @@ class ModernAppDrawingTests(unittest.TestCase):
                 self.assertEqual(surface.scrolls, [])
                 self.assertEqual(surface.writes[-1][1:], canvas._area(*area))
 
+    def test_partial_region_scroll_uses_viper_copy_when_available(self):
+        calls = []
+
+        def viper_copy(buffer, source_start, target_start, row_bytes,
+                       row_count, stride, reverse_rows):
+            calls.append((
+                source_start, target_start, row_bytes,
+                row_count, stride, reverse_rows))
+            view = memoryview(buffer)
+            rows = range(row_count - 1, -1, -1) if reverse_rows else \
+                range(row_count)
+            for row in rows:
+                source = source_start + row * stride
+                target = target_start + row * stride
+                data = bytes(view[source:source + row_bytes])
+                view[target:target + row_bytes] = data
+
+        module = load_modern_app(
+            types.SimpleNamespace(), viper_copy=viper_copy)
+        surface = FakeScrollSurface(width=8, height=6, accelerate=False)
+        canvas = module.DirectCanvas(surface)
+        for y in range(canvas.height):
+            for x in range(canvas.width):
+                canvas.pixel(x, y, y * canvas.width + x + 1)
+
+        canvas.scroll_region((1, 1, 6, 4), dx=1, dy=1, fill=0xCAFE)
+
+        self.assertEqual(calls, [(18, 36, 10, 3, 16, 1)])
+        for y in range(2, 5):
+            for x in range(2, 7):
+                self.assertEqual(
+                    canvas.pixel(x, y), (y - 1) * canvas.width + x)
+
     def test_scroll_region_accelerates_only_an_exposed_band(self):
         module = load_modern_app(types.SimpleNamespace())
         surface = FakeScrollSurface(width=8, height=6)
@@ -1095,7 +1131,7 @@ class ModernHelpSourceTests(unittest.TestCase):
         self.assertEqual([
             element.id if isinstance(element, ast.Name) else element.value
             for element in area.elts
-        ], [0, 0, "WIDTH", "HEIGHT"])
+        ], [0, "TRACK_TOP", "WIDTH", "TRACK_HEIGHT"])
 
     def test_modern_manifest_describes_direct_drawing_not_lvgl(self):
         manifest = (ROOT / "src/files/help/manifest.json").read_text()

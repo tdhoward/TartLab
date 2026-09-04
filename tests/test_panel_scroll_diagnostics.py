@@ -19,6 +19,8 @@ class PanelScrollDiagnosticsTests(unittest.TestCase):
         source = device_program()
         compile(source, "<panel-scroll-diagnostics>", "exec")
         self.assertIn("ST7796DirectRGB565Surface", source)
+        self.assertIn("copy_rgb565_rows", source)
+        self.assertNotIn("__EMITTER_SOURCE__", source)
         self.assertNotIn("machine.reset", source)
         self.assertNotIn("open(", source)
 
