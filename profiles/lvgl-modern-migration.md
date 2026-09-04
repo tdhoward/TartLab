@@ -15,6 +15,12 @@ cannot replace firmware and must not be used to convert a `legacy-mp123`
 device. Do not attach these assets to, or discover them through, the legacy
 `tdhoward/TartLab` release feed.
 
+The modern platform is early alpha and currently has no field-deployed
+devices. A selection-aware multi-board alpha therefore does not require an
+intermediate compatibility bridge from `modern-v0.14.8`. This does not relax
+the authentication, backup, board-selection, or physical qualification gates
+below.
+
 ## Required safety checks
 
 1. For a promoted release, download every asset from the same `@VERSION@`
@@ -84,8 +90,8 @@ record completion. Retain the private workspace until that check succeeds.
 ## Release authorization
 
 This guide is rendered into an authenticated candidate, so the guide alone is
-not authorization to migrate classroom devices. A stable release is authorized
-only when it appears in `tdhoward/TartLab-modern-releases` with a
+not authorization to migrate classroom devices. A promoted alpha release is
+authorized only when it appears in `tdhoward/TartLab-modern-releases` with a
 `promotion_attestation.json` that binds the exact candidate checksum to passed
 physical evidence, plus the signed `release-attestation.sigstore.json` bundle.
 The checked-in profile records the latest authorized publication and the

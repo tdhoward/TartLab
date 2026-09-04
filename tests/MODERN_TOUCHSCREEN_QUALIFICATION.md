@@ -6,6 +6,12 @@ host-tested, but no physical or release qualification has been recorded for
 it. The published `modern-v0.14.8` evidence predates the feature and must not be
 reused.
 
+Modern remains early alpha and has no field-deployed devices. The exact
+candidate used for this qualification may therefore introduce selection-aware
+multi-board packaging directly; no single-board bridge release is required.
+This changes release sequencing only, not the requirement to qualify every
+included board and firmware identity.
+
 ## Claim boundary
 
 Passing this checklist on an arbitrary source checkout is useful engineering

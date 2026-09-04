@@ -123,9 +123,10 @@ overwrite the selector, identity, or local calibration.
 
 The published `modern-v0.14.8` profile predates the board catalog and contains
 one firmware identity. New candidate builds dual-write that legacy firmware
-alias and a schema-2 compatibility matrix keyed by `board_id`. The alias lets
-already-deployed T-Display devices accept the bridging OTA; new updater and
-recovery code select the board-specific matrix entry. Each entry binds:
+alias and a schema-2 compatibility matrix keyed by `board_id`. The alias
+preserves manifest-format compatibility with the published lab reference; no
+field-deployed device depends on it. New updater and recovery code select the
+board-specific matrix entry. Each entry binds:
 
 - accepted PCB revisions or an explicit revision policy;
 - flash and PSRAM requirements;
@@ -154,13 +155,16 @@ still account for the complete archive. A missing or invalid size for the
 protected board identity rejects the manifest; it must not fall back to the
 compressed size of the complete archive.
 
-The first bridge from a selection-unaware modern updater must contain only the
-already-qualified default board in `board-support.tar`; an older updater may
-ignore the new selection field and extract the whole archive. Multi-board
-stable packages are permitted only after the selection-aware updater and
-recovery path are the supported baseline. Device OTA continues to update
-filesystem content only. Firmware changes remain an authenticated
-adult-provisioning operation.
+The modern platform remains in early alpha and has no field-deployed devices.
+Consequently, the first supported modern alpha may include multiple boards in
+`board-support.tar` without an intermediate single-board bridge. The candidate
+itself must contain the selection-aware updater and recovery path, and its
+schema-2 evidence must qualify every included board. If any modern version is
+field-deployed before that release is promoted, re-evaluate this assumption and
+design an explicit compatibility path before publishing a selection behavior
+that an installed updater cannot interpret. Device OTA continues to update
+filesystem content only. Firmware changes remain an authenticated adult
+provisioning operation.
 
 Provisioning must select a descriptor explicitly, verify its support state,
 check observable hardware properties before erase, and install only the bound

@@ -113,6 +113,13 @@ approved multi-board candidate. Production board sources live under
 `boards/<board_id>/runtime`; comparison-only adapters live outside `src` and
 cannot enter a normal distribution accidentally.
 
+The modern platform is early alpha and has no field-deployed devices. A
+selection-aware multi-board candidate may therefore be the first supported
+modern alpha; an intermediate single-board bridge release is not required.
+This exception depends on the absence of a deployed modern population. Revisit
+the rollout policy before changing selection semantics after any field
+deployment.
+
 The modern runtime is the distribution default and deploys `src/files/help`.
 Legacy builds must explicitly select `legacy-mp123`; they deploy
 `src/files/help-legacy` to the same `/files/help` device path.

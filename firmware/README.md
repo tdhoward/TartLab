@@ -37,8 +37,10 @@ The modern image uses native USB Serial/JTAG, ST7796/CST226 support, and one
 DMA-capable transport shared exclusively by LVGL UI mode and TartLab's direct
 RGB565 game surface. Its lifecycle, benchmark, provisioning, OTA/recovery, and
 promotion evidence is summarized in the Phase 5 and Phase 6 documents under
-`tests/`. It is the firmware identity published with stable
-`modern-v0.14.8`.
+`tests/`. It is the firmware identity published with the lab-qualified alpha
+reference `modern-v0.14.8`. No modern devices are field-deployed, so that
+reference does not require a compatibility bridge before the first supported
+selection-aware multi-board alpha.
 
 ## Historical and comparison artifacts
 

@@ -54,7 +54,8 @@ publishes only to the modern repository. Verify a published release with:
 python tools/check_modern_release_authenticity.py --release path/to/release --source-ref refs/tags/modern-vX.Y.Z --execute
 ```
 
-Stable `modern-v0.14.8` passed this process in workflow run `33223821198`.
+Published alpha reference `modern-v0.14.8` passed this process in workflow run
+`33223821198`.
 Its candidate `checksums.json` SHA-256 is
 `dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e`;
 qualification evidence SHA-256 is
@@ -63,8 +64,11 @@ The release is
 <https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.14.8>.
 
 Adult provisioning performs the attestation check before device mutation.
-Deployed devices validate package hashes, runtime profile, feed/manifest, and
-firmware identity, but do not verify Sigstore certificates themselves.
+Any deployed devices validate package hashes, runtime profile, feed/manifest,
+and firmware identity, but do not verify Sigstore certificates themselves.
+There are currently no field-deployed modern devices, so this reference does
+not impose a bridge-release requirement on the first supported multi-board
+modern alpha.
 
 ## Feed isolation
 

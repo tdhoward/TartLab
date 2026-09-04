@@ -234,6 +234,9 @@ target.
 There are two distinct milestones. A successful one-off TartLab bench boot is
 not a supported-board claim; release support additionally requires reproducible
 firmware, safe provisioning, recovery, OTA, and board-bound qualification.
+Modern has no field-deployed devices, so the DLE06235B may be included directly
+in the first supported selection-aware, multi-board alpha candidate. No
+single-board bridge release is required.
 
 ### Milestone A: first complete TartLab bench boot
 
@@ -279,17 +282,21 @@ publishing or provisioning the board as a supported target.
     pinned MicroPython 1.27.0 / LVGL 9.4.0 source graph. Produce a reproducible,
     checksummed DLE06235B firmware artifact with its own build lock and
     provenance; do not reuse the T-Display-S3 Pro firmware identity.
-11. Generalize the modern profile, release builder, validators, provisioning
-    tool, and tests from one firmware hash and selector to an explicit
-    board-to-firmware compatibility matrix. Clean provisioning must identify
-    or require explicit confirmation of the board, verify 16 MiB flash, write
-    the DLE06235B selector, and reject incompatible images before erase. Do not
-    claim migration from an unknown Elecrow factory filesystem.
+11. **Partially completed:** the modern profile, release builder, validators,
+    package selection, and evidence schema now support an explicit board-to-
+    firmware compatibility matrix. Finish the multi-board qualification and
+    promotion workflow inputs and add an authenticated candidate-provisioning
+    path. Clean provisioning must identify or require explicit confirmation of
+    the board, verify 16 MiB flash, write the DLE06235B selector, and reject
+    incompatible images before erase. Do not claim migration from an unknown
+    Elecrow factory filesystem.
 12. Run the repository Tier 0-2 checks and board-specific physical
     qualification: clean adult provisioning, interrupted provisioning and
     resume, normal and interrupted OTA, display-independent recovery,
     rollback, protected-state preservation, release-feed isolation, browser
-    and API regression checks, and future-update availability.
+    and API regression checks, and future-update availability. The exact
+    multi-board candidate must qualify every board it contains; no earlier
+    single-board bridge candidate is required.
 13. Create and promote a separate sanitized DLE06235B qualification record
     bound to the exact firmware hash, board identity, release candidate, and
     durable evidence. Only this milestone permits listing the board as a

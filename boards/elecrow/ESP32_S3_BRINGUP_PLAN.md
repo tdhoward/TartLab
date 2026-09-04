@@ -305,10 +305,12 @@ Exit criteria:
    width are multiples of four for arbitrary TartLab dirty rectangles.
 5. Add clean provisioning first. Do not claim migration support from an
    unknown Elecrow factory filesystem.
-6. Generalize the modern firmware/release metadata from a single firmware hash
-   to an explicit board-to-firmware compatibility matrix. Provisioning must
-   identify the board, verify 16 MiB flash, and reject a T-Display or 7-inch
-   image before erase.
+6. Complete the board-aware firmware/release path. The shared metadata,
+   packaging, validators, and evidence schema already support a board-to-
+   firmware compatibility matrix; the qualification/promotion workflows and
+   candidate provisioning path must use it. Provisioning must identify the
+   board, verify 16 MiB flash, and reject a T-Display or 7-inch image before
+   erase.
 7. Keep board identity and touch calibration under `/device`; OTA packages may
    update the board adapter but must not overwrite the local selector or
    calibration.
@@ -326,6 +328,10 @@ smoke, clean adult provisioning, interrupted provisioning/resume, normal OTA,
 interrupted OTA, display-independent recovery, protected-state preservation,
 feed isolation, and future-update availability. Evidence and promotion status
 must be per board and bound to the exact firmware and release candidate.
+Because modern is early alpha with no field-deployed devices, the DLE06235B may
+join the first supported selection-aware multi-board candidate directly; a
+single-board bridge release is not a prerequisite. Every board in that exact
+candidate must still pass its applicable gates.
 
 Exit criteria:
 

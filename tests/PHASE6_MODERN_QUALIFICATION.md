@@ -79,5 +79,8 @@ attestation, and release-attestation bundle.
 
 The post-promotion read-only feed audit found the unchanged 14-release legacy
 feed selecting `v0.13` and one modern release selecting
-`modern-v0.14.8`, with no cross-profile assets. Stable modern qualification
-and promotion are complete for the qualified T-Display-S3 Pro profile.
+`modern-v0.14.8`, with no cross-profile assets. This is a published,
+lab-qualified modern alpha reference for the T-Display-S3 Pro, not evidence of
+a field rollout. No modern devices are field-deployed, so this historical
+release does not require an intermediate bridge before the first supported
+selection-aware multi-board alpha.

@@ -15,12 +15,18 @@ DLE06235B has a healthy experimental IDE-mode bench boot with owner-confirmed
 setup-AP, LAN, and browser editing workflows, but remains recorded separately
 in `bringup` state; this is not a supported-board claim.
 
+The modern platform is still in early alpha and has no field-deployed devices.
+The published modern reference and lab fixtures do not create a rollout
+compatibility obligation. In particular, the first supported modern alpha may
+include multiple explicitly selected and qualified boards without publishing a
+single-board bridge release first.
+
 Two runtime profiles are maintained:
 
 | Profile | Runtime and release feed | Status |
 | --- | --- | --- |
 | `legacy-mp123` | Exact MicroPython 1.23.0 octal-SPIRAM image; `tdhoward/TartLab`; legacy `manifest.json` | `v0.15` is published and physically qualified on the exact MicroPython 1.23.0 image. |
-| `lvgl-modern` | Pinned MicroPython 1.27.0/LVGL image; `tdhoward/TartLab-modern-releases`; `modern-manifest.json` | `modern-v0.14.8` is published and physically qualified for the T-Display-S3 Pro. Installation or migration is an adult-admin operation. |
+| `lvgl-modern` | Pinned MicroPython 1.27.0/LVGL image; `tdhoward/TartLab-modern-releases`; `modern-manifest.json` | The `modern-v0.14.8` lab reference is published and physically qualified for the T-Display-S3 Pro, but modern remains early alpha with no field deployments. Installation or migration is an adult-admin operation. |
 
 The authoritative runtime-profile identities and status live in
 [`profiles/legacy-mp123.json`](profiles/legacy-mp123.json) and
@@ -62,10 +68,11 @@ not overwrite the local selector, identity, or calibration.
 Host-side modern tooling discovers `boards/*/board.json` rather than growing
 new board constants in each script. New release candidates carry a schema-2
 board-to-firmware compatibility matrix while retaining the published schema-1
-firmware alias for an OTA bridge from `modern-v0.14.8`. Adult provisioning
-requires an explicit qualified board ID and records it under protected
-`/device`; new ports proceed independently through `bringup`, `candidate`, and
-`qualified` states.
+firmware alias for manifest-format compatibility. It is not a required rollout
+bridge because no field device depends on the schema-1 modern release. Adult
+provisioning requires an explicit qualified board ID and records it under
+protected `/device`; new ports proceed independently through `bringup`,
+`candidate`, and `qualified` states.
 
 The modern profile uses one native DMA-capable panel transport with exclusive
 ownership between:
@@ -378,11 +385,14 @@ Authenticated per-board expanded-size values keep extraction-space checks
 specific to the selected board even though download-space checks cover the
 whole archive.
 
-The first bridge from a selection-unaware modern updater must keep the board
-archive limited to the already-qualified default board. Stable multi-board
-archives wait until the selection-aware updater and recovery client are the
-supported baseline. The detailed source, provisioning, OTA, recovery, and
-new-board rules are maintained in `BOARD_SUPPORT.md`.
+There is no field-installed modern population, so the first supported modern
+alpha may publish a multi-board archive directly. Its updater and recovery
+client must be selection-aware in that same candidate, and its qualification
+evidence must cover every included board and firmware identity. If a modern
+version is field-deployed before this candidate is promoted, this assumption
+must be revisited and a compatible rollout path designed. The detailed source,
+provisioning, OTA, recovery, and new-board rules are maintained in
+`BOARD_SUPPORT.md`.
 
 The refactored production modules were then staged onto the COM3 engineering
 fixture without replacing its qualified firmware. The device timed out through
@@ -498,6 +508,8 @@ currently planned; a settings gear remains explicitly deferred. Hardware
 findings may still require source changes, and the feature must not be called
 complete until new evidence is bound to its exact candidate. The historical
 `modern-v0.14.8` evidence predates this feature and does not qualify it.
+Because modern has no field deployments, this candidate may include every
+ready modern board directly; no single-board bridge release is a prerequisite.
 
 The owner still needs to decide:
 

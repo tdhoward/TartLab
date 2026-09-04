@@ -41,6 +41,10 @@ The final physical gate used signed `modern-v0.14.8`:
   `187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`;
 - board: T-Display-S3 Pro PCB v1.1, 16 MiB flash, 8 MiB octal PSRAM.
 
+This records a lab qualification, not a field deployment. No installed modern
+population depends on this release, so future alpha qualification may proceed
+directly with an explicit selection-aware multi-board candidate.
+
 ## Physical results
 
 The combined 2026-08-27–28 sessions passed:

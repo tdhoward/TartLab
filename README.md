@@ -35,8 +35,16 @@ TartLab maintains two profiles:
   1.23.0 octal-SPIRAM image
   `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin`.
 - `lvgl-modern` uses the pinned MicroPython 1.27.0/LVGL firmware and native
-  display transport. Stable `modern-v0.14.8` is published in the isolated
+  display transport. The lab-qualified `modern-v0.14.8` reference is published
+  in the isolated
   [modern release repository](https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.14.8).
+
+The modern profile remains early alpha software. No modern TartLab devices have
+been field-deployed, so no installed population depends on `modern-v0.14.8` or
+its selection-unaware package behavior. The first supported modern alpha may
+therefore be a selection-aware, multi-board release without an intermediate
+single-board bridge release. Every included board still requires its own exact
+firmware binding and candidate-bound qualification evidence.
 
 New source and distribution builds default to `lvgl-modern`. The modern help
 applications live in `src/files/help`; maintained legacy copies live in
@@ -79,7 +87,7 @@ Source-development and release-candidate commands are in
 - Current unreleased modern source replaces that button choice with an LVGL
   touchscreen launcher for IDE, selected-app, and local app-selection routes.
   It is implemented and host-tested but is not yet physically qualified or in
-  a stable modern release. See
+  a promoted modern alpha release. See
   [`tests/MODERN_TOUCHSCREEN_QUALIFICATION.md`](tests/MODERN_TOUCHSCREEN_QUALIFICATION.md).
 
 ### Connect to the IDE
