@@ -1,6 +1,6 @@
 # Scrolling racer architecture and performance project
 
-Status: Phase 1 implemented; device baseline collection pending
+Status: Phase 2 implemented; Phase 3 not started
 
 Related implementation:
 
@@ -314,9 +314,19 @@ Implemented in the working tree:
   overruns, catch-up limits, dropped time, tick wraparound, starting speed,
   speed changes, quantization, and independence from synthetic render cost.
 
-The benchmark does not flash firmware or write the device filesystem. Device
-measurements remain to be collected on the supported modern fixtures before
-the Phase 1 baseline is considered fully recorded.
+The benchmark does not flash firmware or write the device filesystem.
+
+#### Device baseline
+
+On September 4, 2026, a 20-frame working-tree probe was collected from the
+modern 222 by 480 fixture on COM3. Median frame work was 49.032 ms and p95 was
+52.150 ms against the 50 ms target. Two measured frames exceeded the work
+budget. Median rendering was 48.604 ms, median surface-write time was 4.911 ms,
+and median CPU rendering time was 42.549 ms. The normal frame transferred
+3,226 bytes in two transactions. The clock recorded 21 missed deadline periods
+during the capture, while no fixed simulation time was dropped. The complete
+machine-readable result is in
+`hardware_test_artifacts/scrolling-racer/phase1-modern.json`.
 
 ### Phase 2: entities and interactions
 
@@ -332,6 +342,34 @@ the Phase 1 baseline is considered fully recorded.
 Exit gate: host tests can simulate collection, hazard contact, horizontal
 motion, boundary behavior, and off-screen removal without constructing a
 display.
+
+#### Implementation result
+
+Implemented in the working tree:
+
+- Racer's display-independent `RoadState`, `GameState`, `Entity`,
+  `EntityKind`, circle collision descriptor, and interaction-event record can
+  be imported on a host without constructing a canvas or surface.
+- Entity positions use fixed-point coordinates. Each entity retains previous
+  and current visible bounds and independently describes road-relative
+  movement, horizontal velocity, boundary policy, visual, collision radius,
+  draw layer, lifecycle state, and exactly-once contact state.
+- Bounce, wrap, and deactivate boundary policies are explicit and testable.
+- Generic player-contact dispatch invokes kind-provided collectible and hazard
+  behaviors. The placeholder outcomes update score or crash state and emit
+  one interaction event without reading framebuffer pixels.
+- Fixed updates own entity motion, contact resolution, off-screen culling,
+  in-place compaction, and distance-based spawning. Injected random functions
+  make spawn tests deterministic, and newly spawned entities do not receive an
+  immediate extra update.
+- The Phase 1 scanout renderer remains temporarily in place. Phase 3 will
+  replace its car-specific repair and spawn-specific presentation with the
+  clipped damage compositor.
+
+The complete host suite passes 347 tests. An in-memory raw-REPL smoke on the
+COM3 MicroPython fixture also parsed the working-tree Racer source and verified
+that one collectible contact emitted one event, incremented score once, and
+removed the inactive entity. The smoke did not write the device filesystem.
 
 ### Phase 3: clipped damage compositor
 

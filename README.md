@@ -114,7 +114,7 @@ updaters cannot distinguish the profiles and cannot flash firmware.
 The complete hardware-free suite is:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_app tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_modern_power tests.test_headless_ide tests.test_timing tests.test_motion tests.test_racer_benchmark -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_app tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_modern_power tests.test_headless_ide tests.test_timing tests.test_motion tests.test_racer_benchmark tests.test_racer_entities -v
 ```
 
 Host tests cover deterministic builds, update/recovery behavior, virtual device
