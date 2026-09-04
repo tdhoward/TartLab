@@ -2,6 +2,7 @@
 
 from random import choice, randint
 
+from tartlabutils.damage import DamageTracker
 from tartlabutils.motion import StagedMotion
 from tartlabutils.timing import FrameClock
 
@@ -21,12 +22,6 @@ ROAD_SPEED_STAGES = (
     (0, 80),
     (1200, 120),
 )
-MAX_SCROLL_DELTA = (
-    ROAD_SPEED_STAGES[-1][1] * SIMULATION_STEP_MS *
-    MAX_UPDATES_PER_FRAME + 999) // 1000
-MAX_SCROLL_DELTA = (
-    (MAX_SCROLL_DELTA + SCROLL_QUANTUM - 1) // SCROLL_QUANTUM *
-    SCROLL_QUANTUM)
 
 
 class CircleCollision:
@@ -206,8 +201,9 @@ class GameState:
     __slots__ = (
         "road", "road_left", "road_right", "track_top", "track_bottom",
         "player_x", "player_y", "player_radius", "entities",
-        "interactions", "spawned_entities", "entity_kinds", "spawn_gap",
-        "next_spawn_distance", "score", "crashed", "_randint", "_choice")
+        "interactions", "spawned_entities", "removed_entities",
+        "entity_kinds", "spawn_gap", "next_spawn_distance", "score",
+        "crashed", "_randint", "_choice")
 
     def __init__(self, road, road_left, road_right, track_top, track_bottom,
                  player_x, player_y, player_radius, entity_kinds=(),
@@ -224,6 +220,7 @@ class GameState:
         self.entities = []
         self.interactions = []
         self.spawned_entities = []
+        self.removed_entities = []
         self.entity_kinds = tuple(entity_kinds)
         self.spawn_gap = int(spawn_gap)
         if self.spawn_gap <= 0:
@@ -238,6 +235,7 @@ class GameState:
         """Clear transient records before one or more fixed updates."""
         self.interactions.clear()
         self.spawned_entities.clear()
+        self.removed_entities.clear()
 
     def move_player(self, direction):
         """Move the player one steering step while keeping it on the road."""
@@ -246,7 +244,11 @@ class GameState:
         self.player_x = max(minimum, min(maximum, self.player_x + direction))
 
     def add_entity(self, entity, spawned=False):
-        self.entities.append(entity)
+        index = len(self.entities)
+        while (index and self.entities[index - 1].kind.draw_layer >
+               entity.kind.draw_layer):
+            index -= 1
+        self.entities.insert(index, entity)
         if spawned:
             self.spawned_entities.append(entity)
         return entity
@@ -306,6 +308,8 @@ class GameState:
             if entity.active:
                 self.entities[write_index] = entity
                 write_index += 1
+            else:
+                self.removed_entities.append(entity)
         if write_index < len(self.entities):
             del self.entities[write_index:]
 
@@ -328,9 +332,170 @@ class GameState:
         return road_delta
 
 
+class RoadRenderer:
+    """Reconstruct clipped Racer road regions from authoritative state."""
+
+    __slots__ = (
+        "canvas", "game", "width", "center_x", "center_period",
+        "center_radius", "grass", "asphalt", "marker", "player_color",
+        "_circle_spans")
+
+    def __init__(self, canvas, game, width, center_period, center_radius,
+                 grass, asphalt, marker, player_color):
+        self.canvas = canvas
+        self.game = game
+        self.width = int(width)
+        self.center_x = self.width // 2
+        self.center_period = int(center_period)
+        self.center_radius = int(center_radius)
+        self.grass = grass
+        self.asphalt = asphalt
+        self.marker = marker
+        self.player_color = player_color
+        self._circle_spans = {}
+        self._cache_circle(self.center_radius)
+        self._cache_circle(game.player_radius)
+        for kind in game.entity_kinds:
+            self._cache_circle(kind.visual_radius)
+
+    def _cache_circle(self, radius):
+        radius = int(radius)
+        spans = self._circle_spans.get(radius)
+        if spans is not None:
+            return spans
+        radius_squared = radius * radius
+        spans = []
+        for offset_y in range(-radius, radius + 1):
+            spans.append(int(
+                (radius_squared - offset_y * offset_y) ** 0.5))
+        spans = tuple(spans)
+        self._circle_spans[radius] = spans
+        return spans
+
+    @staticmethod
+    def _intersects(bounds, left, top, right, bottom):
+        return not (
+            bounds[0] + bounds[2] <= left or bounds[0] >= right or
+            bounds[1] + bounds[3] <= top or bounds[1] >= bottom)
+
+    def _draw_circle(self, x, y, radius, color,
+                     left, top, right, bottom):
+        spans = self._cache_circle(radius)
+        first_y = max(top, y - radius)
+        last_y = min(bottom - 1, y + radius)
+        for target_y in range(first_y, last_y + 1):
+            half_width = spans[target_y - y + radius]
+            first_x = max(left, x - half_width)
+            last_x = min(right - 1, x + half_width)
+            if last_x >= first_x:
+                self.canvas.hline(
+                    first_x, target_y, last_x - first_x + 1, color)
+
+    def rebuild(self, area):
+        """Rebuild one arbitrary rectangle clipped to the track."""
+        game = self.game
+        left = max(0, int(area[0]))
+        top = max(game.track_top, int(area[1]))
+        right = min(self.width, int(area[0]) + int(area[2]))
+        bottom = min(game.track_bottom, int(area[1]) + int(area[3]))
+        if right <= left or bottom <= top:
+            return False
+
+        self.canvas.fill_rect(
+            left, top, right - left, bottom - top, self.grass)
+        road_left = max(left, game.road_left)
+        road_right = min(right, game.road_right)
+        if road_right > road_left:
+            self.canvas.fill_rect(
+                road_left, top, road_right - road_left,
+                bottom - top, self.asphalt)
+
+        center_y = (game.track_top + game.road.center_phase -
+                    self.center_period)
+        while center_y - self.center_radius < bottom:
+            if center_y + self.center_radius >= top:
+                self._draw_circle(
+                    self.center_x, center_y, self.center_radius, self.marker,
+                    left, top, right, bottom)
+            center_y += self.center_period
+
+        for entity in game.entities:
+            if (entity.active and self._intersects(
+                    entity.current_bounds, left, top, right, bottom)):
+                self._draw_circle(
+                    entity.x, entity.y, entity.kind.visual_radius,
+                    entity.kind.visual, left, top, right, bottom)
+
+        player_radius = game.player_radius
+        if not (
+                game.player_x + player_radius < left or
+                game.player_x - player_radius >= right or
+                game.player_y + player_radius < top or
+                game.player_y - player_radius >= bottom):
+            self._draw_circle(
+                game.player_x, game.player_y, player_radius,
+                self.player_color, left, top, right, bottom)
+        return True
+
+    def player_bounds(self, x):
+        radius = self.game.player_radius
+        return (
+            int(x) - radius, self.game.player_y - radius,
+            radius * 2 + 1, radius * 2 + 1)
+
+    def render(self, damage):
+        """Rebuild every final region before presenting any of them."""
+        for index in range(damage.count):
+            self.rebuild(damage.area(index))
+        for index in range(damage.count):
+            self.canvas.show(damage.area(index))
+
+
+class DirtyRegionAnimator:
+    """Coordinate Racer changes through one reusable damage tracker."""
+
+    __slots__ = ("game", "renderer", "damage", "_old_player_x")
+
+    def __init__(self, game, renderer, capacity=12, merge_overhead=48):
+        self.game = game
+        self.renderer = renderer
+        self.damage = DamageTracker(
+            (0, game.track_top, renderer.width,
+             game.track_bottom - game.track_top),
+            capacity, merge_overhead)
+        self._old_player_x = game.player_x
+
+    def begin_frame(self):
+        self.damage.clear()
+        self._old_player_x = self.game.player_x
+
+    def record_step(self, road_delta):
+        game = self.game
+        if road_delta:
+            radius = self.renderer.center_radius
+            self.damage.mark(
+                self.renderer.center_x - radius, game.track_top,
+                radius * 2 + 1, game.track_bottom - game.track_top)
+
+        for entity in game.entities:
+            if entity.previous_bounds != entity.current_bounds:
+                self.damage.add(entity.previous_bounds)
+                self.damage.add(entity.current_bounds)
+        for entity in game.removed_entities:
+            self.damage.add(entity.previous_bounds)
+            self.damage.add(entity.current_bounds)
+        for entity in game.spawned_entities:
+            self.damage.add(entity.current_bounds)
+
+    def present(self):
+        if self._old_player_x != self.game.player_x:
+            self.damage.add(self.renderer.player_bounds(self._old_player_x))
+            self.damage.add(self.renderer.player_bounds(self.game.player_x))
+        self.renderer.render(self.damage)
+
+
 def main():
     """Create the display resources and run the interactive Racer."""
-    from framebuf import FrameBuffer, RGB565
     from tartlabutils.modern_app import (
         PortraitCanvas, PortraitTouchGrid, game_surface, rgb565)
 
@@ -357,13 +522,7 @@ def main():
     road_margin = width // 6
     road_left = road_margin
     road_right = width - road_margin
-    road_width = road_right - road_left
     car_y = height - 54
-
-    # Keep these established symbolic names at the portable scroll boundary.
-    WIDTH = width
-    TRACK_TOP = track_top
-    TRACK_HEIGHT = track_height
 
     collectible_kind = EntityKind(
         "coin", white, 7, 7, collect_on_contact, 0)
@@ -377,112 +536,22 @@ def main():
         width // 2, car_y, CAR_RADIUS,
         (collectible_kind,) + hazard_kinds)
 
-    def filled_circle(x, y, radius, color):
-        radius_squared = radius * radius
-        for offset_y in range(-radius, radius + 1):
-            half_width = int(
-                (radius_squared - offset_y * offset_y) ** 0.5)
-            canvas.hline(
-                x - half_width, y + offset_y,
-                half_width * 2 + 1, color)
-
-    def draw_centerline(target, top, bottom, phase, y_offset=0):
-        center_y = track_top + phase - CENTER_PERIOD
-        while center_y - CENTER_RADIUS < bottom:
-            if center_y + CENTER_RADIUS >= top:
-                radius_squared = CENTER_RADIUS * CENTER_RADIUS
-                first_y = max(top, center_y - CENTER_RADIUS)
-                last_y = min(bottom - 1, center_y + CENTER_RADIUS)
-                for y in range(first_y, last_y + 1):
-                    offset_y = y - center_y
-                    half_width = int(
-                        (radius_squared - offset_y * offset_y) ** 0.5)
-                    target.hline(
-                        width // 2 - half_width, y - y_offset,
-                        half_width * 2 + 1, white)
-            center_y += CENTER_PERIOD
-
-    def draw_track_band(top, band_height):
-        canvas.fill_rect(0, top, width, band_height, green)
-        canvas.fill_rect(road_left, top, road_width, band_height, black)
-        draw_centerline(
-            canvas, top, top + band_height, road.center_phase)
-
-    def prepare_track_band(band_height, phase):
-        data = bytearray(width * band_height * 2)
-        band = FrameBuffer(data, width, band_height, RGB565)
-        band.fill(green)
-        band.fill_rect(road_left, 0, road_width, band_height, black)
-        draw_centerline(
-            band, track_top, track_top + band_height,
-            phase, y_offset=track_top)
-        return canvas.prepare_sprite(band, width, band_height)
-
     def draw_header():
         canvas.fill_rect(0, 0, width, header_height, black)
         canvas.text("RACER  TAP LEFT / RIGHT", 8, 8, white)
 
-    def draw_entity(entity):
-        filled_circle(
-            entity.x, entity.y, entity.kind.visual_radius,
-            entity.kind.visual)
-
-    def entity_intersects(entity, area):
-        left, top, area_width, area_height = area
-        entity_left, entity_top, entity_width, entity_height = (
-            entity.current_bounds)
-        return not (
-            entity_left + entity_width <= left or
-            entity_left >= left + area_width or
-            entity_top + entity_height <= top or
-            entity_top >= top + area_height)
-
-    def car_area(x, y):
-        padding = 1
-        return (
-            x - CAR_RADIUS - padding,
-            y - CAR_RADIUS - padding,
-            (CAR_RADIUS + padding) * 2 + 1,
-            (CAR_RADIUS + padding) * 2 + 1,
-        )
-
-    def combined_area(first, second):
-        left = min(first[0], second[0])
-        top = min(first[1], second[1])
-        right = max(first[0] + first[2], second[0] + second[2])
-        bottom = max(first[1] + first[3], second[1] + second[3])
-        return left, top, right - left, bottom - top
-
-    def redraw_car(old_x, scroll_delta):
-        """Retain the Phase 1 renderer until Phase 3 adds composition."""
-        dirty = combined_area(
-            car_area(old_x, car_y + scroll_delta),
-            car_area(game.player_x, car_y))
-        left, top, dirty_width, dirty_height = dirty
-        canvas.fill_rect(left, top, dirty_width, dirty_height, black)
-        draw_centerline(canvas, top, top + dirty_height, road.center_phase)
-        changed_rows = (0, top, width, dirty_height)
-        for entity in game.entities:
-            if entity_intersects(entity, changed_rows):
-                draw_entity(entity)
-        filled_circle(game.player_x, car_y, CAR_RADIUS, yellow)
-        canvas.show(dirty)
-
-    track_bands = {
-        (band_height, phase): prepare_track_band(band_height, phase)
-        for band_height in range(
-            SCROLL_QUANTUM, MAX_SCROLL_DELTA + 1, SCROLL_QUANTUM)
-        for phase in range(0, CENTER_PERIOD, SCROLL_QUANTUM)
-    }
+    renderer = RoadRenderer(
+        canvas, game, width, CENTER_PERIOD, CENTER_RADIUS,
+        green, black, white, yellow)
+    animator = DirtyRegionAnimator(game, renderer)
 
     canvas.fill(black)
-    draw_track_band(track_top, track_height)
     for initial_y, kind in zip(
             (track_top + 75, track_top + 185, track_top + 300),
             hazard_kinds):
-        draw_entity(game.spawn_entity(kind, initial_y))
+        game.spawn_entity(kind, initial_y)
     game.spawned_entities.clear()
-    filled_circle(game.player_x, car_y, CAR_RADIUS, yellow)
+    renderer.rebuild((0, track_top, width, track_height))
     draw_header()
     canvas.show()
 
@@ -495,7 +564,7 @@ def main():
             clock.pace()
             continue
 
-        old_car_x = game.player_x
+        animator.begin_frame()
         key = touch.read()
         if key == "left":
             game.move_player(-STEER_STEP)
@@ -503,23 +572,10 @@ def main():
             game.move_player(STEER_STEP)
 
         game.begin_frame()
-        scroll_delta = 0
         for unused in range(updates):
-            scroll_delta += game.step(SIMULATION_STEP_MS)
+            animator.record_step(game.step(SIMULATION_STEP_MS))
 
-        canvas.scroll_region(
-            (0, TRACK_TOP, WIDTH, TRACK_HEIGHT),
-            dy=scroll_delta,
-            exposed=track_bands[(scroll_delta, road.center_phase)])
-
-        for entity in game.spawned_entities:
-            draw_entity(entity)
-            radius = entity.kind.visual_radius
-            canvas.show((
-                entity.x - radius, entity.y - radius,
-                radius * 2 + 1, radius * 2 + 1))
-
-        redraw_car(old_car_x, scroll_delta)
+        animator.present()
         clock.pace()
 
 

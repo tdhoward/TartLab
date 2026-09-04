@@ -15,13 +15,17 @@ def load_module(name, path):
 
 motion = load_module("racer_test_motion", ROOT / "src/lib/tartlabutils/motion.py")
 timing = load_module("racer_test_timing", ROOT / "src/lib/tartlabutils/timing.py")
+damage = load_module("racer_test_damage", ROOT / "src/lib/tartlabutils/damage.py")
 package = types.ModuleType("tartlabutils")
 package.__path__ = []
 
-module_names = ("tartlabutils", "tartlabutils.motion", "tartlabutils.timing")
+module_names = (
+    "tartlabutils", "tartlabutils.damage", "tartlabutils.motion",
+    "tartlabutils.timing")
 previous_modules = {name: sys.modules.get(name) for name in module_names}
 try:
     sys.modules["tartlabutils"] = package
+    sys.modules["tartlabutils.damage"] = damage
     sys.modules["tartlabutils.motion"] = motion
     sys.modules["tartlabutils.timing"] = timing
     RACER = load_module("racer_help", ROOT / "src/files/help/racer.py")
@@ -102,6 +106,7 @@ class RacerEntityTests(unittest.TestCase):
 
         self.assertIs(game.entities, entities)
         self.assertEqual(game.entities, [])
+        self.assertEqual(game.removed_entities, [entity])
 
     def test_collectible_contact_scores_and_fires_once(self):
         coin_kind = kind("coin", 2, RACER.collect_on_contact)
@@ -115,6 +120,7 @@ class RacerEntityTests(unittest.TestCase):
 
         self.assertEqual(game.score, 1)
         self.assertFalse(coin.active)
+        self.assertEqual(game.removed_entities, [coin])
         self.assertEqual(len(game.interactions), 1)
         self.assertEqual(game.interactions[0].event_type, "collectible")
         self.assertIs(game.interactions[0].entity, coin)

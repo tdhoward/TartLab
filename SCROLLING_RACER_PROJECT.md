@@ -1,6 +1,6 @@
 # Scrolling racer architecture and performance project
 
-Status: Phase 2 implemented; Phase 3 not started
+Status: Phase 3 implemented; Phase 4 not started
 
 Related implementation:
 
@@ -362,9 +362,8 @@ Implemented in the working tree:
   in-place compaction, and distance-based spawning. Injected random functions
   make spawn tests deterministic, and newly spawned entities do not receive an
   immediate extra update.
-- The Phase 1 scanout renderer remains temporarily in place. Phase 3 will
-  replace its car-specific repair and spawn-specific presentation with the
-  clipped damage compositor.
+- The Phase 2 simulation records spawned and removed entities so a renderer
+  can repair lifecycle changes even when inactive entities are compacted.
 
 The complete host suite passes 347 tests. An in-memory raw-REPL smoke on the
 COM3 MicroPython fixture also parsed the working-tree Racer source and verified
@@ -385,6 +384,53 @@ removed the inactive entity. The smoke did not write the device filesystem.
 Exit gate: pixel-reference tests cover overlapping entities, movement,
 collection, removal, centerline intersections, player steering, and every
 track edge.
+
+#### Implementation result
+
+Implemented in the working tree:
+
+- The reusable `tartlabutils.damage.DamageTracker` clips to caller-defined
+  bounds, cost-merges nearby regions, caps pathological region growth, and
+  reuses storage allocated during construction.
+- Racer's app-owned `RoadRenderer` reconstructs an arbitrary clipped track
+  rectangle from simulation state. It horizontally and vertically clips the
+  background and center markers, redraws active entities in layer order, and
+  draws the player last.
+- `DirtyRegionAnimator` collects center-strip, old/new entity, removal,
+  spawn, and steering damage. The renderer reconstructs every final region
+  before it issues any `canvas.show()` call.
+- The car-specific same-row repair, scanout scroll, prepared-band table, and
+  per-spawn presentation path have been removed from Racer. The first Phase 3
+  strategy is universally selected without any board or controller test.
+- Circle spans are cached during renderer setup for the marker, player, and
+  configured entity radii. Clipped redraws no longer perform square roots.
+- Pixel-reference host tests compare dirty reconstruction with a complete
+  redraw after overlap, movement, collection/removal, marker phase changes,
+  and steering. Separate checks cover horizontal marker clipping and all four
+  track edges.
+- `tools/racer_benchmark.py` now injects the working-tree compositor in memory
+  and records dirty pixels and regions alongside timing, bytes, transactions,
+  deadlines, update counts, and heap observations for configurable entity
+  loads.
+
+The complete host suite passes 358 tests.
+
+#### Device measurement
+
+On September 4, 2026, a 20-frame measurement per workload was collected from
+the modern 222 by 480 fixture on COM3. With no entities, median frame work was
+11.521 ms and p95 was 22.040 ms. With the representative three-entity scene,
+median work was 29.909 ms, median transfer was 9,208 bytes across four
+transactions, and p95 work was 93.266 ms; 8 of 20 frames exceeded the 50 ms
+work budget. Eight and sixteen moving entities produced median work of
+68.889 ms and 154.117 ms respectively and missed the work budget on every
+sample.
+
+The three-entity median improves on the Phase 1 scanout baseline, but its tail
+and the heavier workloads do not yet meet the performance objective. Phase 4
+must compare dirty reconstruction with scanout scrolling by workload rather
+than removing the scanout candidate. The complete machine-readable result is
+in `hardware_test_artifacts/scrolling-racer/phase3-modern.json`.
 
 ### Phase 4: variable speed and scroll comparison
 

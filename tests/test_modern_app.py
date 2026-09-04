@@ -1160,26 +1160,37 @@ class ModernHelpSourceTests(unittest.TestCase):
                 self.assertIn("PortraitCanvas", imports)
                 self.assertIn("PortraitTouchGrid", imports)
 
-    def test_racer_uses_portable_accelerated_region_scroll(self):
+    def test_racer_uses_one_dirty_region_compositor(self):
         tree = ast.parse(
             (ROOT / "src/files/help/racer.py").read_text(encoding="utf-8"))
-        calls = [
+        scroll_calls = [
             node
             for node in ast.walk(tree)
             if isinstance(node, ast.Call) and
             isinstance(node.func, ast.Attribute) and
             node.func.attr == "scroll_region"
         ]
-        self.assertEqual(len(calls), 1)
-        area = calls[0].args[0]
-        self.assertIsInstance(area, ast.Tuple)
-        self.assertEqual([
-            element.id if isinstance(element, ast.Name) else element.value
-            for element in area.elts
-        ], [0, "TRACK_TOP", "WIDTH", "TRACK_HEIGHT"])
-        keywords = {keyword.arg: keyword.value for keyword in calls[0].keywords}
-        self.assertIn("exposed", keywords)
-        self.assertNotIn("fill", keywords)
+        self.assertEqual(scroll_calls, [])
+
+        classes = {
+            node.name: node for node in tree.body
+            if isinstance(node, ast.ClassDef)
+        }
+        self.assertIn("RoadRenderer", classes)
+        self.assertIn("DirtyRegionAnimator", classes)
+        render_calls = [
+            node for node in ast.walk(classes["RoadRenderer"])
+            if isinstance(node, ast.Call) and
+            isinstance(node.func, ast.Attribute) and
+            node.func.attr == "show"
+        ]
+        self.assertEqual(len(render_calls), 1)
+        for name in ("Entity", "GameState"):
+            self.assertFalse(any(
+                isinstance(node, ast.Call) and
+                isinstance(node.func, ast.Attribute) and
+                node.func.attr == "show"
+                for node in ast.walk(classes[name])))
 
     def test_modern_manifest_describes_direct_drawing_not_lvgl(self):
         manifest = (ROOT / "src/files/help/manifest.json").read_text()

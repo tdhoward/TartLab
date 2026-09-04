@@ -18,16 +18,25 @@ class RacerBenchmarkTests(unittest.TestCase):
         self.assertIn("SAMPLES = 5", source)
         self.assertIn("for sample in range(SAMPLES)", source)
         self.assertIn("FrameClock", source)
-        self.assertIn("StagedMotion", source)
+        self.assertIn("DirtyRegionAnimator", source)
+        self.assertIn("ENTITY_COUNTS = (0, 3, 8, 16)", source)
         self.assertNotIn("__MODERN_APP_SOURCE__", source)
+        self.assertNotIn("__DAMAGE_SOURCE__", source)
         self.assertNotIn("__TIMING_SOURCE__", source)
         self.assertNotIn("__MOTION_SOURCE__", source)
+        self.assertNotIn("__RACER_SOURCE__", source)
         self.assertNotIn("machine.reset", source)
         self.assertNotIn("open(", source)
 
     def test_rejects_too_few_samples(self):
         with self.assertRaises(ValueError):
             device_program(2)
+
+    def test_rejects_invalid_entity_counts(self):
+        with self.assertRaises(ValueError):
+            device_program(3, ())
+        with self.assertRaises(ValueError):
+            device_program(3, (1, -1))
 
     def test_extract_result(self):
         expected = {

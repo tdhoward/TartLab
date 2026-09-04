@@ -1,4 +1,4 @@
-"""Measure a bounded scrolling Racer workload through the raw REPL.
+"""Measure bounded dirty-region Racer workloads through the raw REPL.
 
 The probe injects working-tree Python sources in memory. It does not flash
 firmware, write the device filesystem, or start a local service.
@@ -19,6 +19,7 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = "RACER_BENCHMARK="
+DEFAULT_ENTITY_COUNTS = (0, 3, 8, 16)
 
 
 DEVICE_PROGRAM = r'''
@@ -29,31 +30,50 @@ for search_path in reversed(('/device', '/lib', '/', '/files/user')):
 
 import tartlabutils.modern_app as modern_app
 exec(__MODERN_APP_SOURCE__, modern_app.__dict__)
-timing_scope = {'__name__': 'tartlabutils.timing_probe'}
-exec(__TIMING_SOURCE__, timing_scope)
+
+damage_scope = {'__name__': 'tartlabutils.damage_probe'}
+exec(__DAMAGE_SOURCE__, damage_scope)
 motion_scope = {'__name__': 'tartlabutils.motion_probe'}
 exec(__MOTION_SOURCE__, motion_scope)
+timing_scope = {'__name__': 'tartlabutils.timing_probe'}
+exec(__TIMING_SOURCE__, timing_scope)
+racer_source = __RACER_SOURCE__
+racer_source = racer_source.replace(
+    'from tartlabutils.damage import DamageTracker\n', '')
+racer_source = racer_source.replace(
+    'from tartlabutils.motion import StagedMotion\n', '')
+racer_source = racer_source.replace(
+    'from tartlabutils.timing import FrameClock\n', '')
+racer_scope = {
+    '__name__': 'racer_probe',
+    'DamageTracker': damage_scope['DamageTracker'],
+    'StagedMotion': motion_scope['StagedMotion'],
+    'FrameClock': timing_scope['FrameClock'],
+}
+exec(racer_source, racer_scope)
 
-from framebuf import FrameBuffer, RGB565
 from tartlabutils.platform import get_platform
 
 FrameClock = timing_scope['FrameClock']
-StagedMotion = motion_scope['StagedMotion']
+Entity = racer_scope['Entity']
+EntityKind = racer_scope['EntityKind']
+GameState = racer_scope['GameState']
+RoadState = racer_scope['RoadState']
+RoadRenderer = racer_scope['RoadRenderer']
+DirtyRegionAnimator = racer_scope['DirtyRegionAnimator']
 PortraitCanvas = modern_app.PortraitCanvas
 rgb565 = modern_app.rgb565
 
 SAMPLES = __SAMPLES__
+ENTITY_COUNTS = __ENTITY_COUNTS__
 TARGET_FRAME_MS = 50
 SIMULATION_STEP_MS = 50
 MAX_UPDATES_PER_FRAME = 2
-SCROLL_QUANTUM = 4
 CENTER_PERIOD = 48
 CENTER_RADIUS = 3
 HEADER_HEIGHT = 24
 CAR_RADIUS = 11
-OBSTACLE_GAP = 92
 ROAD_SPEED_STAGES = ((0, 80), (1200, 120))
-MAX_SCROLL_DELTA = 12
 
 def ticks():
     return time.ticks_us()
@@ -81,7 +101,6 @@ class CountingSurface:
         self.sent_bytes = 0
         self.transactions = 0
         self.write_us = 0
-        self.scroll_us = 0
 
     def allocate_buffer(self, width, height):
         return self.surface.allocate_buffer(width, height)
@@ -98,26 +117,15 @@ class CountingSurface:
             self.sent_bytes += len(buffer)
             self.transactions += 1
 
-    def present_scroll(self, area, dx, dy, rotation=0):
-        presenter = getattr(self.surface, 'present_scroll', None)
-        if presenter is None:
-            return False
-        started = ticks()
-        try:
-            return presenter(area, dx, dy, rotation)
-        finally:
-            self.scroll_us += elapsed(started)
-
     def reset_scroll(self):
-        reset = getattr(self.surface, 'reset_scroll', None)
-        if reset is not None:
-            reset()
+        reset_scroll = getattr(self.surface, 'reset_scroll', None)
+        if reset_scroll is not None:
+            reset_scroll()
 
     def reset_counts(self):
         self.sent_bytes = 0
         self.transactions = 0
         self.write_us = 0
-        self.scroll_us = 0
 
 platform = get_platform()
 base_surface = platform.enter_game_mode()
@@ -125,7 +133,6 @@ surface = CountingSurface(base_surface)
 canvas = None
 
 try:
-    setup_started = ticks()
     canvas = PortraitCanvas(surface)
     width = canvas.width
     height = canvas.height
@@ -134,207 +141,137 @@ try:
     road_margin = width // 6
     road_left = road_margin
     road_right = width - road_margin
-    road_width = road_right - road_left
     car_y = height - 54
 
     black = rgb565(0, 0, 0)
     white = rgb565(255, 255, 255)
     green = rgb565(34, 139, 34)
     yellow = rgb565(255, 214, 0)
-    obstacle_colors = (
+    object_colors = (
         rgb565(244, 67, 54),
         rgb565(33, 150, 243),
         rgb565(156, 39, 176),
+        rgb565(255, 152, 0),
     )
+    workloads = {}
 
-    def filled_circle(x, y, radius, color):
-        radius_squared = radius * radius
-        for offset_y in range(-radius, radius + 1):
-            half_width = int(
-                (radius_squared - offset_y * offset_y) ** 0.5)
-            canvas.hline(
-                x - half_width, y + offset_y,
-                half_width * 2 + 1, color)
+    for entity_count in ENTITY_COUNTS:
+        setup_started = ticks()
+        kinds = tuple(
+            EntityKind('object', color, radius, radius, None, layer)
+            for color, radius, layer in zip(
+                object_colors, (7, 9, 11, 8), (0, 1, 0, 2)))
+        road = RoadState(ROAD_SPEED_STAGES, 4, CENTER_PERIOD)
+        game = GameState(
+            road, road_left, road_right, track_top, height,
+            width // 2, car_y, CAR_RADIUS, kinds, 1000000)
+        usable_height = track_height - 120
+        usable_width = road_right - road_left - 40
+        for index in range(entity_count):
+            object_kind = kinds[index % len(kinds)]
+            x = road_left + 20 + (index * 37) % usable_width
+            y = track_top + 20 + (index * 23) % usable_height
+            velocity = 20 if index & 1 else -20
+            game.add_entity(Entity(
+                object_kind, x, y, velocity, True,
+                racer_scope['bounce_at_road_edge']))
 
-    def draw_centerline(target, top, bottom, phase, y_offset=0):
-        center_y = track_top + phase - CENTER_PERIOD
-        while center_y - CENTER_RADIUS < bottom:
-            if center_y + CENTER_RADIUS >= top:
-                radius_squared = CENTER_RADIUS * CENTER_RADIUS
-                first_y = max(top, center_y - CENTER_RADIUS)
-                last_y = min(bottom - 1, center_y + CENTER_RADIUS)
-                for y in range(first_y, last_y + 1):
-                    offset_y = y - center_y
-                    half_width = int(
-                        (radius_squared - offset_y * offset_y) ** 0.5)
-                    target.hline(
-                        width // 2 - half_width, y - y_offset,
-                        half_width * 2 + 1, white)
-            center_y += CENTER_PERIOD
+        renderer = RoadRenderer(
+            canvas, game, width, CENTER_PERIOD, CENTER_RADIUS,
+            green, black, white, yellow)
+        animator = DirtyRegionAnimator(game, renderer)
+        canvas.fill(black)
+        renderer.rebuild((0, track_top, width, track_height))
+        canvas.fill_rect(0, 0, width, HEADER_HEIGHT, black)
+        canvas.text('RACER DIRTY BENCH', 8, 8, white)
+        canvas.show()
+        setup_us = elapsed(setup_started)
 
-    def prepare_track_band(band_height, phase):
-        data = bytearray(width * band_height * 2)
-        band = FrameBuffer(data, width, band_height, RGB565)
-        band.fill(green)
-        band.fill_rect(road_left, 0, road_width, band_height, black)
-        draw_centerline(
-            band, track_top, track_top + band_height,
-            phase, y_offset=track_top)
-        return canvas.prepare_sprite(band, width, band_height)
-
-    def obstacle_intersects(obstacle, area):
-        x, y, radius, unused_color = obstacle
-        left, top, area_width, area_height = area
-        return not (
-            x + radius < left or x - radius >= left + area_width or
-            y + radius < top or y - radius >= top + area_height)
-
-    def draw_obstacle(obstacle):
-        filled_circle(obstacle[0], obstacle[1], obstacle[2], obstacle[3])
-
-    def car_area(x, y):
-        padding = 1
-        return (
-            x - CAR_RADIUS - padding,
-            y - CAR_RADIUS - padding,
-            (CAR_RADIUS + padding) * 2 + 1,
-            (CAR_RADIUS + padding) * 2 + 1,
-        )
-
-    def redraw_car(car_x, scroll_delta, obstacles, center_phase):
-        first = car_area(car_x, car_y + scroll_delta)
-        second = car_area(car_x, car_y)
-        left = min(first[0], second[0])
-        top = min(first[1], second[1])
-        right = max(first[0] + first[2], second[0] + second[2])
-        bottom = max(first[1] + first[3], second[1] + second[3])
-        dirty = (left, top, right - left, bottom - top)
-        canvas.fill_rect(left, top, dirty[2], dirty[3], black)
-        draw_centerline(canvas, top, bottom, center_phase)
-        changed_rows = (0, top, width, dirty[3])
-        for obstacle in obstacles:
-            if obstacle_intersects(obstacle, changed_rows):
-                draw_obstacle(obstacle)
-        filled_circle(car_x, car_y, CAR_RADIUS, yellow)
-        canvas.show(dirty)
-
-    road_motion = StagedMotion(ROAD_SPEED_STAGES, SCROLL_QUANTUM)
-    center_phase = 0
-    track_bands = {
-        (band_height, phase): prepare_track_band(band_height, phase)
-        for band_height in range(
-            SCROLL_QUANTUM, MAX_SCROLL_DELTA + 1, SCROLL_QUANTUM)
-        for phase in range(0, CENTER_PERIOD, SCROLL_QUANTUM)
-    }
-    car_x = width // 2
-    obstacles = [
-        [road_left + road_width // 3, track_top + 75,
-         9, obstacle_colors[0]],
-        [road_left + road_width * 2 // 3, track_top + 185,
-         11, obstacle_colors[1]],
-        [road_left + road_width // 2, track_top + 300,
-         8, obstacle_colors[2]],
-    ]
-
-    canvas.fill(black)
-    canvas.fill_rect(0, track_top, width, track_height, green)
-    canvas.fill_rect(road_left, track_top, road_width, track_height, black)
-    draw_centerline(canvas, track_top, height, center_phase)
-    for obstacle in obstacles:
-        draw_obstacle(obstacle)
-    filled_circle(car_x, car_y, CAR_RADIUS, yellow)
-    canvas.fill_rect(0, 0, width, HEADER_HEIGHT, black)
-    canvas.text('RACER BENCHMARK', 8, 8, white)
-    canvas.show()
-    setup_us = elapsed(setup_started)
-
-    clock = FrameClock(
-        TARGET_FRAME_MS, SIMULATION_STEP_MS, MAX_UPDATES_PER_FRAME)
-    clock.pace()
-    gc.collect()
-    heap_before = gc.mem_free()
-
-    update_values = []
-    render_values = []
-    cpu_render_values = []
-    write_values = []
-    scroll_command_values = []
-    work_values = []
-    interval_values = []
-    byte_values = []
-    transaction_values = []
-    update_count_values = []
-    scroll_pixel_values = []
-    work_deadline_misses = 0
-
-    for sample in range(SAMPLES):
-        frame_started = ticks()
-        update_started = ticks()
-        updates = clock.updates_due()
-        scroll_delta = 0
-        for unused in range(updates):
-            scroll_delta += road_motion.advance(SIMULATION_STEP_MS)
-        center_phase = (center_phase + scroll_delta) % CENTER_PERIOD
-        for obstacle in obstacles:
-            obstacle[1] += scroll_delta
-            if obstacle[1] - obstacle[2] >= height:
-                obstacle[1] -= track_height + OBSTACLE_GAP
-        update_values.append(elapsed(update_started))
-
-        surface.reset_counts()
-        render_started = ticks()
-        canvas.scroll_region(
-            (0, track_top, width, track_height),
-            dy=scroll_delta,
-            exposed=track_bands[(scroll_delta, center_phase)])
-        redraw_car(car_x, scroll_delta, obstacles, center_phase)
-        render_us = elapsed(render_started)
-        work_us = elapsed(frame_started)
-        if work_us > TARGET_FRAME_MS * 1000:
-            work_deadline_misses += 1
-
-        render_values.append(render_us)
-        write_values.append(surface.write_us)
-        scroll_command_values.append(surface.scroll_us)
-        cpu_render_values.append(max(
-            0, render_us - surface.write_us - surface.scroll_us))
-        work_values.append(work_us)
-        byte_values.append(surface.sent_bytes)
-        transaction_values.append(surface.transactions)
-        update_count_values.append(updates)
-        scroll_pixel_values.append(scroll_delta)
-
+        clock = FrameClock(
+            TARGET_FRAME_MS, SIMULATION_STEP_MS, MAX_UPDATES_PER_FRAME)
         clock.pace()
-        interval_values.append(elapsed(frame_started))
+        gc.collect()
+        heap_before = gc.mem_free()
 
-    heap_after = gc.mem_free()
+        update_values = []
+        render_values = []
+        cpu_render_values = []
+        write_values = []
+        work_values = []
+        interval_values = []
+        byte_values = []
+        transaction_values = []
+        update_count_values = []
+        dirty_pixel_values = []
+        dirty_region_values = []
+        work_deadline_misses = 0
+
+        for sample in range(SAMPLES):
+            frame_started = ticks()
+            update_started = ticks()
+            updates = clock.updates_due()
+            animator.begin_frame()
+            game.begin_frame()
+            for unused in range(updates):
+                animator.record_step(game.step(SIMULATION_STEP_MS))
+            update_values.append(elapsed(update_started))
+
+            dirty_pixel_values.append(animator.damage.pixel_count)
+            dirty_region_values.append(animator.damage.count)
+            surface.reset_counts()
+            render_started = ticks()
+            animator.present()
+            render_us = elapsed(render_started)
+            work_us = elapsed(frame_started)
+            if work_us > TARGET_FRAME_MS * 1000:
+                work_deadline_misses += 1
+
+            render_values.append(render_us)
+            write_values.append(surface.write_us)
+            cpu_render_values.append(max(0, render_us - surface.write_us))
+            work_values.append(work_us)
+            byte_values.append(surface.sent_bytes)
+            transaction_values.append(surface.transactions)
+            update_count_values.append(updates)
+
+            clock.pace()
+            interval_values.append(elapsed(frame_started))
+
+        heap_after = gc.mem_free()
+        workloads[str(entity_count)] = {
+            'entity_count': entity_count,
+            'setup_us': setup_us,
+            'metrics': {
+                'update_us': summary(update_values),
+                'render_us': summary(render_values),
+                'cpu_render_us': summary(cpu_render_values),
+                'surface_write_us': summary(write_values),
+                'work_us': summary(work_values),
+                'frame_interval_us': summary(interval_values),
+                'bytes': summary(byte_values),
+                'transactions': summary(transaction_values),
+                'updates': summary(update_count_values),
+                'dirty_pixels': summary(dirty_pixel_values),
+                'dirty_regions': summary(dirty_region_values),
+            },
+            'work_deadline_misses': work_deadline_misses,
+            'clock_missed_deadlines': clock.missed_deadlines,
+            'dropped_update_ms': clock.dropped_update_ms,
+            'distance_pixels': road.distance,
+            'heap_free_before': heap_before,
+            'heap_free_after': heap_after,
+        }
+
     result = {
-        'samples': SAMPLES,
+        'strategy': 'dirty-region-animation',
+        'samples_per_workload': SAMPLES,
+        'entity_counts': ENTITY_COUNTS,
         'logical_size': (width, height),
         'target_frame_ms': TARGET_FRAME_MS,
         'simulation_step_ms': SIMULATION_STEP_MS,
         'max_updates_per_frame': MAX_UPDATES_PER_FRAME,
         'speed_stages': ROAD_SPEED_STAGES,
-        'setup_us': setup_us,
-        'metrics': {
-            'update_us': summary(update_values),
-            'render_us': summary(render_values),
-            'cpu_render_us': summary(cpu_render_values),
-            'surface_write_us': summary(write_values),
-            'scroll_command_us': summary(scroll_command_values),
-            'work_us': summary(work_values),
-            'frame_interval_us': summary(interval_values),
-            'bytes': summary(byte_values),
-            'transactions': summary(transaction_values),
-            'updates': summary(update_count_values),
-            'scroll_pixels': summary(scroll_pixel_values),
-        },
-        'work_deadline_misses': work_deadline_misses,
-        'clock_missed_deadlines': clock.missed_deadlines,
-        'dropped_update_ms': clock.dropped_update_ms,
-        'distance_pixels': road_motion.distance,
-        'heap_free_before': heap_before,
-        'heap_free_after': heap_after,
+        'workloads': workloads,
     }
     print('RACER_BENCHMARK=' + ujson.dumps(result))
 finally:
@@ -344,20 +281,29 @@ finally:
 '''
 
 
-def device_program(samples: int = 12) -> str:
+def device_program(
+        samples: int = 12,
+        entity_counts: tuple[int, ...] = DEFAULT_ENTITY_COUNTS) -> str:
     if samples < 3:
         raise ValueError("samples must be at least 3")
-    modern_app = (ROOT / "src/lib/tartlabutils/modern_app.py").read_text(
-        encoding="utf-8")
-    timing = (ROOT / "src/lib/tartlabutils/timing.py").read_text(
-        encoding="utf-8")
-    motion = (ROOT / "src/lib/tartlabutils/motion.py").read_text(
-        encoding="utf-8")
-    return (DEVICE_PROGRAM
-            .replace("__SAMPLES__", str(samples))
-            .replace("__MODERN_APP_SOURCE__", repr(modern_app))
-            .replace("__TIMING_SOURCE__", repr(timing))
-            .replace("__MOTION_SOURCE__", repr(motion)))
+    counts = tuple(int(count) for count in entity_counts)
+    if not counts or any(count < 0 for count in counts):
+        raise ValueError("entity counts must be nonempty and nonnegative")
+
+    sources = {
+        "__MODERN_APP_SOURCE__": ROOT / "src/lib/tartlabutils/modern_app.py",
+        "__DAMAGE_SOURCE__": ROOT / "src/lib/tartlabutils/damage.py",
+        "__MOTION_SOURCE__": ROOT / "src/lib/tartlabutils/motion.py",
+        "__TIMING_SOURCE__": ROOT / "src/lib/tartlabutils/timing.py",
+        "__RACER_SOURCE__": ROOT / "src/files/help/racer.py",
+    }
+    program = (DEVICE_PROGRAM
+               .replace("__SAMPLES__", str(samples))
+               .replace("__ENTITY_COUNTS__", repr(counts)))
+    for marker, path in sources.items():
+        program = program.replace(
+            marker, repr(path.read_text(encoding="utf-8")))
+    return program
 
 
 def extract_result(output: bytes) -> dict:
@@ -372,15 +318,20 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", required=True)
     parser.add_argument("--samples", type=int, default=12)
+    parser.add_argument(
+        "--entity-counts", type=int, nargs="+",
+        default=DEFAULT_ENTITY_COUNTS)
     parser.add_argument("--baudrate", type=int, default=115200)
-    parser.add_argument("--timeout", type=int, default=90)
+    parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
     repl = RawRepl(args.port, args.baudrate, args.timeout)
     try:
         repl.enter()
-        output = repl.exec(device_program(args.samples), args.timeout)
+        output = repl.exec(
+            device_program(args.samples, tuple(args.entity_counts)),
+            args.timeout)
     finally:
         repl.close()
     result = extract_result(output)
