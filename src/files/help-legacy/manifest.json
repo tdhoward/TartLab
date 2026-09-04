@@ -30,6 +30,11 @@
 			"folder name":"Examples",
 			"entries": [
 				{
+					"title":"Racer",
+					"subtitle":"A portrait touch-controlled racer",
+					"file":"racer.py"
+				},
+				{
 					"title":"Testris",
 					"subtitle":"Tetris game for MicroPython",
 					"file":"testris.py"

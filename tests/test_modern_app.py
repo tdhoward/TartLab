@@ -1064,7 +1064,8 @@ class ModernHelpSourceTests(unittest.TestCase):
                     self.assertIn("tartlabutils.modern_app", modules)
 
     def test_portrait_examples_use_portrait_canvas_and_touch(self):
-        for name in ("snake.py", "calculator.py", "testris.py"):
+        for name in (
+                "snake.py", "calculator.py", "testris.py", "racer.py"):
             tree = ast.parse(
                 (ROOT / "src/files/help" / name).read_text(encoding="utf-8"))
             imports = {
@@ -1077,6 +1078,24 @@ class ModernHelpSourceTests(unittest.TestCase):
             with self.subTest(path=name):
                 self.assertIn("PortraitCanvas", imports)
                 self.assertIn("PortraitTouchGrid", imports)
+
+    def test_racer_uses_portable_accelerated_region_scroll(self):
+        tree = ast.parse(
+            (ROOT / "src/files/help/racer.py").read_text(encoding="utf-8"))
+        calls = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call) and
+            isinstance(node.func, ast.Attribute) and
+            node.func.attr == "scroll_region"
+        ]
+        self.assertEqual(len(calls), 1)
+        area = calls[0].args[0]
+        self.assertIsInstance(area, ast.Tuple)
+        self.assertEqual([
+            element.id if isinstance(element, ast.Name) else element.value
+            for element in area.elts
+        ], [0, 0, "WIDTH", "HEIGHT"])
 
     def test_modern_manifest_describes_direct_drawing_not_lvgl(self):
         manifest = (ROOT / "src/files/help/manifest.json").read_text()

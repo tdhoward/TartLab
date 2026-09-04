@@ -30,6 +30,11 @@
 			"folder name":"Examples",
 			"entries": [
 				{
+					"title":"Racer",
+					"subtitle":"Touch steering with accelerated portrait scrolling",
+					"file":"racer.py"
+				},
+				{
 					"title":"Testris",
 					"subtitle":"Portrait direct-rendered falling blocks",
 					"file":"testris.py"

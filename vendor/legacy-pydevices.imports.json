@@ -80,6 +80,7 @@
         "src/files/help-legacy/moire_fast.py",
         "src/files/help-legacy/moire_slow.py",
         "src/files/help-legacy/pybasics.py",
+        "src/files/help-legacy/racer.py",
         "src/files/help-legacy/snake.py",
         "src/files/help-legacy/sprite.py",
         "src/files/help-legacy/testris.py"
