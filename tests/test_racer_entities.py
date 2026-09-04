@@ -6,9 +6,11 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-def load_module(name, path):
+def load_module(name, path, initial_globals=None):
     module_spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(module_spec)
+    if initial_globals:
+        module.__dict__.update(initial_globals)
     module_spec.loader.exec_module(module)
     return module
 
@@ -28,7 +30,9 @@ try:
     sys.modules["tartlabutils.damage"] = damage
     sys.modules["tartlabutils.motion"] = motion
     sys.modules["tartlabutils.timing"] = timing
-    RACER = load_module("racer_help", ROOT / "src/files/help/racer.py")
+    RACER = load_module(
+        "racer_help", ROOT / "src/files/help/racer.py",
+        {"_RACER_AUTOSTART": False})
 finally:
     for name, previous in previous_modules.items():
         if previous is None:

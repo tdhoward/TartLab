@@ -1192,6 +1192,22 @@ class ModernHelpSourceTests(unittest.TestCase):
                 node.func.attr == "show"
                 for node in ast.walk(classes[name])))
 
+    def test_racer_autostarts_under_ide_exec_and_module_import(self):
+        tree = ast.parse(
+            (ROOT / "src/files/help/racer.py").read_text(encoding="utf-8"))
+        launch = tree.body[-1]
+        self.assertIsInstance(launch, ast.If)
+        self.assertEqual(len(launch.body), 1)
+        call = launch.body[0].value
+        self.assertIsInstance(call, ast.Call)
+        self.assertEqual(call.func.id, "main")
+
+        condition = launch.test
+        self.assertIsInstance(condition, ast.Call)
+        self.assertEqual(condition.func.attr, "get")
+        self.assertEqual(condition.args[0].value, "_RACER_AUTOSTART")
+        self.assertTrue(condition.args[1].value)
+
     def test_modern_manifest_describes_direct_drawing_not_lvgl(self):
         manifest = (ROOT / "src/files/help/manifest.json").read_text()
         self.assertNotIn("LVGL", manifest.upper())

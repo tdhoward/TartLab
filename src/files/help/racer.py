@@ -579,5 +579,5 @@ def main():
         clock.pace()
 
 
-if __name__ == "__main__":
+if globals().get("_RACER_AUTOSTART", True):
     main()

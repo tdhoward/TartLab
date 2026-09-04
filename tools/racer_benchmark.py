@@ -46,6 +46,7 @@ racer_source = racer_source.replace(
     'from tartlabutils.timing import FrameClock\n', '')
 racer_scope = {
     '__name__': 'racer_probe',
+    '_RACER_AUTOSTART': False,
     'DamageTracker': damage_scope['DamageTracker'],
     'StagedMotion': motion_scope['StagedMotion'],
     'FrameClock': timing_scope['FrameClock'],
