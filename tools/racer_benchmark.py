@@ -1,4 +1,4 @@
-"""Measure bounded dirty-region Racer workloads through the raw REPL.
+"""Compare bounded dirty-region and scanout Racer workloads through raw REPL.
 
 The probe injects working-tree Python sources in memory. It does not flash
 firmware, write the device filesystem, or start a local service.
@@ -24,6 +24,7 @@ DEFAULT_ENTITY_COUNTS = (0, 3, 8, 16)
 
 DEVICE_PROGRAM = r'''
 import gc, sys, time, ujson
+from framebuf import FrameBuffer, RGB565
 for search_path in reversed(('/device', '/lib', '/', '/files/user')):
     if search_path not in sys.path:
         sys.path.insert(0, search_path)
@@ -62,6 +63,10 @@ GameState = racer_scope['GameState']
 RoadState = racer_scope['RoadState']
 RoadRenderer = racer_scope['RoadRenderer']
 DirtyRegionAnimator = racer_scope['DirtyRegionAnimator']
+RoadBandCache = racer_scope['RoadBandCache']
+ScanoutAnimator = racer_scope['ScanoutAnimator']
+maximum_scroll_delta = racer_scope['maximum_scroll_delta']
+supports_scanout_animation = racer_scope['supports_scanout_animation']
 PortraitCanvas = modern_app.PortraitCanvas
 rgb565 = modern_app.rgb565
 
@@ -75,6 +80,8 @@ CENTER_RADIUS = 3
 HEADER_HEIGHT = 24
 CAR_RADIUS = 11
 ROAD_SPEED_STAGES = ((0, 80), (1200, 120))
+SPEEDS = (80, 120)
+ENTITY_PROFILES = ('road-relative', 'mixed-movement')
 
 def ticks():
     return time.ticks_us()
@@ -102,6 +109,8 @@ class CountingSurface:
         self.sent_bytes = 0
         self.transactions = 0
         self.write_us = 0
+        self.scroll_commands = 0
+        self.scroll_us = 0
 
     def allocate_buffer(self, width, height):
         return self.surface.allocate_buffer(width, height)
@@ -123,10 +132,34 @@ class CountingSurface:
         if reset_scroll is not None:
             reset_scroll()
 
+    def scroll_capabilities(self, rotation=0):
+        capabilities = getattr(self.surface, 'scroll_capabilities', None)
+        if capabilities is None:
+            return {
+                'axes': (), 'fixed_areas': False,
+                'wraps': False, 'full_orthogonal_axis': False,
+            }
+        return capabilities(rotation)
+
+    def present_scroll(self, area, dx, dy, rotation=0):
+        presenter = getattr(self.surface, 'present_scroll', None)
+        if presenter is None:
+            return False
+        started = ticks()
+        try:
+            accelerated = presenter(area, dx, dy, rotation)
+        finally:
+            self.scroll_us += elapsed(started)
+        if accelerated:
+            self.scroll_commands += 1
+        return accelerated
+
     def reset_counts(self):
         self.sent_bytes = 0
         self.transactions = 0
         self.write_us = 0
+        self.scroll_commands = 0
+        self.scroll_us = 0
 
 platform = get_platform()
 base_surface = platform.enter_game_mode()
@@ -154,124 +187,187 @@ try:
         rgb565(156, 39, 176),
         rgb565(255, 152, 0),
     )
+    strategies = ['dirty-region-animation']
+    scanout_supported = supports_scanout_animation(canvas)
+    if scanout_supported:
+        strategies.append('scanout-scrolling')
     workloads = {}
 
-    for entity_count in ENTITY_COUNTS:
-        setup_started = ticks()
-        kinds = tuple(
-            EntityKind('object', color, radius, radius, None, layer)
-            for color, radius, layer in zip(
-                object_colors, (7, 9, 11, 8), (0, 1, 0, 2)))
-        road = RoadState(ROAD_SPEED_STAGES, 4, CENTER_PERIOD)
-        game = GameState(
-            road, road_left, road_right, track_top, height,
-            width // 2, car_y, CAR_RADIUS, kinds, 1000000)
-        usable_height = track_height - 120
-        usable_width = road_right - road_left - 40
-        for index in range(entity_count):
-            object_kind = kinds[index % len(kinds)]
-            x = road_left + 20 + (index * 37) % usable_width
-            y = track_top + 20 + (index * 23) % usable_height
-            velocity = 20 if index & 1 else -20
-            game.add_entity(Entity(
-                object_kind, x, y, velocity, True,
-                racer_scope['bounce_at_road_edge']))
+    for strategy in strategies:
+        for speed in SPEEDS:
+            for entity_profile in ENTITY_PROFILES:
+                for entity_count in ENTITY_COUNTS:
+                    surface.reset_scroll()
+                    canvas.fill(black)
+                    canvas.show()
+                    gc.collect()
+                    setup_heap_before = gc.mem_free()
+                    setup_started = ticks()
+                    kinds = tuple(
+                        EntityKind(
+                            'object', color, radius, radius, None, layer)
+                        for color, radius, layer in zip(
+                            object_colors, (7, 9, 11, 8), (0, 1, 0, 2)))
+                    road = RoadState(ROAD_SPEED_STAGES, 4, CENTER_PERIOD)
+                    if speed == 120:
+                        road.advance(15000)
+                    game = GameState(
+                        road, road_left, road_right, track_top, height,
+                        width // 2, car_y, CAR_RADIUS, kinds, 1000000)
+                    usable_height = track_height - 120
+                    usable_width = road_right - road_left - 40
+                    for index in range(entity_count):
+                        object_kind = kinds[index % len(kinds)]
+                        x = (road_left + 20 +
+                             (index * 37) % usable_width)
+                        y = (track_top + 20 +
+                             (index * 23) % usable_height)
+                        if entity_profile == 'road-relative':
+                            velocity = 0
+                            road_relative = True
+                        else:
+                            velocity = 0 if index % 4 in (0, 3) else \
+                                (20 if index & 1 else -20)
+                            road_relative = index % 4 in (0, 1)
+                        game.add_entity(Entity(
+                            object_kind, x, y, velocity, road_relative,
+                            racer_scope['bounce_at_road_edge']))
 
-        renderer = RoadRenderer(
-            canvas, game, width, CENTER_PERIOD, CENTER_RADIUS,
-            green, black, white, yellow)
-        animator = DirtyRegionAnimator(game, renderer)
-        canvas.fill(black)
-        renderer.rebuild((0, track_top, width, track_height))
-        canvas.fill_rect(0, 0, width, HEADER_HEIGHT, black)
-        canvas.text('RACER DIRTY BENCH', 8, 8, white)
-        canvas.show()
-        setup_us = elapsed(setup_started)
+                    renderer = RoadRenderer(
+                        canvas, game, width, CENTER_PERIOD, CENTER_RADIUS,
+                        green, black, white, yellow)
+                    if strategy == 'scanout-scrolling':
+                        def make_band(band_width, band_height):
+                            return FrameBuffer(
+                                bytearray(band_width * band_height * 2),
+                                band_width, band_height, RGB565)
 
-        clock = FrameClock(
-            TARGET_FRAME_MS, SIMULATION_STEP_MS, MAX_UPDATES_PER_FRAME)
-        clock.pace()
-        gc.collect()
-        heap_before = gc.mem_free()
+                        bands = RoadBandCache(
+                            canvas, renderer, 4,
+                            maximum_scroll_delta(
+                                ROAD_SPEED_STAGES, 50, 2, 4),
+                            make_band)
+                        animator = ScanoutAnimator(
+                            game, renderer, bands)
+                    else:
+                        animator = DirtyRegionAnimator(game, renderer)
+                    canvas.fill(black)
+                    renderer.rebuild(
+                        (0, track_top, width, track_height))
+                    canvas.fill_rect(
+                        0, 0, width, HEADER_HEIGHT, black)
+                    canvas.text('RACER STRATEGY BENCH', 8, 8, white)
+                    canvas.show()
+                    setup_us = elapsed(setup_started)
+                    setup_heap_after = gc.mem_free()
 
-        update_values = []
-        render_values = []
-        cpu_render_values = []
-        write_values = []
-        work_values = []
-        interval_values = []
-        byte_values = []
-        transaction_values = []
-        update_count_values = []
-        dirty_pixel_values = []
-        dirty_region_values = []
-        work_deadline_misses = 0
+                    clock = FrameClock(
+                        TARGET_FRAME_MS, SIMULATION_STEP_MS,
+                        MAX_UPDATES_PER_FRAME)
+                    clock.pace()
+                    gc.collect()
+                    heap_before = gc.mem_free()
 
-        for sample in range(SAMPLES):
-            frame_started = ticks()
-            update_started = ticks()
-            updates = clock.updates_due()
-            animator.begin_frame()
-            game.begin_frame()
-            for unused in range(updates):
-                animator.record_step(game.step(SIMULATION_STEP_MS))
-            update_values.append(elapsed(update_started))
+                    update_values = []
+                    render_values = []
+                    cpu_render_values = []
+                    write_values = []
+                    work_values = []
+                    interval_values = []
+                    byte_values = []
+                    transaction_values = []
+                    scroll_command_values = []
+                    scroll_values = []
+                    update_count_values = []
+                    dirty_pixel_values = []
+                    dirty_region_values = []
+                    work_deadline_misses = 0
 
-            dirty_pixel_values.append(animator.damage.pixel_count)
-            dirty_region_values.append(animator.damage.count)
-            surface.reset_counts()
-            render_started = ticks()
-            animator.present()
-            render_us = elapsed(render_started)
-            work_us = elapsed(frame_started)
-            if work_us > TARGET_FRAME_MS * 1000:
-                work_deadline_misses += 1
+                    for sample in range(SAMPLES):
+                        frame_started = ticks()
+                        update_started = ticks()
+                        updates = clock.updates_due()
+                        animator.begin_frame()
+                        game.begin_frame()
+                        for unused in range(updates):
+                            animator.record_step(
+                                game.step(SIMULATION_STEP_MS))
+                        update_values.append(elapsed(update_started))
 
-            render_values.append(render_us)
-            write_values.append(surface.write_us)
-            cpu_render_values.append(max(0, render_us - surface.write_us))
-            work_values.append(work_us)
-            byte_values.append(surface.sent_bytes)
-            transaction_values.append(surface.transactions)
-            update_count_values.append(updates)
+                        surface.reset_counts()
+                        render_started = ticks()
+                        animator.present()
+                        render_us = elapsed(render_started)
+                        work_us = elapsed(frame_started)
+                        if work_us > TARGET_FRAME_MS * 1000:
+                            work_deadline_misses += 1
 
-            clock.pace()
-            interval_values.append(elapsed(frame_started))
+                        dirty_pixel_values.append(
+                            animator.damage.pixel_count)
+                        dirty_region_values.append(animator.damage.count)
+                        render_values.append(render_us)
+                        write_values.append(surface.write_us)
+                        cpu_render_values.append(
+                            max(0, render_us - surface.write_us))
+                        work_values.append(work_us)
+                        byte_values.append(surface.sent_bytes)
+                        transaction_values.append(surface.transactions)
+                        scroll_command_values.append(
+                            surface.scroll_commands)
+                        scroll_values.append(surface.scroll_us)
+                        update_count_values.append(updates)
 
-        heap_after = gc.mem_free()
-        workloads[str(entity_count)] = {
-            'entity_count': entity_count,
-            'setup_us': setup_us,
-            'metrics': {
-                'update_us': summary(update_values),
-                'render_us': summary(render_values),
-                'cpu_render_us': summary(cpu_render_values),
-                'surface_write_us': summary(write_values),
-                'work_us': summary(work_values),
-                'frame_interval_us': summary(interval_values),
-                'bytes': summary(byte_values),
-                'transactions': summary(transaction_values),
-                'updates': summary(update_count_values),
-                'dirty_pixels': summary(dirty_pixel_values),
-                'dirty_regions': summary(dirty_region_values),
-            },
-            'work_deadline_misses': work_deadline_misses,
-            'clock_missed_deadlines': clock.missed_deadlines,
-            'dropped_update_ms': clock.dropped_update_ms,
-            'distance_pixels': road.distance,
-            'heap_free_before': heap_before,
-            'heap_free_after': heap_after,
-        }
+                        clock.pace()
+                        interval_values.append(elapsed(frame_started))
+
+                    heap_after = gc.mem_free()
+                    workload_key = '%s:%s:%s:%s' % (
+                        strategy, speed, entity_profile, entity_count)
+                    workloads[workload_key] = {
+                        'strategy': strategy,
+                        'speed_pixels_per_second': speed,
+                        'entity_profile': entity_profile,
+                        'entity_count': entity_count,
+                        'setup_us': setup_us,
+                        'setup_heap_cost': (
+                            setup_heap_before - setup_heap_after),
+                        'metrics': {
+                            'update_us': summary(update_values),
+                            'render_us': summary(render_values),
+                            'cpu_render_us': summary(cpu_render_values),
+                            'surface_write_us': summary(write_values),
+                            'work_us': summary(work_values),
+                            'frame_interval_us': summary(interval_values),
+                            'bytes': summary(byte_values),
+                            'transactions': summary(transaction_values),
+                            'scroll_commands': summary(
+                                scroll_command_values),
+                            'scroll_command_us': summary(scroll_values),
+                            'updates': summary(update_count_values),
+                            'dirty_pixels': summary(dirty_pixel_values),
+                            'dirty_regions': summary(dirty_region_values),
+                        },
+                        'work_deadline_misses': work_deadline_misses,
+                        'clock_missed_deadlines': clock.missed_deadlines,
+                        'dropped_update_ms': clock.dropped_update_ms,
+                        'distance_pixels': road.distance,
+                        'heap_free_before': heap_before,
+                        'heap_free_after': heap_after,
+                    }
 
     result = {
-        'strategy': 'dirty-region-animation',
+        'strategies': strategies,
+        'scanout_capabilities': canvas.scroll_capabilities(),
+        'scanout_supported': scanout_supported,
         'samples_per_workload': SAMPLES,
         'entity_counts': ENTITY_COUNTS,
+        'entity_profiles': ENTITY_PROFILES,
         'logical_size': (width, height),
         'target_frame_ms': TARGET_FRAME_MS,
         'simulation_step_ms': SIMULATION_STEP_MS,
         'max_updates_per_frame': MAX_UPDATES_PER_FRAME,
         'speed_stages': ROAD_SPEED_STAGES,
+        'measured_speeds': SPEEDS,
         'workloads': workloads,
     }
     print('RACER_BENCHMARK=' + ujson.dumps(result))

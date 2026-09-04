@@ -829,6 +829,33 @@ class ModernAppDrawingTests(unittest.TestCase):
         for x in range(8):
             self.assertEqual(canvas.pixel(x, 4), 0xBEEF)
 
+    def test_scroll_capabilities_use_final_canvas_rotation(self):
+        module = load_modern_app(types.SimpleNamespace())
+        surface = FakeScrollSurface(width=8, height=6)
+        rotations = []
+
+        def capabilities(rotation):
+            rotations.append(rotation)
+            return {"axes": ("y",), "fixed_areas": True}
+
+        surface.scroll_capabilities = capabilities
+        canvas = module.DirectCanvas(surface, rotation=90)
+
+        self.assertEqual(canvas.scroll_capabilities(), {
+            "axes": ("y",), "fixed_areas": True})
+        self.assertEqual(rotations, [90])
+
+    def test_scroll_capabilities_have_portable_fallback(self):
+        module = load_modern_app(types.SimpleNamespace())
+        canvas = module.DirectCanvas(FakeSurface(width=8, height=6))
+
+        self.assertEqual(canvas.scroll_capabilities(), {
+            "axes": (),
+            "fixed_areas": False,
+            "wraps": False,
+            "full_orthogonal_axis": False,
+        })
+
     def test_scroll_region_composes_prepared_exposed_band_before_one_show(self):
         module = load_modern_app(types.SimpleNamespace())
         for rotation in (0, 90, 180, 270):
@@ -1170,7 +1197,7 @@ class ModernHelpSourceTests(unittest.TestCase):
             isinstance(node.func, ast.Attribute) and
             node.func.attr == "scroll_region"
         ]
-        self.assertEqual(scroll_calls, [])
+        self.assertEqual(len(scroll_calls), 1)
 
         classes = {
             node.name: node for node in tree.body
@@ -1178,6 +1205,11 @@ class ModernHelpSourceTests(unittest.TestCase):
         }
         self.assertIn("RoadRenderer", classes)
         self.assertIn("DirtyRegionAnimator", classes)
+        self.assertIn("ScanoutAnimator", classes)
+        self.assertIn("RoadBandCache", classes)
+        self.assertTrue(any(
+            call in ast.walk(classes["ScanoutAnimator"])
+            for call in scroll_calls))
         render_calls = [
             node for node in ast.walk(classes["RoadRenderer"])
             if isinstance(node, ast.Call) and

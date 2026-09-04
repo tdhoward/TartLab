@@ -564,6 +564,18 @@ class DirectCanvas(FrameBuffer):
                 horizontal, middle_height))
         return regions
 
+    def scroll_capabilities(self):
+        """Describe panel scrolling in final logical canvas coordinates."""
+        capabilities = getattr(self.surface, "scroll_capabilities", None)
+        if capabilities is None:
+            return {
+                "axes": (),
+                "fixed_areas": False,
+                "wraps": False,
+                "full_orthogonal_axis": False,
+            }
+        return capabilities(self.rotation)
+
     def scroll_region(self, area, dx=0, dy=0, fill=0, exposed=None):
         """Move, fill, and present a logical region.
 

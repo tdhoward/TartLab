@@ -1,6 +1,6 @@
 # Scrolling racer architecture and performance project
 
-Status: Phase 3 implemented; Phase 4 not started
+Status: Phase 4 implemented; Phase 5 not started
 
 Related implementation:
 
@@ -446,6 +446,65 @@ in `hardware_test_artifacts/scrolling-racer/phase3-modern.json`.
 Exit gate: a speed transition changes road distance per second, centerline
 motion, entity motion, and spawn rate coherently without a frame-cadence
 change, incorrect band, or visible stale pixel.
+
+#### Implementation result
+
+Implemented in the working tree:
+
+- `DirectCanvas.scroll_capabilities()` now reports surface capabilities in
+  final logical canvas coordinates. Racer requires logical vertical scroll,
+  fixed areas, wrapping, and a full orthogonal axis; its selection has no
+  board, controller, transport, or geometry inference.
+- `RoadBandCache` prepares every four-pixel-aligned delta and center phase
+  reachable through the bounded two-update catch-up. The current schedule
+  warms 4-, 8-, and 12-pixel bands before gameplay.
+- `ScanoutAnimator` uses beginning-of-frame entity bounds and the same clipped
+  `RoadRenderer` reconstruction as dirty animation. Stationary road-relative
+  entities ride the scroll, while fixed entities, horizontal movement,
+  steering, spawning, collection, hazards, and removal repair their carried
+  and authoritative bounds after the scroll.
+- The interactive example applies a measured workload policy after checking
+  capabilities. It uses scanout for at least three stationary road-relative
+  entities and retains dirty animation for empty, fixed, or horizontally
+  moving workloads.
+- Pixel-reference tests cover every warmed delta/phase pair and compare the
+  scanout result with a full redraw for mixed movement, spawn, collection,
+  removal, centerline overlap, and the player. A deterministic transition
+  test verifies that 80- and 120-pixel-per-second stages advance distance,
+  center phase, entities, and distance-based spawning together.
+- `tools/racer_benchmark.py` compares both strategies at both configured
+  speeds with empty, 3-, 8-, and 16-entity stationary and mixed-motion loads.
+  It records logical scroll capabilities, command time, dirty regions and
+  pixels, setup heap cost, transfer data, deadlines, and the earlier timing
+  and heap metrics.
+
+#### Device comparison
+
+On September 4, 2026, the 20-sample matrix ran on the modern 222 by 480 COM3
+fixture at the unchanged 50 ms target. The device reported logical vertical
+scroll with fixed areas, wrapping, and full orthogonal-axis coverage.
+
+For an empty road, dirty animation met the work deadline on all samples at
+both speeds: median work was 16.38 ms at 80 pixels per second and 16.05 ms at
+120, with p95 below 28 ms. Scanout took about 53 ms median and missed 19 of 20
+deadlines because its retained framebuffer copy alone remained about 46 to
+48 ms of median CPU render time.
+
+Scanout became materially beneficial as stationary road-relative population
+grew. At eight entities, its p95 work was 63.79 ms at 80 pixels per second and
+63.76 ms at 120, versus 270.38 ms and 237.34 ms for dirty animation. At 16
+entities, scanout p95 was 69.50 ms and 71.43 ms, versus 423.12 ms and 428.02
+ms. Stationary scanout transfer stayed at two transactions and a median 3,018
+bytes at the starting speed or 4,978 bytes at the higher stage, independent
+of entity count.
+
+Mixed fixed and horizontal workloads require reconstruction after either
+strategy and did not justify scanout selection. Neither strategy qualifies
+the representative three-entity workload at the current 20 FPS target:
+dirty animation had the lower median but substantial tails, while scanout was
+more consistent but slightly over budget. Phase 5 must select the final
+cadence and address the remaining frame outliers. The machine-readable result
+is in `hardware_test_artifacts/scrolling-racer/phase4-modern.json`.
 
 ### Phase 5: performance qualification and cleanup
 

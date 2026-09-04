@@ -177,6 +177,44 @@ class RacerEntityTests(unittest.TestCase):
         self.assertEqual(game.spawned_entities, [spawned])
         self.assertEqual(calls, [(coin_kind,)])
 
+    def test_speed_transition_keeps_distance_phase_entities_and_spawns_aligned(self):
+        plain = kind("plain", 2)
+        road = RACER.RoadState(((0, 80), (8, 120)), 1, 48)
+        game = RACER.GameState(
+            road, 0, 100, 0, 100, 50, 80, 3,
+            (plain,), spawn_gap=5,
+            randint_source=lambda low, high: low,
+            choice_source=lambda values: values[0])
+        entity = game.add_entity(RACER.Entity(
+            plain, 20, 20, road_relative=True, boundary_policy=None))
+
+        deltas = []
+        for unused in range(3):
+            game.begin_frame()
+            deltas.append(game.step(50))
+
+        self.assertEqual(deltas, [4, 4, 6])
+        self.assertEqual(road.distance, 14)
+        self.assertEqual(road.speed_per_second, 120)
+        self.assertEqual(road.center_phase, 14)
+        self.assertEqual(entity.y, 34)
+        self.assertEqual(game.next_spawn_distance, 15)
+        self.assertEqual(len(game.entities), 3)
+
+    def test_frame_bounds_cover_all_updates_in_one_rendered_frame(self):
+        game = state(speed=100)
+        entity = game.add_entity(RACER.Entity(
+            kind(), 20, 20, horizontal_velocity=20,
+            boundary_policy=None))
+
+        game.begin_frame()
+        game.step(50)
+        game.step(50)
+
+        self.assertEqual(entity.frame_bounds, (18, 18, 5, 5))
+        self.assertEqual(entity.previous_bounds, (19, 23, 5, 5))
+        self.assertEqual(entity.current_bounds, (20, 28, 5, 5))
+
 
 if __name__ == "__main__":
     unittest.main()
