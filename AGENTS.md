@@ -13,3 +13,9 @@
   transport, rendering, or ownership logic.
 - Put behavior that can apply to more than one board in shared modules and
   eliminate duplicated factory or adapter code wherever practical.
+- Keep `src/lib/tartlabutils` app-agnostic. Shared module names, public APIs,
+  state, and terminology must describe reusable capabilities rather than a
+  particular help app, game, or demo.
+- Keep app rules, app-specific state, rendering policy, and visual geometry in
+  the app. Before promoting code into `tartlabutils`, remove those concerns and
+  make sure the resulting API has plausible uses in multiple applications.

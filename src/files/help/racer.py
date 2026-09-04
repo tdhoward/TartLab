@@ -1,12 +1,13 @@
 """A portrait touch racer using accelerated region scrolling when available."""
 
 from random import choice, randint
-from time import sleep_ms
 
 from framebuf import FrameBuffer, RGB565
 
 from tartlabutils.modern_app import (
     PortraitCanvas, PortraitTouchGrid, game_surface, rgb565)
+from tartlabutils.motion import StagedMotion
+from tartlabutils.timing import FrameClock
 
 
 surface = game_surface()
@@ -36,17 +37,30 @@ ROAD_LEFT = ROAD_MARGIN
 ROAD_RIGHT = WIDTH - ROAD_MARGIN
 ROAD_WIDTH = ROAD_RIGHT - ROAD_LEFT
 
-SCROLL_STEP = 4
-FRAME_DELAY = 32
+TARGET_FRAME_MS = 50
+SIMULATION_STEP_MS = 50
+MAX_UPDATES_PER_FRAME = 2
+SCROLL_QUANTUM = 4
 CENTER_PERIOD = 48
 CENTER_RADIUS = 3
 CAR_RADIUS = 11
 CAR_Y = HEIGHT - 54
 STEER_STEP = 18
 OBSTACLE_GAP = 92
+ROAD_SPEED_STAGES = (
+    (0, 80),
+    (1200, 120),
+)
+MAX_SCROLL_DELTA = (
+    ROAD_SPEED_STAGES[-1][1] * SIMULATION_STEP_MS *
+    MAX_UPDATES_PER_FRAME + 999) // 1000
+MAX_SCROLL_DELTA = (
+    (MAX_SCROLL_DELTA + SCROLL_QUANTUM - 1) // SCROLL_QUANTUM *
+    SCROLL_QUANTUM)
 
+road_motion = StagedMotion(ROAD_SPEED_STAGES, SCROLL_QUANTUM)
 center_phase = 0
-spawn_distance = 0
+next_spawn_distance = OBSTACLE_GAP
 car_x = WIDTH // 2
 obstacles = []
 
@@ -86,16 +100,16 @@ def draw_track_band(top, height):
     draw_centerline(canvas, top, top + height, center_phase)
 
 
-def prepare_track_band(phase):
+def prepare_track_band(height, phase):
     """Pre-render one final exposed road band for repeated scrolling."""
-    data = bytearray(WIDTH * SCROLL_STEP * 2)
-    band = FrameBuffer(data, WIDTH, SCROLL_STEP, RGB565)
+    data = bytearray(WIDTH * height * 2)
+    band = FrameBuffer(data, WIDTH, height, RGB565)
     band.fill(GREEN)
-    band.fill_rect(ROAD_LEFT, 0, ROAD_WIDTH, SCROLL_STEP, BLACK)
+    band.fill_rect(ROAD_LEFT, 0, ROAD_WIDTH, height, BLACK)
     draw_centerline(
-        band, TRACK_TOP, TRACK_TOP + SCROLL_STEP,
+        band, TRACK_TOP, TRACK_TOP + height,
         phase, y_offset=TRACK_TOP)
-    return canvas.prepare_sprite(band, WIDTH, SCROLL_STEP)
+    return canvas.prepare_sprite(band, WIDTH, height)
 
 
 def draw_header():
@@ -150,10 +164,10 @@ def combined_area(first, second):
     return left, top, right - left, bottom - top
 
 
-def redraw_car(old_x):
+def redraw_car(old_x, scroll_delta):
     """Erase the car copy moved by scrolling, then redraw it in place."""
     dirty = combined_area(
-        car_area(old_x, CAR_Y + SCROLL_STEP),
+        car_area(old_x, CAR_Y + scroll_delta),
         car_area(car_x, CAR_Y))
     left, top, width, height = dirty
 
@@ -171,9 +185,12 @@ def redraw_car(old_x):
     canvas.show(dirty)
 
 
-track_bands = tuple(
-    prepare_track_band(phase)
-    for phase in range(0, CENTER_PERIOD, SCROLL_STEP))
+track_bands = {
+    (height, phase): prepare_track_band(height, phase)
+    for height in range(
+        SCROLL_QUANTUM, MAX_SCROLL_DELTA + 1, SCROLL_QUANTUM)
+    for phase in range(0, CENTER_PERIOD, SCROLL_QUANTUM)
+}
 
 canvas.fill(BLACK)
 draw_track_band(TRACK_TOP, TRACK_HEIGHT)
@@ -183,7 +200,15 @@ filled_circle(car_x, CAR_Y, CAR_RADIUS, YELLOW)
 draw_header()
 canvas.show()
 
+clock = FrameClock(
+    TARGET_FRAME_MS, SIMULATION_STEP_MS, MAX_UPDATES_PER_FRAME)
+
 while True:
+    updates = clock.updates_due()
+    if not updates:
+        clock.pace()
+        continue
+
     old_car_x = car_x
     key = touch.read()
     if key == "left":
@@ -191,24 +216,28 @@ while True:
     elif key == "right":
         car_x = min(ROAD_RIGHT - CAR_RADIUS - 3, car_x + STEER_STEP)
 
+    scroll_delta = 0
+    for unused in range(updates):
+        scroll_delta += road_motion.advance(SIMULATION_STEP_MS)
+
+    next_center_phase = (center_phase + scroll_delta) % CENTER_PERIOD
+
     # Compose the complete exposed road band before the one panel update, so
     # no intermediate solid-color fill becomes visible.
-    next_center_phase = (center_phase + SCROLL_STEP) % CENTER_PERIOD
     canvas.scroll_region(
         (0, TRACK_TOP, WIDTH, TRACK_HEIGHT),
-        dy=SCROLL_STEP,
-        exposed=track_bands[next_center_phase // SCROLL_STEP])
+        dy=scroll_delta,
+        exposed=track_bands[(scroll_delta, next_center_phase)])
 
     center_phase = next_center_phase
     for obstacle in obstacles:
-        obstacle[1] += SCROLL_STEP
+        obstacle[1] += scroll_delta
     obstacles[:] = [
         obstacle for obstacle in obstacles
         if obstacle[1] - obstacle[2] < HEIGHT]
 
-    spawn_distance += SCROLL_STEP
-    if spawn_distance >= OBSTACLE_GAP:
-        spawn_distance -= OBSTACLE_GAP
+    if road_motion.distance >= next_spawn_distance:
+        next_spawn_distance += OBSTACLE_GAP
         new_obstacle = spawn_obstacle()
         draw_obstacle(new_obstacle)
         radius = new_obstacle[2]
@@ -218,5 +247,5 @@ while True:
             radius * 2 + 1,
             radius * 2 + 1))
 
-    redraw_car(old_car_x)
-    sleep_ms(FRAME_DELAY)
+    redraw_car(old_car_x, scroll_delta)
+    clock.pace()
