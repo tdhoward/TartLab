@@ -3,6 +3,8 @@
 from random import choice, randint
 from time import sleep_ms
 
+from framebuf import FrameBuffer, RGB565
+
 from tartlabutils.modern_app import (
     PortraitCanvas, PortraitTouchGrid, game_surface, rgb565)
 
@@ -59,9 +61,9 @@ def filled_circle(x, y, radius, color):
             half_width * 2 + 1, color)
 
 
-def draw_centerline(top, bottom):
+def draw_centerline(target, top, bottom, phase, y_offset=0):
     """Draw only the part of each center dot inside a vertical interval."""
-    center_y = TRACK_TOP + center_phase - CENTER_PERIOD
+    center_y = TRACK_TOP + phase - CENTER_PERIOD
     while center_y - CENTER_RADIUS < bottom:
         if center_y + CENTER_RADIUS >= top:
             radius_squared = CENTER_RADIUS * CENTER_RADIUS
@@ -71,8 +73,8 @@ def draw_centerline(top, bottom):
                 offset_y = y - center_y
                 half_width = int(
                     (radius_squared - offset_y * offset_y) ** 0.5)
-                canvas.hline(
-                    WIDTH // 2 - half_width, y,
+                target.hline(
+                    WIDTH // 2 - half_width, y - y_offset,
                     half_width * 2 + 1, WHITE)
         center_y += CENTER_PERIOD
 
@@ -81,7 +83,19 @@ def draw_track_band(top, height):
     """Rebuild a horizontal slice of grass, road, and center dots."""
     canvas.fill_rect(0, top, WIDTH, height, GREEN)
     canvas.fill_rect(ROAD_LEFT, top, ROAD_WIDTH, height, BLACK)
-    draw_centerline(top, top + height)
+    draw_centerline(canvas, top, top + height, center_phase)
+
+
+def prepare_track_band(phase):
+    """Pre-render one final exposed road band for repeated scrolling."""
+    data = bytearray(WIDTH * SCROLL_STEP * 2)
+    band = FrameBuffer(data, WIDTH, SCROLL_STEP, RGB565)
+    band.fill(GREEN)
+    band.fill_rect(ROAD_LEFT, 0, ROAD_WIDTH, SCROLL_STEP, BLACK)
+    draw_centerline(
+        band, TRACK_TOP, TRACK_TOP + SCROLL_STEP,
+        phase, y_offset=TRACK_TOP)
+    return canvas.prepare_sprite(band, WIDTH, SCROLL_STEP)
 
 
 def draw_header():
@@ -145,7 +159,7 @@ def redraw_car(old_x):
 
     # The car stays inside the road, so this patch starts with black asphalt.
     canvas.fill_rect(left, top, width, height, BLACK)
-    draw_centerline(top, top + height)
+    draw_centerline(canvas, top, top + height, center_phase)
     changed_rows = (0, top, WIDTH, height)
     for obstacle in obstacles:
         # draw_centerline may touch pixels outside the car's horizontal dirty
@@ -156,6 +170,10 @@ def redraw_car(old_x):
     filled_circle(car_x, CAR_Y, CAR_RADIUS, YELLOW)
     canvas.show(dirty)
 
+
+track_bands = tuple(
+    prepare_track_band(phase)
+    for phase in range(0, CENTER_PERIOD, SCROLL_STEP))
 
 canvas.fill(BLACK)
 draw_track_band(TRACK_TOP, TRACK_HEIGHT)
@@ -173,25 +191,20 @@ while True:
     elif key == "right":
         car_x = min(ROAD_RIGHT - CAR_RADIUS - 3, car_x + STEER_STEP)
 
-    # Keep the header fixed and scroll only the track. The canvas uses its
-    # compiled strided-copy path for this partial framebuffer region. Qualified
-    # hardware also moves panel scanout and uploads only the exposed band;
-    # other displays use the portable software fallback.
+    # Compose the complete exposed road band before the one panel update, so
+    # no intermediate solid-color fill becomes visible.
+    next_center_phase = (center_phase + SCROLL_STEP) % CENTER_PERIOD
     canvas.scroll_region(
         (0, TRACK_TOP, WIDTH, TRACK_HEIGHT),
         dy=SCROLL_STEP,
-        fill=GREEN)
+        exposed=track_bands[next_center_phase // SCROLL_STEP])
 
-    center_phase = (center_phase + SCROLL_STEP) % CENTER_PERIOD
+    center_phase = next_center_phase
     for obstacle in obstacles:
         obstacle[1] += SCROLL_STEP
     obstacles[:] = [
         obstacle for obstacle in obstacles
         if obstacle[1] - obstacle[2] < HEIGHT]
-
-    # Rebuild the newly exposed track band with the road and centerline.
-    draw_track_band(TRACK_TOP, SCROLL_STEP)
-    canvas.show((0, TRACK_TOP, WIDTH, SCROLL_STEP))
 
     spawn_distance += SCROLL_STEP
     if spawn_distance >= OBSTACLE_GAP:

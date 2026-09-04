@@ -69,16 +69,15 @@ end before the ordinary LVGL UI returns.
 ## Compiled partial-region follow-up
 
 On 2026-09-04 UTC, the same diagnostic was extended to inject the working-tree
-Viper emitter and an exact physical equivalent of the portrait racer's fixed
-24-pixel header. The partial framebuffer move now uses an overlap-safe compiled
-strided copy instead of allocating and copying one scanline at a time in
-Python.
+Viper emitter and the portrait racer's fixed 24-pixel-header geometry. The
+partial framebuffer move now uses an overlap-safe compiled strided copy instead
+of allocating and copying one scanline at a time in Python.
 
 | Case | Accelerated | Software | Transfer reduction | Accelerated time | Software time |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Fixed 40-pixel sides, `dx=16` | 7,104 bytes | 177,600 bytes | 25.0x | 35.84 ms | 94.88 ms |
 | Fixed 40-pixel sides, `dx=-16` | 7,104 bytes | 177,600 bytes | 25.0x | 42.24 ms | 101.18 ms |
-| Portrait fixed header, `x=24`, `dx=4` | 1,776 bytes | 202,464 bytes | 114.0x | 38.96 ms | 111.01 ms |
+| Portrait fixed header, `y=24`, `dy=4` | 1,776 bytes | 202,464 bytes | 114.0x | 38.39 ms | 110.10 ms |
 
 The fixed-sides accelerated case fell from 1466.47 ms to 35.84 ms (40.9x),
 while retaining the same RAM-buffer checksum as the non-panel-accelerated
@@ -87,3 +86,19 @@ matched checksums, the wrap-seam regions
 remained correct, repeated scroll coordinates matched, and scanout was restored
 before returning to the UI. The working-tree test did not write the device
 filesystem or firmware.
+
+The final case now runs an actual 90-degree `DirectCanvas`, prepares a patterned
+`222 x 4` replacement sprite, composes it into the exposed logical band, and
+performs one 1,776-byte accelerated transfer. Its checksum matched the full
+202,464-byte software presentation, confirming that replacement-band rotation,
+RAM composition, and panel-scroll mapping agree.
+
+## Replacement-band fixture smoke
+
+The verified `modern_app.py` and Racer payloads were then staged on COM3. A
+bounded run of the installed Racer initialization created all 12 prepared road
+bands and completed the exact fixed-header replacement scroll in 38.243 ms
+before restoring UI ownership. Temporary rollback copies were removed after
+the smoke passed. The fixture's final uninterrupted boot reached
+`HEALTHY mode=IDE` in 31.828 seconds. This staging changed the device filesystem
+but did not flash or otherwise change firmware.

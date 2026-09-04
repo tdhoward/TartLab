@@ -829,6 +829,51 @@ class ModernAppDrawingTests(unittest.TestCase):
         for x in range(8):
             self.assertEqual(canvas.pixel(x, 4), 0xBEEF)
 
+    def test_scroll_region_composes_prepared_exposed_band_before_one_show(self):
+        module = load_modern_app(types.SimpleNamespace())
+        for rotation in (0, 90, 180, 270):
+            with self.subTest(rotation=rotation):
+                surface = FakeScrollSurface(width=7, height=5)
+                canvas = module.DirectCanvas(surface, rotation=rotation)
+                width = canvas.width
+                band_data = bytearray(width * 2)
+                band = FakeFrameBuffer(band_data, width, 1, 1)
+                for x in range(width):
+                    band.pixel(x, 0, 0x5000 + x)
+                prepared = canvas.prepare_sprite(band, width, 1)
+
+                canvas.fill(0x1234)
+                canvas.scroll_region(
+                    (0, 1, width, canvas.height - 2),
+                    dy=1, fill=0xBEEF, exposed=prepared)
+
+                for x in range(width):
+                    self.assertEqual(canvas.pixel(x, 1), 0x5000 + x)
+                self.assertEqual(len(surface.scrolls), 1)
+                self.assertEqual(len(surface.writes), 1)
+                self.assertEqual(
+                    surface.writes[0][1:], canvas._area(0, 1, width, 1))
+
+    def test_scroll_region_validates_exposed_sprite_before_moving_ram(self):
+        module = load_modern_app(types.SimpleNamespace())
+        surface = FakeScrollSurface(width=8, height=6)
+        canvas = module.DirectCanvas(surface)
+        canvas.fill(0x1234)
+        original = bytes(canvas.buffer)
+        wrong_size = canvas.prepare_sprite(
+            FakeFrameBuffer(bytearray(4), 2, 1, 1), 2, 1)
+
+        with self.assertRaisesRegex(ValueError, "dimensions"):
+            canvas.scroll_region(
+                (0, 1, 8, 4), dy=1, exposed=wrong_size)
+        with self.assertRaisesRegex(TypeError, "prepare_sprite"):
+            canvas.scroll_region(
+                (0, 1, 8, 4), dy=1, exposed=object())
+
+        self.assertEqual(bytes(canvas.buffer), original)
+        self.assertEqual(surface.scrolls, [])
+        self.assertEqual(surface.writes, [])
+
     def test_scroll_region_falls_back_for_overlong_and_diagonal_moves(self):
         module = load_modern_app(types.SimpleNamespace())
         surface = FakeScrollSurface(width=8, height=6)
@@ -1132,6 +1177,9 @@ class ModernHelpSourceTests(unittest.TestCase):
             element.id if isinstance(element, ast.Name) else element.value
             for element in area.elts
         ], [0, "TRACK_TOP", "WIDTH", "TRACK_HEIGHT"])
+        keywords = {keyword.arg: keyword.value for keyword in calls[0].keywords}
+        self.assertIn("exposed", keywords)
+        self.assertNotIn("fill", keywords)
 
     def test_modern_manifest_describes_direct_drawing_not_lvgl(self):
         manifest = (ROOT / "src/files/help/manifest.json").read_text()

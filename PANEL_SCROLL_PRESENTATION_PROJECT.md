@@ -89,8 +89,10 @@ the established display orientation solely to enable scrolling is out of scope.
 Implemented on 2026-09-03/04:
 
 - `DirectCanvas.scroll_region()` provides the portable move/fill/present API,
-  uses compiled `framebuf.scroll()` for a full-canvas move, and falls back to a
-  bounded scanline copy for partial regions.
+  uses compiled `framebuf.scroll()` for a full-canvas move, and uses a validated
+  overlap-safe Viper strided copy for partial regions. It can compose a prepared
+  replacement sprite into a single exposed band before presentation, avoiding
+  an intermediate solid-color upload.
 - `tartlabutils.modern_st7796` provides the reusable controller-family adapter,
   final-coordinate capability reporting, fixed-area commands, retained origin,
   seam-aware writes, DMA serialization, and cleanup before LVGL ownership.

@@ -41,6 +41,8 @@ exec(__BOARD_SOURCE__, board_scope)
 
 from tartlabutils.platform import get_platform
 DirectCanvas = modern_app.DirectCanvas
+FrameBuffer = modern_app.FrameBuffer
+RGB565 = modern_app.RGB565
 BaseSurface = adapter_scope['ST7796DirectRGB565Surface']
 
 def ticks():
@@ -104,14 +106,29 @@ def seed(canvas):
         index += 1
     canvas.text('ST7796 SCROLL', 8, 8, 0xFFFF)
 
-def run_case(name, area, dx, seam=False):
+def make_replacement(canvas, area, dx, dy):
+    exposed = DirectCanvas._exposed_regions(*area, dx, dy)
+    if len(exposed) != 1:
+        raise ValueError('replacement diagnostic requires one exposed band')
+    unused_x, unused_y, width, height = exposed[0]
+    data = bytearray(width * height * 2)
+    band = FrameBuffer(data, width, height, RGB565)
+    band.fill(0xE007)
+    road_left = width // 6
+    band.fill_rect(road_left, 0, width - road_left * 2, height, 0x0000)
+    band.vline(width // 2, 0, height, 0xFFFF)
+    return canvas.prepare_sprite(band, width, height)
+
+def run_case(name, area, dx=0, dy=0, rotation=0,
+             replacement=False, seam=False):
     accelerated_surface = None
     accelerated_canvas = None
     software_surface = None
     software_canvas = None
     try:
         accelerated_surface = make_surface(True)
-        accelerated_canvas = DirectCanvas(accelerated_surface)
+        accelerated_canvas = DirectCanvas(
+            accelerated_surface, rotation=rotation)
         if visual_hold_ms and name == 'visual_confirmation':
             accelerated_canvas.fill(0xE0FF)
             accelerated_canvas.show()
@@ -119,8 +136,12 @@ def run_case(name, area, dx, seam=False):
         seed(accelerated_canvas)
         accelerated_canvas.show()
         accelerated_surface.reset_counts()
+        accelerated_band = make_replacement(
+            accelerated_canvas, area, dx, dy) if replacement else None
         started = ticks()
-        accelerated_canvas.scroll_region(area, dx=dx, fill=0x0000)
+        accelerated_canvas.scroll_region(
+            area, dx=dx, dy=dy, fill=0x0000,
+            exposed=accelerated_band)
         accelerated_us = elapsed(started)
         accelerated_bytes = accelerated_surface.sent_bytes
         accelerated_regions = tuple(accelerated_surface.sent_regions)
@@ -144,11 +165,15 @@ def run_case(name, area, dx, seam=False):
         accelerated_surface = None
 
         software_surface = make_surface(False)
-        software_canvas = DirectCanvas(software_surface)
+        software_canvas = DirectCanvas(software_surface, rotation=rotation)
         seed(software_canvas)
         software_surface.reset_counts()
+        software_band = make_replacement(
+            software_canvas, area, dx, dy) if replacement else None
         started = ticks()
-        software_canvas.scroll_region(area, dx=dx, fill=0x0000)
+        software_canvas.scroll_region(
+            area, dx=dx, dy=dy, fill=0x0000,
+            exposed=software_band)
         software_us = elapsed(started)
         software_bytes = software_surface.sent_bytes
         software_digest = digest(software_canvas.buffer)
@@ -162,6 +187,9 @@ def run_case(name, area, dx, seam=False):
             'name': name,
             'area': area,
             'dx': dx,
+            'dy': dy,
+            'rotation': rotation,
+            'replacement': replacement,
             'accelerated_us': accelerated_us,
             'software_us': software_us,
             'accelerated_bytes': accelerated_bytes,
@@ -195,19 +223,20 @@ def run_case(name, area, dx, seam=False):
 try:
     full_area = (0, 0, width, height)
     cases = (
-        run_case('negative_full', full_area, -32, True),
-        run_case('positive_full', full_area, 32),
-        run_case('fixed_sides', (40, 0, width - 80, height), 16),
-        run_case('fixed_sides_negative', (40, 0, width - 80, height), -16),
-        # Physical equivalent of the portrait racer's 24-pixel fixed header
-        # and four-pixel logical downward move.
-        run_case('portrait_fixed_header', (24, 0, width - 24, height), 4),
-        run_case('negative_full_repeat', full_area, -32),
+        run_case('negative_full', full_area, dx=-32, seam=True),
+        run_case('positive_full', full_area, dx=32),
+        run_case('fixed_sides', (40, 0, width - 80, height), dx=16),
+        run_case(
+            'fixed_sides_negative', (40, 0, width - 80, height), dx=-16),
+        run_case(
+            'portrait_fixed_header', (0, 24, height, width - 24),
+            dy=4, rotation=90, replacement=True),
+        run_case('negative_full_repeat', full_area, dx=-32),
     )
     visual_case = None
     if visual_hold_ms:
         visual_case = run_case(
-            'visual_confirmation', full_area, -32)
+            'visual_confirmation', full_area, dx=-32)
     result = {
         'board': board['id'],
         'panel_rotation': display['rotation'],

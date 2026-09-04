@@ -564,9 +564,12 @@ class DirectCanvas(FrameBuffer):
                 horizontal, middle_height))
         return regions
 
-    def scroll_region(self, area, dx=0, dy=0, fill=0):
+    def scroll_region(self, area, dx=0, dy=0, fill=0, exposed=None):
         """Move, fill, and present a logical region.
 
+        ``exposed`` may be an opaque sprite returned by ``prepare_sprite()``
+        whose logical dimensions exactly match the single newly exposed band.
+        It replaces the solid ``fill`` and is composed before presentation.
         A capable surface may change its scanout origin and upload only the
         newly exposed bands. Unsupported cases perform the same RAM operation
         and flush the complete changed region.
@@ -582,6 +585,23 @@ class DirectCanvas(FrameBuffer):
         if width <= 0 or height <= 0:
             return
 
+        exposed_regions = self._exposed_regions(
+            x, y, width, height, dx, dy)
+        if abs(dx) >= width or abs(dy) >= height:
+            exposed_regions = [(x, y, width, height)]
+        if exposed is not None:
+            if not isinstance(exposed, _PreparedSprite):
+                raise TypeError(
+                    "exposed must be returned by prepare_sprite()")
+            if len(exposed_regions) != 1:
+                raise ValueError(
+                    "an exposed sprite requires one exposed region")
+            replacement_area = exposed_regions[0]
+            if (exposed.width != replacement_area[2] or
+                    exposed.height != replacement_area[3]):
+                raise ValueError(
+                    "exposed sprite dimensions must match the exposed region")
+
         physical_x, physical_y, physical_width, physical_height = self._area(
             x, y, width, height)
         physical_dx, physical_dy = dx, dy
@@ -596,17 +616,18 @@ class DirectCanvas(FrameBuffer):
             physical_x, physical_y, physical_width, physical_height,
             physical_dx, physical_dy)
 
-        exposed = self._exposed_regions(x, y, width, height, dx, dy)
-        if abs(dx) >= width or abs(dy) >= height:
-            exposed = [(x, y, width, height)]
-        for exposed_area in exposed:
-            self.fill_rect(
-                exposed_area[0], exposed_area[1],
-                exposed_area[2], exposed_area[3], fill)
+        if exposed is not None:
+            self.draw_sprite(
+                exposed, replacement_area[0], replacement_area[1])
+        else:
+            for exposed_area in exposed_regions:
+                self.fill_rect(
+                    exposed_area[0], exposed_area[1],
+                    exposed_area[2], exposed_area[3], fill)
 
         presenter = getattr(self.surface, "present_scroll", None)
         accelerated = False
-        if presenter is not None and len(exposed) == 1 and \
+        if presenter is not None and len(exposed_regions) == 1 and \
                 abs(dx) < width and abs(dy) < height:
             try:
                 accelerated = presenter(
@@ -615,7 +636,7 @@ class DirectCanvas(FrameBuffer):
                 self.show((x, y, width, height))
                 raise
         if accelerated:
-            self.show(exposed[0])
+            self.show(exposed_regions[0])
         else:
             self.show((x, y, width, height))
 
