@@ -270,10 +270,16 @@ second touch reached the button, and teardown restored 100 percent duty. A
 following hard reset again reached `HEALTHY mode=IDE`.
 
 These probes establish the board's PWM control path, the declarative
-correction, and the focused dim/consume/wake behavior. A candidate containing
-the updated board payload must still repeat the policy inside the complete IDE
-with persisted settings, including clamping and repeated teardown, before
-brightness is qualified as a complete integrated behavior.
+correction, and the focused dim/consume/wake behavior. The clean current-source
+fixture then repeated the policy inside the complete IDE with persisted test
+settings. A temporary tracer around the unchanged public brightness call
+recorded 74.95 percent normal duty, 14.99 percent dim duty, two physical wakes
+back to 74.95 percent, two corresponding re-dims, and a final restoration to
+74.95 percent during IDE teardown. The three-second test override and tracer
+were removed, and the following default-settings boot reached
+`HEALTHY mode=IDE`. Host tests cover clamping, dim-not-above-maximum, and the
+zero-delay policy; candidate qualification must repeat the physical policy on
+the exact release payload.
 
 ## Remaining work
 
@@ -317,9 +323,10 @@ single-board bridge release is required.
    the touchscreen launcher now booted a temporary selected direct-surface app
    to `HEALTHY mode=APP`; reset returned through the launcher to a healthy IDE.
    Direct PWM brightness control passes from off through intermediate duty
-   levels, and a focused real-touch dim/consume/wake probe passes. Still repeat
-   the power policy inside the complete IDE and visually review the direct
-   fixture, representative examples/games, and their launcher transitions.
+   levels; focused and complete-IDE real-touch dim/consume/wake probes pass,
+   including repeated dim/wake and teardown restoration. Still visually review
+   the direct fixture, representative examples/games, and their launcher
+   transitions.
 
 Milestone A means TartLab runs end to end on the bench. It does not authorize
 publishing or provisioning the board as a supported target.
