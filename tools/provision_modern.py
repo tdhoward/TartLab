@@ -662,14 +662,14 @@ class CommandTransport:
                     destination = ":/"
                 command.extend(("cp", str(source), destination))
                 self._run(command)
-            # Activate early boot only after recovery and state are complete;
-            # keep main inert until the final copy.
+            # Activate both entry points in one raw-REPL connection only after
+            # recovery and state are complete. Closing a connection after
+            # copying boot.py can reset native-USB ESP32-S3 boards and start
+            # that new boot file before a second connection can replace the
+            # main.py placeholder.
             self._run([
                 "mpremote", "connect", self.port, "fs", "--force", "cp",
-                str(boot), ":/boot.py"])
-            self._run([
-                "mpremote", "connect", self.port, "fs", "--force", "cp",
-                str(main), ":/main.py"])
+                str(boot), str(main), ":/"])
         finally:
             if placeholder.is_file():
                 placeholder.unlink()

@@ -597,6 +597,18 @@ the source ready for an authenticated candidate build; because the working tree
 is not a signed source tag, they are not substituted for the exact-candidate
 physical gates.
 
+The first authenticated clean-provisioning attempt against `modern-v0.15.0`
+found one final host transaction defect. All signed packages uploaded, but the
+tool copied active `boot.py` and `main.py` through separate `mpremote` sessions.
+The first disconnect allowed the Elecrow soft-to-hard reset policy to run the
+new boot file while `main.py` was still inert, so the second session could not
+activate it. The journal correctly remained resumable at `backed_up`; a
+recovery-safe raw session activated both files together, and the installation
+then reached `HEALTHY mode=IDE update_committed=True`. The production
+provisioner now activates both entry points in one raw-REPL connection. A new
+authenticated candidate must repeat clean provisioning through that corrected
+path; the recovered `modern-v0.15.0` run is diagnostic evidence, not a pass.
+
 ## Remaining work
 
 The selected TartLab mode for this board is native 320 x 480 portrait. The

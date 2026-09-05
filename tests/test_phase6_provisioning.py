@@ -673,17 +673,13 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertLess(
                 mpremote[state_upload].index("--recursive"),
                 mpremote[state_upload].index("cp"))
-            real_boot = next(
+            activation = next(
                 index for index, command in enumerate(mpremote)
-                if command[-1] == ":/boot.py" and
-                command[-2].endswith("boot.py"))
-            real_main = next(
-                index for index, command in enumerate(mpremote)
-                if command[-1] == ":/main.py" and
+                if command[-1] == ":/" and
+                command[-3].endswith("boot.py") and
                 command[-2].endswith("main.py"))
-            self.assertLess(state_upload, real_boot)
-            self.assertLess(real_boot, real_main)
-            self.assertEqual(real_main, len(mpremote) - 1)
+            self.assertLess(state_upload, activation)
+            self.assertEqual(activation, len(mpremote) - 1)
             self.assertFalse((root / "provisioning-placeholder.py").exists())
 
     @mock.patch("provision_modern.time.sleep")
@@ -712,7 +708,8 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertIn("verify-flash", commands[0])
             self.assertIn("watchdog-reset", commands[1])
             sleep.assert_called_once_with(3)
-            self.assertEqual(commands[2][-1], ":/boot.py")
+            self.assertEqual(commands[-1][-3:], [
+                str(image / "boot.py"), str(image / "main.py"), ":/"])
 
     @mock.patch("provision_modern.time.sleep")
     @mock.patch("provision_modern.RawRepl")

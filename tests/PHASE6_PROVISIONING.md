@@ -66,7 +66,7 @@ The combined 2026-08-27–28 sessions passed:
   touch, GPIO 12 APP boot, recovery page/AP, forced IDE return, and normal reset;
 - interruption during backup and legacy readback;
 - active interruption at erase, firmware write and verification, inert
-  placeholders, every top-level upload, both final boot-file activations, and
+  placeholders, every top-level upload, atomic final boot-file activation, and
   pending-health boot; and
 - resume from the same private journal after every loss, with exact immutable
   prepared-file comparison at completion.

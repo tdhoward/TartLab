@@ -31,7 +31,7 @@ CHECKPOINTS = (
     "erase-flash", "write-flash", "verify-flash",
     "placeholder-boot", "placeholder-main",
     *("upload-" + name for name in UPLOAD_NAMES),
-    "activate-boot", "activate-main",
+    "activate-boot-files",
 )
 ATTESTATION_RECEIPT = "qualification-attestation-verification.json"
 
@@ -62,7 +62,7 @@ def command_checkpoint(command: Sequence[str], verify_count: int = 0
     if len(command) <= copy_index + 2:
         return None, verify_count
     source = Path(command[copy_index + 1])
-    destination = command[copy_index + 2]
+    destination = command[-1]
     if source.name == "provisioning-placeholder.py":
         return (
             "placeholder-boot" if destination.endswith("boot.py")
@@ -70,10 +70,9 @@ def command_checkpoint(command: Sequence[str], verify_count: int = 0
             else None,
             verify_count,
         )
-    if source.name == "boot.py" and destination.endswith("boot.py"):
-        return "activate-boot", verify_count
-    if source.name == "main.py" and destination.endswith("main.py"):
-        return "activate-main", verify_count
+    sources = [Path(path).name for path in command[copy_index + 1:-1]]
+    if sources == ["boot.py", "main.py"] and destination == ":/":
+        return "activate-boot-files", verify_count
     if source.name in UPLOAD_NAMES:
         return "upload-" + source.name, verify_count
     return None, verify_count

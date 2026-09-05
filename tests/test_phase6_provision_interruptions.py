@@ -45,11 +45,13 @@ class ProvisionInterruptionHelperTests(unittest.TestCase):
         ]
         active = [
             "mpremote", "connect", "COM3", "fs", "cp",
-            "C:/private/prepared-image/boot.py", ":/boot.py",
+            "C:/private/prepared-image/boot.py",
+            "C:/private/prepared-image/main.py", ":/",
         ]
         self.assertEqual(
             command_checkpoint(placeholder)[0], "placeholder-boot")
-        self.assertEqual(command_checkpoint(active)[0], "activate-boot")
+        self.assertEqual(
+            command_checkpoint(active)[0], "activate-boot-files")
 
     def test_recursive_directory_copy_uses_source_name(self):
         command = [
