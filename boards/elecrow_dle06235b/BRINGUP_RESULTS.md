@@ -280,6 +280,15 @@ optimized interactive build then repeated `HEALTHY mode=APP`; the owner
 confirmed that it felt great, with the already verified upright rendering and
 steering intact.
 
+A second hash-verified fixture exercised the current Testris help app through
+the same touchscreen launcher and direct surface. It reached
+`HEALTHY mode=APP`, remained fault-free during the interaction window, and
+passed owner review for the splash, game board, banner, preview, block
+animation, and touch controls. The owner reported that it worked great. The
+temporary app and any fixture high-score file were then removed, selection was
+restored to `hello.py`, and an untouched launcher timeout again reached
+`HEALTHY mode=IDE`.
+
 ## Brightness follow-up (2026-09-04)
 
 The first complete bench payload left GPIO41 in the display framework's
@@ -363,8 +372,9 @@ single-board bridge release is required.
    including repeated dim/wake and teardown restoration. Racer now passes its
    launcher transition, APP health, portrait rendering, and steering review;
    its initial multi-second direct-write bottleneck is fixed, though the
-   20 FPS tail qualification remains. Still review the other representative
-   examples/games and their launcher transitions.
+   20 FPS tail qualification remains. Testris also passes its launcher, APP
+   health, complete portrait scene, animation, and touch-control review. Still
+   review the other representative examples and their launcher transitions.
 
 Milestone A means TartLab runs end to end on the bench. It does not authorize
 publishing or provisioning the board as a supported target.
