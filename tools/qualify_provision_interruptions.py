@@ -174,6 +174,7 @@ def main() -> None:
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--port", required=True)
     parser.add_argument("--source-ref", required=True)
+    parser.add_argument("--board", required=True)
     parser.add_argument("--checkpoint", choices=CHECKPOINTS, required=True)
     parser.add_argument("--delay", type=float, default=0.25)
     parser.add_argument("--resume", action="store_true")
@@ -202,10 +203,13 @@ def main() -> None:
     transport = InterruptingTransport(
         args.port, args.checkpoint, args.delay)
     try:
-        provision(release, workspace, "clean", transport, resume=args.resume)
+        provision(
+            release, workspace, "clean", transport, resume=args.resume,
+            board_id=args.board, qualification_candidate=True)
     except IntendedInterruption as error:
         if transport.receipt is None:
             raise RuntimeError("interruption produced no receipt") from error
+        transport.receipt["board_id"] = args.board
         attestation_path = workspace / ATTESTATION_RECEIPT
         if not attestation_path.is_file():
             attestation_path.write_text(

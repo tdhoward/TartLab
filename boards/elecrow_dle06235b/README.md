@@ -1,11 +1,13 @@
 # Elecrow DLE06235B
 
-Lifecycle: `candidate` — not yet a supported TartLab target.
+Lifecycle: `candidate` — exact-board physical gates passed; protected
+multi-board promotion remains pending.
 
-The board has passed the bench bring-up gates and has a byte-reproducible,
-checksummed LVGL/ST77922 firmware candidate. Authenticated provisioning and
-physical qualification of the exact release candidate are still required
-before support can be claimed. The current technical results and ordered work are in
+The board has passed the bench bring-up gates and the Elecrow-specific physical
+qualification of signed `modern-v0.15.2`, using its byte-reproducible,
+checksummed LVGL/ST77922 firmware. It remains a candidate until the same
+multi-board release has complete aggregate evidence and is promoted through
+the protected workflow. The current technical results and ordered work are in
 [`BRINGUP_RESULTS.md`](BRINGUP_RESULTS.md). Shared research and sequencing for
 the Elecrow 3.5-inch and 7-inch ESP32-S3 products are in the
 [`Elecrow ESP32-S3 bring-up plan`](../elecrow/ESP32_S3_BRINGUP_PLAN.md).

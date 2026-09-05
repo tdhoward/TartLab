@@ -1,0 +1,177 @@
+TartLab modern-v0.15.2 Elecrow DLE06235B sanitized physical transcript
+Operator: Tim
+Board: Elecrow DLE06235B observed-2026-08-29, ESP32-S3 revision 0.2
+Candidate commit: be0d121afae5f6a9b39921b07e43405ccc0f3933
+Candidate checksums SHA-256: cb4beddc6224fcd63ff9f93966a1acccebff14886b39f7ad92a5fccc40d3b93f
+Firmware SHA-256: 50d98625a1ef58eee6c5fbe55b5107968301ea4dc6b8954167cad9f0d65ee5a3
+
+This transcript contains no Wi-Fi values, credentials, protected-file
+contents, student work, device MAC address, COM mapping, or private workspace
+path. Raw serial logs, backups, journals, receipts, and complete device
+snapshots remain in the private hardware workspace.
+
+Candidate authentication and clean provisioning
+------------------------------------------------
+Protected workflow run 33983768402 built the tag. All 27 candidate subjects
+were verified against its GitHub Artifact Attestation, source ref
+refs/tags/modern-v0.15.2, source commit
+be0d121afae5f6a9b39921b07e43405ccc0f3933, and the qualification signer.
+
+An authorized clean erase selected board ID elecrow_dle06235b, verified 16 MiB
+flash, installed the board-bound combined firmware, reconstructed the signed
+filesystem, and reached awaiting_health. The first untouched launcher timeout
+started IDE and reported:
+
+  HEALTHY mode=IDE update_committed=True
+
+Authenticated resume then reported healthy=true, stage=complete, exact board,
+profile lvgl-modern, and modern-v0.15.2. Only the authenticated hello.py clean
+default was present in the user area.
+
+Launcher, chooser, IDE, app, display, and touch
+-----------------------------------------------
+The owner observed an upright, readable 320 x 480 portrait launcher and usable
+touch targets. Launcher timeout and Start IDE both reached healthy IDE mode.
+The browser IDE created, saved, reopened, ran, and deleted a temporary Python
+file, with expected program output.
+
+Choose app listed folders and valid Python files only, stayed within the user
+root, navigated into a temporary nested folder, and scrolled correctly.
+Back, chooser Cancel, and confirmation Cancel did not change selection. Set as
+app changed visible and durable selection without running it. The row-width
+correction was then verified physically: no unnecessary horizontal scrollbar,
+the hello.py row remained within the panel, and top/left/right margins appeared
+balanced. A host regression covers removal between display and confirmation;
+the race was not forced over the single USB console because doing so would
+interrupt the live chooser.
+
+Run selected app transferred ownership to the direct surface and displayed
+stable upright vertical magenta, cyan, yellow, green, and blue bands. APP mode
+became healthy. A physical reset returned to the launcher rather than repeating
+APP mode, and IDE became healthy afterward. An injected RuntimeError fell back
+to IDE with a small app-error indicator, no blank/recovery screen, and a
+healthy IDE marker; the fixture and diagnostic marker were removed.
+
+Touch sampling recorded 34 points including all four edges and center, spanning
+the full 320 x 480 logical surface. The qualified product contract is one
+active pointer: all controller contact records are acknowledged, while
+simultaneous multitouch is not exposed.
+
+Brightness and ownership endurance
+----------------------------------
+A temporary 75 percent maximum, 15 percent dim level, and eight-second delay
+proved dimming after inactivity, activity deadline extension, consumed first
+wake touch, and later normal touch delivery. Zero delay stayed bright. On-device
+clamping constrained excessive maximum/dim values and restored the default
+180-second delay for an invalid negative value. Original settings were restored.
+
+One hundred UI/direct ownership cycles completed every required full-frame
+seed, returned to UI ownership with no pending transfer, and showed a settled
+2,480-byte heap difference from first to last sample. Twenty-five additional
+initialization/teardown cycles passed with stable ownership and heap. A hardening
+pass completed 20 Wi-Fi scans and 80 display frames with no scan error, retained
+UI ownership, and reported adequate heap and filesystem margin. Five repeated
+real IDE teardown/reset cycles and five cold-power cycles all returned healthy.
+
+Recovery interface
+------------------
+The display-independent recovery page loaded, exposed only redacted diagnostic
+status, and Retry normal boot returned to the launcher and healthy IDE. The
+recovery access-point name and address are intentionally printed to the recovery
+console rather than rendered on the panel; no recovery Wi-Fi text was expected
+on the board display.
+
+OTA validation, rollback containment, and power loss
+----------------------------------------------------
+The signed candidate's 13 manifest/package inputs were copied to an isolated
+qualification directory and hash-verified on-device. A one-bit-corrupted
+temporary pydevices.tar failed before mutation:
+
+  CONTAIN_FAILED=True
+  CONTAIN_VERSION_BEFORE=modern-v0.15.2
+  CONTAIN_VERSION_AFTER=modern-v0.15.2
+  CONTAIN_MARKER=none
+
+A same-version normal OTA also completed and retained the old committed version
+until a healthy IDE boot consumed pending health. It left no update marker.
+
+For the certified normal-download interruption, the helper copied the first
+block of pydevices.tar into the isolated /tmp target, filled the display white,
+and held indefinitely at:
+
+  CONTAIN_POWER_SIGNAL=interrupt-download
+
+The operator removed USB power, kept it disconnected for at least five seconds,
+and reconnected it. The installed version remained modern-v0.15.2, no durable
+update marker existed, active files were unchanged, and only isolated temporary
+download inputs remained. Those inputs were removed after evidence capture.
+
+For the active recovery-installer interruption, all 13 staged assets were
+copied into /tmp/recovery and revalidated. The installer completed and durably
+recorded pydevices.tar, began libahttpserver.tar, filled the display white, and
+held at:
+
+  CONTAIN_RECOVERY=Installing pydevices.tar
+  CONTAIN_RECOVERY=Installing libahttpserver.tar
+  CONTAIN_POWER_SIGNAL=interrupt-recovery
+
+The operator again removed power for at least five seconds and reconnected it.
+Durable state retained committed version modern-v0.15.2, source=recovery,
+status=installing, all 13 staged assets, and completed_packages containing only
+pydevices.tar. Offline resume reported:
+
+  RECOVERY_RESUME=Already installed pydevices.tar
+  RECOVERY_RESUME=Installing libahttpserver.tar
+  RECOVERY_RESUME=Installing libtarfile.tar
+  RECOVERY_RESUME=Installing configs.tar
+  RECOVERY_RESUME=Installing board-support.tar
+  RECOVERY_RESUME=Installing rootfiles.tar
+  RECOVERY_RESUME=Installing defaults.tar
+  RECOVERY_RESUME=Installing assetfiles.tar
+  RECOVERY_RESUME=Installing tartlab.tar
+  RECOVERY_RESUME=Installing helpfiles.tar
+  RECOVERY_RESUME=Installing tartlabutils.tar
+  RECOVERY_RESUMED_VERSION=modern-v0.15.2
+
+The following launcher timeout reached healthy IDE with
+update_committed=True. Final state was healthy IDE, zero failures, exact
+version and board identity, no update marker, and no temporary, recovery, or
+qualification staging.
+
+Provisioning activation interruption and inventory
+--------------------------------------------------
+A second authorized clean transaction was bound explicitly to
+elecrow_dle06235b. After attestation verification, backup, erase, firmware
+write/verify, inert placeholders, and all top-level filesystem uploads, the
+qualification transport terminated only the final atomic copy of boot.py and
+main.py. Its private receipt records checkpoint activate-boot-files and the
+Elecrow board ID.
+
+Resume from the unchanged authenticated journal reused matching firmware,
+reconstructed the complete prepared image, activated both boot files together,
+and reached awaiting_health. The first untouched launcher timeout reported
+HEALTHY mode=IDE update_committed=True. A final authenticated resume reported
+healthy=true and stage=complete.
+
+The post-resume snapshot contained 220 active files. Of 213 prepared files,
+211 matched byte-for-byte; only state/repos.json and the consumed
+state/update.json differed as required. Eight expected boot/log/runtime-state
+files were added. Protected /device and /files/user digests matched the prior
+qualified state, and selected_app remained the authenticated hello.py default.
+
+Policy and remaining release boundary
+-------------------------------------
+Direct legacy migration is not approved for this board because there is no
+recognized Elecrow factory TartLab source profile. Its migration disposition
+is adult authenticated clean provisioning with reviewed manual restore, bound
+to the checked-in modern support-window policy. No migration pass is claimed.
+
+The live read-only feed audit found separate legacy and modern repositories,
+the expected manifest names, and no cross-profile assets. The support-window
+validator retained the approved LilyGO v0.13 direct-migration floor and the
+clean-provision/manual-restore disposition for sources outside that window.
+
+All Elecrow-specific modern-v0.15.2 physical gates above passed. Promotion
+still requires candidate-bound schema-2 evidence for every board in the same
+multi-board release matrix; this transcript does not substitute for the exact-
+candidate LilyGO result or protected publication.

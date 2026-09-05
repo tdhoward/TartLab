@@ -1,6 +1,7 @@
 # Elecrow DLE06235B bring-up results
 
-Status: reproducible firmware candidate; not yet a TartLab board qualification
+Status: exact-board `modern-v0.15.2` physical gates passed; protected
+multi-board promotion pending
 
 Test date: 2026-08-29
 
@@ -18,10 +19,12 @@ board selector and platform adapter. A 480 x 320 software-rotated landscape
 proof also works, but portrait is the selected board mode; landscape remains
 experimental and is not part of this bench acceptance.
 
-The descriptor has advanced to `candidate` because the adapter and exact
-firmware are now reproducible. This lifecycle state does not claim supported
-hardware: authenticated provisioning and the full physical release checklist
-remain open.
+The descriptor remains `candidate` because support is granted only by a
+protected release promotion. Authenticated clean provisioning, the complete
+Elecrow physical checklist, OTA/recovery containment, and provisioning
+activation interruption/resume have now passed on signed `modern-v0.15.2`.
+The release still needs exact-candidate evidence for every other board in its
+matrix before the descriptor can claim supported hardware.
 
 No factory backup was retained because the board was new and the owner
 explicitly authorized erasing its contents.
@@ -642,16 +645,16 @@ single-board bridge release is required.
    alignment rule without caller-buffer overread.
 4. **Completed for bench use:** add the platform factory and protected board
    selector while keeping hardware details behind `tartlabutils.platform`.
-5. **Partially completed:** the known fixed-width progress bar is now
-   geometry-aware. The normal startup/network/progress view, app-error
-   indicator, full-panel fatal-error view, and completion view pass portrait
-   owner review. Recovery-specific pages and any remaining touch targets still
-   require review.
+5. **Completed for signed `modern-v0.15.2`:** the progress view is
+   geometry-aware. Startup/network/progress, app-error, launcher, chooser, and
+   confirmation views pass portrait owner review. The display-independent
+   recovery page loaded in a browser with redacted status and returned through
+   Retry normal boot.
 6. **Completed for the current bench policy:** configure no built-in IDE
    button rather than assigning GPIO0, GPIO45, or GPIO46 without qualification.
    This means the default button policy always selects IDE mode. A future
    external-button or buttonless app-mode control remains a product decision.
-7. **Partially completed:** the current clean filesystem reached a healthy IDE
+7. **Completed for signed `modern-v0.15.2`:** the clean filesystem reached a healthy IDE
    server; temporary-AP setup, Wi-Fi station/LAN access, and browser file
    load/edit/save/run were owner-confirmed. Selecting an app also worked, and
    the touchscreen launcher now booted a temporary selected direct-surface app
@@ -666,26 +669,26 @@ single-board bridge release is required.
    dropped simulation time. Three isolated 50 ms work overruns remain recorded
    rather than being hidden by a hard real-time claim. Testris also passes its
    launcher, APP health, complete portrait scene, animation, and touch-control
-   review. Still review the other representative examples and their launcher
-   transitions.
+   review. The exact candidate repeated the launcher, chooser, browser IDE,
+   distinctive direct-surface app, touch-region, brightness, injected-error,
+   and reset paths required by the modern touchscreen checklist.
 
 Milestone A means TartLab runs end to end on the bench. It does not authorize
 publishing or provisioning the board as a supported target.
 
 ### Milestone B: reproducible supported target
 
-8. **Completed for the current bench payload:** a capability-driven RAM-only
+8. **Completed for signed `modern-v0.15.2`:** a capability-driven RAM-only
    probe completed three concurrent Wi-Fi scans and 75 partial display writes
    without a scan, transfer, ownership, or network-state failure. The same
    probe recorded 7,572,080 bytes as its minimum free heap, 9,707,520 bytes of
    free filesystem space, and a conservative 1,215,792-byte lower-bound app-
-   partition margin. An earlier capability-driven RAM-only probe completed 100
-   LVGL/direct-surface ownership transitions with final UI ownership, no
-   pending transfer, no runtime failure, and a settled heap. A paced ten-cycle
-   owner review also passed without a stale or corrupt frame. The unexplained
-   I2C `0x28` responder is isolated to the panel assembly and explicitly
-   quarantined from production access. Repeat the measurements on the exact
-   reproducible candidate; current results do not promote this bench payload.
+   partition margin. The exact candidate completed 100 LVGL/direct-surface
+   ownership transitions and 25 construction/teardown cycles with final UI
+   ownership, no pending transfer, no runtime failure, and settled heap. It
+   also completed 20 Wi-Fi scans and 80 display frames without error. The
+   unexplained I2C `0x28` responder remains isolated to the panel assembly and
+   explicitly quarantined from production access.
 9. **Completed for the current product contract:** the existing first-active-
    contact behavior is the supported single-pointer contract. The driver reads
    every hardware contact record for acknowledgement but does not expose
@@ -706,17 +709,21 @@ publishing or provisioning the board as a supported target.
     it then writes the board-specific selector and rejects incompatible images.
     Physical use of this path remains part of item 12. Migration from an unknown
     Elecrow factory filesystem is not claimed.
-12. Run the repository Tier 0-2 checks and board-specific physical
-    qualification: clean adult provisioning, interrupted provisioning and
-    resume, normal and interrupted OTA, display-independent recovery,
-    rollback, protected-state preservation, release-feed isolation, browser
-    and API regression checks, and future-update availability. The exact
-    multi-board candidate must qualify every board it contains; no earlier
-    single-board bridge candidate is required.
-13. Create and promote a separate sanitized DLE06235B qualification record
-    bound to the exact firmware hash, board identity, release candidate, and
-    durable evidence. Only this milestone permits listing the board as a
-    supported TartLab target.
+12. **Completed for the Elecrow side of signed `modern-v0.15.2`:** all 407 host
+    tests passed. Authenticated clean provisioning, the complete touchscreen
+    smoke, normal and corrupted OTA, real power loss during normal download,
+    real power loss after a recovery package was durably completed, offline
+    resume, redacted recovery access, protected-state checks, inventory
+    comparison, feed isolation, and interruption/resume at atomic boot-file
+    activation all passed. Direct legacy migration is deliberately not
+    applicable to this board; the approved disposition is authenticated clean
+    provisioning with reviewed manual restore. The sanitized transcript is
+    [`tests/evidence/modern-v0.15.2-elecrow-physical-transcript.txt`](../../tests/evidence/modern-v0.15.2-elecrow-physical-transcript.txt).
+13. **Pending multi-board release completion:** combine this Elecrow result
+    with exact-candidate evidence for every other board in the same release,
+    validate the schema-2 aggregate, and promote it through the protected
+    workflow. Only that milestone permits changing the descriptor to
+    `qualified` and listing the board as a supported TartLab target.
 
 Raw serial logs, firmware downloads, and vendor resource archives remain under
 the ignored `hardware_test_artifacts` directory. They may contain workstation

@@ -4,9 +4,9 @@ Release: `@VERSION@`
 
 Runtime profile: `lvgl-modern`
 
-Firmware asset: `@FIRMWARE_ASSET@`
+Default legacy-migration firmware asset: `@FIRMWARE_ASSET@`
 
-Firmware SHA-256: `@FIRMWARE_SHA256@`
+Default legacy-migration firmware SHA-256: `@FIRMWARE_SHA256@`
 
 Flash offset: `@FLASH_OFFSET@`
 
@@ -30,9 +30,11 @@ below.
 2. Verify every asset and its single signed qualification or release bundle
    with the purpose-specific command documented in
    `tests/PHASE6_RELEASE_SECURITY.md` before connecting a device.
-3. Confirm the target is the qualified LilyGO T-Display-S3 Pro checkpoint with
-   16 MiB flash. Install `esptool` 5.x and `mpremote`, and identify its explicit
-   serial port.
+3. Select the exact board ID from authenticated `compatibility.json`, verify
+   its firmware identity and required flash/PSRAM, and identify its explicit
+   serial port. Direct legacy migration is approved only for the qualified
+   LilyGO T-Display-S3 Pro checkpoint; other listed boards use clean
+   provisioning.
 4. Choose a durable private workspace outside the TartLab checkout and any
    synchronized folder. Migration copies `/device`, `/state`, legacy settings,
    repositories, logs, `/files/user`, the generated application selection, and
@@ -55,7 +57,10 @@ out-of-window source before erase. Start the authenticated migration with:
 python tools/provision_modern.py --release path/to/release --mode migrate --board lilygo_t_display_s3_pro --workspace path/to/private-workspace --port SERIAL_PORT --source-ref refs/tags/@VERSION@ --execute --confirm-erase
 ```
 
-Use `--mode clean` instead only for clean provisioning. Before erasure, the
+Use `--mode clean` for a new target or any board without an approved direct
+migration source. In particular, migration from an unknown Elecrow factory
+filesystem is not claimed; select its exact board ID and use authenticated
+clean provisioning. Before erasure, the
 tool verifies every signed release asset, captures the protected backup, and
 requires the immutable bootloader, partition-table, and factory-application
 readback regions to match the exact legacy profile. Mutable NVS/PHY sectors are
@@ -98,6 +103,7 @@ The checked-in profile records the latest authorized publication and the
 protected `modern-release` environment remains the authority for each later
 promotion.
 
-The firmware is a combined ESP32 image for offset `@FLASH_OFFSET@`. Firmware
-installation remains an adult provisioning operation and is never delegated to
-the filesystem-only browser updater.
+Each `compatibility.json` board entry binds its own combined ESP32 image,
+SHA-256, and flash offset. The default legacy-migration image named above uses
+offset `@FLASH_OFFSET@`. Firmware installation remains an adult provisioning
+operation and is never delegated to the filesystem-only browser updater.

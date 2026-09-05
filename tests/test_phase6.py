@@ -622,6 +622,54 @@ class ModernQualificationTests(unittest.TestCase):
                 evidence, tag="modern-v1.2.3",
                 candidate_sha256=self.candidate_sha256)
 
+    def test_schema2_uses_policy_disposition_for_non_migratable_board(self):
+        legacy = self._evidence()
+        artifacts = dict(legacy["artifacts"])
+        artifacts["migration_disposition_sha256"] = artifacts.pop(
+            "migration_provisioning_journal_sha256")
+        artifacts["migration_disposition_sha256"] = sha256_source_file(
+            ROOT / "profiles/modern-support-window.json")
+        elecrow = json.loads((
+            ROOT / "boards/elecrow_dle06235b/board.json").read_text())
+        evidence = {
+            "schema": 2,
+            "profile": legacy["profile"],
+            "version": legacy["version"],
+            "target_repository": legacy["target_repository"],
+            "candidate_checksums_sha256": legacy[
+                "candidate_checksums_sha256"],
+            "operator": legacy["operator"],
+            "tested_at_utc": legacy["tested_at_utc"],
+            "boards": {
+                "elecrow_dle06235b": {
+                    "firmware_sha256": elecrow["firmware"]["sha256"],
+                    "board": {
+                        "model": elecrow["name"],
+                        "pcb_revision": elecrow["hardware"]["revisions"][0],
+                        "chip_revision": "0.2",
+                        "flash_size_bytes": elecrow["hardware"][
+                            "flash_size_bytes"],
+                        "psram_size_bytes": elecrow["hardware"][
+                            "psram_size_bytes"],
+                    },
+                    "artifacts": artifacts,
+                    "gates": legacy["gates"],
+                },
+            },
+        }
+        result = validate_modern_qualification(
+            evidence, tag="modern-v1.2.3",
+            candidate_sha256=self.candidate_sha256)
+        self.assertEqual(result["boards"], {
+            "elecrow_dle06235b": elecrow["firmware"]["sha256"],
+        })
+        evidence["boards"]["elecrow_dle06235b"]["artifacts"][
+            "migration_disposition_sha256"] = "f" * 64
+        with self.assertRaisesRegex(ValueError, "disposition differs"):
+            validate_modern_qualification(
+                evidence, tag="modern-v1.2.3",
+                candidate_sha256=self.candidate_sha256)
+
     def test_qualification_rejects_missing_or_failed_gate(self):
         missing = self._evidence()
         missing["gates"].pop("recovery")

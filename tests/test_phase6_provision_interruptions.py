@@ -2,11 +2,14 @@
 
 from pathlib import Path
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
+import qualify_provision_interruptions as helper  # noqa: E402
 from qualify_provision_interruptions import (  # noqa: E402
     ATTESTATION_RECEIPT, CHECKPOINTS, attestation_identity,
     command_checkpoint, next_receipt_path, verify_cached_attestation,
@@ -14,6 +17,44 @@ from qualify_provision_interruptions import (  # noqa: E402
 
 
 class ProvisionInterruptionHelperTests(unittest.TestCase):
+    @patch("qualify_provision_interruptions._verify_attestations")
+    @patch("qualify_provision_interruptions.provision")
+    @patch("qualify_provision_interruptions.InterruptingTransport")
+    def test_physical_helper_requires_and_propagates_board_identity(
+            self, transport_class, provision, unused_verify):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            release = root / "release"
+            workspace = root / "workspace"
+            release.mkdir()
+            workspace.mkdir()
+            (release / "checksums.json").write_text("{}\n")
+            (release / "qualification-attestation.sigstore.json").write_text(
+                "bundle\n")
+            transport = transport_class.return_value
+            transport.receipt = {"schema": 1}
+            provision.side_effect = helper.IntendedInterruption("expected")
+            arguments = [
+                "qualify_provision_interruptions.py",
+                "--release", str(release),
+                "--workspace", str(workspace),
+                "--port", "COM18",
+                "--source-ref", "refs/tags/modern-v1",
+                "--board", "elecrow_dle06235b",
+                "--checkpoint", "activate-boot-files",
+                "--execute", "--confirm-interrupt",
+            ]
+            with patch.object(sys, "argv", arguments), patch("builtins.print"):
+                helper.main()
+            self.assertEqual(
+                provision.call_args.kwargs["board_id"],
+                "elecrow_dle06235b")
+            self.assertIs(
+                provision.call_args.kwargs["qualification_candidate"], True)
+            receipt = helper.json.loads(
+                (workspace / "qualification-interruption.json").read_text())
+            self.assertEqual(receipt["board_id"], "elecrow_dle06235b")
+
     def test_checkpoint_inventory_covers_every_top_level_upload(self):
         self.assertEqual(
             [name for name in CHECKPOINTS if name.startswith("upload-")],

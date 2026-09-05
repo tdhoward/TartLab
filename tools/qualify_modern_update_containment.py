@@ -29,6 +29,7 @@ STAGE_ROOT = "/qualification/modern-update"
 INTERRUPT_PACKAGE = "pydevices.tar"
 CASES = ("corrupt-download", "interrupt-download", "interrupt-recovery")
 ATTESTATION_RECEIPT = "modern-containment-attestation.json"
+OPERATOR_POWER_LOSS_TIMEOUT = 600
 
 
 def _workspace(path: Path) -> Path:
@@ -225,17 +226,31 @@ async def local_download(url, target):
                 from tartlabutils.platform import get_platform
                 platform = get_platform()
                 surface = platform.enter_game_mode()
-                stripe_height = 24
-                for y in range(0, surface.height, stripe_height):
-                    height = min(stripe_height, surface.height - y)
-                    buffer = surface.allocate_buffer(surface.width, height)
+                if getattr(surface, 'requires_full_frame_seed', False):
+                    buffer = bytearray(
+                        surface.width * surface.height *
+                        surface.bytes_per_pixel)
                     for offset in range(0, len(buffer), 2):
                         buffer[offset] = 0xff
                         buffer[offset + 1] = 0xff
-                    surface.write(buffer, 0, y, surface.width, height)
-                    surface.free_buffer(buffer)
+                    surface.write(
+                        buffer, 0, 0, surface.width, surface.height)
+                else:
+                    stripe_height = 24
+                    for y in range(0, surface.height, stripe_height):
+                        height = min(stripe_height, surface.height - y)
+                        buffer = surface.allocate_buffer(
+                            surface.width, height)
+                        for offset in range(0, len(buffer), 2):
+                            buffer[offset] = 0xff
+                            buffer[offset + 1] = 0xff
+                        surface.write(
+                            buffer, 0, y, surface.width, height)
+                        surface.free_buffer(buffer)
                 print('CONTAIN_POWER_SIGNAL=interrupt-download')
                 signaled = True
+                while True:
+                    utime.sleep_ms(1000)
             if name == INTERRUPT:
                 utime.sleep_ms(25)
     return True
@@ -251,7 +266,7 @@ asyncio.run(updater.update_packages(target, lambda message, step, total: None))
 
 def interrupt_recovery_code(plan: dict[str, Any], package: str) -> str:
     return r'''
-import os, sys, ujson
+import os, sys, ujson, utime
 if '/recovery' not in sys.path:
     sys.path.insert(0, '/recovery')
 import recovery_update
@@ -280,22 +295,32 @@ for item in manifest:
         raise ValueError('Staged package hash mismatch: ' + item['file_name'])
     recovery_update._tar_members(path, item['target'], False)
 original_members = recovery_update._tar_members
-def signaled_members(path, target, extract):
+def signaled_members(path, target, extract=False, member_prefix=None):
     if extract and path.endswith('/' + INTERRUPT):
         from tartlabutils.platform import get_platform
         platform = get_platform()
         surface = platform.enter_game_mode()
-        stripe_height = 24
-        for y in range(0, surface.height, stripe_height):
-            height = min(stripe_height, surface.height - y)
-            buffer = surface.allocate_buffer(surface.width, height)
+        if getattr(surface, 'requires_full_frame_seed', False):
+            buffer = bytearray(
+                surface.width * surface.height * surface.bytes_per_pixel)
             for offset in range(0, len(buffer), 2):
                 buffer[offset] = 0xff
                 buffer[offset + 1] = 0xff
-            surface.write(buffer, 0, y, surface.width, height)
-            surface.free_buffer(buffer)
+            surface.write(buffer, 0, 0, surface.width, surface.height)
+        else:
+            stripe_height = 24
+            for y in range(0, surface.height, stripe_height):
+                height = min(stripe_height, surface.height - y)
+                buffer = surface.allocate_buffer(surface.width, height)
+                for offset in range(0, len(buffer), 2):
+                    buffer[offset] = 0xff
+                    buffer[offset + 1] = 0xff
+                surface.write(buffer, 0, y, surface.width, height)
+                surface.free_buffer(buffer)
         print('CONTAIN_POWER_SIGNAL=interrupt-recovery')
-    return original_members(path, target, extract)
+        while True:
+            utime.sleep_ms(1000)
+    return original_members(path, target, extract, member_prefix)
 recovery_update._tar_members = signaled_members
 recovery_update._install_verified_packages(
     tartlab, VERSION, manifest, lambda message: print('CONTAIN_RECOVERY=' + message))
@@ -322,19 +347,40 @@ def _run_until_power_loss(port: str, code: str, signal: bytes,
             repl.serial.write(payload[offset:offset + 128])
             time.sleep(0.01)
         repl.serial.write(b"\x04")
-        captured = repl._read_until(signal, timeout)
+        deadline = time.monotonic() + timeout
+        while signal not in captured:
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    "Timed out waiting for %r; received %r" %
+                    (signal, bytes(captured[-200:])))
+            waiting = repl.serial.in_waiting
+            chunk = repl.serial.read(waiting or 1)
+            if chunk:
+                captured += chunk
+                if b"\x04>" in captured and signal not in captured:
+                    raise RuntimeError(
+                        "Device command ended before power signal: " +
+                        captured[-500:].decode("utf-8", "replace"))
         print(captured.decode("utf-8", "replace"), end="", flush=True)
         print("Remove USB power now; keep it disconnected for five seconds.",
               flush=True)
-        deadline = time.monotonic() + timeout
+        deadline = time.monotonic() + OPERATOR_POWER_LOSS_TIMEOUT
+        disconnected_at = None
         while time.monotonic() < deadline:
             available = {item.device for item in list_ports.comports()}
-            if port not in available:
-                return captured.decode("utf-8", "replace")
-            try:
-                repl.serial.read(repl.serial.in_waiting or 1)
-            except (OSError, serial.SerialException):
-                return captured.decode("utf-8", "replace")
+            disconnected = port not in available
+            if not disconnected:
+                try:
+                    repl.serial.read(repl.serial.in_waiting or 1)
+                except (OSError, serial.SerialException):
+                    disconnected = True
+            if disconnected:
+                if disconnected_at is None:
+                    disconnected_at = time.monotonic()
+                elif time.monotonic() - disconnected_at >= 2:
+                    return captured.decode("utf-8", "replace")
+            else:
+                disconnected_at = None
             time.sleep(0.1)
     finally:
         repl.close()

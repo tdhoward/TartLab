@@ -11,7 +11,8 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from qualify_modern_update_containment import (  # noqa: E402
-    ATTESTATION_RECEIPT, CASES, INTERRUPT_PACKAGE, _asset_records, _receipt_path,
+    ATTESTATION_RECEIPT, CASES, INTERRUPT_PACKAGE,
+    OPERATOR_POWER_LOSS_TIMEOUT, _asset_records, _receipt_path,
     corrupt_download_code, interrupt_download_code,
     interrupt_recovery_code, release_plan, verify_cached_plan,
 )
@@ -52,10 +53,15 @@ class ModernUpdateContainmentHelperTests(unittest.TestCase):
     def test_download_interrupt_signals_while_copy_is_in_progress(self):
         code = interrupt_download_code(self.plan, INTERRUPT_PACKAGE)
         signal = code.index("CONTAIN_POWER_SIGNAL=interrupt-download")
+        hold = code.index("utime.sleep_ms(1000)")
         delay = code.index("utime.sleep_ms(25)")
-        self.assertLess(signal, delay)
+        self.assertLess(signal, hold)
+        self.assertLess(hold, delay)
         self.assertIn("from tartlabutils.platform import get_platform", code)
         self.assertIn("platform.enter_game_mode()", code)
+        self.assertIn("requires_full_frame_seed", code)
+        self.assertIn("buffer = bytearray(", code)
+        self.assertIn("surface.width, surface.height", code)
         self.assertIn("stripe_height = 24", code)
         self.assertIn("updater.update_packages", code)
 
@@ -63,12 +69,24 @@ class ModernUpdateContainmentHelperTests(unittest.TestCase):
         code = interrupt_recovery_code(self.plan, INTERRUPT_PACKAGE)
         self.assertIn("_install_verified_packages", code)
         self.assertIn("CONTAIN_POWER_SIGNAL=interrupt-recovery", code)
+        self.assertIn("utime.sleep_ms(1000)", code)
+        self.assertIn(
+            "def signaled_members(path, target, extract=False, "
+            "member_prefix=None)", code)
+        self.assertIn(
+            "original_members(path, target, extract, member_prefix)", code)
         self.assertIn("from tartlabutils.platform import get_platform", code)
         self.assertIn("platform.enter_game_mode()", code)
+        self.assertIn("requires_full_frame_seed", code)
+        self.assertIn("buffer = bytearray(", code)
+        self.assertIn("surface.width, surface.height", code)
         self.assertIn("stripe_height = 24", code)
         self.assertIn("TEMP = recovery_update.TEMP_DIR", code)
         self.assertIn("open(TEMP + '/' + name, 'wb')", code)
         self.assertIn("_sha256(path) != item['sha256']", code)
+
+    def test_power_loss_wait_allows_for_operator_response(self):
+        self.assertEqual(OPERATOR_POWER_LOSS_TIMEOUT, 600)
 
     def test_receipts_never_replace_prior_evidence(self):
         with tempfile.TemporaryDirectory() as temporary:

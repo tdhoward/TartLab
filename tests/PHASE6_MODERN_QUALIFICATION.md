@@ -16,9 +16,9 @@ The legacy updater contract remains unchanged.
 ## Promotion evidence contract
 
 `tools/check_modern_qualification.py` validates a sanitized, candidate-bound
-schema-1 JSON summary. It binds the modern tag, target repository, candidate
-checksums, firmware, board, support-window policy, operator/date, artifact
-hashes, and these six passed gates:
+schema-1 single-board summary or schema-2 aggregate. It binds the modern tag,
+target repository, candidate checksums, each firmware and board, support-window
+policy, operator/date, artifact hashes, and these six passed gates:
 
 1. adult provisioning and migration;
 2. profile-specific hardware;
@@ -31,6 +31,13 @@ Each gate must reference durable sanitized evidence. Credentials, serial logs,
 student files, private backups, and protected-state values do not belong in the
 summary. Missing, pending, unreachable, or mismatched evidence fails before
 signing or publication.
+
+For the default LilyGO board, artifacts include the direct-migration journal.
+A schema-2 result for another board must instead include
+`migration_disposition_sha256`, equal to the checked-in support-window policy
+that excludes it from direct migration. This records clean-provision-only as an
+explicit policy result and prevents a board with no approved source profile
+from inventing a migration journal merely to satisfy promotion syntax.
 
 ## Qualified candidate and physical results
 
