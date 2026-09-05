@@ -437,6 +437,9 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
             self.position = None
             self.callback = None
             self.deleted = False
+            self.scroll_dir = None
+            self.padding = None
+            self.border_width = None
 
         def set_style_bg_color(self, *unused):
             pass
@@ -462,6 +465,15 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
         def set_pos(self, x, y):
             self.position = (x, y)
 
+        def set_scroll_dir(self, direction):
+            self.scroll_dir = direction
+
+        def set_style_pad_all(self, padding, selector):
+            self.padding = (padding, selector)
+
+        def set_style_border_width(self, width, selector):
+            self.border_width = (width, selector)
+
         def add_event_cb(self, callback, *unused):
             self.callback = callback
 
@@ -475,6 +487,7 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
         ALIGN = types.SimpleNamespace(TOP_MID=1)
         EVENT = types.SimpleNamespace(CLICKED=2)
         TEXT_ALIGN = types.SimpleNamespace(CENTER=3)
+        DIR = types.SimpleNamespace(VER=4)
 
         def __init__(self):
             self.active = ModernTouchscreenLauncherTests.Widget()
@@ -622,6 +635,25 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
             module.browser_entries(
                 "../escape", lambda path: listing[path],
                 lambda path: kinds.get(path, 0))
+
+    def test_browser_list_scrolls_vertically_without_horizontal_overflow(self):
+        module = self.load_launcher()
+        lvgl = self.LVGL()
+        launcher = module.ModernTouchscreenLauncher(
+            lvgl, 320, 480, "hello.py",
+            list_directory=lambda unused: ["hello.py"],
+            get_path_kind=lambda unused: 1)
+
+        launcher.show()
+        self.find_button(lvgl, "Choose app").click()
+
+        container = lvgl.active.children[-1]
+        self.assertEqual(container.padding, (6, 0))
+        self.assertEqual(container.border_width, (1, 0))
+        self.assertEqual(container.scroll_dir, lvgl.DIR.VER)
+        self.assertEqual(container.children[0].position, (0, 0))
+        self.assertEqual(container.children[0].size, (286, 48))
+        launcher.close()
 
     def test_file_confirmation_cancel_recheck_and_commit_workflow(self):
         module = self.load_launcher()

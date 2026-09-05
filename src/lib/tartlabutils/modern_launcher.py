@@ -287,16 +287,22 @@ class ModernTouchscreenLauncher:
 
         list_y = margin + 54
         list_height = max(48, self._height - list_y - margin)
+        panel_padding = 6
+        panel_border = 1
         container = self._lv.obj(self._screen)
         self._set_position(
             container, margin, list_y, self._width - margin * 2, list_height)
+        container.set_style_pad_all(panel_padding, 0)
+        container.set_style_border_width(panel_border, 0)
+        container.set_scroll_dir(self._lv.DIR.VER)
         try:
             folders, files = browser_entries(
                 folder, self._list_directory, self._get_path_kind,
                 self._user_root, self._validate_app)
         except OSError:
             folders, files = (), ()
-        row_width = self._width - margin * 2 - 12
+        row_width = self._width - margin * 2 - 2 * (
+            panel_padding + panel_border)
         row_y = 0
         for name, relative in folders:
             self._browser_button(
