@@ -232,6 +232,17 @@ native transfer. The private Viper emitters now provide a cross-buffer strided
 row copy used by the reusable ST77922 adapter. Its representative three-entity
 Racer surface-write median fell from 5.59-5.88 seconds to 15-17 ms.
 
+The Elecrow follow-up also added optional safe-presentation synchronization at
+the same abstraction boundary. A controller adapter may attach a qualified
+vertical-blank edge to a direct surface; `DirectCanvas` exposes capability
+discovery and a bounded wait with an immediate fallback elsewhere. The Elecrow
+payload alone contains GPIO42 and its polarity, the reusable ST77922 adapter
+alone contains TE commands, and Racer waits once between rebuilding its RAM
+damage and sending the batch. A COM18 probe observed 60 edges per second and a
+preliminary bounded Racer matrix completed every requested wait without missing
+its 50 ms work deadline. The selected app then reached healthy APP mode and its
+held motion review was reported as nice and smooth.
+
 ### Independent track: capability-driven scroll presentation
 
 Some panel controllers can change the scanout start address without

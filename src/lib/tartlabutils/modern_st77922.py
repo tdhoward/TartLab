@@ -1,12 +1,14 @@
 """Reusable ST77922 transport and ownership adapter for modern boards."""
 
 from tartlabutils.modern import (
+    DisplayFrameSync,
     DirectRGB565Surface,
     GAME_OWNER,
     ModernDisplayController,
     ModernPlatform,
     UI_OWNER,
 )
+from tartlabutils.board import pin_definition
 
 try:
     from tartlabutils._modern_emitters import (
@@ -18,6 +20,9 @@ except ImportError:
 
 _WRITE_COLOR = 0x32
 _RAMWR = 0x2C
+_TEOFF = 0x34
+_TEON = 0x35
+_TE_VBLANK_ONLY = b"\x00"
 _COLUMN_ALIGNMENT = 4
 
 
@@ -49,12 +54,13 @@ class ST77922DirectRGB565Surface(DirectRGB565Surface):
 
     def __init__(self, controller, bus, panel, width, height, transfer_rows,
                  allocation_flags, buffer_allocator, buffer_free,
-                 shadow_flags):
+                 shadow_flags, frame_sync=None):
         super().__init__(
             controller, bus, panel, width, height,
             allocation_flags=allocation_flags,
             buffer_allocator=buffer_allocator,
             buffer_free=buffer_free,
+            frame_sync=frame_sync,
         )
         self._shadow = buffer_allocator(
             width * height * self.bytes_per_pixel, shadow_flags)
@@ -173,8 +179,9 @@ class ST77922DisplayController(ModernDisplayController):
     """Modern ownership controller with an ISR-safe completion boundary."""
 
     def __init__(self, bus, panel, lv_display, lvgl, task_handler,
-                 input_device, allocation_flags, buffer_allocator,
-                 buffer_free, shadow_flags, width, height, transfer_rows):
+                  input_device, allocation_flags, buffer_allocator,
+                  buffer_free, shadow_flags, width, height, transfer_rows,
+                  frame_sync=None):
         self._callback_failed = False
         super().__init__(
             bus, panel, lv_display, lvgl, task_handler, input_device,
@@ -185,7 +192,8 @@ class ST77922DisplayController(ModernDisplayController):
         )
         self.surface = ST77922DirectRGB565Surface(
             self, bus, panel, width, height, transfer_rows,
-            allocation_flags, buffer_allocator, buffer_free, shadow_flags)
+            allocation_flags, buffer_allocator, buffer_free, shadow_flags,
+            frame_sync)
 
     def _transfer_complete(self):
         self._transfer_pending = False
@@ -208,9 +216,14 @@ class ST77922DisplayController(ModernDisplayController):
     def acquire_game(self, timeout_ms=1000):
         entering = self._owner != GAME_OWNER
         surface = ModernDisplayController.acquire_game(self, timeout_ms)
+        surface.enable_frame_sync()
         if entering:
             surface.invalidate_shadow()
         return surface
+
+    def acquire_ui(self, timeout_ms=1000):
+        ModernDisplayController.acquire_ui(self, timeout_ms)
+        self.surface.disable_frame_sync()
 
 
 class Platform(ModernPlatform):
@@ -223,9 +236,28 @@ class Platform(ModernPlatform):
 
 def create_controller(board, bus, panel, lv_display, lvgl, handler, pointer,
                       flags, lcd_bus):
+    frame_sync = _create_frame_sync(board, panel)
     width, height = board["display"]["logical_size"]
     return ST77922DisplayController(
         bus, panel, lv_display, lvgl, handler, pointer, flags,
         lcd_bus.allocate_buffer, lcd_bus.free_buffer,
         lcd_bus.MEMORY_SPIRAM, width, height,
-        board["display"]["transfer_rows"])
+        board["display"]["transfer_rows"], frame_sync)
+
+
+def _create_frame_sync(board, panel, pin_factory=None):
+    definition = pin_definition(board, "DISPLAY_SYNC")
+    if definition is None:
+        return None
+    if pin_factory is None:
+        from machine import Pin
+        pin_factory = Pin
+
+    # The vendor table leaves TE in V+H mode. Direct presentation needs one
+    # safe edge per frame, so the reusable controller adapter selects V-blank.
+    panel.set_params(_TEOFF, None)
+    panel.set_params(_TEON, _TE_VBLANK_ONLY)
+    pin = pin_factory(
+        definition["number"], getattr(pin_factory, "IN", 0))
+    return DisplayFrameSync(
+        pin, definition.get("active_high", True), enabled=False)

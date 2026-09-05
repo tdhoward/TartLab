@@ -289,6 +289,35 @@ temporary app and any fixture high-score file were then removed, selection was
 restored to `hello.py`, and an untouched launcher timeout again reached
 `HEALTHY mode=IDE`.
 
+## Frame-sync follow-up (2026-09-04)
+
+The ST77922 has a Tearing Effect output intended to synchronize host writes
+with panel scanout. The DLE06235B schematic routes LCD FPC pin 8 (`LCD_TE`) to
+the ESP32-S3 MTMS pad, which is GPIO42. The vendor initialization table already
+enabled TE in combined vertical-and-horizontal mode. A RAM-only COM18 probe
+disabled that output, selected vertical-blank-only mode, and observed 60 rising
+edges in one second. The signal was low while disabled; pulse measurements had
+3,234 us median high time and 13,092 us median low time.
+
+The board payload now declares GPIO42 as an active-high `DISPLAY_SYNC` pin. The
+reusable ST77922 adapter owns the `TEOFF`/`TEON` command sequence and changes the
+panel to vertical-blank-only mode. Shared display code converts the rising edge
+into a bounded, optional `frame_sync` capability and detaches the interrupt on
+platform teardown. `DirectCanvas` exposes the same capability with an immediate
+unsupported fallback, so applications contain no board or controller identity.
+The GPIO interrupt is enabled only while direct rendering owns the display.
+
+Racer now rebuilds its complete damage set in RAM, waits once for the safe phase,
+and then submits the presentation batch. Scanout and dirty-region animators use
+the same one-wait boundary. A live runtime probe completed 12 of 12 waits and
+reported the expected `vertical_blank` capability. A preliminary three-sample
+normal-workload matrix recorded one successful wait per frame, 5-7 ms typical
+waits with a 14.8 ms maximum, 32-33 ms median total work, and no 50 ms work
+deadline misses. This small sample proves integration and bounded timing; it
+does not replace the full tail qualification. The hash-verified selected Racer
+then reached `HEALTHY mode=APP`; during the requested tearing review, the owner
+reported that its motion looked nice and smooth.
+
 ## Brightness follow-up (2026-09-04)
 
 The first complete bench payload left GPIO41 in the display framework's
@@ -372,7 +401,8 @@ single-board bridge release is required.
    including repeated dim/wake and teardown restoration. Racer now passes its
    launcher transition, APP health, portrait rendering, and steering review;
    its initial multi-second direct-write bottleneck is fixed, though the
-   20 FPS tail qualification remains. Testris also passes its launcher, APP
+   optional frame-sync path is live and its held smooth-motion review passes.
+   Final 20 FPS tail qualification remains. Testris also passes its launcher, APP
    health, complete portrait scene, animation, and touch-control review. Still
    review the other representative examples and their launcher transitions.
 

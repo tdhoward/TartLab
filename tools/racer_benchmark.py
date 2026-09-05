@@ -113,6 +113,9 @@ class CountingSurface:
         self.write_us = 0
         self.scroll_commands = 0
         self.scroll_us = 0
+        self.frame_sync_waits = 0
+        self.frame_sync_successes = 0
+        self.frame_sync_us = 0
 
     @property
     def shadow_valid(self):
@@ -160,12 +163,34 @@ class CountingSurface:
             self.scroll_commands += 1
         return accelerated
 
+    def frame_sync_capabilities(self):
+        capabilities = getattr(self.surface, 'frame_sync_capabilities', None)
+        if capabilities is None:
+            return {'available': False, 'phase': None}
+        return capabilities()
+
+    def wait_for_frame_sync(self, timeout_ms=30):
+        wait = getattr(self.surface, 'wait_for_frame_sync', None)
+        if wait is None:
+            return False
+        started = ticks()
+        try:
+            success = wait(timeout_ms)
+        finally:
+            self.frame_sync_us += elapsed(started)
+            self.frame_sync_waits += 1
+        self.frame_sync_successes += int(success)
+        return success
+
     def reset_counts(self):
         self.sent_bytes = 0
         self.transactions = 0
         self.write_us = 0
         self.scroll_commands = 0
         self.scroll_us = 0
+        self.frame_sync_waits = 0
+        self.frame_sync_successes = 0
+        self.frame_sync_us = 0
 
 platform = get_platform()
 base_surface = platform.enter_game_mode()
@@ -284,6 +309,9 @@ try:
                     transaction_values = []
                     scroll_command_values = []
                     scroll_values = []
+                    frame_sync_wait_values = []
+                    frame_sync_success_values = []
+                    frame_sync_values = []
                     update_count_values = []
                     dirty_pixel_values = []
                     dirty_region_values = []
@@ -314,13 +342,19 @@ try:
                         render_values.append(render_us)
                         write_values.append(surface.write_us)
                         cpu_render_values.append(
-                            max(0, render_us - surface.write_us))
+                            max(0, render_us - surface.write_us -
+                                surface.frame_sync_us))
                         work_values.append(work_us)
                         byte_values.append(surface.sent_bytes)
                         transaction_values.append(surface.transactions)
                         scroll_command_values.append(
                             surface.scroll_commands)
                         scroll_values.append(surface.scroll_us)
+                        frame_sync_wait_values.append(
+                            surface.frame_sync_waits)
+                        frame_sync_success_values.append(
+                            surface.frame_sync_successes)
+                        frame_sync_values.append(surface.frame_sync_us)
                         update_count_values.append(updates)
 
                         clock.pace()
@@ -349,6 +383,11 @@ try:
                             'scroll_commands': summary(
                                 scroll_command_values),
                             'scroll_command_us': summary(scroll_values),
+                            'frame_sync_waits': summary(
+                                frame_sync_wait_values),
+                            'frame_sync_successes': summary(
+                                frame_sync_success_values),
+                            'frame_sync_us': summary(frame_sync_values),
                             'updates': summary(update_count_values),
                             'dirty_pixels': summary(dirty_pixel_values),
                             'dirty_regions': summary(dirty_region_values),
@@ -365,6 +404,7 @@ try:
         'strategies': strategies,
         'scanout_capabilities': canvas.scroll_capabilities(),
         'scanout_supported': scanout_supported,
+        'frame_sync_capabilities': canvas.frame_sync_capabilities(),
         'samples_per_workload': SAMPLES,
         'entity_counts': ENTITY_COUNTS,
         'entity_profiles': ENTITY_PROFILES,

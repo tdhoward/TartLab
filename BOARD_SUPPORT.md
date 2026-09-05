@@ -83,8 +83,11 @@ Every modern board adapter exposes the same capabilities:
 - touch or pointer input when present;
 - brightness and delay;
 - IDE-button behavior, including an explicit no-button policy if necessary;
-- an `RGB565_BE` direct dirty-rectangle surface; and
-- exclusive, completion-signaled ownership between LVGL and direct rendering.
+- an `RGB565_BE` direct dirty-rectangle surface;
+- exclusive, completion-signaled ownership between LVGL and direct rendering;
+  and
+- optional safe-presentation frame synchronization, reported explicitly as
+  unavailable on boards without a qualified signal.
 
 Each board module contains one hard-coded `BOARD_CONFIG` object and no runtime
 implementation. Its typed `pins` entries describe GPIO purpose, number, and
@@ -105,6 +108,16 @@ panel and canvas rotation; they must not be inferred from a board ID, display
 resolution, or driver name. Register commands, wraparound address translation,
 transfer serialization, and ownership cleanup belong in the reusable adapter
 and shared controller code.
+
+Frame synchronization follows the same capability boundary. A typed
+`DISPLAY_SYNC` pin and its polarity belong only in `BOARD_CONFIG`. The reusable
+controller adapter selects the controller's safe phase and attaches the edge
+source, while the common direct surface and canvas expose
+`frame_sync_capabilities()` and a bounded `wait_for_frame_sync()`. Applications
+may synchronize one presentation batch without knowing the board, GPIO,
+controller command, or signal polarity; unsupported surfaces return
+immediately through the same API. Shared ownership transitions enable the
+interrupt for direct rendering and detach it again in UI mode.
 
 The early recovery gate reads this same object through the protected selector
 to turn off a typed `BACKLIGHT` pin. Shared startup code therefore never

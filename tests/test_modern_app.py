@@ -279,6 +279,19 @@ class FakeScrollSurface(FakeSurface):
         self.resets += 1
 
 
+class FakeSyncSurface(FakeSurface):
+    def __init__(self, width=4, height=3):
+        super().__init__(width, height)
+        self.sync_timeouts = []
+
+    def frame_sync_capabilities(self):
+        return {"available": True, "phase": "vertical_blank"}
+
+    def wait_for_frame_sync(self, timeout_ms=30):
+        self.sync_timeouts.append(timeout_ms)
+        return True
+
+
 class FakeArea:
     def __init__(self, values=None):
         values = values or {}
@@ -893,6 +906,28 @@ class ModernAppDrawingTests(unittest.TestCase):
             "wraps": False,
             "full_orthogonal_axis": False,
         })
+
+    def test_frame_sync_capabilities_and_wait_delegate_to_surface(self):
+        module = load_modern_app(types.SimpleNamespace())
+        surface = FakeSyncSurface(width=8, height=6)
+        canvas = module.DirectCanvas(surface)
+
+        self.assertEqual(canvas.frame_sync_capabilities(), {
+            "available": True,
+            "phase": "vertical_blank",
+        })
+        self.assertTrue(canvas.wait_for_frame_sync(45))
+        self.assertEqual(surface.sync_timeouts, [45])
+
+    def test_frame_sync_has_portable_unsupported_fallback(self):
+        module = load_modern_app(types.SimpleNamespace())
+        canvas = module.DirectCanvas(FakeSurface(width=8, height=6))
+
+        self.assertEqual(canvas.frame_sync_capabilities(), {
+            "available": False,
+            "phase": None,
+        })
+        self.assertFalse(canvas.wait_for_frame_sync())
 
     def test_scroll_region_composes_prepared_exposed_band_before_one_show(self):
         module = load_modern_app(types.SimpleNamespace())

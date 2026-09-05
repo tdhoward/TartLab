@@ -9,6 +9,7 @@ BOARD_CONFIG = {
         {"type": "DISPLAY_DC", "number": -1},
         {"type": "DISPLAY_CS", "number": 10},
         {"type": "DISPLAY_SCK", "number": 12},
+        {"type": "DISPLAY_SYNC", "number": 42, "active_high": True},
         {"type": "DISPLAY_DATA_0", "number": 11},
         {"type": "DISPLAY_DATA_1", "number": 13},
         {"type": "DISPLAY_DATA_2", "number": 14},

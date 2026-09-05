@@ -471,10 +471,12 @@ class RoadRenderer:
             int(x) - radius, self.game.player_y - radius,
             radius * 2 + 1, radius * 2 + 1)
 
-    def render(self, damage):
+    def render(self, damage, synchronize=True):
         """Rebuild every final region before presenting any of them."""
         for index in range(damage.count):
             self.rebuild(damage.area(index))
+        if synchronize and damage.count:
+            self.canvas.wait_for_frame_sync()
         for index in range(damage.count):
             self.canvas.show(damage.area(index))
 
@@ -623,13 +625,15 @@ class ScanoutAnimator:
         self._mark_carried(player_bounds)
         self.damage.add(self.renderer.player_bounds(game.player_x))
 
+        if delta or self.damage.count:
+            self.renderer.canvas.wait_for_frame_sync()
         if delta:
             self.renderer.canvas.scroll_region(
                 (0, game.track_top, self.renderer.width,
                  game.track_bottom - game.track_top),
                 dy=delta,
                 exposed=self.bands.get(delta, game.road.center_phase))
-        self.renderer.render(self.damage)
+        self.renderer.render(self.damage, synchronize=False)
 
 
 def supports_scanout_animation(canvas):

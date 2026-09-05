@@ -26,6 +26,8 @@ class RacerBenchmarkTests(unittest.TestCase):
         self.assertIn("ENTITY_PROFILES = ('road-relative', 'mixed-movement')", source)
         self.assertIn("self.requires_full_frame_seed = getattr(", source)
         self.assertIn("def shadow_valid(self):", source)
+        self.assertIn("def wait_for_frame_sync(self, timeout_ms=30):", source)
+        self.assertIn("'frame_sync_us': summary(frame_sync_values)", source)
         self.assertNotIn("__MODERN_APP_SOURCE__", source)
         self.assertNotIn("__DAMAGE_SOURCE__", source)
         self.assertNotIn("__TIMING_SOURCE__", source)

@@ -87,7 +87,7 @@
       },
       {
         "path": "src/lib/tartlabutils/modern.py",
-        "sha256": "b9e1e3473c405aa45f9b13df69739d46826b458563542d84a6d21bf7eb3a68eb"
+        "sha256": "c25abe8911662346a0bd6561e2a6dc367bc5231e416621f08707e63a00fd8e0f"
       },
       {
         "path": "src/lib/tartlabutils/modern_factory.py",

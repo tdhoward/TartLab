@@ -554,6 +554,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         panel = Panel()
         platform = module.ModernPlatform(controller, panel, pointer)
         self.assertFalse(platform.capabilities["ide_button"])
+        self.assertFalse(platform.capabilities["frame_sync"])
 
         platform.deinit()
         platform.deinit()

@@ -576,6 +576,22 @@ class DirectCanvas(FrameBuffer):
             }
         return capabilities(self.rotation)
 
+    def frame_sync_capabilities(self):
+        """Describe optional safe-presentation synchronization."""
+        capabilities = getattr(self.surface, "frame_sync_capabilities", None)
+        if capabilities is None:
+            return {"available": False, "phase": None}
+        return capabilities()
+
+    def wait_for_frame_sync(self, timeout_ms=30):
+        """Wait for the next safe presentation phase when supported."""
+        if self._closed:
+            raise RuntimeError("canvas is closed")
+        wait = getattr(self.surface, "wait_for_frame_sync", None)
+        if wait is None:
+            return False
+        return wait(timeout_ms)
+
     def scroll_region(self, area, dx=0, dy=0, fill=0, exposed=None):
         """Move, fill, and present a logical region.
 

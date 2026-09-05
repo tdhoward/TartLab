@@ -42,6 +42,51 @@ def _sleep_ms(milliseconds):
         time.sleep(milliseconds / 1000)
 
 
+class DisplayFrameSync:
+    """Turn a display's safe-presentation GPIO edge into a waitable signal."""
+
+    phase = "vertical_blank"
+
+    def __init__(self, pin, active_high=True, enabled=True):
+        self._pin = pin
+        self._edge = False
+        self._active = False
+        self._trigger = getattr(
+            pin, "IRQ_RISING" if active_high else "IRQ_FALLING")
+        if enabled:
+            self.enable()
+
+    def _on_edge(self, unused_pin):
+        # Toggle a singleton value so the IRQ path does not allocate an integer.
+        self._edge = not self._edge
+
+    def wait(self, timeout_ms=30):
+        """Wait for the next safe phase, returning ``False`` on timeout."""
+        if not self._active:
+            return False
+        started = _ticks_ms()
+        edge = self._edge
+        while self._edge == edge:
+            if _ticks_diff(_ticks_ms(), started) >= timeout_ms:
+                return False
+            _sleep_ms(1)
+        return True
+
+    def enable(self):
+        """Attach the safe-phase interrupt handler."""
+        if not self._active:
+            self._active = True
+            self._pin.irq(handler=self._on_edge, trigger=self._trigger)
+
+    def disable(self):
+        """Detach the safe-phase interrupt handler."""
+        if self._active:
+            self._active = False
+            self._pin.irq(handler=None)
+
+    deinit = disable
+
+
 class DirectRGB565Surface:
     """Public dirty-rectangle RGB565 surface backed by the native LCD bus.
 
@@ -58,7 +103,7 @@ class DirectRGB565Surface:
 
     def __init__(self, controller, bus, panel, width, height,
                  offset_x=0, offset_y=0, allocation_flags=None,
-                 buffer_allocator=None, buffer_free=None):
+                 buffer_allocator=None, buffer_free=None, frame_sync=None):
         self._controller = controller
         self._bus = bus
         self._panel = panel
@@ -69,6 +114,7 @@ class DirectRGB565Surface:
         self._allocation_flags = allocation_flags
         self._buffer_allocator = buffer_allocator
         self._buffer_free = buffer_free
+        self._frame_sync = frame_sync
         self._params = bytearray(4)
         self._params_view = memoryview(self._params)
 
@@ -143,6 +189,31 @@ class DirectRGB565Surface:
         if self._allocation_flags is not None:
             self.wait()
             self._buffer_free(buffer)
+
+    def frame_sync_capabilities(self):
+        """Describe the optional safe-presentation synchronization source."""
+        if self._frame_sync is None:
+            return {"available": False, "phase": None}
+        return {"available": True, "phase": self._frame_sync.phase}
+
+    def wait_for_frame_sync(self, timeout_ms=30):
+        """Wait for the next safe presentation phase when one is available."""
+        if self._frame_sync is None:
+            return False
+        return self._frame_sync.wait(timeout_ms)
+
+    def deinit_frame_sync(self):
+        """Release the optional synchronization input."""
+        if self._frame_sync is not None:
+            self._frame_sync.deinit()
+
+    def enable_frame_sync(self):
+        if self._frame_sync is not None:
+            self._frame_sync.enable()
+
+    def disable_frame_sync(self):
+        if self._frame_sync is not None:
+            self._frame_sync.disable()
 
 
 class ModernDisplayController:
@@ -356,6 +427,8 @@ class ModernPlatform:
             "lvgl_ui": True,
             "direct_rgb565": True,
             "exclusive_display_ownership": True,
+            "frame_sync": controller.surface.frame_sync_capabilities()[
+                "available"],
         }
 
     def _network(self):
@@ -471,6 +544,7 @@ class ModernPlatform:
         if self._deinitialized:
             return
         self.controller.wait_for_transfer()
+        self.game_surface.deinit_frame_sync()
         self._task_handler_deinit()
 
         # The upstream Python wrappers retain displays and input devices in

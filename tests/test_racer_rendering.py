@@ -18,6 +18,7 @@ class PixelCanvas:
         self.height = height
         self.pixels = [[0] * width for unused in range(height)]
         self.shows = []
+        self.sync_waits = 0
         self.drawing_after_show = False
 
     def _changed(self):
@@ -36,6 +37,10 @@ class PixelCanvas:
 
     def show(self, area=None):
         self.shows.append(tuple(area) if area is not None else None)
+
+    def wait_for_frame_sync(self, timeout_ms=30):
+        self.sync_waits += 1
+        return True
 
     def prepare_sprite(self, framebuffer, width, height):
         self.assert_size = (framebuffer.width, framebuffer.height)
@@ -133,6 +138,7 @@ class RacerRenderingTests(unittest.TestCase):
 
         self.assert_matches_full_redraw(game, canvas, renderer)
         self.assertTrue(canvas.shows)
+        self.assertEqual(canvas.sync_waits, 1)
         self.assertFalse(canvas.drawing_after_show)
 
     def test_collection_and_removal_restore_overlapping_background(self):
@@ -264,6 +270,7 @@ class RacerRenderingTests(unittest.TestCase):
         self.assertEqual(game.score, 1)
         self.assertTrue(game.spawned_entities)
         self.assert_matches_full_redraw(game, canvas, renderer)
+        self.assertEqual(canvas.sync_waits, 1)
 
     def test_scanout_selection_requires_all_reported_capabilities(self):
         game, canvas, unused_renderer, unused_animator = make_scene()

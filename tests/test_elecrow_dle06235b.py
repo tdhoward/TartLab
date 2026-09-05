@@ -20,6 +20,7 @@ def load_source(name, path):
 
 _MODULE_NAMES = (
     "tartlabutils",
+    "tartlabutils.board",
     "tartlabutils.modern",
     "tartlabutils.modern_st77922",
     "elecrow_dle06235b_modern",
@@ -29,6 +30,10 @@ try:
     package = types.ModuleType("tartlabutils")
     package.__path__ = []
     sys.modules["tartlabutils"] = package
+    load_source(
+        "tartlabutils.board",
+        ROOT / "src/lib/tartlabutils/board.py",
+    )
     load_source(
         "tartlabutils.modern",
         ROOT / "src/lib/tartlabutils/modern.py",
@@ -88,7 +93,8 @@ class FakePanel:
         self.params = []
 
     def set_params(self, command, params):
-        self.params.append((command, bytes(params)))
+        self.params.append((
+            command, bytes(params) if params is not None else None))
 
 
 class ElecrowDirectSurfaceTests(unittest.TestCase):
@@ -195,6 +201,47 @@ class ElecrowDirectSurfaceTests(unittest.TestCase):
 
 
 class ElecrowControllerTests(unittest.TestCase):
+    def test_board_sync_pin_enables_vblank_frame_sync(self):
+        class Pin:
+            IN = 0
+            IRQ_RISING = 1
+            IRQ_FALLING = 2
+            instances = []
+
+            def __init__(self, number, mode):
+                self.number = number
+                self.mode = mode
+                self.handler = None
+                self.trigger = None
+                self.irq_calls = []
+                self.instances.append(self)
+
+            def irq(self, handler=None, trigger=None):
+                self.handler = handler
+                self.trigger = trigger
+                self.irq_calls.append((handler, trigger))
+
+        panel = FakePanel()
+        sync = module._create_frame_sync(
+            board_payload.BOARD_CONFIG, panel, Pin)
+
+        pin = Pin.instances[0]
+        self.assertEqual((pin.number, pin.mode), (42, Pin.IN))
+        self.assertIsNone(pin.handler)
+        self.assertEqual(panel.params, [
+            (0x34, None),
+            (0x35, b"\x00"),
+        ])
+        self.assertEqual(sync.phase, "vertical_blank")
+        sync.enable()
+        self.assertEqual(pin.trigger, Pin.IRQ_RISING)
+        edge = sync._edge
+        pin.handler(pin)
+        self.assertNotEqual(sync._edge, edge)
+        sync.deinit()
+        sync.deinit()
+        self.assertEqual(pin.irq_calls[-1], (None, None))
+
     def test_callback_error_is_contained_until_main_thread_wait(self):
         controller = module.ST77922DisplayController.__new__(
             module.ST77922DisplayController)
@@ -225,6 +272,8 @@ class ElecrowControllerTests(unittest.TestCase):
         pins = {item["type"]: item for item in board["pins"]}
         self.assertEqual(board["id"], "elecrow_dle06235b")
         self.assertEqual(pins["BACKLIGHT"]["number"], 41)
+        self.assertEqual(pins["DISPLAY_SYNC"]["number"], 42)
+        self.assertTrue(pins["DISPLAY_SYNC"]["active_high"])
         self.assertEqual(board["display"]["driver"], "st77922.ST77922")
         self.assertEqual(board["display"]["backlight_state"], "STATE_PWM")
         self.assertEqual(

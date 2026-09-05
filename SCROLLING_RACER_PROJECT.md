@@ -506,6 +506,16 @@ more consistent but slightly over budget. Phase 5 must select the final
 cadence and address the remaining frame outliers. The machine-readable result
 is in `hardware_test_artifacts/scrolling-racer/phase4-modern.json`.
 
+An Elecrow DLE06235B follow-up added a portable presentation boundary before
+Phase 5's held tearing review. Both animators now request one bounded
+`wait_for_frame_sync()` per nonempty presentation batch. The canvas returns
+immediately on unsupported boards; on the Elecrow, the shared ST77922 surface
+maps the request to its qualified vertical-blank signal without exposing GPIO
+or controller details to Racer. A preliminary COM18 matrix saw one successful
+wait per frame and no 50 ms work-deadline misses for the sampled three-entity
+workloads. The selected app then reached healthy APP mode and passed its held
+smooth-motion review. The full p95 matrix remains required.
+
 ### Phase 5: performance qualification and cleanup
 
 - Remove remaining racer-owned steady-state allocations where practical.
