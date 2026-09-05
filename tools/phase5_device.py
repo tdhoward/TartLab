@@ -72,6 +72,268 @@ print("PHASE5_PROBE=" + ujson.dumps(result))
 '''
 
 
+HARDENING_TEMPLATE = r'''
+import gc, os, time, ujson
+from tartlabutils.platform import get_platform
+
+scan_iterations = __SCAN_ITERATIONS__
+frames_per_scan = __FRAMES_PER_SCAN__
+
+def elapsed_us(started):
+    return time.ticks_diff(time.ticks_us(), started)
+
+def interface_state(interface):
+    result = {"active": interface.active()}
+    try:
+        result["status"] = interface.status()
+    except Exception as error:
+        result["status_error"] = repr(error)
+    return result
+
+def filesystem_state():
+    values = os.statvfs("/")
+    block_size = values[0]
+    total = block_size * values[2]
+    free = block_size * values[3]
+    return {
+        "block_size": block_size,
+        "total_bytes": total,
+        "free_bytes": free,
+        "used_bytes": total - free,
+    }
+
+def flash_state():
+    result = {}
+    try:
+        import esp
+        result["physical_bytes"] = esp.flash_size()
+    except Exception as error:
+        result["physical_error"] = repr(error)
+    try:
+        import esp32
+        running = esp32.Partition(esp32.Partition.RUNNING)
+        info = running.info()
+        result["running_partition"] = {
+            "type": info[0],
+            "subtype": info[1],
+            "address": info[2],
+            "size_bytes": info[3],
+            "label": info[4],
+            "encrypted": info[5],
+        }
+        result["app_partition_sizes"] = [
+            partition.info()[3]
+            for partition in esp32.Partition.find(esp32.Partition.TYPE_APP)
+        ]
+    except Exception as error:
+        result["partition_error"] = repr(error)
+    return result
+
+def sample_summary(values):
+    ordered = sorted(values)
+    count = len(ordered)
+    middle = count // 2
+    if count & 1:
+        median = ordered[middle]
+    else:
+        median = (ordered[middle - 1] + ordered[middle]) // 2
+    p95_index = ((count * 95 + 99) // 100) - 1
+    return {
+        "count": count,
+        "minimum": ordered[0],
+        "median": median,
+        "p95": ordered[p95_index],
+        "maximum": ordered[-1],
+    }
+
+network = {
+    "scan_counts": [],
+    "scan_us": [],
+    "scan_errors": [],
+    "concurrent_display_frames": [],
+}
+station = None
+access_point = None
+station_was_active = None
+thread_module = None
+try:
+    import _thread as thread_module
+    import network as network_module
+    station = network_module.WLAN(network_module.STA_IF)
+    access_point = network_module.WLAN(network_module.AP_IF)
+    station_was_active = station.active()
+    network["before"] = {
+        "station": interface_state(station),
+        "access_point": interface_state(access_point),
+    }
+    if not station_was_active:
+        station.active(True)
+        network["station_activated_for_probe"] = True
+        time.sleep_ms(250)
+    else:
+        network["station_activated_for_probe"] = False
+    network["workload_start"] = {
+        "station": interface_state(station),
+        "access_point": interface_state(access_point),
+    }
+except Exception as error:
+    network["setup_error"] = repr(error)
+
+gc.collect()
+heap = {"baseline": gc.mem_free()}
+filesystem = filesystem_state()
+flash = flash_state()
+platform = get_platform()
+controller = platform.controller
+surface = None
+buffer = None
+seed_buffer = None
+write_us = []
+write_summary = None
+display_frames = 0
+heap_minimum = None
+requires_full_frame_seed = False
+try:
+    surface = platform.enter_game_mode()
+    heap["after_enter_game"] = gc.mem_free()
+    requires_full_frame_seed = bool(
+        getattr(surface, "requires_full_frame_seed", False))
+    if (requires_full_frame_seed and
+            not getattr(surface, "shadow_valid", False)):
+        seed_buffer = bytearray(
+            surface.width * surface.height * surface.bytes_per_pixel)
+        heap["with_seed_buffer"] = gc.mem_free()
+        started = time.ticks_us()
+        surface.write(
+            seed_buffer, 0, 0, surface.width, surface.height)
+        heap["after_seed_write"] = gc.mem_free()
+        heap["seed_write_us"] = elapsed_us(started)
+
+    width = min(96, surface.width)
+    height = min(48, surface.height)
+    buffer = surface.allocate_buffer(width, height)
+    for offset in range(0, len(buffer), 2):
+        buffer[offset] = 0x07
+        buffer[offset + 1] = 0xE0
+    heap["with_transfer_buffer"] = gc.mem_free()
+    heap_minimum = heap["with_transfer_buffer"]
+
+    for scan_index in range(scan_iterations):
+        if station is not None and station.active():
+            scan_state = {
+                "active": False,
+                "done": False,
+                "count": None,
+                "elapsed_us": None,
+                "error": None,
+            }
+
+            def perform_scan():
+                scan_state["active"] = True
+                started = time.ticks_us()
+                try:
+                    networks = station.scan()
+                    scan_state["count"] = len(networks)
+                    networks = None
+                except Exception as error:
+                    scan_state["error"] = repr(error)
+                scan_state["elapsed_us"] = elapsed_us(started)
+                scan_state["done"] = True
+
+            thread_module.start_new_thread(perform_scan, ())
+            start_deadline = time.ticks_add(time.ticks_ms(), 1000)
+            while (not scan_state["active"] and not scan_state["done"] and
+                   time.ticks_diff(start_deadline, time.ticks_ms()) > 0):
+                time.sleep_ms(5)
+            if not scan_state["active"]:
+                raise RuntimeError("Wi-Fi scan worker did not start")
+        else:
+            scan_state = None
+
+        concurrent_frames = 0
+        for frame_index in range(frames_per_scan):
+            index = scan_index * frames_per_scan + frame_index
+            x = (index * 17) % (surface.width - width + 1)
+            y = (index * 11) % (surface.height - height + 1)
+            scan_active = bool(
+                scan_state is not None and scan_state["active"] and
+                not scan_state["done"])
+            started = time.ticks_us()
+            surface.write(buffer, x, y, width, height)
+            write_us.append(elapsed_us(started))
+            display_frames += 1
+            if scan_active:
+                concurrent_frames += 1
+            if surface.busy or controller.transfer_pending:
+                raise RuntimeError("display transfer did not settle")
+            current_heap = gc.mem_free()
+            if current_heap < heap_minimum:
+                heap_minimum = current_heap
+
+        if scan_state is not None:
+            scan_deadline = time.ticks_add(time.ticks_ms(), 15000)
+            while (not scan_state["done"] and
+                   time.ticks_diff(scan_deadline, time.ticks_ms()) > 0):
+                time.sleep_ms(10)
+            if not scan_state["done"]:
+                raise RuntimeError("Wi-Fi scan worker did not finish")
+            network["scan_us"].append(scan_state["elapsed_us"])
+            network["concurrent_display_frames"].append(concurrent_frames)
+            if scan_state["error"] is None:
+                network["scan_counts"].append(scan_state["count"])
+            else:
+                network["scan_errors"].append(scan_state["error"])
+
+    write_summary = sample_summary(write_us)
+    write_us = None
+    heap["minimum_during_workload"] = heap_minimum
+finally:
+    if surface is not None and controller.owner == "game":
+        platform.enter_ui_mode()
+    if surface is not None and buffer is not None:
+        surface.free_buffer(buffer)
+    buffer = None
+    seed_buffer = None
+    write_us = None
+    if station is not None:
+        try:
+            network["workload_end"] = {
+                "station": interface_state(station),
+                "access_point": interface_state(access_point),
+            }
+            if station_was_active is False:
+                station.active(False)
+                time.sleep_ms(100)
+            network["after_restore"] = {
+                "station": interface_state(station),
+                "access_point": interface_state(access_point),
+            }
+        except Exception as error:
+            network["restore_error"] = repr(error)
+    gc.collect()
+    heap["after_cleanup"] = gc.mem_free()
+
+result = {
+    "scan_iterations": scan_iterations,
+    "frames_per_scan": frames_per_scan,
+    "display_frames": display_frames,
+    "surface": {
+        "width": surface.width,
+        "height": surface.height,
+        "requires_full_frame_seed": requires_full_frame_seed,
+        "owner": controller.owner,
+        "transfer_pending": controller.transfer_pending,
+    },
+    "write_us": write_summary,
+    "heap": heap,
+    "filesystem": filesystem,
+    "flash": flash,
+    "network": network,
+}
+print("PHASE5_HARDENING=" + ujson.dumps(result))
+'''
+
+
 RENDERER_CYCLE_TEMPLATE = r'''
 import gc, time, ujson
 from tartlabutils.platform import get_platform
@@ -581,6 +843,17 @@ def probe(args: argparse.Namespace) -> None:
     _run(args, PROBE_CODE, "PHASE5_PROBE", max(args.timeout, 45))
 
 
+def hardening(args: argparse.Namespace) -> None:
+    code = HARDENING_TEMPLATE.replace(
+        "__SCAN_ITERATIONS__", str(args.scan_iterations)).replace(
+            "__FRAMES_PER_SCAN__", str(args.frames_per_scan))
+    timeout = max(
+        args.timeout,
+        args.scan_iterations * 15 + 60,
+    )
+    _run(args, code, "PHASE5_HARDENING", timeout)
+
+
 def renderer_cycle(args: argparse.Namespace) -> None:
     code = RENDERER_CYCLE_TEMPLATE % (args.iterations, args.hold_ms)
     _run(args, code, "PHASE5_RENDERER_CYCLE", max(args.timeout, 120))
@@ -774,6 +1047,11 @@ def parser() -> argparse.ArgumentParser:
 
     commands.add_parser("probe").set_defaults(func=probe)
 
+    hardening_parser = commands.add_parser("hardening")
+    hardening_parser.add_argument("--scan-iterations", type=int, default=3)
+    hardening_parser.add_argument("--frames-per-scan", type=int, default=25)
+    hardening_parser.set_defaults(func=hardening)
+
     renderer = commands.add_parser("renderer-cycle")
     renderer.add_argument("--iterations", type=int, default=25)
     renderer.add_argument(
@@ -809,6 +1087,10 @@ def main() -> int:
     args = parser().parse_args()
     if getattr(args, "iterations", 1) <= 0:
         raise ValueError("iterations must be positive")
+    if getattr(args, "scan_iterations", 1) <= 0:
+        raise ValueError("scan-iterations must be positive")
+    if getattr(args, "frames_per_scan", 1) <= 0:
+        raise ValueError("frames-per-scan must be positive")
     if getattr(args, "hold_ms", 0) < 0:
         raise ValueError("hold-ms must be nonnegative")
     if getattr(args, "seconds", 1) <= 0:

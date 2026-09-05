@@ -33,11 +33,21 @@ class RawRepl:
         return bytes(data)
 
     def enter(self):
-        self.serial.write(b"\r\x03\x03")
-        time.sleep(0.2)
-        self.serial.reset_input_buffer()
-        self.serial.write(b"\r\x01")
-        self._read_until(b"raw REPL; CTRL-B to exit\r\n>", 5)
+        last_error = None
+        for unused_attempt in range(2):
+            self.serial.write(b"\r\x03\x03")
+            time.sleep(0.2)
+            self.serial.reset_input_buffer()
+            self.serial.write(b"\r\x01")
+            try:
+                self._read_until(b"raw REPL; CTRL-B to exit\r\n>", 5)
+                return
+            except TimeoutError as error:
+                # A running TartLab app can finish its Ctrl-C teardown just
+                # after the first prompt deadline. Retrying the transition on
+                # the same open port avoids requiring a sacrificial command.
+                last_error = error
+        raise last_error
 
     def exec(self, code, timeout=None):
         payload = code.encode("utf-8")

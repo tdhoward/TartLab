@@ -408,6 +408,48 @@ payload then reidentified touch, started the IDE, fell back to its temporary
 access point when the saved station connection timed out, started HTTP, and
 reported `HEALTHY mode=IDE update_committed=False`.
 
+## Wi-Fi coexistence and margin follow-up (2026-09-04)
+
+The first RAM-only hardening run was retained only as a diagnostic baseline:
+interrupting the IDE had left both network interfaces inactive before the
+measurement began, so its display timings cannot support a Wi-Fi-coexistence
+claim. The corrected capability-driven probe preserves an already-active
+station or temporarily activates an inactive one, performs each sanitized
+scan on a worker thread while the main thread writes the direct display, and
+restores the original interface state. It records only interface status and
+network counts, never SSIDs, addresses, or credentials, and does not write the
+device filesystem.
+
+The accepted run began with the station active at unchanged status `1010`.
+All three scans completed without error in 2.904-2.920 seconds and observed
+five or six networks. All 25 writes in every scan overlapped the active scan,
+for 75 concurrent radio/display transfers total. The 96 x 48 partial writes
+had a 6.632 ms median, 7.180 ms p95, and 7.543 ms maximum. The required full
+320 x 480 shadow seed took 193.668 ms. Every transfer settled; final ownership
+returned to `ui` with no transfer pending, and station activity and status
+were unchanged at the end of the workload.
+
+Free heap was 7,839,312 bytes before acquisition, 7,577,200 bytes with the
+full-frame seed allocated, and no lower than 7,572,080 bytes during concurrent
+radio/display work. After releasing the probe buffers and collecting garbage,
+7,838,368 bytes were free, 944 bytes below the pre-probe sample. These are the
+combined MicroPython heap figures; they do not claim an independent
+internal-DMA heap margin.
+
+The filesystem contained 12,517,376 bytes, with 9,707,520 bytes free
+(77.6 percent). The running factory app partition is 4,194,304 bytes on the
+confirmed 16,777,216-byte flash. Subtracting the complete 2,978,512-byte
+reference flash artifact from the app partition leaves a conservative
+1,215,792-byte lower-bound margin; the exact app-only margin must be recomputed
+from the eventual reproducible DLE06235B candidate artifact.
+
+Raw-REPL entry also reproduced a host timing issue: the running IDE sometimes
+completed Ctrl-C teardown just after the original five-second prompt deadline,
+leaving the first command as a sacrificial transition. The shared host helper
+now retries raw-mode entry once on the same open port. After the accepted run,
+the recovery-safe reset preserved state, reconnected the saved station,
+started HTTP, and reported `HEALTHY mode=IDE update_committed=False`.
+
 ## Brightness follow-up (2026-09-04)
 
 The first complete bench payload left GPIO41 in the display framework's
@@ -506,13 +548,18 @@ publishing or provisioning the board as a supported target.
 
 ### Milestone B: reproducible supported target
 
-8. **Partially completed:** a capability-driven RAM-only probe completed 100
+8. **Completed for the current bench payload:** a capability-driven RAM-only
+   probe completed three concurrent Wi-Fi scans and 75 partial display writes
+   without a scan, transfer, ownership, or network-state failure. The same
+   probe recorded 7,572,080 bytes as its minimum free heap, 9,707,520 bytes of
+   free filesystem space, and a conservative 1,215,792-byte lower-bound app-
+   partition margin. An earlier capability-driven RAM-only probe completed 100
    LVGL/direct-surface ownership transitions with final UI ownership, no
    pending transfer, no runtime failure, and a settled heap. A paced ten-cycle
    owner review also passed without a stale or corrupt frame. The unexplained
    I2C `0x28` responder is isolated to the panel assembly and explicitly
-   quarantined from production access. Finish Wi-Fi coexistence plus heap and
-   flash margin measurements.
+   quarantined from production access. Repeat the measurements on the exact
+   reproducible candidate; current results do not promote this bench payload.
 9. Decide whether the existing first-active-contact pointer behavior is the
    supported contract or whether TartLab must expose simultaneous multitouch.
    The former is sufficient for the current single-pointer UI if it is made an

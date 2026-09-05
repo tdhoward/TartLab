@@ -10,6 +10,7 @@ import tempfile
 import types
 import unittest
 import shutil
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1032,6 +1033,32 @@ class PhysicalHelperTests(unittest.TestCase):
     def setUpClass(cls):
         cls.helper = load_module(
             "phase1_device_helper", ROOT / "tools/phase1_device.py")
+
+    def test_raw_repl_entry_retries_a_slow_application_teardown(self):
+        class Serial:
+            def __init__(self):
+                self.writes = []
+                self.resets = 0
+
+            def write(self, value):
+                self.writes.append(value)
+
+            def reset_input_buffer(self):
+                self.resets += 1
+
+        repl = self.helper.RawRepl.__new__(self.helper.RawRepl)
+        repl.serial = Serial()
+        repl.timeout = 10
+        with mock.patch.object(
+                repl, "_read_until",
+                side_effect=[TimeoutError("slow teardown"), b"prompt"]):
+            repl.enter()
+
+        self.assertEqual(repl.serial.writes, [
+            b"\r\x03\x03", b"\r\x01",
+            b"\r\x03\x03", b"\r\x01",
+        ])
+        self.assertEqual(repl.serial.resets, 2)
 
     def test_ota_helper_selects_modern_object_manifest_explicitly(self):
         captured = {}

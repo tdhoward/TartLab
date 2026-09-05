@@ -15,6 +15,7 @@ from modern_firmware import check_lock, docker_command, validate_lock
 from phase5_benchmark import device_program, sample_summary, validate_result
 from phase5_device import (
     COLOR_CODE,
+    HARDENING_TEMPLATE,
     RENDERER_CYCLE_TEMPLATE,
     STATUS_VISUAL_CODE,
     SWITCH_TEST_APP,
@@ -173,6 +174,35 @@ class Phase5RendererCycleProbeTests(unittest.TestCase):
 
         self.assertNotIn("elecrow", source)
         self.assertNotIn("st77922", source)
+
+
+class Phase5HardeningProbeTests(unittest.TestCase):
+    def test_probe_is_capability_driven_and_hardware_free(self):
+        source = HARDENING_TEMPLATE.replace(
+            "__SCAN_ITERATIONS__", "2").replace(
+                "__FRAMES_PER_SCAN__", "3")
+
+        compile(source, "<hardening-probe>", "exec")
+        self.assertIn('getattr(surface, "requires_full_frame_seed"', source)
+        self.assertIn("surface.width * surface.height", source)
+        self.assertIn("surface.allocate_buffer(width, height)", source)
+        self.assertNotIn("elecrow", source.lower())
+        self.assertNotIn("st77922", source.lower())
+
+    def test_probe_records_margins_without_persisting_network_details(self):
+        source = HARDENING_TEMPLATE
+
+        self.assertIn('os.statvfs("/")', source)
+        self.assertIn('result["physical_bytes"] = esp.flash_size()', source)
+        self.assertIn('"size_bytes": info[3]', source)
+        self.assertIn('thread_module.start_new_thread(perform_scan, ())',
+                      source)
+        self.assertIn('scan_state["count"] = len(networks)', source)
+        self.assertIn('network["concurrent_display_frames"]', source)
+        self.assertIn('station.active(False)', source)
+        self.assertNotIn("ssid", source.lower())
+        self.assertNotIn("ifconfig", source.lower())
+        self.assertNotIn("open(", source)
 
 
 class ModernFirmwareReferenceLockTests(unittest.TestCase):
