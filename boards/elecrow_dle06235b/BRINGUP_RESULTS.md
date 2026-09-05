@@ -4,7 +4,7 @@ Status: experimental bench result, not a TartLab board qualification
 
 Test date: 2026-08-29
 
-Remaining-work checklist updated: 2026-08-31
+Remaining-work checklist updated: 2026-09-04
 
 ## Outcome
 
@@ -222,6 +222,28 @@ temporary `main.py` to atomically promote the final entry points and execute
 the real application. Production provisioning must provide an equivalent
 transaction instead of copying the final entry points in an unsafe order.
 
+## Brightness follow-up (2026-09-04)
+
+The first complete bench payload left GPIO41 in the display framework's
+digital backlight mode. Consequently, every nonzero
+`platform.set_brightness()` value selected full brightness even though the
+pinned display framework supports PWM. The board payload now declares
+`STATE_PWM`; the shared factory already translates that declaration without a
+board-specific branch.
+
+A RAM-only COM18 probe rebound the existing GPIO41 backlight to the pinned
+framework's PWM mode and exercised the public platform call. Requested values
+of 100, 50, 10, 0, and 100 percent read back as 100.0, 49.95, 9.96, 0.0, and
+100.0 percent, with duty values 65535, 32736, 6528, 0, and 65535 at 38,023 Hz.
+The probe restored full brightness. No device filesystem file was changed;
+after clearing the already documented raw-session failure counter, one hard
+reset returned the installed TartLab payload to `HEALTHY mode=IDE`.
+
+This proves the board's PWM control path and the declarative correction. A
+candidate containing the updated board payload must still pass the visual IDE
+inactivity, touch-to-wake, clamping, and teardown checks before brightness is
+qualified as a complete user-facing behavior.
+
 ## Remaining work
 
 The selected TartLab mode for this board is native 320 x 480 portrait. The
@@ -261,9 +283,10 @@ single-board bridge release is required.
 7. **Partially completed:** the complete filesystem reached a healthy IDE
    server; temporary-AP setup, Wi-Fi station/LAN access, and browser file
    load/edit/save/run were owner-confirmed. Selecting an app also worked, and
-   the direct-surface ownership round trip passed. Still verify brightness,
-   booting a selected app, representative examples/direct games, and their
-   complete launcher ownership transitions.
+   the direct-surface ownership round trip passed. Direct PWM brightness
+   control now passes from off through intermediate duty levels; still verify
+   IDE inactivity dim/wake behavior, booting a selected app, representative
+   examples/direct games, and their complete launcher ownership transitions.
 
 Milestone A means TartLab runs end to end on the bench. It does not authorize
 publishing or provisioning the board as a supported target.

@@ -195,6 +195,7 @@ class ElecrowControllerTests(unittest.TestCase):
         self.assertEqual(board["id"], "elecrow_dle06235b")
         self.assertEqual(pins["BACKLIGHT"]["number"], 41)
         self.assertEqual(board["display"]["driver"], "st77922.ST77922")
+        self.assertEqual(board["display"]["backlight_state"], "STATE_PWM")
         self.assertEqual(
             board["display"]["adapter"],
             "tartlabutils.modern_st77922",

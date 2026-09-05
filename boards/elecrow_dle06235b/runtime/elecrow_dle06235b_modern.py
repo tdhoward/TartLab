@@ -24,6 +24,7 @@ BOARD_CONFIG = {
         "rotation": 0,
         "transfer_rows": 24,
         "reset_state": "STATE_LOW",
+        "backlight_state": "STATE_PWM",
         "spi": {
             "host": 2,
             "frequency": 40_000_000,
