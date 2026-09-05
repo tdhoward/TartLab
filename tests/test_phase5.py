@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from modern_firmware import check_lock, docker_command, validate_lock
 from phase5_benchmark import device_program, sample_summary, validate_result
+from phase5_device import SWITCH_TEST_APP
 
 
 def load_modern_rendering():
@@ -846,6 +847,63 @@ class Phase5BenchmarkHarnessTests(unittest.TestCase):
             "p95": 38.5,
             "maximum": 40,
         })
+
+
+class Phase5SwitchAppTests(unittest.TestCase):
+    class StopApp(Exception):
+        pass
+
+    def run_app(self, requires_full_frame_seed):
+        surface = types.SimpleNamespace(
+            width=10,
+            height=2,
+            requires_full_frame_seed=requires_full_frame_seed,
+            allocations=[],
+            frees=[],
+            writes=[],
+        )
+
+        def allocate(width, height):
+            buffer = bytearray(width * height * 2)
+            surface.allocations.append((width, height, buffer))
+            return buffer
+
+        surface.allocate_buffer = allocate
+        surface.free_buffer = surface.frees.append
+        surface.write = lambda *arguments: surface.writes.append(arguments)
+        platform = types.SimpleNamespace(enter_game_mode=lambda: surface)
+        platform_module = types.ModuleType("tartlabutils.platform")
+        platform_module.get_platform = lambda: platform
+        package = types.ModuleType("tartlabutils")
+        package.__path__ = []
+        fake_time = types.SimpleNamespace(
+            sleep_ms=lambda unused: (_ for _ in ()).throw(self.StopApp()))
+        with mock.patch.dict(sys.modules, {
+            "time": fake_time,
+            "tartlabutils": package,
+            "tartlabutils.platform": platform_module,
+        }):
+            with self.assertRaises(self.StopApp):
+                exec(SWITCH_TEST_APP, {})
+        return surface
+
+    def test_shadow_surface_uses_heap_full_frame_seed(self):
+        surface = self.run_app(True)
+        self.assertEqual(surface.allocations, [])
+        self.assertEqual(surface.frees, [])
+        self.assertEqual(len(surface.writes), 1)
+        buffer, x, y, width, height = surface.writes[0]
+        self.assertEqual((x, y, width, height), (0, 0, 10, 2))
+        self.assertEqual(len(buffer), 40)
+
+    def test_ordinary_surface_keeps_bounded_stripe_buffers(self):
+        surface = self.run_app(False)
+        self.assertEqual(
+            [(width, height) for width, height, unused in surface.allocations],
+            [(2, 2)] * 5,
+        )
+        self.assertEqual(len(surface.frees), 5)
+        self.assertEqual(len(surface.writes), 5)
 
 
 if __name__ == "__main__":

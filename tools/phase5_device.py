@@ -446,17 +446,33 @@ colors = (
     (0x00, 0x1F),  # blue
 )
 stripe_width = surface.width // len(colors)
-for index, (high, low) in enumerate(colors):
-    x = index * stripe_width
-    width = surface.width - x if index == len(colors) - 1 else stripe_width
-    buffer = surface.allocate_buffer(width, surface.height)
-    try:
-        for offset in range(0, len(buffer), 2):
-            buffer[offset] = high
-            buffer[offset + 1] = low
-        surface.write(buffer, x, 0, width, surface.height)
-    finally:
-        surface.free_buffer(buffer)
+
+if getattr(surface, "requires_full_frame_seed", False):
+    # Full-frame seeds can exceed internal DMA memory. The ST77922 surface
+    # copies this ordinary heap/PSRAM buffer into its own bounded DMA scratch.
+    buffer = bytearray(surface.width * surface.height * 2)
+    row = bytearray(surface.width * 2)
+    for x in range(surface.width):
+        index = min(x // stripe_width, len(colors) - 1)
+        high, low = colors[index]
+        row[x * 2] = high
+        row[x * 2 + 1] = low
+    for y in range(surface.height):
+        offset = y * len(row)
+        buffer[offset:offset + len(row)] = row
+    surface.write(buffer, 0, 0, surface.width, surface.height)
+else:
+    for index, (high, low) in enumerate(colors):
+        x = index * stripe_width
+        width = surface.width - x if index == len(colors) - 1 else stripe_width
+        buffer = surface.allocate_buffer(width, surface.height)
+        try:
+            for offset in range(0, len(buffer), 2):
+                buffer[offset] = high
+                buffer[offset + 1] = low
+            surface.write(buffer, x, 0, width, surface.height)
+        finally:
+            surface.free_buffer(buffer)
 
 while True:
     time.sleep_ms(250)

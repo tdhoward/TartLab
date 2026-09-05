@@ -208,10 +208,9 @@ setup-AP path. The owner subsequently confirmed the complete browser workflow:
 - load, edit, save, and run files in the browser IDE; and
 - mark a file as the selected app.
 
-Booting the selected app remains untested. This board exposes only Reset and
-Boot, and the current bench configuration intentionally assigns neither as a
-TartLab IDE/app selector. The product-level startup-mode control is deferred;
-it is not a blocker for the confirmed IDE workflow in this pass.
+At the time of this first filesystem test, booting the selected app remained
+untested. This board exposes only Reset and Boot, and the bench configuration
+intentionally assigns neither as a TartLab IDE/app selector.
 
 The bench staging sequence exposed an operational caveat. `mpremote` raw-mode
 soft resets execute `boot.py` but intentionally skip `main.py`; repeatedly
@@ -221,6 +220,29 @@ healthy. The successful clean install used stock `boot.py` plus a one-shot
 temporary `main.py` to atomically promote the final entry points and execute
 the real application. Production provisioning must provide an equivalent
 transaction instead of copying the final entry points in an unsafe order.
+
+## Clean current-source fixture follow-up (2026-09-04)
+
+COM18 was subsequently treated as disposable test-fixture state. Its complete
+16 MiB flash was erased, the pinned 2,978,512-byte MicroPython 1.27.0 / LVGL
+9.4.0 image was written at offset `0x0`, and esptool verified it against SHA-256
+`187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`.
+A clean board-explicit development filesystem was then installed from the
+current source with the protected `elecrow_dle06235b` identity and only that
+board's runtime subtree. It contained 210 distribution files with expanded
+size 1,241,537 bytes and inventory SHA-256
+`2551bef1f6fb4c35f2ea919f2eede3317f5f06b88d9248522f8d8895b760fa8c`.
+
+An untouched launcher remained visible for the full ten-second countdown,
+then selected IDE mode, created the setup access point, started HTTP, and
+reached `HEALTHY mode=IDE`. The launcher then accepted **Run selected app** for
+a hash-verified temporary direct-surface fixture. That app performed the
+ST77922-required full-frame seed through the public surface and reached
+`HEALTHY mode=APP`. Reset from APP returned to the launcher rather than
+repeating APP mode; leaving the launcher untouched again reached a healthy IDE.
+The temporary app was removed and the durable selection was initialized to
+`hello.py` afterward. Serial execution and health passed; the five color bands
+still require an explicit recorded visual judgment.
 
 ## Brightness follow-up (2026-09-04)
 
@@ -289,14 +311,15 @@ single-board bridge release is required.
    button rather than assigning GPIO0, GPIO45, or GPIO46 without qualification.
    This means the default button policy always selects IDE mode. A future
    external-button or buttonless app-mode control remains a product decision.
-7. **Partially completed:** the complete filesystem reached a healthy IDE
+7. **Partially completed:** the current clean filesystem reached a healthy IDE
    server; temporary-AP setup, Wi-Fi station/LAN access, and browser file
    load/edit/save/run were owner-confirmed. Selecting an app also worked, and
-   the direct-surface ownership round trip passed. Direct PWM brightness
-   control now passes from off through intermediate duty levels, and a focused
-   real-touch dim/consume/wake probe passes. Still repeat the policy inside an
-   installed candidate IDE and verify booting a selected app, representative
-   examples/direct games, and their complete launcher ownership transitions.
+   the touchscreen launcher now booted a temporary selected direct-surface app
+   to `HEALTHY mode=APP`; reset returned through the launcher to a healthy IDE.
+   Direct PWM brightness control passes from off through intermediate duty
+   levels, and a focused real-touch dim/consume/wake probe passes. Still repeat
+   the power policy inside the complete IDE and visually review the direct
+   fixture, representative examples/games, and their launcher transitions.
 
 Milestone A means TartLab runs end to end on the bench. It does not authorize
 publishing or provisioning the board as a supported target.
