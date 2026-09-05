@@ -171,9 +171,10 @@ The experimental board integration now consists of:
   installed only for that board; it owns the QSPI, I2C, reset, backlight,
   portrait geometry, touch, and lifecycle details;
 - a packed-QSPI direct RGB565 surface using command `0x32002C00`;
-- a full-frame SPIRAM shadow plus a 24-row internal-DMA scratch buffer. Games
-  must seed the shadow with one full-frame synchronous write after each
-  UI-to-game transition. Arbitrary dirty rectangles are merged into the
+- a full-frame SPIRAM shadow plus a 24-row internal-DMA scratch buffer.
+  `DirectCanvas` seeds the shadow with one full-frame synchronous write after
+  each UI-to-game transition when the surface advertises that requirement.
+  Arbitrary dirty rectangles are merged into the
   shadow, rounded to the four-column physical constraint, and transferred from
   the scratch buffer without reading beyond the caller's buffer or inventing
   neighboring pixels;
@@ -243,6 +244,41 @@ repeating APP mode; leaving the launcher untouched again reached a healthy IDE.
 The temporary app was removed and the durable selection was initialized to
 `hello.py` afterward. Serial execution and health passed; the five color bands
 still require an explicit recorded visual judgment.
+
+## Representative Racer follow-up (2026-09-04)
+
+The current Racer exposed a shared first-present mismatch: `DirectCanvas`
+always divided its first flush into DMA-sized dirty writes, while this surface
+must receive one complete framebuffer before its shadow is valid. The canvas
+now discovers `requires_full_frame_seed` and `shadow_valid` from any surface,
+submits its physical backing buffer once when required, and then resumes its
+normal bounded dirty-region path. This behavior contains no board or controller
+identity. The benchmark's counting surface now forwards the same optional
+capability instead of hiding it.
+
+A hash-verified Racer fixture then reached `Starting APP` and
+`HEALTHY mode=APP`, ran without a reported fault for 90 seconds, and passed
+owner review for upright header and road rendering plus left/right steering.
+The owner found that first run visually correct but very slow. A three-sample
+representative benchmark localized the problem: four dirty writes totaling
+roughly 9-10 KiB took median 5.59-5.88 seconds per frame, while game update and
+CPU rendering were only about 7 ms and 13-19 ms respectively. A focused probe
+then showed that the native 40 MHz QSPI path was healthy: a 15,360-byte DMA
+submission returned in 0.14 ms and completed in another 1.13 ms. The delay was
+Python row-by-row copying between the canvas, SPIRAM shadow, and DMA scratch,
+especially for tall narrow damage regions.
+
+The reusable private Viper emitters now include a checked-caller, cross-buffer
+strided row copy, and the ST77922 surface uses it for both shadow directions.
+After that change, a full 12-sample matrix completed in 39 seconds. The normal
+three-entity workload had 43-44 ms median work and 56-59 ms p95 at both road
+speeds, with median surface-write time of 15-17 ms and no dropped simulation
+time. It missed the 50 ms work deadline in 2-4 of 12 samples, so the current
+20 FPS target is close but not yet qualified on this board. Eight- and
+sixteen-entity stress cases still exceed the deadline materially. The
+optimized interactive build then repeated `HEALTHY mode=APP`; the owner
+confirmed that it felt great, with the already verified upright rendering and
+steering intact.
 
 ## Brightness follow-up (2026-09-04)
 
@@ -324,9 +360,11 @@ single-board bridge release is required.
    to `HEALTHY mode=APP`; reset returned through the launcher to a healthy IDE.
    Direct PWM brightness control passes from off through intermediate duty
    levels; focused and complete-IDE real-touch dim/consume/wake probes pass,
-   including repeated dim/wake and teardown restoration. Still visually review
-   the direct fixture, representative examples/games, and their launcher
-   transitions.
+   including repeated dim/wake and teardown restoration. Racer now passes its
+   launcher transition, APP health, portrait rendering, and steering review;
+   its initial multi-second direct-write bottleneck is fixed, though the
+   20 FPS tail qualification remains. Still review the other representative
+   examples/games and their launcher transitions.
 
 Milestone A means TartLab runs end to end on the bench. It does not authorize
 publishing or provisioning the board as a supported target.

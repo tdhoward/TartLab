@@ -8,6 +8,13 @@ from tartlabutils.modern import (
     UI_OWNER,
 )
 
+try:
+    from tartlabutils._modern_emitters import (
+        copy_rgb565_rows_between as _copy_rows_viper,
+    )
+except ImportError:
+    _copy_rows_viper = None
+
 
 _WRITE_COLOR = 0x32
 _RAMWR = 0x2C
@@ -16,6 +23,22 @@ _COLUMN_ALIGNMENT = 4
 
 def _qspi_color_command(command):
     return (_WRITE_COLOR << 24) | ((command & 0xFF) << 8)
+
+
+def _copy_rows(source, target, source_start, target_start,
+               row_bytes, row_count, source_stride, target_stride):
+    if _copy_rows_viper is not None:
+        _copy_rows_viper(
+            source, target, source_start, target_start,
+            row_bytes, row_count, source_stride, target_stride)
+        return
+    source = memoryview(source)
+    target = memoryview(target)
+    for row in range(row_count):
+        source_row = source_start + row * source_stride
+        target_row = target_start + row * target_stride
+        target[target_row:target_row + row_bytes] = (
+            source[source_row:source_row + row_bytes])
 
 
 class ST77922DirectRGB565Surface(DirectRGB565Surface):
@@ -55,15 +78,12 @@ class ST77922DirectRGB565Surface(DirectRGB565Surface):
         self._shadow_valid = False
 
     def _copy_to_shadow(self, buffer, x, y, width, height):
-        source = memoryview(buffer)
         row_bytes = width * self.bytes_per_pixel
         shadow_stride = self.width * self.bytes_per_pixel
-        for row in range(height):
-            source_start = row * row_bytes
-            shadow_start = (y + row) * shadow_stride + (
-                x * self.bytes_per_pixel)
-            self._shadow[shadow_start:shadow_start + row_bytes] = (
-                source[source_start:source_start + row_bytes])
+        shadow_start = y * shadow_stride + x * self.bytes_per_pixel
+        _copy_rows(
+            buffer, self._shadow, 0, shadow_start,
+            row_bytes, height, row_bytes, shadow_stride)
 
     def _send(self, buffer, x, y, width, height, wait):
         self._controller.begin_direct_transfer()
@@ -96,12 +116,11 @@ class ST77922DirectRGB565Surface(DirectRGB565Surface):
         while row < height:
             rows = min(rows_per_transfer, height - row)
             transfer_size = rows * row_bytes
-            for chunk_row in range(rows):
-                shadow_start = (y + row + chunk_row) * shadow_stride + (
-                    x * self.bytes_per_pixel)
-                scratch_start = chunk_row * row_bytes
-                self._scratch[scratch_start:scratch_start + row_bytes] = (
-                    self._shadow[shadow_start:shadow_start + row_bytes])
+            shadow_start = (
+                (y + row) * shadow_stride + x * self.bytes_per_pixel)
+            _copy_rows(
+                self._shadow, self._scratch, shadow_start, 0,
+                row_bytes, rows, shadow_stride, row_bytes)
             self._send(
                 self._scratch[:transfer_size], x, y + row, width, rows, True)
             row += rows

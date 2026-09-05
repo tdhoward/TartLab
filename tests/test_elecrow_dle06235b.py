@@ -145,6 +145,37 @@ class ElecrowDirectSurfaceTests(unittest.TestCase):
         self.assertEqual(bytes(surface._shadow), before)
         self.assertEqual(bus.transfers, [])
 
+    def test_surface_uses_compiled_strided_copies_when_available(self):
+        unused_controller, bus, unused_panel, unused_freed, surface = (
+            self.prepare())
+        calls = []
+
+        def copy_rows(source, target, source_start, target_start,
+                      row_bytes, row_count, source_stride, target_stride):
+            calls.append((
+                source_start, target_start, row_bytes, row_count,
+                source_stride, target_stride))
+            source = memoryview(source)
+            target = memoryview(target)
+            for row in range(row_count):
+                source_row = source_start + row * source_stride
+                target_row = target_start + row * target_stride
+                target[target_row:target_row + row_bytes] = (
+                    source[source_row:source_row + row_bytes])
+
+        original = module._copy_rows_viper
+        module._copy_rows_viper = copy_rows
+        try:
+            surface.write(bytes(range(32)), 0, 0, 8, 2)
+        finally:
+            module._copy_rows_viper = original
+
+        self.assertEqual(calls, [
+            (0, 0, 16, 2, 16, 16),
+            (0, 0, 16, 2, 16, 16),
+        ])
+        self.assertEqual(bus.transfers[0][1], bytes(range(32)))
+
     def test_new_game_ownership_invalidates_shadow(self):
         unused_controller, unused_bus, unused_panel, unused_freed, surface = (
             self.prepare())

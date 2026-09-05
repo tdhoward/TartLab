@@ -44,3 +44,18 @@ def copy_rgb565_rows(buffer, source_start: int, target_start: int,
                 data[target_start + offset] = data[source_start + offset]
         source_start += stride
         target_start += stride
+
+
+@micropython.viper
+def copy_rgb565_rows_between(source_buffer, target_buffer,
+                             source_start: int, target_start: int,
+                             row_bytes: int, row_count: int,
+                             source_stride: int, target_stride: int):
+    """Copy RGB565 rows between two validated, non-overlapping buffers."""
+    source = ptr8(source_buffer)  # noqa: F821
+    target = ptr8(target_buffer)  # noqa: F821
+    for unused_row in range(row_count):
+        for offset in range(row_bytes):
+            target[target_start + offset] = source[source_start + offset]
+        source_start += source_stride
+        target_start += target_stride

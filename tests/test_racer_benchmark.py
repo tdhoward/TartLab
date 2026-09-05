@@ -24,6 +24,8 @@ class RacerBenchmarkTests(unittest.TestCase):
         self.assertIn("ENTITY_COUNTS = (0, 3, 8, 16)", source)
         self.assertIn("SPEEDS = (80, 120)", source)
         self.assertIn("ENTITY_PROFILES = ('road-relative', 'mixed-movement')", source)
+        self.assertIn("self.requires_full_frame_seed = getattr(", source)
+        self.assertIn("def shadow_valid(self):", source)
         self.assertNotIn("__MODERN_APP_SOURCE__", source)
         self.assertNotIn("__DAMAGE_SOURCE__", source)
         self.assertNotIn("__TIMING_SOURCE__", source)

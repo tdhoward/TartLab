@@ -247,6 +247,23 @@ class FakeSurface:
         self.writes.append((bytes(buffer), x, y, width, height))
 
 
+class FakeSeedSurface(FakeSurface):
+    requires_full_frame_seed = True
+
+    def __init__(self, width=4, height=3):
+        super().__init__(width, height)
+        self.shadow_valid = False
+
+    def write(self, buffer, x, y, width, height):
+        if (not self.shadow_valid and
+                (x, y, width, height) !=
+                (0, 0, self.width, self.height)):
+            raise RuntimeError("surface needs a full-frame seed")
+        super().write(buffer, x, y, width, height)
+        if (x, y, width, height) == (0, 0, self.width, self.height):
+            self.shadow_valid = True
+
+
 class FakeScrollSurface(FakeSurface):
     def __init__(self, width=4, height=3, accelerate=True):
         super().__init__(width, height)
@@ -396,6 +413,27 @@ def load_modern_app(platform, lvgl=None, viper_swap=None, viper_copy=None):
 
 
 class ModernAppDrawingTests(unittest.TestCase):
+    def test_canvas_seeds_shadow_surface_before_sending_dirty_regions(self):
+        surface = FakeSeedSurface(width=5, height=3)
+        module = load_modern_app(types.SimpleNamespace(), fake_lvgl())
+        canvas = module.DirectCanvas(
+            surface, transfer_rows=1, rotation=90)
+        canvas.buffer[:] = bytes(range(len(canvas.buffer)))
+
+        canvas.show((1, 1, 1, 2))
+
+        self.assertTrue(surface.shadow_valid)
+        self.assertEqual(surface.writes, [
+            (bytes(range(30)), 0, 0, 5, 3),
+        ])
+
+        surface.writes.clear()
+        canvas.show((1, 1, 1, 2))
+
+        self.assertEqual(
+            [write[1:] for write in surface.writes],
+            [(1, 1, 2, 1)])
+
     def test_canvas_uses_bounce_buffer_byte_capacity_for_narrow_area(self):
         surface = FakeSurface()
         platform = types.SimpleNamespace(

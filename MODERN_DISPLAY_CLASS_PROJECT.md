@@ -217,6 +217,21 @@ framebuffer and remains deferred until `show()`. It does not issue panel scroll
 commands. The optional presentation accelerator below remains independent of
 the completed rotation-consolidation gate.
 
+An additional capability-driven first-present path was completed during the
+Elecrow DLE06235B bring-up. A surface that advertises
+`requires_full_frame_seed` and reports an invalid shadow receives the canvas's
+complete physical framebuffer once, even when the application's first
+`show()` names only a dirty region. Subsequent presents retain normal clipping,
+rotation mapping, and bounded dirty writes. This keeps shadow initialization
+out of games and avoids any board or controller identity in `DirectCanvas`.
+
+That bring-up also exposed severe shape sensitivity below the canvas: Python
+row slices between an external-RAM shadow and an internal-DMA scratch buffer
+took several seconds for Racer's tall narrow regions despite a healthy 40 MHz
+native transfer. The private Viper emitters now provide a cross-buffer strided
+row copy used by the reusable ST77922 adapter. Its representative three-entity
+Racer surface-write median fell from 5.59-5.88 seconds to 15-17 ms.
+
 ### Independent track: capability-driven scroll presentation
 
 Some panel controllers can change the scanout start address without

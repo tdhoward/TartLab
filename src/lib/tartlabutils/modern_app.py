@@ -183,7 +183,7 @@ class _RotatedTextWorkspace:
 
 
 class DirectCanvas(FrameBuffer):
-    """A rotation-aware framebuffer flushed through a DMA bounce tile.
+    """A rotation-aware framebuffer flushed through a display surface.
 
     ``rotation`` accepts degrees (0, 90, 180, or 270) or the equivalent
     number of quarter turns (0 through 3). Positive rotation describes the
@@ -770,6 +770,16 @@ class DirectCanvas(FrameBuffer):
         if width <= 0 or height <= 0:
             return
         x, y, width, height = self._area(x, y, width, height)
+
+        # Some surfaces preserve partial writes in a shadow framebuffer and
+        # therefore need one complete image before accepting dirty regions.
+        # Seed that shadow from the canvas's physical backing buffer. The
+        # surface remains responsible for any controller-specific DMA tiling.
+        if (getattr(self.surface, "requires_full_frame_seed", False) and
+                not getattr(self.surface, "shadow_valid", False)):
+            self.surface.write(
+                self._buffer_view, 0, 0, self._width, self._height)
+            return
 
         target = self._transfer_view
         row_bytes = width * 2

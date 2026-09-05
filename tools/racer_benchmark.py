@@ -106,11 +106,17 @@ class CountingSurface:
         self.width = surface.width
         self.height = surface.height
         self.color_format = surface.color_format
+        self.requires_full_frame_seed = getattr(
+            surface, 'requires_full_frame_seed', False)
         self.sent_bytes = 0
         self.transactions = 0
         self.write_us = 0
         self.scroll_commands = 0
         self.scroll_us = 0
+
+    @property
+    def shadow_valid(self):
+        return getattr(self.surface, 'shadow_valid', True)
 
     def allocate_buffer(self, width, height):
         return self.surface.allocate_buffer(width, height)
