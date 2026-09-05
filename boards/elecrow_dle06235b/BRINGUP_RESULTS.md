@@ -239,10 +239,19 @@ The probe restored full brightness. No device filesystem file was changed;
 after clearing the already documented raw-session failure counter, one hard
 reset returned the installed TartLab payload to `HEALTHY mode=IDE`.
 
-This proves the board's PWM control path and the declarative correction. A
-candidate containing the updated board payload must still pass the visual IDE
-inactivity, touch-to-wake, clamping, and teardown checks before brightness is
-qualified as a complete user-facing behavior.
+A second RAM-only probe exercised the current
+`ModernIDEBacklightController` with the real ST77922 pointer, LVGL input, and
+PWM backlight. It used 75 percent normal brightness, 15 percent dim brightness,
+and a three-second test timeout. The controller dimmed, the first physical
+touch restored normal brightness without clicking the displayed button, the
+second touch reached the button, and teardown restored 100 percent duty. A
+following hard reset again reached `HEALTHY mode=IDE`.
+
+These probes establish the board's PWM control path, the declarative
+correction, and the focused dim/consume/wake behavior. A candidate containing
+the updated board payload must still repeat the policy inside the complete IDE
+with persisted settings, including clamping and repeated teardown, before
+brightness is qualified as a complete integrated behavior.
 
 ## Remaining work
 
@@ -284,8 +293,9 @@ single-board bridge release is required.
    server; temporary-AP setup, Wi-Fi station/LAN access, and browser file
    load/edit/save/run were owner-confirmed. Selecting an app also worked, and
    the direct-surface ownership round trip passed. Direct PWM brightness
-   control now passes from off through intermediate duty levels; still verify
-   IDE inactivity dim/wake behavior, booting a selected app, representative
+   control now passes from off through intermediate duty levels, and a focused
+   real-touch dim/consume/wake probe passes. Still repeat the policy inside an
+   installed candidate IDE and verify booting a selected app, representative
    examples/direct games, and their complete launcher ownership transitions.
 
 Milestone A means TartLab runs end to end on the bench. It does not authorize
