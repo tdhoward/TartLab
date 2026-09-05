@@ -42,8 +42,10 @@ The `0x55` device identifies as the ST77922 integrated touch interface:
 
 This live result and Elecrow's active example contradict the FT6336G/`0x38`
 description found elsewhere in the vendor materials. Address `0x18` is
-consistent with the documented ES8311 audio codec. Address `0x28` remains
-unidentified and must not be assigned a function without evidence.
+consistent with the documented ES8311 audio codec. Address `0x28` is an
+undocumented panel-side endpoint: it disappears together with `0x55` while
+the shared panel reset is asserted, while `0x18` remains present. It is
+explicitly quarantined and must not be addressed by production code.
 
 ## Standard MicroPython result
 
@@ -318,6 +320,94 @@ does not replace the full tail qualification. The hash-verified selected Racer
 then reached `HEALTHY mode=APP`; during the requested tearing review, the owner
 reported that its motion looked nice and smooth.
 
+A subsequent RAM-only tail matrix ran 100 samples for every combination of the
+80- and 120-pixel-per-second road speeds and the road-relative and mixed-motion
+three-entity profiles, for 400 measured frames total. All 400 presentation
+waits succeeded. Median work was 32.239-34.700 ms and p95 work was
+42.324-45.518 ms, below the 50 ms target in every workload; p95 surface-write
+time was 11.348-11.563 ms and p95 frame-sync wait time was 15.813-16.857 ms.
+No simulation time was dropped. Three isolated frames exceeded 50 ms, with a
+53.885 ms worst case, so this result qualifies the representative workload at
+the stated p95 20 FPS target but is not a hard real-time or zero-overrun claim.
+The setup heap cost was 6,496 bytes in every workload, and the pre-workload free
+heap remained between 7,266,832 and 7,278,624 bytes across the matrix. The probe
+did not write the device filesystem. A following hard reset returned the
+installed payload to `HEALTHY mode=IDE`.
+
+## Ownership-cycle follow-up (2026-09-04)
+
+The first attempt to run the generic renderer-cycle probe correctly failed
+when it returned from UI ownership and tried a partial direct write before
+re-establishing the ST77922 shadow. The probe had assumed that every direct
+surface could start with a partial write. It now discovers the reusable
+`requires_full_frame_seed` and `shadow_valid` capabilities and, when needed,
+uses one reusable full-frame RAM buffer to seed the surface after each
+UI-to-game acquisition. The probe contains no board or controller identity.
+
+With that correction, 100 UI-to-game-to-UI cycles completed. Every cycle
+performed the required 320 x 480 seed, a moving 96 x 48 partial write, and the
+forced LVGL redraw. Full-frame seeds took 184.358-186.973 ms, partial writes
+took 4.165-6.988 ms, and returns to UI took 84.262-87.629 ms. The final owner
+was `ui`, no transfer remained pending, and garbage-collected free heap moved
+from 7,587,376 to 7,584,896 bytes before settling at the final value for the
+rest of the run. No crash, native error, stuck transfer, or automated state
+failure occurred.
+
+The owner then observed a paced ten-cycle version of the same probe. Each
+cycle held a full black direct-render screen with one moving red rectangle and
+then the complete TartLab UI for 500 ms apiece. All ten direct frames and UI
+redraws looked correct, with no leftover rectangle, tearing, striping,
+incomplete redraw, orientation error, or freeze. This supplies the visual
+no-stale-frame/no-corruption judgment for the 100-cycle automated result.
+
+The same session repeated the full-panel color diagnostic through the required
+ST77922 full-frame seed. The owner confirmed sharp horizontal boundaries and
+the correct portrait top-to-bottom red, green, blue, white, and black order,
+followed by a clean normal-UI redraw. A 20-second touch probe captured all four
+corners and the center, including logical samples near `(29, 15)`, `(302, 21)`,
+`(24, 462)`, `(309, 466)`, and `(168, 233)` on the 320 x 480 surface.
+
+A RAM-only portrait status sequence then held four explicit UI states for
+operator review: the startup/network/progress view, that view with its
+top-right app-error indicator, the full-panel fatal-error view, and a final
+completion view. The owner confirmed correct text and progress-bar fit, error
+indicator placement, complete red error coverage, and clean transitions, with
+no clipping, overlap, corruption, or incomplete redraw.
+
+Raw-REPL entry for these probes eventually exercised the expected repeated-
+failure recovery guard. The dedicated recovery retry cleared only that
+test-induced counter, preserved the selected app and settings, and the
+following normal boot reached `HEALTHY mode=IDE` after Wi-Fi and HTTP startup.
+
+## I2C responder isolation (2026-09-04)
+
+The retained Elecrow schematic connects only the ES8311 codec, the panel/touch
+connector, and the external I2C connector to GPIO38/39. Elecrow's codec source
+assigns `0x18` to ES8311, and the ST77922 TDDI protocol documents `0x55` as the
+touch interface's default 7-bit address. Neither source assigns a supported
+function to the observed `0x28` responder.
+
+A RAM-only comparison read the 16-byte ST77922 identity region five times at
+each observed address. Address `0x55` returned the same valid identity every
+time: firmware 3, 320 x 480 geometry, five contacts, and revision 1.6.1.17.
+Address `0x28` acknowledged every transaction but returned changing repeated
+filler-like bytes rather than a documented identity. With shared GPIO48 held
+in reset, both `0x28` and `0x55` disappeared from the bus while ES8311 at
+`0x18` remained; releasing reset restored all three responders.
+
+This isolates `0x28` to the panel assembly without inventing an unsupported
+purpose for it. TartLab initializes touch only through documented address
+`0x55`. Production code must neither probe nor write `0x28`; qualification
+treats it as a reserved, undocumented panel endpoint unless future primary
+vendor documentation defines a safe public contract.
+
+As expected, holding the shared reset low while the live pointer task was
+polling produced a contained `ENODEV` diagnostic. After reset, the dedicated
+recovery retry cleared the test-induced raw-REPL failure counter. The normal
+payload then reidentified touch, started the IDE, fell back to its temporary
+access point when the saved station connection timed out, started HTTP, and
+reported `HEALTHY mode=IDE update_committed=False`.
+
 ## Brightness follow-up (2026-09-04)
 
 The first complete bench payload left GPIO41 in the display framework's
@@ -385,8 +475,10 @@ single-board bridge release is required.
 4. **Completed for bench use:** add the platform factory and protected board
    selector while keeping hardware details behind `tartlabutils.platform`.
 5. **Partially completed:** the known fixed-width progress bar is now
-   geometry-aware. Visual review of every status overlay, error view, and touch
-   target in portrait remains.
+   geometry-aware. The normal startup/network/progress view, app-error
+   indicator, full-panel fatal-error view, and completion view pass portrait
+   owner review. Recovery-specific pages and any remaining touch targets still
+   require review.
 6. **Completed for the current bench policy:** configure no built-in IDE
    button rather than assigning GPIO0, GPIO45, or GPIO46 without qualification.
    This means the default button policy always selects IDE mode. A future
@@ -401,20 +493,26 @@ single-board bridge release is required.
    including repeated dim/wake and teardown restoration. Racer now passes its
    launcher transition, APP health, portrait rendering, and steering review;
    its initial multi-second direct-write bottleneck is fixed, though the
-   optional frame-sync path is live and its held smooth-motion review passes.
-   Final 20 FPS tail qualification remains. Testris also passes its launcher, APP
-   health, complete portrait scene, animation, and touch-control review. Still
-   review the other representative examples and their launcher transitions.
+   optional frame-sync path is live, its held smooth-motion review passes, and
+   its 400-frame representative matrix meets the 20 FPS p95 target without
+   dropped simulation time. Three isolated 50 ms work overruns remain recorded
+   rather than being hidden by a hard real-time claim. Testris also passes its
+   launcher, APP health, complete portrait scene, animation, and touch-control
+   review. Still review the other representative examples and their launcher
+   transitions.
 
 Milestone A means TartLab runs end to end on the bench. It does not authorize
 publishing or provisioning the board as a supported target.
 
 ### Milestone B: reproducible supported target
 
-8. Complete the board hardening gates: identify or explicitly quarantine the
-   unexplained I2C `0x28` responder; measure transfer and render timing, Wi-Fi
-   coexistence, heap and flash margins; and complete at least 100
-   LVGL/direct-surface ownership transitions without a crash or corruption.
+8. **Partially completed:** a capability-driven RAM-only probe completed 100
+   LVGL/direct-surface ownership transitions with final UI ownership, no
+   pending transfer, no runtime failure, and a settled heap. A paced ten-cycle
+   owner review also passed without a stale or corrupt frame. The unexplained
+   I2C `0x28` responder is isolated to the panel assembly and explicitly
+   quarantined from production access. Finish Wi-Fi coexistence plus heap and
+   flash margin measurements.
 9. Decide whether the existing first-active-contact pointer behavior is the
    supported contract or whether TartLab must expose simultaneous multitouch.
    The former is sufficient for the current single-pointer UI if it is made an

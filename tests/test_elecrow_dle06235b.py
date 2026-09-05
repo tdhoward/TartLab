@@ -283,6 +283,15 @@ class ElecrowControllerTests(unittest.TestCase):
 
 
 class ElecrowDriverSourceTests(unittest.TestCase):
+    def test_touch_uses_documented_address_not_quarantined_endpoint(self):
+        source = (
+            ROOT / "firmware/lvgl-modern/drivers/st77922_touch.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("I2C_ADDR = const(0x55)", source)
+        self.assertNotIn("0x28", source)
+        self.assertNotIn("address", board_payload.BOARD_CONFIG["touch"])
+
     def test_hardware_driver_uses_async_completion_and_frees_scratch(self):
         source = (ROOT / "firmware/lvgl-modern/drivers/st77922.py").read_text(
             encoding="utf-8")

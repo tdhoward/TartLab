@@ -77,17 +77,25 @@ import gc, time, ujson
 from tartlabutils.platform import get_platform
 
 iterations = %d
+hold_ms = %d
 platform = get_platform()
 controller = platform.controller
 surface = platform.enter_game_mode()
 width = 96
 height = 48
 buffer = surface.allocate_buffer(width, height)
+requires_full_frame_seed = bool(
+    getattr(surface, "requires_full_frame_seed", False))
+seed_buffer = None
+if requires_full_frame_seed:
+    seed_buffer = bytearray(
+        surface.width * surface.height * surface.bytes_per_pixel)
 for offset in range(0, len(buffer), 2):
     buffer[offset] = 0xF8
     buffer[offset + 1] = 0x00
 
 transfer_us = []
+seed_us = []
 to_game_us = []
 to_ui_us = []
 heap_samples = []
@@ -97,6 +105,13 @@ try:
         started = time.ticks_us()
         surface = platform.enter_game_mode()
         to_game_us.append(time.ticks_diff(time.ticks_us(), started))
+
+        started = time.ticks_us()
+        if (requires_full_frame_seed and
+                not getattr(surface, "shadow_valid", False)):
+            surface.write(
+                seed_buffer, 0, 0, surface.width, surface.height)
+        seed_us.append(time.ticks_diff(time.ticks_us(), started))
 
         started = time.ticks_us()
         surface.write(
@@ -109,23 +124,31 @@ try:
         transfer_us.append(time.ticks_diff(time.ticks_us(), started))
         if surface.busy:
             raise RuntimeError("synchronous direct transfer remained busy")
+        if hold_ms:
+            time.sleep_ms(hold_ms)
 
         started = time.ticks_us()
         platform.enter_ui_mode()
         to_ui_us.append(time.ticks_diff(time.ticks_us(), started))
         if controller.owner != "ui" or controller.transfer_pending:
             raise RuntimeError("UI ownership did not settle")
+        if hold_ms:
+            time.sleep_ms(hold_ms)
         gc.collect()
         heap_samples.append(gc.mem_free())
 finally:
     if controller.owner == "game":
         platform.enter_ui_mode()
     surface.free_buffer(buffer)
+    seed_buffer = None
 
 result = {
     "iterations": iterations,
+    "hold_ms": hold_ms,
     "owner": controller.owner,
     "transfer_pending": controller.transfer_pending,
+    "requires_full_frame_seed": requires_full_frame_seed,
+    "seed_us": seed_us,
     "transfer_us": transfer_us,
     "to_game_us": to_game_us,
     "to_ui_us": to_ui_us,
@@ -141,6 +164,14 @@ from tartlabutils.platform import get_platform
 
 platform = get_platform()
 surface = platform.enter_game_mode()
+seeded = False
+if (getattr(surface, "requires_full_frame_seed", False) and
+        not getattr(surface, "shadow_valid", False)):
+    seed_buffer = bytearray(
+        surface.width * surface.height * surface.bytes_per_pixel)
+    surface.write(seed_buffer, 0, 0, surface.width, surface.height)
+    seed_buffer = None
+    seeded = True
 height = surface.height // 5
 colors = (
     ("red", 0xF8, 0x00),
@@ -170,6 +201,46 @@ finally:
 print("PHASE5_COLOR=" + ujson.dumps({
     "logical_size": (surface.width, surface.height),
     "bands_top_to_bottom": drawn,
+    "full_frame_seeded": seeded,
+}))
+'''
+
+
+STATUS_VISUAL_CODE = r'''
+import time, ujson
+from tartlabutils.platform import get_platform
+
+platform = get_platform()
+platform.enter_ui_mode()
+controller = platform.controller
+lvgl = platform.lvgl
+
+def refresh_and_hold(seconds):
+    lvgl.refr_now(controller._lv_display)
+    controller.wait_for_transfer()
+    time.sleep(seconds)
+
+view = platform.create_ide_view()
+view.show_startup("VISUAL TEST")
+view.show_network("TEST NETWORK", "192.0.2.1", "tartlab-test")
+view.show_update_progress("Portrait status layout", 2, 4)
+refresh_and_hold(5)
+
+view.show_app_error()
+refresh_and_hold(5)
+
+platform.show_error()
+controller.wait_for_transfer()
+time.sleep(5)
+
+view = platform.create_ide_view()
+view.show_startup("VISUAL TEST COMPLETE")
+view.show_update_progress("Returning to TartLab", 4, 4)
+refresh_and_hold(3)
+
+print("PHASE5_STATUS_VISUAL=" + ujson.dumps({
+    "logical_size": (platform.width, platform.height),
+    "stages": ("status", "app_error_indicator", "fatal_error", "complete"),
 }))
 '''
 
@@ -511,12 +582,18 @@ def probe(args: argparse.Namespace) -> None:
 
 
 def renderer_cycle(args: argparse.Namespace) -> None:
-    code = RENDERER_CYCLE_TEMPLATE % args.iterations
+    code = RENDERER_CYCLE_TEMPLATE % (args.iterations, args.hold_ms)
     _run(args, code, "PHASE5_RENDERER_CYCLE", max(args.timeout, 120))
 
 
 def color(args: argparse.Namespace) -> None:
     _run(args, COLOR_CODE, "PHASE5_COLOR", max(args.timeout, 45))
+
+
+def status_visual(args: argparse.Namespace) -> None:
+    _run(
+        args, STATUS_VISUAL_CODE, "PHASE5_STATUS_VISUAL",
+        max(args.timeout, 45))
 
 
 def touch(args: argparse.Namespace) -> None:
@@ -699,9 +776,13 @@ def parser() -> argparse.ArgumentParser:
 
     renderer = commands.add_parser("renderer-cycle")
     renderer.add_argument("--iterations", type=int, default=25)
+    renderer.add_argument(
+        "--hold-ms", type=int, default=0,
+        help="hold direct and UI phases for visual inspection")
     renderer.set_defaults(func=renderer_cycle)
 
     commands.add_parser("color").set_defaults(func=color)
+    commands.add_parser("status-visual").set_defaults(func=status_visual)
 
     commands.add_parser("touch-id").set_defaults(func=touch_id)
     commands.add_parser("device-status").set_defaults(func=device_status)
@@ -728,6 +809,8 @@ def main() -> int:
     args = parser().parse_args()
     if getattr(args, "iterations", 1) <= 0:
         raise ValueError("iterations must be positive")
+    if getattr(args, "hold_ms", 0) < 0:
+        raise ValueError("hold-ms must be nonnegative")
     if getattr(args, "seconds", 1) <= 0:
         raise ValueError("seconds must be positive")
     args.func(args)

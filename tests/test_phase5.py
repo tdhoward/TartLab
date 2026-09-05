@@ -13,7 +13,12 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from modern_firmware import check_lock, docker_command, validate_lock
 from phase5_benchmark import device_program, sample_summary, validate_result
-from phase5_device import SWITCH_TEST_APP
+from phase5_device import (
+    COLOR_CODE,
+    RENDERER_CYCLE_TEMPLATE,
+    STATUS_VISUAL_CODE,
+    SWITCH_TEST_APP,
+)
 
 
 def load_modern_rendering():
@@ -117,6 +122,57 @@ def load_cst226_driver():
     }):
         spec.loader.exec_module(module)
     return module
+
+
+class Phase5RendererCycleProbeTests(unittest.TestCase):
+    def test_probe_seeds_surfaces_that_advertise_the_requirement(self):
+        source = RENDERER_CYCLE_TEMPLATE % (3, 0)
+
+        compile(source, "<renderer-cycle>", "exec")
+        self.assertIn('getattr(surface, "requires_full_frame_seed"', source)
+        self.assertIn('getattr(surface, "shadow_valid", False)', source)
+        self.assertIn('"requires_full_frame_seed": requires_full_frame_seed',
+                      source)
+        self.assertIn('"seed_us": seed_us', source)
+
+    def test_probe_can_hold_both_ownership_phases_for_visual_review(self):
+        source = RENDERER_CYCLE_TEMPLATE % (3, 500)
+
+        compile(source, "<renderer-cycle-visual>", "exec")
+        self.assertEqual(source.count("time.sleep_ms(hold_ms)"), 2)
+        self.assertIn('"hold_ms": hold_ms', source)
+
+    def test_probe_keeps_board_identity_out_of_capability_negotiation(self):
+        source = RENDERER_CYCLE_TEMPLATE.lower()
+
+        self.assertNotIn("elecrow", source)
+        self.assertNotIn("st77922", source)
+
+    def test_color_probe_seeds_surfaces_that_advertise_the_requirement(self):
+        compile(COLOR_CODE, "<color-probe>", "exec")
+        self.assertIn('getattr(surface, "requires_full_frame_seed"',
+                      COLOR_CODE)
+        self.assertIn('getattr(surface, "shadow_valid", False)', COLOR_CODE)
+        self.assertIn('"full_frame_seeded": seeded', COLOR_CODE)
+
+    def test_color_probe_keeps_board_identity_out_of_capability_negotiation(self):
+        source = COLOR_CODE.lower()
+
+        self.assertNotIn("elecrow", source)
+        self.assertNotIn("st77922", source)
+
+    def test_status_visual_probe_covers_each_ui_state(self):
+        compile(STATUS_VISUAL_CODE, "<status-visual>", "exec")
+        self.assertIn('view.show_update_progress(', STATUS_VISUAL_CODE)
+        self.assertIn('view.show_app_error()', STATUS_VISUAL_CODE)
+        self.assertIn('platform.show_error()', STATUS_VISUAL_CODE)
+        self.assertIn('"VISUAL TEST COMPLETE"', STATUS_VISUAL_CODE)
+
+    def test_status_visual_probe_has_no_board_identity(self):
+        source = STATUS_VISUAL_CODE.lower()
+
+        self.assertNotIn("elecrow", source)
+        self.assertNotIn("st77922", source)
 
 
 class ModernFirmwareReferenceLockTests(unittest.TestCase):
