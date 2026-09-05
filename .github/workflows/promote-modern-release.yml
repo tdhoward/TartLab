@@ -70,20 +70,22 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
-          python makedist.py --output build/promote-modern/dist-one --clean --skip-web-build --board lilygo_t_display_s3_pro
-          python makedist.py --output build/promote-modern/dist-two --clean --skip-web-build --board lilygo_t_display_s3_pro
-          python tools/build_modern_release.py --dist build/promote-modern/dist-one --output build/promote-modern/release --version "$RELEASE_TAG" --clean
-          python tools/build_modern_release.py --dist build/promote-modern/dist-two --output build/promote-modern/release-two --version "$RELEASE_TAG" --clean
+          mapfile -t BOARD_IDS < <(python tools/modern_release_matrix.py list)
+          BOARD_ARGS=()
+          for board_id in "${BOARD_IDS[@]}"; do
+            BOARD_ARGS+=(--board "$board_id")
+          done
+          printf 'Promotion board: %s\n' "${BOARD_IDS[@]}"
+          python makedist.py --output build/promote-modern/dist-one --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python makedist.py --output build/promote-modern/dist-two --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python tools/build_modern_release.py --dist build/promote-modern/dist-one --output build/promote-modern/release --version "$RELEASE_TAG" --clean "${BOARD_ARGS[@]}"
+          python tools/build_modern_release.py --dist build/promote-modern/dist-two --output build/promote-modern/release-two --version "$RELEASE_TAG" --clean "${BOARD_ARGS[@]}"
           python tools/compare_releases.py build/promote-modern/release build/promote-modern/release-two
 
       - name: Enforce runtime-profile and firmware preflight
-        run: >-
-          python tools/check_modern_release.py
-          --release build/promote-modern/release
-          --dist build/promote-modern/dist-one
-          --runtime-profile lvgl-modern
-          --board lilygo_t_display_s3_pro
-          --firmware-sha256 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
+        run: |
+          python tools/check_firmware_artifacts.py
+          python tools/modern_release_matrix.py check --release build/promote-modern/release --dist build/promote-modern/dist-one
 
       - name: Validate candidate-bound modern qualification evidence
         shell: bash

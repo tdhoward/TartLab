@@ -303,14 +303,32 @@ def _release_identity(release: Path, board: dict[str, Any] = PROFILE_BOARD
     return manifest, sha256_file(release / "checksums.json")
 
 
+def _provisioning_board(board_id: str, *, qualification_candidate: bool
+                        ) -> dict[str, Any]:
+    board = select_board(board_id)
+    allowed = {"qualified"}
+    if qualification_candidate:
+        allowed.add("candidate")
+    if board["support_status"] not in allowed:
+        expected = (
+            "candidate or qualified" if qualification_candidate
+            else "qualified")
+        raise ValueError(
+            "board %s is %s, not %s" % (
+                board_id, board["support_status"], expected))
+    return board
+
+
 def provision(release: Path, workspace: Path, mode: str, transport: Any, *,
               resume: bool = False,
-              board_id: str = PROFILE_BOARD["id"]) -> dict[str, Any]:
+              board_id: str = PROFILE_BOARD["id"],
+              qualification_candidate: bool = False) -> dict[str, Any]:
     """Run or resume the host transaction using an injected device transport."""
 
     if mode not in ("clean", "migrate"):
         raise ValueError("provisioning mode must be clean or migrate")
-    board = select_board(board_id, required_status="qualified")
+    board = _provisioning_board(
+        board_id, qualification_candidate=qualification_candidate)
     if board["runtime_profile"] != PROFILE:
         raise ValueError("selected board targets a different runtime profile")
     if mode == "migrate" and board_id != PROFILE_BOARD["id"]:
@@ -342,6 +360,9 @@ def provision(release: Path, workspace: Path, mode: str, transport: Any, *,
             "version": version,
             "profile": PROFILE,
             "board_id": board_id,
+            "authorization": (
+                "qualification-candidate" if qualification_candidate
+                else "qualified-release"),
         }
         if any(journal.get(key) != value for key, value in expected.items()):
             raise ValueError("provisioning journal does not match this operation")
@@ -360,6 +381,9 @@ def provision(release: Path, workspace: Path, mode: str, transport: Any, *,
             "version": version,
             "release_checksums_sha256": release_identifier,
             "firmware_sha256": firmware_record["sha256"],
+            "authorization": (
+                "qualification-candidate" if qualification_candidate
+                else "qualified-release"),
             "contains_sensitive_backup": mode == "migrate",
         }
         _write_journal(journal_path, journal)
@@ -407,6 +431,7 @@ def provision(release: Path, workspace: Path, mode: str, transport: Any, *,
         inventory = file_inventory(backup)
         if inventory_identifier(inventory) != journal["backup_identifier"]:
             raise ValueError("device backup differs from the provisioning journal")
+        transport.validate_target(board)
         image = workspace / "prepared-image"
         prepare_image(
             release, backup, image, version=version, mode=mode,
@@ -546,6 +571,28 @@ class CommandTransport:
                     "connected device does not contain the supported exact "
                     "legacy-mp123 runtime")
 
+    def validate_target(self, board: dict[str, Any]) -> None:
+        """Check observable chip and flash properties before destructive work."""
+        self._check_tools()
+        output = self._run([
+            "esptool", "--chip", "esp32s3", "--port", self.port,
+            "flash-id",
+        ]).stdout
+        if "ESP32-S3" not in output.upper():
+            raise ValueError("connected device is not an ESP32-S3 target")
+        match = re.search(
+            r"Detected flash size:\s*([0-9]+)\s*(KB|MB)",
+            output, re.IGNORECASE)
+        if match is None:
+            raise ValueError("connected device did not report its flash size")
+        multiplier = 1024 if match.group(2).upper() == "KB" else 1024 * 1024
+        actual_size = int(match.group(1)) * multiplier
+        expected_size = board["hardware"]["flash_size_bytes"]
+        if actual_size != expected_size:
+            raise ValueError(
+                "connected flash size is %d bytes, expected %d" % (
+                    actual_size, expected_size))
+
     def _check_tools(self) -> None:
         if shutil.which("esptool") is None or shutil.which("mpremote") is None:
             raise RuntimeError("esptool and mpremote are required for --execute")
@@ -681,7 +728,7 @@ class CommandTransport:
         return health.get("version") == version and health.get("update") is None
 
 
-def _verify_attestations(release: Path, source_ref: str) -> None:
+def _verify_attestations(release: Path, source_ref: str) -> str:
     qualification_bundle = release / "qualification-attestation.sigstore.json"
     release_bundle = release / "release-attestation.sigstore.json"
     present = [
@@ -698,6 +745,7 @@ def _verify_attestations(release: Path, source_ref: str) -> None:
         "--release", str(release), "--source-ref", source_ref,
         "--purpose", present[0], "--execute",
     ], cwd=ROOT, check=True)
+    return present[0]
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -706,7 +754,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--mode", choices=("clean", "migrate"), required=True)
     parser.add_argument(
         "--board", required=True,
-        help="qualified board ID from boards/<board_id>/board.json")
+        help="candidate/qualified board ID from boards/<board_id>/board.json")
     parser.add_argument("--workspace", type=Path)
     parser.add_argument("--port")
     parser.add_argument("--source-ref")
@@ -718,7 +766,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    board = select_board(args.board, required_status="qualified")
+    board = select_board(args.board)
+    if board["support_status"] not in ("candidate", "qualified"):
+        raise ValueError("selected board is not a candidate or qualified target")
     if board["runtime_profile"] != PROFILE:
         raise ValueError("selected board targets a different runtime profile")
     if args.mode == "migrate" and board["id"] != PROFILE_BOARD["id"]:
@@ -746,10 +796,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     expected_ref = "refs/tags/" + manifest["version"]
     if args.source_ref != expected_ref:
         raise ValueError("--source-ref must be %s" % expected_ref)
-    _verify_attestations(args.release.resolve(), args.source_ref)
+    attestation_purpose = _verify_attestations(
+        args.release.resolve(), args.source_ref)
     result = provision(
         args.release, args.workspace, args.mode, CommandTransport(args.port),
-        resume=args.resume, board_id=board["id"])
+        resume=args.resume, board_id=board["id"],
+        qualification_candidate=attestation_purpose == "qualification")
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

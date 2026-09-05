@@ -18,6 +18,8 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from build_modern_release import build_release  # noqa: E402
+from board_catalog import select_board  # noqa: E402
+from modern_release_matrix import check_matrix, release_boards  # noqa: E402
 from provision_modern import (  # noqa: E402
     CommandTransport, FIRMWARE_SHA256, LEGACY_FIRMWARE,
     LEGACY_IDENTITY_REGIONS, LEGACY_READ_CHUNK_SIZE, MODERN_REPOSITORY,
@@ -33,6 +35,7 @@ class DirectoryTransport:
         self.device.mkdir(parents=True, exist_ok=True)
         self.capture_count = 0
         self.source_validation_count = 0
+        self.target_validation_count = 0
         self.install_count = 0
         self.reuse_matching_firmware = []
         self.fail_install_once = False
@@ -56,6 +59,13 @@ class DirectoryTransport:
         if self.fail_source_validation_once:
             self.fail_source_validation_once = False
             raise RuntimeError("simulated ROM loader transition")
+
+    def validate_target(self, board):
+        self.target_validation_count += 1
+        self.validated_target = (
+            board["hardware"]["mcu"],
+            board["hardware"]["flash_size_bytes"],
+        )
 
     def install(self, firmware, offset, image, expected_sha256, *,
                 reuse_matching_firmware=False):
@@ -83,6 +93,16 @@ class DirectoryTransport:
 
 
 class ModernProvisioningTests(unittest.TestCase):
+    def test_release_matrix_includes_every_eligible_board(self):
+        self.assertEqual(
+            {descriptor["id"] for descriptor in release_boards()},
+            {"lilygo_t_display_s3_pro", "elecrow_dle06235b"},
+        )
+        checked = check_matrix(self.release, dist=self.dist)
+        self.assertEqual(set(checked["boards"]), {
+            "lilygo_t_display_s3_pro", "elecrow_dle06235b",
+        })
+
     def test_provisioning_accepts_exactly_one_bound_attestation_purpose(self):
         with tempfile.TemporaryDirectory() as temporary:
             release = Path(temporary)
@@ -92,14 +112,18 @@ class ModernProvisioningTests(unittest.TestCase):
             qualification = release / "qualification-attestation.sigstore.json"
             qualification.write_text("{}\n", encoding="utf-8")
             with mock.patch("provision_modern.subprocess.run") as run:
-                _verify_attestations(release, "refs/tags/modern-v1.2.3")
+                purpose = _verify_attestations(
+                    release, "refs/tags/modern-v1.2.3")
+            self.assertEqual(purpose, "qualification")
             self.assertIn("qualification", run.call_args.args[0])
 
             qualification.unlink()
             (release / "release-attestation.sigstore.json").write_text(
                 "{}\n", encoding="utf-8")
             with mock.patch("provision_modern.subprocess.run") as run:
-                _verify_attestations(release, "refs/tags/modern-v1.2.3")
+                purpose = _verify_attestations(
+                    release, "refs/tags/modern-v1.2.3")
+            self.assertEqual(purpose, "release")
             self.assertIn("release", run.call_args.args[0])
 
             qualification.write_text("{}\n", encoding="utf-8")
@@ -124,6 +148,10 @@ class ModernProvisioningTests(unittest.TestCase):
         board.mkdir(parents=True)
         (board / "t_display_s3_pro_modern.py").write_text(
             "def create_platform(): pass\n", encoding="utf-8")
+        board = cls.dist / "board/elecrow_dle06235b"
+        board.mkdir(parents=True)
+        (board / "elecrow_dle06235b_modern.py").write_text(
+            "BOARD_CONFIG = {}\n", encoding="utf-8")
         packages = root / "packages.json"
         packages.write_text(json.dumps([
             {
@@ -159,7 +187,8 @@ class ModernProvisioningTests(unittest.TestCase):
         cls.release = root / "release"
         build_release(
             cls.dist, cls.release, "modern-v1.2.3",
-            packages_path=packages, source_epoch=1234, allow_dirty=True)
+            packages_path=packages, source_epoch=1234, allow_dirty=True,
+            board_ids=["lilygo_t_display_s3_pro", "elecrow_dle06235b"])
 
     @classmethod
     def tearDownClass(cls):
@@ -216,6 +245,9 @@ class ModernProvisioningTests(unittest.TestCase):
             self.assertEqual(result["stage"], "awaiting_health")
             self.assertEqual(result["board_id"], "lilygo_t_display_s3_pro")
             self.assertEqual(transport.capture_count, 0)
+            self.assertEqual(transport.target_validation_count, 1)
+            self.assertEqual(
+                transport.validated_target, ("ESP32-S3", 16777216))
             self.assertEqual(transport.asserted_firmware, (
                 "tartlab-modern-v1.2.3.bin", "0x0", FIRMWARE_SHA256))
             self.assertEqual(transport.reuse_matching_firmware, [False])
@@ -329,6 +361,30 @@ class ModernProvisioningTests(unittest.TestCase):
                     board_id="elecrow_dle06235b")
             self.assertEqual(sentinel.read_text(encoding="utf-8"), "preserve")
             self.assertFalse(workspace.exists())
+
+    def test_authenticated_qualification_path_accepts_candidate_board(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            device = root / "device"
+            transport = DirectoryTransport(device)
+
+            result = provision(
+                self.release, root / "workspace", "clean", transport,
+                board_id="elecrow_dle06235b",
+                qualification_candidate=True,
+            )
+
+            self.assertEqual(result["stage"], "awaiting_health")
+            self.assertEqual(result["board_id"], "elecrow_dle06235b")
+            self.assertEqual(transport.target_validation_count, 1)
+            self.assertIn(
+                "from elecrow_dle06235b_modern import *",
+                (device / "device/hdwconfig.py").read_text(encoding="utf-8"),
+            )
+            journal = json.loads((
+                root / "workspace/provisioning-journal.json"
+            ).read_text(encoding="utf-8"))
+            self.assertEqual(journal["authorization"], "qualification-candidate")
 
     def test_interrupted_upload_resumes_from_the_unchanged_backup(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -540,6 +596,18 @@ class ModernProvisioningTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "supported exact legacy"):
                 transport.validate_source("migrate", root)
             self.assertFalse(list(root.glob("legacy-firmware-readback-*.bin")))
+
+    def test_physical_target_probe_rejects_wrong_flash_before_install(self):
+        transport = CommandTransport("COM_TEST")
+        transport._check_tools = lambda: None
+        transport._run = lambda command: types.SimpleNamespace(
+            stdout="Chip is ESP32-S3\nDetected flash size: 16MB\n")
+        transport.validate_target(select_board("elecrow_dle06235b"))
+
+        transport._run = lambda command: types.SimpleNamespace(
+            stdout="Chip is ESP32-S3\nDetected flash size: 8MB\n")
+        with self.assertRaisesRegex(ValueError, "flash size"):
+            transport.validate_target(select_board("elecrow_dle06235b"))
 
     @mock.patch("provision_modern.RawRepl")
     def test_physical_capture_uses_one_session_without_soft_resets(self, repl):

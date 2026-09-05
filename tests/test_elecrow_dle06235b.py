@@ -6,6 +6,7 @@ import importlib.util
 import sys
 import types
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,6 +17,58 @@ def load_source(name, path):
     loaded = importlib.util.module_from_spec(spec)
     sys.modules[name] = loaded
     spec.loader.exec_module(loaded)
+    return loaded
+
+
+class FakePointerDriver:
+    PRESSED = 1
+    RELEASED = 0
+
+    def __init__(self, **options):
+        self.pointer_options = options
+
+
+class FakeST77922TouchDevice:
+    def __init__(self):
+        self.info = 0
+        self.points = bytearray(35)
+        self.reads = []
+
+    def read_mem(self, register, num_bytes=None, buf=None):
+        size = num_bytes if buf is None else len(buf)
+        self.reads.append((register, size))
+        if register == 0x0000:
+            value = bytes((3,))
+        elif register == 0x0005:
+            value = bytes((0x01, 0x40, 0x01, 0xE0, 5))
+        elif register == 0x0010:
+            value = bytes((self.info,))
+        elif register == 0x0014:
+            value = bytes(self.points)
+        else:
+            raise AssertionError("unexpected ST77922 register")
+        if buf is None:
+            return value
+        buf[:] = value
+        return None
+
+
+def load_touch_driver():
+    pointer = types.ModuleType("pointer_framework")
+    pointer.PointerDriver = FakePointerDriver
+    pointer.lv = types.SimpleNamespace(
+        DISPLAY_ROTATION=types.SimpleNamespace(_0=0))
+    micropython = types.ModuleType("micropython")
+    micropython.const = lambda value: value
+    path = ROOT / "firmware/lvgl-modern/drivers/st77922_touch.py"
+    spec = importlib.util.spec_from_file_location(
+        "elecrow_st77922_touch", path)
+    loaded = importlib.util.module_from_spec(spec)
+    with mock.patch.dict(sys.modules, {
+        "pointer_framework": pointer,
+        "micropython": micropython,
+    }):
+        spec.loader.exec_module(loaded)
     return loaded
 
 
@@ -285,6 +338,30 @@ class ElecrowControllerTests(unittest.TestCase):
 
 
 class ElecrowDriverSourceTests(unittest.TestCase):
+    def test_touch_contract_selects_first_active_contact_and_drains_report(self):
+        touch = load_touch_driver()
+        device = FakeST77922TouchDevice()
+        driver = touch.ST77922Touch(device)
+        device.info = 0x08
+        device.points[7:14] = bytes((0x81, 0x23, 0x04, 0x56, 0, 0, 0))
+        device.points[14:21] = bytes((0x82, 0x34, 0x05, 0x67, 0, 0, 0))
+
+        self.assertEqual(driver.pointer_contract, "single_pointer")
+        self.assertEqual(driver.contact_selection, "first_active")
+        self.assertEqual(
+            driver._get_coords(),
+            (driver.PRESSED, 0x123, 0x456),
+        )
+        self.assertEqual(device.reads[-1], (0x0014, 35))
+
+    def test_touch_contract_releases_when_report_has_no_active_contact(self):
+        touch = load_touch_driver()
+        device = FakeST77922TouchDevice()
+        driver = touch.ST77922Touch(device)
+        device.info = 0x08
+
+        self.assertEqual(driver._get_coords(), (driver.RELEASED, 0, 0))
+
     def test_touch_uses_documented_address_not_quarantined_endpoint(self):
         source = (
             ROOT / "firmware/lvgl-modern/drivers/st77922_touch.py"

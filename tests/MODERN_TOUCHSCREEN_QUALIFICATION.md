@@ -24,9 +24,9 @@ feedback, not release evidence. Qualification must name and hash the exact:
 - firmware image, lock, and SHA-256.
 
 The qualified T-Display-S3 Pro is the minimum current target. Test every other
-board deliberately included in the candidate. The Elecrow DLE06235B remains a
-`bringup` board unless its separate lifecycle gates are completed; a successful
-smoke does not advance or imply its support status.
+board deliberately included in the candidate. The Elecrow DLE06235B is a
+`candidate` board with reproducible firmware, but remains unsupported until its
+separate exact-candidate physical and release lifecycle gates are completed.
 
 Keep raw serial output, Wi-Fi credentials, student files, backups, device IDs,
 and protected-state values in the private hardware workspace. Commit only a

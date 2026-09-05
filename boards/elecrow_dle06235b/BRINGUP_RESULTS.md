@@ -1,10 +1,10 @@
 # Elecrow DLE06235B bring-up results
 
-Status: experimental bench result, not a TartLab board qualification
+Status: reproducible firmware candidate; not yet a TartLab board qualification
 
 Test date: 2026-08-29
 
-Remaining-work checklist updated: 2026-09-04
+Remaining-work checklist updated: 2026-09-05
 
 ## Outcome
 
@@ -17,6 +17,11 @@ also reached its persisted `healthy` checkpoint in IDE mode using the new
 board selector and platform adapter. A 480 x 320 software-rotated landscape
 proof also works, but portrait is the selected board mode; landscape remains
 experimental and is not part of this bench acceptance.
+
+The descriptor has advanced to `candidate` because the adapter and exact
+firmware are now reproducible. This lifecycle state does not claim supported
+hardware: authenticated provisioning and the full physical release checklist
+remain open.
 
 No factory backup was retained because the board was new and the owner
 explicitly authorized erasing its contents.
@@ -438,10 +443,9 @@ internal-DMA heap margin.
 
 The filesystem contained 12,517,376 bytes, with 9,707,520 bytes free
 (77.6 percent). The running factory app partition is 4,194,304 bytes on the
-confirmed 16,777,216-byte flash. Subtracting the complete 2,978,512-byte
-reference flash artifact from the app partition leaves a conservative
-1,215,792-byte lower-bound margin; the exact app-only margin must be recomputed
-from the eventual reproducible DLE06235B candidate artifact.
+confirmed 16,777,216-byte flash. The later reproducible DLE06235B candidate has
+a 2,917,568-byte application in that partition, leaving 1,276,736 bytes
+(30 percent) free. The combined flash image is 2,983,104 bytes.
 
 Raw-REPL entry also reproduced a host timing issue: the running IDE sometimes
 completed Ctrl-C teardown just after the original five-second prompt deadline,
@@ -534,7 +538,64 @@ final normal boot also reached `HEALTHY mode=IDE`.
 
 This qualifies raw Ctrl-D recovery through the board's explicit soft-to-hard
 reset contract; it does not claim that the pinned native SPI singleton can be
-rebuilt by an in-place VM restart. A cold USB power-cycle series remains open.
+rebuilt by an in-place VM restart.
+
+## Cold-power follow-up (2026-09-05)
+
+Five operator-performed cold-power cycles removed every USB, battery, and
+external-power source for at least five seconds before reconnecting USB. The
+operator allowed at least 40 seconds for each unattended startup before the
+host inspected durable state. Boot sequences 128, 130, 132, 134, and 136 all
+reported power-on reset cause 1, `healthy` IDE mode, and zero consecutive
+failures. Each inspection was followed by an intentional hard reset because
+entering raw REPL stops the running IDE; every restoration boot completed
+display/touch construction, Wi-Fi and HTTP startup, and the IDE health marker.
+The final restoration was boot sequence 137 and reached
+`HEALTHY mode=IDE`.
+
+This completes the current bench reset matrix: same-runtime teardown and
+reconstruction, repeated hard reset, repeated raw Ctrl-D through the declared
+soft-to-hard reset policy, and repeated complete power removal.
+
+## Touch-contract decision (2026-09-05)
+
+TartLab will support the DLE06235B as a single-pointer device. The pointer is
+the first active contact in the ST77922 report order. The driver continues to
+read all five 7-byte contact records because reading through the final record
+is required to acknowledge the controller report, but it intentionally exposes
+only one contact to LVGL and direct-mode applications. Simultaneous multitouch
+is not part of the supported TartLab input contract.
+
+This matches the current launcher, IDE, Racer, Testris, and other TartLab UI
+requirements. It also avoids expanding the reusable platform input API during
+board qualification. Focused host coverage now fixes both halves of the
+contract: first-active selection and a complete 35-byte report read.
+
+## Reproducible firmware candidate (2026-09-05)
+
+The board-specific lock pins lvgl_micropython commit
+`d2d26467fa4cb9e99e569d899709043d086f7a6f`, MicroPython 1.27.0, LVGL 9.4.0,
+ESP-IDF 5.5.1, every required direct and transitive submodule, and a
+digest-selected ESP-IDF container. The ST77922 display, touch, and complete
+initialization table are frozen into the image from hash-bound TartLab inputs.
+
+Two independent clean upstream checkouts built the recipe with the same
+deterministic environment. Their combined flash images were byte-identical:
+
+- size: 2,983,104 bytes;
+- SHA-256: `50d98625a1ef58eee6c5fbe55b5107968301ea4dc6b8954167cad9f0d65ee5a3`;
+- application size: 2,917,568 of 4,194,304 bytes;
+- application partition remaining: 1,276,736 bytes (30 percent); and
+- filesystem partition: 12,517,376 bytes.
+
+The hardware-free working-tree validation passed all 406 repository tests and
+the pinned MicroPython Tier 2 checks: 178 runtime modules and 71 candidate
+PyDevices modules compiled for `xtensawin`, followed by 31 runtime and 18
+candidate compatibility checks. Two 211-file multi-board distributions and
+their 27-file release directories were also byte-identical. These results make
+the source ready for an authenticated candidate build; because the working tree
+is not a signed source tag, they are not substituted for the exact-candidate
+physical gates.
 
 ## Remaining work
 
@@ -557,12 +618,13 @@ single-board bridge release is required.
 1. **Completed for bench use:** restore and qualify the native QSPI
    asynchronous-completion path, with callback exceptions contained until a
    main-thread wait can report them.
-2. **Partially completed:** explicit construction/refresh/teardown passed ten
-   same-runtime cycles with stable heap. Five consecutive hard-reset boots and
-   a post-helper-fix confirmation reached complete IDE health. Five consecutive
-   raw Ctrl-D requests also reached complete IDE health through the board's
-   explicit soft-to-hard reset policy. A cold USB power-cycle series remains to
-   be qualified.
+2. **Completed for bench use:** explicit construction/refresh/teardown passed
+   ten same-runtime cycles with stable heap. Five consecutive hard-reset boots
+   and a post-helper-fix confirmation reached complete IDE health. Five
+   consecutive raw Ctrl-D requests also reached complete IDE health through
+   the board's explicit soft-to-hard reset policy. Five cold-power cycles with
+   complete power removal each reached healthy IDE mode with a power-on reset
+   cause and zero consecutive failures.
 3. **Completed for bench use:** add the packed-QSPI direct surface and define a
    shadow-backed dirty-rectangle contract that satisfies the physical CASET
    alignment rule without caller-buffer overread.
@@ -612,22 +674,26 @@ publishing or provisioning the board as a supported target.
    I2C `0x28` responder is isolated to the panel assembly and explicitly
    quarantined from production access. Repeat the measurements on the exact
    reproducible candidate; current results do not promote this bench payload.
-9. Decide whether the existing first-active-contact pointer behavior is the
-   supported contract or whether TartLab must expose simultaneous multitouch.
-   The former is sufficient for the current single-pointer UI if it is made an
-   explicit qualification decision.
-10. Integrate the native QSPI fixes and reviewed Python drivers into TartLab's
-    pinned MicroPython 1.27.0 / LVGL 9.4.0 source graph. Produce a reproducible,
-    checksummed DLE06235B firmware artifact with its own build lock and
-    provenance; do not reuse the T-Display-S3 Pro firmware identity.
-11. **Partially completed:** the modern profile, release builder, validators,
-    package selection, and evidence schema now support an explicit board-to-
-    firmware compatibility matrix. Finish the multi-board qualification and
-    promotion workflow inputs and add an authenticated candidate-provisioning
-    path. Clean provisioning must identify or require explicit confirmation of
-    the board, verify 16 MiB flash, write the DLE06235B selector, and reject
-    incompatible images before erase. Do not claim migration from an unknown
-    Elecrow factory filesystem.
+9. **Completed for the current product contract:** the existing first-active-
+   contact behavior is the supported single-pointer contract. The driver reads
+   every hardware contact record for acknowledgement but does not expose
+   simultaneous multitouch.
+10. **Completed for candidate production:** the native QSPI implementation and
+    reviewed ST77922 display, touch, and initialization modules are frozen into
+    a pinned MicroPython 1.27.0 / LVGL 9.4.0 source graph. Two independent clean
+    checkouts produced byte-identical 2,983,104-byte combined images with
+    SHA-256 `50d98625a1ef58eee6c5fbe55b5107968301ea4dc6b8954167cad9f0d65ee5a3`.
+    The board-specific lock, artifact, and provenance are tracked separately
+    from the T-Display-S3 Pro firmware identity.
+11. **Completed for the host release path:** the modern profile, release
+    builder, validators, package selection, evidence schema, qualification and
+    promotion workflows now derive the explicit multi-board matrix from the
+    catalog. Authenticated qualification bundles may authorize a candidate
+    board, while normal release provisioning still requires qualified status.
+    Before erase, provisioning probes for ESP32-S3 and exactly 16 MiB of flash;
+    it then writes the board-specific selector and rejects incompatible images.
+    Physical use of this path remains part of item 12. Migration from an unknown
+    Elecrow factory filesystem is not claimed.
 12. Run the repository Tier 0-2 checks and board-specific physical
     qualification: clean adult provisioning, interrupted provisioning and
     resume, normal and interrupted OTA, display-independent recovery,

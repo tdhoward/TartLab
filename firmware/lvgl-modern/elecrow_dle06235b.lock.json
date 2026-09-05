@@ -1,0 +1,164 @@
+{
+  "schema": 1,
+  "kind": "tartlab-modern-board-firmware",
+  "board_id": "elecrow_dle06235b",
+  "status": "reproducible-candidate",
+  "source": {
+    "repository": "https://github.com/lvgl-micropython/lvgl_micropython.git",
+    "commit": "d2d26467fa4cb9e99e569d899709043d086f7a6f",
+    "commit_date": "2026-06-23T04:49:19-06:00",
+    "license": "MIT",
+    "submodules": [
+      {
+        "path": "lib/SDL",
+        "repository": "https://github.com/libsdl-org/SDL",
+        "commit": "6ad390fc5093bcbf785b7ad103484501d11d8c2a",
+        "required_for_esp32": false
+      },
+      {
+        "path": "lib/esp-idf",
+        "repository": "https://github.com/espressif/esp-idf",
+        "commit": "fcae32885b0296b32044cb99ecbdc50d98dddb83",
+        "version": "5.5.1",
+        "required_for_esp32": true
+      },
+      {
+        "path": "lib/lvgl",
+        "repository": "https://github.com/lvgl/lvgl",
+        "commit": "c016f72d4c125098287be5e83c0f1abed4706ee5",
+        "version": "9.4.0",
+        "required_for_esp32": true
+      },
+      {
+        "path": "lib/micropython",
+        "repository": "https://github.com/micropython/micropython",
+        "commit": "78ff170de9e32c79db6e64d3e33d2bd60002bdcd",
+        "version": "1.27.0",
+        "required_for_esp32": true
+      },
+      {
+        "path": "lib/pycparser",
+        "repository": "https://github.com/eliben/pycparser",
+        "commit": "3cf6bf5eb16f5eadd4a058e41596145c407a79ad",
+        "version": "2.21",
+        "required_for_esp32": true
+      }
+    ],
+    "esp32_transitive_submodules": [
+      {
+        "path": "lib/micropython/lib/berkeley-db-1.xx",
+        "commit": "0f3bb6947c2f57233916dccd7bb425d7bf86e5a6"
+      },
+      {
+        "path": "lib/micropython/lib/mbedtls",
+        "commit": "107ea89daaefb9867ea9121002fbbdf926780e98"
+      },
+      {
+        "path": "lib/micropython/lib/micropython-lib",
+        "commit": "6ae440a8a144233e6e703f6759b7e7a0afaa37a4"
+      },
+      {
+        "path": "lib/micropython/lib/tinyusb",
+        "commit": "aa0fc2e08f1c2dd6f026a431e8989357fbb4c5bf"
+      }
+    ]
+  },
+  "toolchain": {
+    "container": {
+      "repository": "espressif/idf",
+      "documented_tag": "v5.5.1",
+      "platform": "linux/amd64",
+      "index_digest": "sha256:dfa2d076c796769c07c155eba6c672b9f395aec943b2ba3701b73379b5f9e884",
+      "manifest_digest": "sha256:cbc2e2ec2afee95f1cfa14acfa3bb6cc69a51816537fe0234f4429e71a881066"
+    },
+    "python_minimum": "3.10",
+    "esp_idf_version": "5.5.1",
+    "esp_idf_commit": "fcae32885b0296b32044cb99ecbdc50d98dddb83"
+  },
+  "target": {
+    "board": "ESP32_GENERIC_S3",
+    "board_variant": "SPIRAM_OCT",
+    "chip": "ESP32-S3",
+    "flash_size_bytes": 16777216,
+    "flash_bus": "quad",
+    "psram_bus": "octal",
+    "application_partition_size": 4194304,
+    "display_width": 320,
+    "display_height": 480,
+    "display_controller": "ST77922",
+    "touch_controller": "ST77922 TDDI",
+    "repl": "USB_SERIAL_JTAG"
+  },
+  "build": {
+    "environment": {
+      "LC_ALL": "C.UTF-8",
+      "PYTHONHASHSEED": "0",
+      "SOURCE_DATE_EPOCH": "1788583389",
+      "TZ": "UTC"
+    },
+    "command": [
+      "python3",
+      "make.py",
+      "esp32",
+      "BOARD=ESP32_GENERIC_S3",
+      "BOARD_VARIANT=SPIRAM_OCT",
+      "--flash-size=16",
+      "--partition-size=4194304",
+      "--enable-uart-repl=n",
+      "--enable-cdc-repl=n",
+      "--enable-jtag-repl=y",
+      "DISPLAY=/tartlab/firmware/lvgl-modern/drivers/st77922.py",
+      "INDEV=/tartlab/firmware/lvgl-modern/drivers/st77922_touch.py",
+      "FROZEN_MANIFEST=/tartlab/firmware/lvgl-modern/elecrow_dle06235b_manifest.py",
+      "clean"
+    ],
+    "artifact": "build/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16.bin",
+    "container_wrapper": "/tartlab/firmware/lvgl-modern/container_prepare.py",
+    "frozen_modules": {
+      "display": "/tartlab/firmware/lvgl-modern/drivers/st77922.py",
+      "input": "/tartlab/firmware/lvgl-modern/drivers/st77922_touch.py",
+      "additional": [
+        "/tartlab/firmware/lvgl-modern/drivers/_st77922_init.py"
+      ]
+    },
+    "inputs": [
+      {
+        "path": "firmware/lvgl-modern/container_prepare.py",
+        "container_path": "/tartlab/firmware/lvgl-modern/container_prepare.py",
+        "sha256": "9a960dc7a62adf3db6a37828bbf75d5addf2b4597653bcd6395b4336aaf3755b"
+      },
+      {
+        "path": "firmware/lvgl-modern/elecrow_dle06235b_manifest.py",
+        "container_path": "/tartlab/firmware/lvgl-modern/elecrow_dle06235b_manifest.py",
+        "sha256": "084e1df10d8d79d9138e597cccf89d7ae95a17b023e64e19e19f924d1ab2137e"
+      },
+      {
+        "path": "firmware/lvgl-modern/drivers/st77922.py",
+        "container_path": "/tartlab/firmware/lvgl-modern/drivers/st77922.py",
+        "sha256": "ed345e8340dee306672851eedce55a1576d88084dec47dd7565c37fd8e1bdc51"
+      },
+      {
+        "path": "firmware/lvgl-modern/drivers/_st77922_init.py",
+        "container_path": "/tartlab/firmware/lvgl-modern/drivers/_st77922_init.py",
+        "sha256": "59c312f4ee717ac2272bdfa26f1d704787288422b1bfca743dd83f5ae948fab7"
+      },
+      {
+        "path": "firmware/lvgl-modern/drivers/st77922_touch.py",
+        "container_path": "/tartlab/firmware/lvgl-modern/drivers/st77922_touch.py",
+        "sha256": "d52586936c8c4ff615f807d6baf4cd886c3dc022ba8bd46829b353ef18e3d3e7"
+      }
+    ]
+  },
+  "result": {
+    "qualification": "reproducible-candidate",
+    "artifact": "firmware/lvgl-modern/elecrow_dle06235b/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-elecrow-dle06235b.bin",
+    "size": 2983104,
+    "sha256": "50d98625a1ef58eee6c5fbe55b5107968301ea4dc6b8954167cad9f0d65ee5a3",
+    "provenance": "firmware/lvgl-modern/elecrow_dle06235b/provenance.json",
+    "independent_clean_builds": 2,
+    "byte_identical": true,
+    "application_size": 2917568,
+    "application_partition_size": 4194304,
+    "filesystem_partition_size": 12517376
+  }
+}

@@ -19,6 +19,8 @@ Important checks include:
   compatibility payload used by the promoted legacy builder.
 - `tools/modern_firmware.py check`: validates the selected modern firmware
   lock, archived artifact, provenance, and evidence bindings.
+- `tools/modern_board_firmware.py`: validates each board-specific frozen-driver
+  recipe, local input hashes, reproducibility record, and candidate artifact.
 - `tools/check_modern_profile.py`: validates the modern filesystem profile and
   isolated release machinery.
 - `tools/check_release_feed_isolation.py`: compares checked-in profile policy
@@ -31,7 +33,7 @@ These are source and policy claims, not hardware claims.
 Run the complete hardware-free suite:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_modern_power tests.test_headless_ide tests.test_racer_entities -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_board_firmware tests.test_elecrow_dle06235b tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_modern_power tests.test_headless_ide tests.test_racer_entities -v
 ```
 
 The suite exercises real TartLab update, migration, recovery, startup, and IDE

@@ -4,7 +4,7 @@
   "name": "Elecrow DLE06235B",
   "vendor": "Elecrow",
   "runtime_profile": "lvgl-modern",
-  "support_status": "bringup",
+  "support_status": "candidate",
   "hardware": {
     "revisions": [
       "observed-2026-08-29"
@@ -35,7 +35,14 @@
     "source": "boards/elecrow_dle06235b/runtime",
     "target": "/board/elecrow_dle06235b"
   },
-  "firmware": null,
+  "firmware": {
+    "artifact": "firmware/lvgl-modern/elecrow_dle06235b/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-elecrow-dle06235b.bin",
+    "sha256": "50d98625a1ef58eee6c5fbe55b5107968301ea4dc6b8954167cad9f0d65ee5a3",
+    "image_format": "combined-esp-image",
+    "flash_offset": "0x0",
+    "lock": "firmware/lvgl-modern/elecrow_dle06235b.lock.json",
+    "provenance": "firmware/lvgl-modern/elecrow_dle06235b/provenance.json"
+  },
   "qualification": null,
   "documentation": [
     "boards/elecrow_dle06235b/README.md",

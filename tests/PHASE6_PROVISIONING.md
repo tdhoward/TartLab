@@ -6,6 +6,11 @@ default. Mutation requires `--execute`, `--confirm-erase`, an explicit port,
 an exact signed source tag, and a durable private workspace outside the
 checkout.
 
+An authenticated qualification-candidate bundle may provision an explicitly
+selected board in either `candidate` or `qualified` state. A promoted-release
+bundle may provision only a `qualified` board. This distinction lets a new
+board undergo the physical gates without presenting it as supported.
+
 ## Transaction contract
 
 Before erase, the tool:
@@ -14,20 +19,23 @@ Before erase, the tool:
    locks, provenance, support window, and migration guide;
 2. verifies the qualification or release GitHub Artifact Attestation;
 3. captures protected state into a private content-addressed backup;
-4. validates the T-Display-S3 Pro selector and installed release/layout; and
-5. verifies immutable regions of the exact qualified legacy firmware while
+4. checks the connected ESP32-S3 and descriptor-bound flash size before erase;
+5. for direct migration, validates the T-Display-S3 Pro selector and installed
+   release/layout; and
+6. verifies immutable regions of the exact qualified legacy firmware while
    excluding mutable NVS/PHY sectors.
 
 Direct migration supports stable v0.13 or newer and a recognized legacy root or
 canonical layout. Older, prerelease, wrong-board, wrong-firmware, or unknown
 layouts fail before erase.
 
-The transaction erases, writes, and verifies the combined image, reconstructs
-authenticated filesystem packages, translates the active selector to
-`t_display_s3_pro_modern`, restores protected state, and leaves the target
-version pending until a healthy boot. Inert boot placeholders and late boot-file
-activation keep incomplete filesystems from starting. A content-addressed
-journal contains no captured values and supports `--resume` after power, USB,
+The transaction erases, writes, and verifies the selected board's combined
+image, reconstructs authenticated filesystem packages, writes the descriptor's
+protected selector and identity, restores applicable protected state, and
+leaves the target version pending until a healthy boot. Inert boot placeholders
+and late boot-file activation keep incomplete filesystems from starting. A
+content-addressed journal contains no captured values, binds the qualification
+or release authorization class, and supports `--resume` after power, USB,
 flash, verification, or upload interruption.
 
 ## Qualified release

@@ -60,25 +60,35 @@ jobs:
       - name: Build qualification candidate twice
         shell: bash
         run: |
-          python makedist.py --output build/qualification/dist-one --clean --skip-web-build --board lilygo_t_display_s3_pro
-          python makedist.py --output build/qualification/dist-two --clean --skip-web-build --board lilygo_t_display_s3_pro
-          python tools/build_modern_release.py --dist build/qualification/dist-one --output build/qualification/release --version "$RELEASE_TAG" --clean
-          python tools/build_modern_release.py --dist build/qualification/dist-two --output build/qualification/release-two --version "$RELEASE_TAG" --clean
+          mapfile -t BOARD_IDS < <(python tools/modern_release_matrix.py list)
+          BOARD_ARGS=()
+          for board_id in "${BOARD_IDS[@]}"; do
+            BOARD_ARGS+=(--board "$board_id")
+          done
+          printf 'Qualification board: %s\n' "${BOARD_IDS[@]}"
+          python makedist.py --output build/qualification/dist-one --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python makedist.py --output build/qualification/dist-two --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python tools/build_modern_release.py --dist build/qualification/dist-one --output build/qualification/release --version "$RELEASE_TAG" --clean "${BOARD_ARGS[@]}"
+          python tools/build_modern_release.py --dist build/qualification/dist-two --output build/qualification/release-two --version "$RELEASE_TAG" --clean "${BOARD_ARGS[@]}"
           python tools/compare_releases.py build/qualification/release build/qualification/release-two
 
       - name: Enforce profile and firmware preflight
         shell: bash
         run: |
+          python tools/check_firmware_artifacts.py
           python tools/check_modern_profile.py --dist build/qualification/dist-one --compare-dist build/qualification/dist-two
-          python tools/check_modern_release.py --release build/qualification/release --dist build/qualification/dist-one --runtime-profile lvgl-modern --board lilygo_t_display_s3_pro --firmware-sha256 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
+          python tools/modern_release_matrix.py check --release build/qualification/release --dist build/qualification/dist-one
 
       - name: Run qualification host matrix
         run: >-
           python -m unittest
           tests.test_phase1
           tests.test_phase2
+          tests.test_board_catalog
           tests.test_phase4
           tests.test_phase5
+          tests.test_modern_board_firmware
+          tests.test_elecrow_dle06235b
           tests.test_modern_app
           tests.test_modern_profile
           tests.test_phase6

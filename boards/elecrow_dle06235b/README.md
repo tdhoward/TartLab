@@ -1,9 +1,11 @@
 # Elecrow DLE06235B
 
-Lifecycle: `bringup` — not a supported TartLab target.
+Lifecycle: `candidate` — not yet a supported TartLab target.
 
-The board has passed stock MicroPython checks and a pinned LVGL/ST77922 portrait
-bench proof. The current technical results and ordered work are in
+The board has passed the bench bring-up gates and has a byte-reproducible,
+checksummed LVGL/ST77922 firmware candidate. Authenticated provisioning and
+physical qualification of the exact release candidate are still required
+before support can be claimed. The current technical results and ordered work are in
 [`BRINGUP_RESULTS.md`](BRINGUP_RESULTS.md). Shared research and sequencing for
 the Elecrow 3.5-inch and 7-inch ESP32-S3 products are in the
 [`Elecrow ESP32-S3 bring-up plan`](../elecrow/ESP32_S3_BRINGUP_PLAN.md).

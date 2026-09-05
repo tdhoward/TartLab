@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 
 from board_catalog import BoardCatalogError, load_catalog
+from modern_board_firmware import check_lock as check_modern_board_firmware_lock
 from modern_firmware import check_lock as check_modern_firmware_lock
 
 
@@ -176,17 +177,39 @@ def main() -> int:
         except ValueError as exc:
             errors.append(f"{modern_lock.relative_to(ROOT)}: {exc}")
     board_count = 0
+    board_firmware_count = 0
     try:
-        board_count = len(load_catalog())
+        catalog = load_catalog()
+        board_count = len(catalog)
+        checked_locks = set()
+        for board_id, descriptor in catalog.items():
+            firmware = descriptor["firmware"]
+            if firmware is None:
+                continue
+            lock_path = ROOT / firmware["lock"]
+            if lock_path == modern_lock:
+                continue
+            if lock_path in checked_locks:
+                raise ValueError(
+                    f"{firmware['lock']}: board-specific lock is shared")
+            board_lock = check_modern_board_firmware_lock(lock_path)
+            if board_lock["board_id"] != board_id:
+                raise ValueError(
+                    f"{firmware['lock']}: board_id differs from descriptor")
+            checked_locks.add(lock_path)
+        board_firmware_count = len(checked_locks)
     except BoardCatalogError as exc:
         errors.append(f"board catalog: {exc}")
+    except ValueError as exc:
+        errors.append(f"board firmware: {exc}")
     if errors:
         for error in errors:
             print(error, file=sys.stderr)
         return 1
 
     print(
-        f"Verified {len(manifests) + modern_count} firmware artifacts and "
+        f"Verified {len(manifests) + modern_count + board_firmware_count} "
+        "firmware artifacts and "
         f"{board_count} board descriptors")
     return 0
 

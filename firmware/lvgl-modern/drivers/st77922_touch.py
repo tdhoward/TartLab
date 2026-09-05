@@ -16,7 +16,13 @@ _VALID = const(0x80)
 
 
 class ST77922Touch(pointer_framework.PointerDriver):
-    """Expose the first ST77922 contact as an LVGL pointer device."""
+    """Expose the first active ST77922 contact as one pointer."""
+
+    # TartLab's supported input contract is a single pointer. The controller's
+    # complete contact report is still drained for its acknowledgement
+    # handshake, but simultaneous contacts are intentionally not exposed.
+    pointer_contract = "single_pointer"
+    contact_selection = "first_active"
 
     def __init__(
         self,
