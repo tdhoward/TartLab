@@ -72,6 +72,96 @@ print("PHASE5_PROBE=" + ujson.dumps(result))
 '''
 
 
+SOFT_RESET_PREFLIGHT = r'''
+import os, ujson
+from hdwconfig import BOARD_CONFIG
+
+def exists(path):
+    try:
+        os.stat(path)
+        return True
+    except OSError:
+        return False
+
+with open("/state/boot.json", "r") as stream:
+    boot = ujson.load(stream)
+if boot.get("health") != "healthy" or \
+        boot.get("consecutive_failures") != 0:
+    raise ValueError("soft-reset cycle requires a healthy boot baseline")
+if exists("/state/update.json") or exists("/state/recovery.flag") or \
+        exists("/tmp/manifest.json"):
+    raise ValueError("soft-reset cycle refuses active update or recovery state")
+reset = BOARD_CONFIG.get("reset", {})
+print("PHASE5_SOFT_RESET_PREFLIGHT=" + ujson.dumps({
+    "boot": boot,
+    "soft_reset_policy": reset.get("soft_reset", "native"),
+}))
+'''
+
+
+SOFT_RESET_CYCLE_TEMPLATE = r'''
+import gc, os, sys, ujson
+from tartlabutils.platform import get_platform, set_platform
+
+baseline = __BASELINE__
+with open("/state/boot.json", "r") as stream:
+    boot_after_reset = ujson.load(stream)
+
+gc.collect()
+result = {
+    "boot_after_reset": boot_after_reset,
+    "runtime": sys.version,
+    "heap_before_platform": gc.mem_free(),
+}
+platform = None
+try:
+    platform = get_platform()
+    platform.enter_ui_mode()
+    controller = getattr(platform, "controller", None)
+    wait = getattr(controller, "wait_for_transfer", None)
+    if wait is not None:
+        wait()
+    result["platform"] = {
+        "type": platform.__class__.__name__,
+        "width": platform.width,
+        "height": platform.height,
+        "capabilities": platform.capabilities,
+        "owner": getattr(controller, "owner", None),
+        "transfer_pending": getattr(controller, "transfer_pending", False),
+    }
+    result["heap_with_platform"] = gc.mem_free()
+finally:
+    if platform is not None:
+        platform.deinit()
+    set_platform(None)
+    gc.collect()
+    result["heap_after_teardown"] = gc.mem_free()
+
+temporary = "/state/boot.json.soft-reset-cycle.tmp"
+try:
+    os.remove(temporary)
+except OSError:
+    pass
+with open(temporary, "w") as stream:
+    ujson.dump(baseline, stream)
+os.remove("/state/boot.json")
+os.rename(temporary, "/state/boot.json")
+print("PHASE5_SOFT_RESET_CYCLE=" + ujson.dumps(result))
+'''
+
+
+PROMOTED_SOFT_RESET_AUDIT = r'''
+import machine, ujson
+with open("/state/boot.json", "r") as stream:
+    boot = ujson.load(stream)
+print("PHASE5_PROMOTED_SOFT_RESET=" + ujson.dumps({
+    "boot": boot,
+    "reset_cause": machine.reset_cause(),
+    "hard_reset": getattr(machine, "HARD_RESET", None),
+}))
+'''
+
+
 HARDENING_TEMPLATE = r'''
 import gc, os, time, ujson
 from tartlabutils.platform import get_platform
@@ -843,6 +933,171 @@ def probe(args: argparse.Namespace) -> None:
     _run(args, PROBE_CODE, "PHASE5_PROBE", max(args.timeout, 45))
 
 
+def _reconnect_after_soft_reset(
+        repl: RawRepl, args: argparse.Namespace) -> RawRepl:
+    repl.serial.reset_input_buffer()
+    repl.serial.write(b"\x04")
+    repl._read_until(b"soft reboot\r\n", max(args.timeout, 30))
+    repl._read_until(
+        b"raw REPL; CTRL-B to exit\r\n>", max(args.timeout, 30))
+    repl.close()
+    time.sleep(0.5)
+    replacement = RawRepl(args.port, args.baudrate, args.timeout)
+    replacement.enter()
+    return replacement
+
+
+def _wait_for_boot_markers(
+        args: argparse.Namespace, timeout: int) -> dict[str, int]:
+    markers = (b"System startup", b"HEALTHY mode=IDE")
+    found = {}
+    captured = bytearray()
+    started = time.monotonic()
+    deadline = started + timeout
+    connection = None
+    try:
+        while len(found) < len(markers) and time.monotonic() < deadline:
+            if connection is None:
+                try:
+                    connection = serial.Serial(
+                        port=None,
+                        baudrate=args.baudrate,
+                        timeout=0.2,
+                        write_timeout=2,
+                        dsrdtr=False,
+                        rtscts=False,
+                    )
+                    connection.dtr = False
+                    connection.rts = False
+                    connection.port = args.port
+                    connection.open()
+                except (OSError, serial.SerialException):
+                    if connection is not None:
+                        connection.close()
+                    connection = None
+                    time.sleep(0.2)
+                    continue
+            try:
+                chunk = connection.read(connection.in_waiting or 1)
+            except (OSError, serial.SerialException):
+                connection.close()
+                connection = None
+                time.sleep(0.2)
+                continue
+            if not chunk:
+                continue
+            captured.extend(chunk)
+            elapsed_ms = round((time.monotonic() - started) * 1000)
+            for marker in markers:
+                if marker not in found and marker in captured:
+                    found[marker] = elapsed_ms
+            if len(captured) > 8192:
+                del captured[:-4096]
+    finally:
+        if connection is not None:
+            connection.close()
+    if len(found) != len(markers):
+        missing = [marker.decode() for marker in markers if marker not in found]
+        raise TimeoutError("soft-reset boot markers not observed: %r" % missing)
+    return {
+        "system_startup_ms": found[markers[0]],
+        "ide_healthy_ms": found[markers[1]],
+    }
+
+
+def soft_reset_cycle(args: argparse.Namespace) -> None:
+    repl = RawRepl(args.port, args.baudrate, args.timeout)
+    baseline = None
+    restore_state = None
+    results = []
+    try:
+        repl.enter()
+        preflight = _extract(
+            repl.exec(SOFT_RESET_PREFLIGHT, max(args.timeout, 30)),
+            "PHASE5_SOFT_RESET_PREFLIGHT",
+        )
+        baseline = preflight["boot"]
+        restore_state = baseline
+        if preflight["soft_reset_policy"] == "hard_reset":
+            previous = baseline
+            for unused_index in range(args.iterations):
+                repl.serial.write(b"\x04")
+                repl.close()
+                repl = None
+                timing = _wait_for_boot_markers(
+                    args, max(args.timeout, 75))
+                repl = RawRepl(args.port, args.baudrate, args.timeout)
+                repl.enter()
+                result = _extract(
+                    repl.exec(
+                        PROMOTED_SOFT_RESET_AUDIT, max(args.timeout, 30)),
+                    "PHASE5_PROMOTED_SOFT_RESET",
+                )
+                boot = result["boot"]
+                if (result["reset_cause"] != result["hard_reset"] or
+                        boot.get("health") != "healthy" or
+                        boot.get("consecutive_failures") != 0 or
+                        boot.get("sequence") !=
+                        previous.get("sequence", 0) + 1):
+                    raise RuntimeError(
+                        "promoted soft-reset state did not match expectation")
+                result["timing"] = timing
+                results.append(result)
+                previous = boot
+                restore_state = boot
+        else:
+            code = SOFT_RESET_CYCLE_TEMPLATE.replace(
+                "__BASELINE__", repr(baseline))
+            for unused_index in range(args.iterations):
+                repl = _reconnect_after_soft_reset(repl, args)
+                result = _extract(
+                    repl.exec(code, max(args.timeout, 60)),
+                    "PHASE5_SOFT_RESET_CYCLE",
+                )
+                boot = result["boot_after_reset"]
+                if (boot.get("health") != "starting" or
+                        boot.get("consecutive_failures") != 1 or
+                        boot.get("sequence") !=
+                        baseline.get("sequence", 0) + 1):
+                    raise RuntimeError(
+                        "soft-reset boot state did not match expectation")
+                results.append(result)
+    finally:
+        if repl is None and restore_state is not None:
+            try:
+                repl = RawRepl(args.port, args.baudrate, args.timeout)
+                repl.enter()
+            except Exception:
+                repl = None
+        if repl is not None and restore_state is not None:
+            try:
+                restore = (
+                    "import os,ujson\n"
+                    "p='/state/boot.json.soft-reset-cycle.tmp'\n"
+                    "try: os.remove(p)\n"
+                    "except OSError: pass\n"
+                    "f=open(p,'w');ujson.dump(%r,f);f.close()\n"
+                    "try: os.remove('/state/boot.json')\n"
+                    "except OSError: pass\n"
+                    "os.rename(p,'/state/boot.json')\n"
+                ) % restore_state
+                repl.exec(restore, max(args.timeout, 30))
+            except Exception:
+                pass
+        if repl is not None:
+            try:
+                repl.serial.write(b"import machine\nmachine.reset()\n\x04")
+                time.sleep(0.5)
+            finally:
+                repl.close()
+    print(json.dumps({
+        "iterations": args.iterations,
+        "policy": preflight["soft_reset_policy"],
+        "baseline": baseline,
+        "results": results,
+    }, indent=2, sort_keys=True))
+
+
 def hardening(args: argparse.Namespace) -> None:
     code = HARDENING_TEMPLATE.replace(
         "__SCAN_ITERATIONS__", str(args.scan_iterations)).replace(
@@ -1046,6 +1301,10 @@ def parser() -> argparse.ArgumentParser:
     commands = result.add_subparsers(dest="command", required=True)
 
     commands.add_parser("probe").set_defaults(func=probe)
+
+    soft_reset = commands.add_parser("soft-reset-cycle")
+    soft_reset.add_argument("--iterations", type=int, default=5)
+    soft_reset.set_defaults(func=soft_reset_cycle)
 
     hardening_parser = commands.add_parser("hardening")
     hardening_parser.add_argument("--scan-iterations", type=int, default=3)

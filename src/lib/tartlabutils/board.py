@@ -5,7 +5,9 @@ def validate_board_config(board):
     """Validate the common shape shared by modern board payloads."""
     if not isinstance(board, dict):
         raise ValueError("BOARD_CONFIG must be a dictionary")
-    if set(board) != {"id", "pins", "display", "touch"}:
+    required = {"id", "pins", "display", "touch"}
+    allowed = required | {"reset"}
+    if not required.issubset(board) or not set(board).issubset(allowed):
         raise ValueError("BOARD_CONFIG has unexpected top-level fields")
     board_id = board["id"]
     if not isinstance(board_id, str) or not board_id or any(
@@ -36,6 +38,13 @@ def validate_board_config(board):
         driver = definition.get("driver")
         if not isinstance(driver, str) or "." not in driver:
             raise ValueError("board %s driver reference is invalid" % component)
+
+    reset = board.get("reset", {})
+    if not isinstance(reset, dict) or \
+            not set(reset).issubset({"soft_reset"}):
+        raise ValueError("board reset policy is invalid")
+    if reset.get("soft_reset", "native") not in ("native", "hard_reset"):
+        raise ValueError("board soft-reset policy is invalid")
     return board
 
 

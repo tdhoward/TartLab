@@ -487,6 +487,55 @@ were removed, and the following default-settings boot reached
 zero-delay policy; candidate qualification must repeat the physical policy on
 the exact release payload.
 
+## Reset and raw-REPL follow-up (2026-09-04)
+
+Five consecutive timed `machine.reset()` boots on the clean current-source
+fixture reached the complete IDE health marker. Reset-to-startup took
+3.219-3.407 seconds, reset-to-IDE-route took 18.485-19.344 seconds, and
+reset-to-`HEALTHY mode=IDE` took 29.422-31.891 seconds, with a 30.563-second
+median. Every cycle remained reachable over native USB and completed the
+launcher, display/touch construction, Wi-Fi connection, HTTP startup, and
+durable health checkpoint.
+
+The follow-up audit exposed a host-helper defect rather than a board-runtime
+failure. The raw-REPL helper queued two Ctrl-C characters while stopping the
+IDE. The IDE consumed the first through its orderly teardown, but the second
+could escape into the outer startup handler and increment the durable failure
+state. The shared helper now sends one Ctrl-C per entry attempt, matching
+MicroPython's own transport, and establishes inactive DTR/RTS states before it
+opens the serial port. Its protected-state digest also reports an absent path
+as `null`, which is required for a modern board that intentionally has no
+legacy root `/hdwconfig.py`.
+
+On COM18, the corrected `update-status`, `protected-digest`, `update-status`
+sequence retained boot sequence 112, `healthy` IDE mode, zero consecutive
+failures, no update or recovery staging, and stable hashes for the protected
+board tree, selected-app record, and user tree. A final intentional hard-reset
+confirmation reached startup in 3.578 seconds and IDE health in 29.719 seconds.
+
+An initial managed raw Ctrl-D probe then reproduced the pinned native runtime's
+known soft-reset defect: the first post-reset platform reconstruction reached
+`machine.SPI.Bus` and failed with `TypeError: can't convert str to int`. A hard
+reset continued to clear the stale native singleton. Rather than hiding this
+board/runtime constraint in application code, the Elecrow payload now declares
+`reset.soft_reset = hard_reset`. Shared early boot reads that policy and
+promotes `machine.SOFT_RESET` to an immediate MCU reset before incrementing the
+durable boot-failure state or reconstructing the platform. Boards without the
+policy retain native soft-reset behavior.
+
+The new boot policy, board validator, and Elecrow payload were installed on the
+fixture with verified source hashes. Five consecutive raw Ctrl-D requests were
+then promoted to hard-reset cause 2 and advanced boot sequences exactly from
+120 through 124. All five completed the launcher, display/touch construction,
+Wi-Fi and HTTP startup, and returned to `healthy` IDE mode with zero consecutive
+failures. Reset-to-startup took 4.156-4.844 seconds (4.296-second median), and
+reset-to-health took 31.813-33.406 seconds (32.390-second median). The helper's
+final normal boot also reached `HEALTHY mode=IDE`.
+
+This qualifies raw Ctrl-D recovery through the board's explicit soft-to-hard
+reset contract; it does not claim that the pinned native SPI singleton can be
+rebuilt by an in-place VM restart. A cold USB power-cycle series remains open.
+
 ## Remaining work
 
 The selected TartLab mode for this board is native 320 x 480 portrait. The
@@ -509,8 +558,11 @@ single-board bridge release is required.
    asynchronous-completion path, with callback exceptions contained until a
    main-thread wait can report them.
 2. **Partially completed:** explicit construction/refresh/teardown passed ten
-   same-runtime cycles with stable heap. Repeated soft resets, hard resets, and
-   a cold USB power-cycle series remain to be qualified.
+   same-runtime cycles with stable heap. Five consecutive hard-reset boots and
+   a post-helper-fix confirmation reached complete IDE health. Five consecutive
+   raw Ctrl-D requests also reached complete IDE health through the board's
+   explicit soft-to-hard reset policy. A cold USB power-cycle series remains to
+   be qualified.
 3. **Completed for bench use:** add the packed-QSPI direct surface and define a
    shadow-backed dirty-rectangle contract that satisfies the physical CASET
    alignment rule without caller-buffer overread.

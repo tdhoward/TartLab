@@ -14,7 +14,20 @@ import serial
 class RawRepl:
     def __init__(self, port, baudrate=115200, timeout=10):
         self.serial = serial.Serial(
-            port, baudrate, timeout=0.1, write_timeout=2, dsrdtr=False, rtscts=False)
+            port=None,
+            baudrate=baudrate,
+            timeout=0.1,
+            write_timeout=2,
+            dsrdtr=False,
+            rtscts=False,
+        )
+        # Native USB boards can interpret pyserial's default modem-control
+        # transition as a reset request.  Establish inactive states before
+        # opening the port so a read-only helper does not change boot state.
+        self.serial.dtr = False
+        self.serial.rts = False
+        self.serial.port = port
+        self.serial.open()
         self.timeout = timeout
 
     def close(self):
@@ -35,7 +48,10 @@ class RawRepl:
     def enter(self):
         last_error = None
         for unused_attempt in range(2):
-            self.serial.write(b"\r\x03\x03")
+            # A single Ctrl-C lets TartLab's IDE unwind through its normal
+            # teardown.  A second queued interrupt can escape that handler and
+            # incorrectly turn a read-only raw-REPL entry into a boot failure.
+            self.serial.write(b"\r\x03")
             time.sleep(0.2)
             self.serial.reset_input_buffer()
             self.serial.write(b"\r\x01")
@@ -189,6 +205,10 @@ PATHS = (
     '/state/selected_app.json',
 )
 def digest(root):
+    try:
+        os.stat(root)
+    except OSError:
+        return None
     value = uhashlib.sha256()
     stack = [root]
     while stack:

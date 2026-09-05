@@ -959,6 +959,33 @@ class BootRecoveryGateTests(unittest.TestCase):
         self.assertIsInstance(pin, Pin)
         self.assertEqual(calls, [(48, Pin.OUT, 0)])
 
+    def test_board_policy_promotes_soft_reset_before_startup(self):
+        calls = []
+        machine = types.SimpleNamespace(
+            SOFT_RESET=5,
+            reset_cause=lambda: 5,
+            reset=lambda: calls.append("reset"),
+        )
+        board = {"reset": {"soft_reset": "hard_reset"}}
+
+        promoted = self.namespace["_promote_soft_reset"](board, machine)
+
+        self.assertTrue(promoted)
+        self.assertEqual(calls, ["reset"])
+
+    def test_native_or_hard_reset_does_not_promote(self):
+        calls = []
+        machine = types.SimpleNamespace(
+            SOFT_RESET=5,
+            reset_cause=lambda: 2,
+            reset=lambda: calls.append("reset"),
+        )
+
+        self.assertFalse(self.namespace["_promote_soft_reset"]({}, machine))
+        self.assertFalse(self.namespace["_promote_soft_reset"](
+            {"reset": {"soft_reset": "hard_reset"}}, machine))
+        self.assertEqual(calls, [])
+
 
 class FixtureTests(unittest.TestCase):
     def test_fixture_is_sanitized_and_release_approved(self):
@@ -1055,10 +1082,44 @@ class PhysicalHelperTests(unittest.TestCase):
             repl.enter()
 
         self.assertEqual(repl.serial.writes, [
-            b"\r\x03\x03", b"\r\x01",
-            b"\r\x03\x03", b"\r\x01",
+            b"\r\x03", b"\r\x01",
+            b"\r\x03", b"\r\x01",
         ])
         self.assertEqual(repl.serial.resets, 2)
+
+    def test_raw_repl_opens_with_inactive_modem_control(self):
+        captured = {}
+
+        class Serial:
+            def __init__(self, **kwargs):
+                captured["kwargs"] = kwargs
+                self.dtr = None
+                self.rts = None
+                self.port = None
+
+            def open(self):
+                captured["open_state"] = (self.dtr, self.rts, self.port)
+
+        with mock.patch.object(self.helper.serial, "Serial", Serial):
+            repl = self.helper.RawRepl("COM18", 230400, 17)
+
+        self.assertEqual(captured["kwargs"], {
+            "port": None,
+            "baudrate": 230400,
+            "timeout": 0.1,
+            "write_timeout": 2,
+            "dsrdtr": False,
+            "rtscts": False,
+        })
+        self.assertEqual(captured["open_state"], (False, False, "COM18"))
+        self.assertEqual(repl.timeout, 17)
+
+    def test_protected_digest_allows_absent_legacy_paths(self):
+        source = self.helper.PROTECTED_DIGEST_CODE
+
+        compile(source, "<protected-digest>", "exec")
+        self.assertIn("os.stat(root)", source)
+        self.assertIn("except OSError:\n        return None", source)
 
     def test_ota_helper_selects_modern_object_manifest_explicitly(self):
         captured = {}

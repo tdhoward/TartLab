@@ -1,5 +1,6 @@
 """Hardware-free checks for the experimental DLE06235B adapter."""
 
+from copy import deepcopy
 from pathlib import Path
 import importlib.util
 import sys
@@ -30,7 +31,7 @@ try:
     package = types.ModuleType("tartlabutils")
     package.__path__ = []
     sys.modules["tartlabutils"] = package
-    load_source(
+    board_helpers = load_source(
         "tartlabutils.board",
         ROOT / "src/lib/tartlabutils/board.py",
     )
@@ -271,6 +272,7 @@ class ElecrowControllerTests(unittest.TestCase):
         board = board_payload.BOARD_CONFIG
         pins = {item["type"]: item for item in board["pins"]}
         self.assertEqual(board["id"], "elecrow_dle06235b")
+        self.assertEqual(board["reset"]["soft_reset"], "hard_reset")
         self.assertEqual(pins["BACKLIGHT"]["number"], 41)
         self.assertEqual(pins["DISPLAY_SYNC"]["number"], 42)
         self.assertTrue(pins["DISPLAY_SYNC"]["active_high"])
@@ -291,6 +293,14 @@ class ElecrowDriverSourceTests(unittest.TestCase):
         self.assertIn("I2C_ADDR = const(0x55)", source)
         self.assertNotIn("0x28", source)
         self.assertNotIn("address", board_payload.BOARD_CONFIG["touch"])
+
+    def test_reset_policy_is_validated_declarative_configuration(self):
+        board_helpers.validate_board_config(board_payload.BOARD_CONFIG)
+        invalid = deepcopy(board_payload.BOARD_CONFIG)
+        invalid["reset"]["soft_reset"] = "ignore"
+
+        with self.assertRaisesRegex(ValueError, "soft-reset policy"):
+            board_helpers.validate_board_config(invalid)
 
     def test_hardware_driver_uses_async_completion_and_frees_scratch(self):
         source = (ROOT / "firmware/lvgl-modern/drivers/st77922.py").read_text(

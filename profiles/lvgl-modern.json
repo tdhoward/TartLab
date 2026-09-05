@@ -83,7 +83,7 @@
     "inputs": [
       {
         "path": "src/lib/tartlabutils/board.py",
-        "sha256": "7f0977b3a3c87f5149227d376f9882202de38848560bec3466cd04e321294d17"
+        "sha256": "c1e95e01f2279e5a08a3e31f67ea034ab523a440c1ff547014372ce142255cf1"
       },
       {
         "path": "src/lib/tartlabutils/modern.py",

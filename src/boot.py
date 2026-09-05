@@ -67,8 +67,9 @@ def _load_board_config():
     return None
 
 
-def _blank_retained_display():
-    board = _load_board_config()
+def _blank_retained_display(board=None):
+    if board is None:
+        board = _load_board_config()
     if board is None:
         return None
     backlights = [
@@ -90,6 +91,26 @@ def _blank_retained_display():
     except Exception:
         # Display blanking is best effort and must never prevent recovery.
         return None
+
+
+def _promote_soft_reset(board, machine_module=None):
+    """Hard reset before startup when a board cannot rebuild after Ctrl-D."""
+    if not isinstance(board, dict):
+        return False
+    policy = board.get("reset", {})
+    if not isinstance(policy, dict) or \
+            policy.get("soft_reset") != "hard_reset":
+        return False
+    if machine_module is None:
+        try:
+            import machine as machine_module
+        except ImportError:
+            return False
+    soft_reset = getattr(machine_module, "SOFT_RESET", None)
+    if soft_reset is None or machine_module.reset_cause() != soft_reset:
+        return False
+    machine_module.reset()
+    return True
 
 
 def _start_boot():
@@ -124,7 +145,9 @@ def _run_recovery(reason):
         print("TartLab recovery failed:", error)
 
 
-_early_backlight = _blank_retained_display()
+_early_board_config = _load_board_config()
+_early_backlight = _blank_retained_display(_early_board_config)
+_soft_reset_promoted = _promote_soft_reset(_early_board_config)
 _reason = _recovery_reason(_start_boot())
 if _reason:
     _run_recovery(_reason)

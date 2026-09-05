@@ -3,6 +3,7 @@
 
 BOARD_CONFIG = {
     "id": "elecrow_dle06235b",
+    "reset": {"soft_reset": "hard_reset"},
     "pins": (
         {"type": "BACKLIGHT", "number": 41, "active_high": True},
         {"type": "DISPLAY_RESET", "number": 48},

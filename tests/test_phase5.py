@@ -17,6 +17,9 @@ from phase5_device import (
     COLOR_CODE,
     HARDENING_TEMPLATE,
     RENDERER_CYCLE_TEMPLATE,
+    PROMOTED_SOFT_RESET_AUDIT,
+    SOFT_RESET_CYCLE_TEMPLATE,
+    SOFT_RESET_PREFLIGHT,
     STATUS_VISUAL_CODE,
     SWITCH_TEST_APP,
 )
@@ -203,6 +206,41 @@ class Phase5HardeningProbeTests(unittest.TestCase):
         self.assertNotIn("ssid", source.lower())
         self.assertNotIn("ifconfig", source.lower())
         self.assertNotIn("open(", source)
+
+
+class Phase5SoftResetProbeTests(unittest.TestCase):
+    def test_preflight_requires_clean_durable_state(self):
+        compile(SOFT_RESET_PREFLIGHT, "<soft-reset-preflight>", "exec")
+        self.assertIn('boot.get("health") != "healthy"',
+                      SOFT_RESET_PREFLIGHT)
+        self.assertIn('exists("/state/update.json")', SOFT_RESET_PREFLIGHT)
+        self.assertIn('exists("/state/recovery.flag")', SOFT_RESET_PREFLIGHT)
+        self.assertIn('reset.get("soft_reset", "native")',
+                      SOFT_RESET_PREFLIGHT)
+
+    def test_cycle_is_capability_driven_and_restores_boot_baseline(self):
+        source = SOFT_RESET_CYCLE_TEMPLATE.replace(
+            "__BASELINE__", repr({
+                "sequence": 7,
+                "consecutive_failures": 0,
+                "health": "healthy",
+                "mode": "IDE",
+            }))
+
+        compile(source, "<soft-reset-cycle>", "exec")
+        self.assertIn("platform = get_platform()", source)
+        self.assertIn("platform.enter_ui_mode()", source)
+        self.assertIn("platform.deinit()", source)
+        self.assertIn("set_platform(None)", source)
+        self.assertIn('os.rename(temporary, "/state/boot.json")', source)
+        self.assertNotIn("elecrow", source.lower())
+        self.assertNotIn("st77922", source.lower())
+
+    def test_promoted_cycle_audits_hard_reset_and_durable_health(self):
+        compile(PROMOTED_SOFT_RESET_AUDIT, "<promoted-soft-reset>", "exec")
+        self.assertIn("machine.reset_cause()", PROMOTED_SOFT_RESET_AUDIT)
+        self.assertIn('getattr(machine, "HARD_RESET", None)',
+                      PROMOTED_SOFT_RESET_AUDIT)
 
 
 class ModernFirmwareReferenceLockTests(unittest.TestCase):
