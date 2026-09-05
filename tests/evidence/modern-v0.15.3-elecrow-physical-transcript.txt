@@ -1,0 +1,105 @@
+TartLab modern-v0.15.3 Elecrow DLE06235B sanitized exact-candidate bridge
+Operator: Tim
+Board: Elecrow DLE06235B observed-2026-08-29, ESP32-S3 revision 0.2
+Tested at UTC: 2026-09-05T23:10:22Z
+Candidate commit: 1def51076e0fad4544339a24405fcadfcdb3b6ea
+Candidate checksums SHA-256: ead841c4061f0a3cae30f27a4dc1157468b7799236a88bc21d1a682786b4128f
+Candidate payload inventory SHA-256: ef7162ba1e0cb9fc568da162024eb3a147ac35aa1dfaeb42a479b19211f86145
+Firmware SHA-256: 50d98625a1ef58eee6c5fbe55b5107968301ea4dc6b8954167cad9f0d65ee5a3
+
+This transcript contains no Wi-Fi values, credentials, protected-file
+contents, student work, device MAC address, COM mapping, or private workspace
+path. Raw serial output, journals, and complete device snapshots remain in the
+private hardware workspace.
+
+Candidate authentication
+------------------------
+Protected workflow run 33996940734 built tag modern-v0.15.3 at the commit
+above. Its deterministic double build, profile and firmware preflight, host
+matrix, and candidate authentication all passed. All 27 downloaded subjects
+were independently verified against the preserved GitHub Artifact Attestation,
+source ref refs/tags/modern-v0.15.3, source repository, qualification signer
+workflow, SLSA provenance predicate, and hosted-runner policy. The preserved
+attestation bundle has SHA-256
+e48061f2df1ca378480f4a511184d65ba17d346873aece0b4b07719eca676e3f.
+
+Bound prior physical record
+---------------------------
+The full Elecrow physical qualification was performed against signed
+modern-v0.15.2 and is recorded in
+tests/evidence/modern-v0.15.2-elecrow-physical-transcript.txt, SHA-256
+d8228ab7e0ecb0755235ae6824f78e035a7f237e7982b537f62f45cb20546475.
+It covers clean and interrupted provisioning, the complete touchscreen smoke,
+brightness, 100 renderer ownership transitions, 25 teardown cycles, Wi-Fi and
+display hardening, normal and corrupted OTA, power loss during download,
+power loss during recovery installation, offline resume, protected state,
+recovery access, feed isolation, reset behavior, and cold-power cycles.
+
+The modern-v0.15.3 source delta contains qualification documentation, host
+qualification tools and their tests, and the migration guide. It does not
+change firmware or executable device runtime source. The
+Elecrow firmware image in modern-v0.15.3 is byte-identical to the physically
+qualified modern-v0.15.2 image at the firmware SHA-256 above.
+
+Both candidates contain 208 installed payload entries in twelve packages.
+Of those entries, 204 have identical stored hashes and sizes. The other four
+are the browser bundle, favicon, logo, and index gzip files: their compressed
+representations have equal sizes but different hashes across build epochs;
+each decompressed byte stream has an identical SHA-256 across the two signed
+candidates. The updated MIGRATION.md is release guidance and is not installed
+on the device. This establishes unchanged executable and rendered content for
+the previously completed physical gates.
+
+Exact clean provisioning and health
+-----------------------------------
+The operator authorized a new clean erase. The provisioner selected board ID
+elecrow_dle06235b, authenticated the candidate, verified the board and 16 MiB
+flash target, wrote and read-verified the board-bound firmware, uploaded the
+prepared filesystem under inert entry-point placeholders, and activated
+boot.py and main.py together. The journal reached awaiting_health with 213
+prepared files. After an untouched normal boot, authenticated resume reported:
+
+  board_id=elecrow_dle06235b
+  profile=lvgl-modern
+  version=modern-v0.15.3
+  healthy=true
+  stage=complete
+
+There was no pending update marker. The final provisioning journal has
+SHA-256 dd7496bf18beab59f5b26c0914fa19cc06c940d8b4b58525e8e1a688d3f9453d.
+
+Exact-candidate physical smoke
+------------------------------
+The owner confirmed that the first exact-candidate portrait display was
+upright, readable, and visually correct. A subsequent physical reset returned
+to the upright launcher; touch worked normally. Choose app opened and showed
+hello.py with the corrected in-panel width and balanced margins. Cancellation
+worked, Start IDE took the expected route, and the browser IDE opened and
+operated normally.
+
+Installed inventory
+-------------------
+A private post-health snapshot contained 219 device files. Of the 213 prepared
+files, 211 matched byte-for-byte. The pending state/update.json marker was
+correctly consumed, and state/repos.json changed when installation health was
+committed. The seven additional files were state/boot.json, four boot logs,
+state/phase1_migration.json, and state/settings.json. No unexpected prepared
+file was absent or changed. The content-addressed snapshot manifest has
+SHA-256 816c26b79ef45a2301613e79ff0f7db9eeb0cb93daa1434d8d7b2139ec972988.
+The board was returned to a normal boot after capture.
+
+Policy and remaining release boundary
+-------------------------------------
+The checked-in modern support-window policy has SHA-256
+28c3858ec8efb282af0c31354f650f3005838dee11d7c7e9e3f41a5cfd39412e.
+It deliberately excludes direct legacy migration for this board and requires
+authenticated clean provisioning with reviewed manual restore instead. The
+exact clean pass above satisfies that disposition; no Elecrow migration pass
+is claimed.
+
+Together, the bound modern-v0.15.2 full physical record, byte/decompressed-
+content equivalence, authenticated modern-v0.15.3 clean transaction, exact
+health result, physical smoke, and installed inventory complete the Elecrow
+side of modern-v0.15.3 qualification. Promotion still requires schema-2
+candidate-bound evidence for the LilyGO board in the same release matrix and
+protected publication. This transcript does not claim that result.

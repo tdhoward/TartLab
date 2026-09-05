@@ -1,6 +1,6 @@
 # Elecrow DLE06235B bring-up results
 
-Status: exact-board `modern-v0.15.2` physical gates passed; protected
+Status: exact-board `modern-v0.15.3` qualification bridge passed; protected
 multi-board promotion pending
 
 Test date: 2026-08-29
@@ -22,9 +22,13 @@ experimental and is not part of this bench acceptance.
 The descriptor remains `candidate` because support is granted only by a
 protected release promotion. Authenticated clean provisioning, the complete
 Elecrow physical checklist, OTA/recovery containment, and provisioning
-activation interruption/resume have now passed on signed `modern-v0.15.2`.
-The release still needs exact-candidate evidence for every other board in its
-matrix before the descriptor can claim supported hardware.
+activation interruption/resume passed on signed `modern-v0.15.2`. Signed
+`modern-v0.15.3` then passed an authenticated clean transaction, final
+inventory comparison, and focused owner-confirmed physical smoke. Its firmware
+is byte-identical and its executable/rendered device content is equivalent to
+the full physical candidate. The release still needs exact-candidate evidence
+for every other board in its matrix before the descriptor can claim supported
+hardware.
 
 No factory backup was retained because the board was new and the owner
 explicitly authorized erasing its contents.
@@ -612,6 +616,43 @@ provisioner now activates both entry points in one raw-REPL connection. A new
 authenticated candidate must repeat clean provisioning through that corrected
 path; the recovered `modern-v0.15.0` run is diagnostic evidence, not a pass.
 
+## Exact `modern-v0.15.3` bridge (2026-09-05)
+
+Protected workflow run `33996940734` built and authenticated all 27 subjects
+from tag `modern-v0.15.3` at commit
+`1def51076e0fad4544339a24405fcadfcdb3b6ea`. Independent local verification
+bound every subject to that tag, repository, qualification signer workflow,
+SLSA provenance predicate, and hosted-runner policy. The candidate
+`checksums.json` SHA-256 is
+`ead841c4061f0a3cae30f27a4dc1157468b7799236a88bc21d1a682786b4128f`.
+
+The Elecrow firmware is byte-identical to signed `modern-v0.15.2`. Across the
+208 installed payload entries, 204 stored representations are byte-identical.
+The remaining four are build-epoch variants of the browser gzip files: each
+has the same size and an identical decompressed byte stream. Release-only
+`MIGRATION.md` contains the qualification-policy correction and is not
+installed on the board. This binds the complete `modern-v0.15.2` physical
+record to unchanged firmware, executable runtime, and rendered browser
+content.
+
+The owner then authorized an exact-candidate clean erase. The production
+provisioner authenticated `modern-v0.15.3`, selected
+`elecrow_dle06235b`, verified the board and 16 MiB flash, wrote and read-verified
+the firmware, uploaded 213 prepared files under inert entry points, activated
+both boot files atomically, and completed health with the exact board, profile,
+and version and no pending update. A physical reset showed the upright
+launcher and working touch. Choose app displayed `hello.py` with the corrected
+width and margins; cancellation, Start IDE, and the browser IDE all worked
+normally.
+
+A private 219-file post-health snapshot matched 211 of 213 prepared files
+byte-for-byte. Only the consumed update marker and committed repository state
+differed; the seven added paths were expected boot, log, migration-state, and
+settings files. The sanitized exact-candidate record is
+[`tests/evidence/modern-v0.15.3-elecrow-physical-transcript.txt`](../../tests/evidence/modern-v0.15.3-elecrow-physical-transcript.txt),
+SHA-256
+`6c4c77692cc5eed092d4b4f1322e1d2c86a0d7021fafc0eae52ffbcb612cc7f3`.
+
 ## Remaining work
 
 The selected TartLab mode for this board is native 320 x 480 portrait. The
@@ -709,16 +750,22 @@ publishing or provisioning the board as a supported target.
     it then writes the board-specific selector and rejects incompatible images.
     Physical use of this path remains part of item 12. Migration from an unknown
     Elecrow factory filesystem is not claimed.
-12. **Completed for the Elecrow side of signed `modern-v0.15.2`:** all 407 host
-    tests passed. Authenticated clean provisioning, the complete touchscreen
-    smoke, normal and corrupted OTA, real power loss during normal download,
-    real power loss after a recovery package was durably completed, offline
-    resume, redacted recovery access, protected-state checks, inventory
-    comparison, feed isolation, and interruption/resume at atomic boot-file
-    activation all passed. Direct legacy migration is deliberately not
+12. **Completed for the Elecrow side of signed `modern-v0.15.3`:** all 410 host
+    tests passed before the tag. Signed `modern-v0.15.2` passed authenticated
+    clean provisioning, the complete touchscreen smoke, normal and corrupted
+    OTA, real power loss during normal download, real power loss after a
+    recovery package was durably completed, offline resume, redacted recovery
+    access, protected-state checks, inventory comparison, feed isolation, and
+    interruption/resume at atomic boot-file activation. Signed
+    `modern-v0.15.3` has identical firmware and equivalent executable/rendered
+    payload content, and passed its own authenticated clean provision, health,
+    installed-inventory comparison, reset, launcher/touch/chooser, Start IDE,
+    and browser-IDE smoke. Direct legacy migration is deliberately not
     applicable to this board; the approved disposition is authenticated clean
-    provisioning with reviewed manual restore. The sanitized transcript is
-    [`tests/evidence/modern-v0.15.2-elecrow-physical-transcript.txt`](../../tests/evidence/modern-v0.15.2-elecrow-physical-transcript.txt).
+    provisioning with reviewed manual restore. The bound sanitized records are
+    [`modern-v0.15.2`](../../tests/evidence/modern-v0.15.2-elecrow-physical-transcript.txt)
+    and
+    [`modern-v0.15.3`](../../tests/evidence/modern-v0.15.3-elecrow-physical-transcript.txt).
 13. **Pending multi-board release completion:** combine this Elecrow result
     with exact-candidate evidence for every other board in the same release,
     validate the schema-2 aggregate, and promote it through the protected
