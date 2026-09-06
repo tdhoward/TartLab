@@ -1,7 +1,6 @@
 # Elecrow DLE06235B bring-up results
 
-Status: exact-board `modern-v0.15.3` qualification bridge passed; protected
-multi-board promotion pending
+Status: qualified and published in `modern-v0.15.4`
 
 Test date: 2026-08-29
 
@@ -19,16 +18,15 @@ board selector and platform adapter. A 480 x 320 software-rotated landscape
 proof also works, but portrait is the selected board mode; landscape remains
 experimental and is not part of this bench acceptance.
 
-The descriptor remains `candidate` because support is granted only by a
-protected release promotion. Authenticated clean provisioning, the complete
+The descriptor is `qualified` because the board-bound evidence passed the
+protected `modern-v0.15.4` release promotion. Authenticated clean provisioning, the complete
 Elecrow physical checklist, OTA/recovery containment, and provisioning
 activation interruption/resume passed on signed `modern-v0.15.2`. Signed
 `modern-v0.15.3` then passed an authenticated clean transaction, final
 inventory comparison, and focused owner-confirmed physical smoke. Its firmware
 is byte-identical and its executable/rendered device content is equivalent to
-the full physical candidate. The release still needs exact-candidate evidence
-for every other board in its matrix before the descriptor can claim supported
-hardware.
+the full physical candidate. The schema-2 aggregate binds exact-candidate
+evidence for both boards in the release matrix.
 
 No factory backup was retained because the board was new and the owner
 explicitly authorized erasing its contents.
@@ -760,17 +758,17 @@ publishing or provisioning the board as a supported target.
     `modern-v0.15.3` has identical firmware and equivalent executable/rendered
     payload content, and passed its own authenticated clean provision, health,
     installed-inventory comparison, reset, launcher/touch/chooser, Start IDE,
-    and browser-IDE smoke. Direct legacy migration is deliberately not
-    applicable to this board; the approved disposition is authenticated clean
-    provisioning with reviewed manual restore. The bound sanitized records are
+    and browser-IDE smoke. The bound sanitized records are
     [`modern-v0.15.2`](../../tests/evidence/modern-v0.15.2-elecrow-physical-transcript.txt)
     and
     [`modern-v0.15.3`](../../tests/evidence/modern-v0.15.3-elecrow-physical-transcript.txt).
-13. **Pending multi-board release completion:** combine this Elecrow result
-    with exact-candidate evidence for every other board in the same release,
-    validate the schema-2 aggregate, and promote it through the protected
-    workflow. Only that milestone permits changing the descriptor to
-    `qualified` and listing the board as a supported TartLab target.
+13. **Completed in signed `modern-v0.15.4`:** the schema-2 aggregate binds the
+    Elecrow and LilyGO evidence to the exact candidate. Protected workflow run
+    `34009221873` rebuilt and validated the release, signed all 28 release
+    subjects, and published 29 assets only to the isolated modern release
+    repository. Independent post-publication verification passed for the board
+    matrix, candidate checksum, and every signed subject. The descriptor may
+    therefore be `qualified` and the board listed as a supported TartLab target.
 
 Raw serial logs, firmware downloads, and vendor resource archives remain under
 the ignored `hardware_test_artifacts` directory. They may contain workstation

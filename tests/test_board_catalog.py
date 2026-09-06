@@ -21,12 +21,12 @@ class BoardCatalogTests(unittest.TestCase):
     def setUpClass(cls):
         cls.catalog = load_catalog()
 
-    def test_repository_catalog_contains_qualified_and_candidate_boards(self):
+    def test_repository_catalog_contains_qualified_boards(self):
         self.assertEqual(
             self.catalog["lilygo_t_display_s3_pro"]["support_status"],
             "qualified")
         self.assertEqual(
-            self.catalog["elecrow_dle06235b"]["support_status"], "candidate")
+            self.catalog["elecrow_dle06235b"]["support_status"], "qualified")
 
     def test_selector_is_generated_from_descriptor(self):
         source = selector_source(self.catalog["lilygo_t_display_s3_pro"])
@@ -37,6 +37,7 @@ class BoardCatalogTests(unittest.TestCase):
 
     def test_candidate_board_cannot_claim_qualification(self):
         descriptor = deepcopy(self.catalog["elecrow_dle06235b"])
+        descriptor["support_status"] = "candidate"
         descriptor["qualification"] = {
             "release_version": "modern-v0",
             "evidence": "boards/elecrow_dle06235b/BRINGUP_RESULTS.md",
@@ -45,7 +46,7 @@ class BoardCatalogTests(unittest.TestCase):
                 BoardCatalogError, "candidate boards cannot claim qualification"):
             validate_descriptor(descriptor)
 
-    def test_candidate_board_has_selector_and_requires_firmware(self):
+    def test_elecrow_board_has_selector_and_requires_firmware(self):
         descriptor = deepcopy(self.catalog["elecrow_dle06235b"])
         self.assertEqual(
             descriptor["selector"]["module"],

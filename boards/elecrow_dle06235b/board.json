@@ -4,7 +4,7 @@
   "name": "Elecrow DLE06235B",
   "vendor": "Elecrow",
   "runtime_profile": "lvgl-modern",
-  "support_status": "candidate",
+  "support_status": "qualified",
   "hardware": {
     "revisions": [
       "observed-2026-08-29"
@@ -43,7 +43,10 @@
     "lock": "firmware/lvgl-modern/elecrow_dle06235b.lock.json",
     "provenance": "firmware/lvgl-modern/elecrow_dle06235b/provenance.json"
   },
-  "qualification": null,
+  "qualification": {
+    "release_version": "modern-v0.15.4",
+    "evidence": "tests/evidence/modern-v0.15.4-qualification.json"
+  },
   "documentation": [
     "boards/elecrow_dle06235b/README.md",
     "boards/elecrow_dle06235b/BRINGUP_RESULTS.md",

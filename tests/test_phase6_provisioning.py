@@ -354,11 +354,17 @@ class ModernProvisioningTests(unittest.TestCase):
             sentinel = device / "sentinel.txt"
             sentinel.write_text("preserve", encoding="utf-8")
             workspace = root / "workspace"
-            with self.assertRaisesRegex(ValueError, "not qualified"):
-                provision(
-                    self.release, workspace, "clean",
-                    DirectoryTransport(device),
-                    board_id="elecrow_dle06235b")
+            candidate = dict(select_board("elecrow_dle06235b"))
+            candidate["support_status"] = "candidate"
+            candidate["qualification"] = None
+            with mock.patch(
+                    "provision_modern.select_board",
+                    return_value=candidate):
+                with self.assertRaisesRegex(ValueError, "not qualified"):
+                    provision(
+                        self.release, workspace, "clean",
+                        DirectoryTransport(device),
+                        board_id="elecrow_dle06235b")
             self.assertEqual(sentinel.read_text(encoding="utf-8"), "preserve")
             self.assertFalse(workspace.exists())
 
@@ -367,12 +373,17 @@ class ModernProvisioningTests(unittest.TestCase):
             root = Path(temporary)
             device = root / "device"
             transport = DirectoryTransport(device)
-
-            result = provision(
-                self.release, root / "workspace", "clean", transport,
-                board_id="elecrow_dle06235b",
-                qualification_candidate=True,
-            )
+            candidate = dict(select_board("elecrow_dle06235b"))
+            candidate["support_status"] = "candidate"
+            candidate["qualification"] = None
+            with mock.patch(
+                    "provision_modern.select_board",
+                    return_value=candidate):
+                result = provision(
+                    self.release, root / "workspace", "clean", transport,
+                    board_id="elecrow_dle06235b",
+                    qualification_candidate=True,
+                )
 
             self.assertEqual(result["stage"], "awaiting_health")
             self.assertEqual(result["board_id"], "elecrow_dle06235b")
