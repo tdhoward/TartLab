@@ -36,23 +36,23 @@ deployment path and is deliberately outside the modern qualification contract.
 
 ## Qualified candidate and physical results
 
-The final candidate was `modern-v0.14.8` at commit
-`49d5b82c795297fa0c6f12ed683af465502779a1`:
+The qualified multi-board candidate is `modern-v0.15.4` at commit
+`f86c6b02b66ed62399b73ad4f9270774e0f366e9`:
 
 - candidate `checksums.json` SHA-256:
-  `dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e`;
-- firmware SHA-256:
+  `2c3688ec80a279dccb6e6265c2b72a0e7b2b510f95047670a45b5c1ddda53da8`;
+- LilyGO firmware SHA-256:
   `187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab`;
+- Elecrow firmware SHA-256:
+  `50d98625a1ef58eee6c5fbe55b5107968301ea4dc6b8954167cad9f0d65ee5a3`;
 - qualification summary SHA-256:
-  `1d889e55d969a906c888af9a0ac6c3af355e5b9e6770175b2c5b0e02b7d4d8c8`.
+  `7785f0ba835a44ff7408346598348a52c44b0ebaed174564882d4fb24d2b4406`.
 
-Candidate-bound sessions established:
+The aggregate binds prior full physical records and exact-candidate bridges for
+both boards. Together they establish:
 
-- migration from the exact stable v0.13 floor with protected categories
-  preserved through the required selector/state translations and browser/API
-  validation;
-- clean provisioning with authenticated starter content, display/touch,
-  tablet IDE, APP mode, and recovery;
+- authenticated clean provisioning and health;
+- display, touch, brightness, launcher, app, and browser IDE behavior;
 - normal modern-to-modern OTA with the old version retained until a healthy
   boot, protected-state preservation, and browser regression checks;
 - the recovery page, redacted status, corrective-update control, staged offline
@@ -65,24 +65,21 @@ Candidate-bound sessions established:
 - public feed checks showing no legacy/modern cross-profile assets.
 
 The sanitized physical transcript is
-`tests/evidence/modern-v0.14.8-physical-transcript.txt`, SHA-256
-`d7e0caeaa8c64b08c55b40f251a921153fdfddbcab6b8f1e24f9cf5ad228862a`.
+`tests/evidence/modern-v0.15.4-elecrow-physical-transcript.txt` for Elecrow and
+`tests/evidence/modern-v0.15.4-lilygo-physical-transcript.txt` for LilyGO.
 The machine-readable qualification summary is
-`tests/evidence/modern-v0.14.8-qualification.json`.
+`tests/evidence/modern-v0.15.4-qualification.json`.
 
 ## Promotion result
 
-Protected workflow run `33223821198` rebuilt the tag twice, matched the
+Protected workflow run `34009221873` rebuilt the tag twice, matched the
 qualified candidate, validated the evidence, generated signed provenance, and
-published 25 assets only to
-`tdhoward/TartLab-modern-releases`. All 22 checksummed release subjects matched
-GitHub's published digests; the remaining assets were the checksums, promotion
-attestation, and release-attestation bundle.
+published 29 assets only to
+`tdhoward/TartLab-modern-releases`. Independent post-publication verification
+matched the two-board matrix and candidate checksum and verified all 28 signed
+release subjects against the protected promotion workflow and source tag.
 
-The post-promotion read-only feed audit found the unchanged 14-release legacy
-feed selecting `v0.13` and one modern release selecting
-`modern-v0.14.8`, with no cross-profile assets. This is a published,
-lab-qualified modern alpha reference for the T-Display-S3 Pro, not evidence of
-a field rollout. No modern devices are field-deployed, so this historical
-release does not require an intermediate bridge before the first supported
-selection-aware multi-board alpha.
+The post-promotion audit confirmed that `modern-v0.15.4` exists as a release
+only in the isolated modern repository and not in the source repository. It is
+the published, lab-qualified modern alpha for the LilyGO T-Display-S3 Pro and
+Elecrow DLE06235B, not evidence of a field rollout.

@@ -82,26 +82,26 @@ def validate_profile(profile: dict[str, Any]) -> None:
     elif status == "published":
         expected_qualification = {
             "status": "passed-and-promoted",
-            "version": "modern-v0.14.8",
-            "tag_commit": "49d5b82c795297fa0c6f12ed683af465502779a1",
+            "version": "modern-v0.15.4",
+            "tag_commit": "f86c6b02b66ed62399b73ad4f9270774e0f366e9",
             "candidate_checksums_sha256": (
-                "dd17b1d64f527f6d50dcea414bf5068c4b56e64ac93b8c093cb211e357d7d96e"),
+                "2c3688ec80a279dccb6e6265c2b72a0e7b2b510f95047670a45b5c1ddda53da8"),
             "evidence_sha256": (
-                "1d889e55d969a906c888af9a0ac6c3af355e5b9e6770175b2c5b0e02b7d4d8c8"),
+                "7785f0ba835a44ff7408346598348a52c44b0ebaed174564882d4fb24d2b4406"),
             "evidence_reference": (
                 "https://raw.githubusercontent.com/tdhoward/TartLab/"
-                "4528f16dbc59750a5b474e81641a19300cfa3a70/tests/evidence/"
-                "modern-v0.14.8-qualification.json"),
-            "promotion_run_id": 33223821198,
-            "published_at_utc": "2026-08-29T00:33:39Z",
+                "ecb56927aa3220b452aa1c66b8409106fde6e4f8/tests/evidence/"
+                "modern-v0.15.4-qualification.json"),
+            "promotion_run_id": 34009221873,
+            "published_at_utc": "2026-09-06T03:43:07Z",
             "release_url": (
                 "https://github.com/tdhoward/TartLab-modern-releases/releases/"
-                "tag/modern-v0.14.8"),
-            "release_asset_count": 25,
+                "tag/modern-v0.15.4"),
+            "release_asset_count": 29,
             "promotion_attestation_sha256": (
-                "fa14be9388f6b8178d74160ed934c9d1f782ac8d7f83531d78fddef4f26a42b0"),
+                "f6a876478b33547d6175f1a093b4e62d593a7125c1942e7cb3371f9ce62a9eaa"),
             "release_attestation_sha256": (
-                "fd01d90821eae91f04806a43f7d490a372430f3e429acc976c770c88efff188a"),
+                "b561123acad806c3d10f6d7071bcbf3f08b17e5ac93411ad3b98d02544a033a0"),
         }
         if qualification != expected_qualification:
             raise ValueError("published modern profile qualification does not match")
@@ -146,12 +146,11 @@ def validate_profile(profile: dict[str, Any]) -> None:
     validate_support_window(support_window)
     gates = profile.get("promotion_gates")
     if gates != [
-            "adult-provisioning-and-migration",
+            "adult-clean-provisioning",
             "profile-specific-hardware",
             "profile-specific-ota-and-recovery",
             "release-feed-isolation",
-            "release-pipeline-qualification",
-            "support-window"]:
+            "release-pipeline-qualification"]:
         raise ValueError("modern release promotion gates are missing")
 
     firmware = profile.get("firmware_compatibility")
@@ -233,11 +232,12 @@ def check(profile_path: Path = DEFAULT_PROFILE, dist: Path | None = None,
     """Validate the reference and, optionally, one or two filesystem builds."""
 
     check_modern_firmware_lock()
-    validate_profile(load_json(profile_path))
+    profile = load_json(profile_path)
+    validate_profile(profile)
     result: dict[str, object] = {
         "profile": "lvgl-modern",
         "artifact_status": "published",
-        "release_version": "modern-v0.14.8",
+        "release_version": profile["hardware_qualification"]["version"],
         "release_repository": "tdhoward/TartLab-modern-releases",
     }
     if dist is not None:

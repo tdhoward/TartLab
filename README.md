@@ -35,16 +35,14 @@ TartLab maintains two profiles:
   1.23.0 octal-SPIRAM image
   `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin`.
 - `lvgl-modern` uses the pinned MicroPython 1.27.0/LVGL firmware and native
-  display transport. The lab-qualified `modern-v0.14.8` reference is published
+  display transport. The two-board-qualified `modern-v0.15.4` release is published
   in the isolated
-  [modern release repository](https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.14.8).
+  [modern release repository](https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.15.4).
 
 The modern profile remains early alpha software. No modern TartLab devices have
-been field-deployed, so no installed population depends on `modern-v0.14.8` or
-its selection-unaware package behavior. The first supported modern alpha may
-therefore be a selection-aware, multi-board release without an intermediate
-single-board bridge release. Every included board still requires its own exact
-firmware binding and candidate-bound qualification evidence.
+been field-deployed. The supported modern alpha is selection-aware and binds
+each included board to its own exact firmware and candidate-bound qualification
+evidence.
 
 New source and distribution builds default to `lvgl-modern`. The modern help
 applications live in `src/files/help`; maintained legacy copies live in
@@ -52,8 +50,8 @@ applications live in `src/files/help`; maintained legacy copies live in
 `--runtime-profile legacy-mp123`.
 
 The normal browser updater changes TartLab filesystem packages only; it cannot
-change firmware. Modern installation or migration is therefore an adult-admin
-task performed with the authenticated provisioning workflow in
+change firmware. Modern installation is therefore an adult-admin task performed
+with the authenticated provisioning workflow in
 [`profiles/lvgl-modern-migration.md`](profiles/lvgl-modern-migration.md).
 
 ## Install the legacy profile
@@ -81,13 +79,11 @@ Source-development and release-candidate commands are in
 
 ### Startup modes
 
-- The legacy profile and published `modern-v0.14.8` normally start the TartLab
-  IDE. Holding the application button during reset runs the selected student
-  app; on the T-Display-S3 Pro this is GPIO 12.
-- Current unreleased modern source replaces that button choice with an LVGL
-  touchscreen launcher for IDE, selected-app, and local app-selection routes.
-  It is implemented and host-tested but is not yet physically qualified or in
-  a promoted modern alpha release. See
+- The legacy profile normally starts the TartLab IDE. Holding the application
+  button during reset runs the selected student app; on the T-Display-S3 Pro
+  this is GPIO 12.
+- Published `modern-v0.15.4` uses an LVGL touchscreen launcher for IDE,
+  selected-app, and local app-selection routes. See
   [`tests/MODERN_TOUCHSCREEN_QUALIFICATION.md`](tests/MODERN_TOUCHSCREEN_QUALIFICATION.md).
 
 ### Connect to the IDE

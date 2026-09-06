@@ -27,7 +27,7 @@ class ModernProfileTests(unittest.TestCase):
         self.assertEqual(result, {
             "profile": "lvgl-modern",
             "artifact_status": "published",
-            "release_version": "modern-v0.14.8",
+            "release_version": "modern-v0.15.4",
             "release_repository": "tdhoward/TartLab-modern-releases",
         })
 
