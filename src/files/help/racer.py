@@ -15,14 +15,32 @@ MAX_UPDATES_PER_FRAME = 2
 SCROLL_QUANTUM = 4
 CENTER_PERIOD = 48
 CENTER_RADIUS = 3
-CAR_RADIUS = 11
+CAR_SPRITE_SCALE = 2
+COW_SPRITE_SCALE = 2
+CAR_RADIUS = 11 * CAR_SPRITE_SCALE
 STEER_STEP = 18
 OBSTACLE_GAP = 92
 SCANOUT_MIN_ROAD_ENTITIES = 3
 ROAD_SPEED_STAGES = (
-    (0, 80),
-    (1200, 120),
+    (0, 64),
+    (1200, 80),
+    (2800, 96),
+    (5200, 112),
+    (8400, 128),
 )
+# Keep the 95th-percentile mixed-sprite frame within two simulation steps.
+MAX_ROAD_ENTITIES = 4
+# Elapsed racing time, maximum road objects (coins included), spawn gap.
+DIFFICULTY_STAGES = (
+    (0, 2, 220),
+    (20000, 3, 160),
+    (45000, MAX_ROAD_ENTITIES, 120),
+    (70000, MAX_ROAD_ENTITIES, 96),
+    (100000, MAX_ROAD_ENTITIES, 80),
+)
+RODENT_START_MS = 45000
+CHICKEN_START_MS = 100000
+RODENT_SPEED = 48
 
 
 class CircleCollision:
@@ -148,6 +166,52 @@ class Entity:
         self.current_bounds = self._visible_bounds()
 
 
+class CrossingAnimal(Entity):
+    """Cross steadily as a capybara or roam inside the road as a chicken."""
+
+    __slots__ = ("direction", "decision_ms", "_randint",
+                 "previous_direction", "frame_direction")
+
+    def __init__(self, kind, x, y, direction, randint_source=randint,
+                 speed=RODENT_SPEED):
+        self.direction = direction
+        self.previous_direction = direction
+        self.frame_direction = direction
+        self.decision_ms = 0
+        self._randint = randint_source
+        speed = 96 if kind.name == "chicken" else int(speed)
+        super().__init__(kind, x, y, direction * speed,
+                         road_relative=True,
+                         boundary_policy=(bounce_at_road_edge if kind.name == "chicken"
+                                          else deactivate_at_road_edge))
+
+    def advance(self, elapsed_ms, road_delta, road_left, road_right):
+        self.previous_direction = self.direction
+        if self.kind.name != "chicken":
+            return super().advance(elapsed_ms, road_delta, road_left, road_right)
+        self.previous_bounds = self.current_bounds
+        remaining = int(elapsed_ms)
+        while remaining > 0:
+            if self.decision_ms <= 0:
+                self.decision_ms = self._randint(200, 650)
+                action = self._randint(0, 4)
+                if action == 0:
+                    self.horizontal_velocity = 0
+                else:
+                    self.direction = -1 if action <= 2 else 1
+                    self.horizontal_velocity = self.direction * self._randint(48, 120)
+            step = min(remaining, self.decision_ms)
+            self.x_milli += self.horizontal_velocity * step
+            # Reflect each burst separately so decisions are independent of FPS.
+            self.boundary_policy(self, road_left, road_right)
+            if self.horizontal_velocity:
+                self.direction = 1 if self.horizontal_velocity > 0 else -1
+            remaining -= step
+            self.decision_ms -= step
+        self.y_milli += int(road_delta) * MILLIUNITS_PER_PIXEL
+        self.current_bounds = self._visible_bounds()
+
+
 class InteractionEvent:
     """Record one player contact for later presentation or feedback."""
 
@@ -159,14 +223,14 @@ class InteractionEvent:
 
 
 def collect_on_contact(game, entity):
-    """Placeholder collectible outcome used by the Racer example."""
+    """Award one gold coin and remove it from the road."""
     game.score += 1
     entity.active = False
     return "collectible"
 
 
 def crash_on_contact(game, entity):
-    """Placeholder hazard outcome used by the Racer example."""
+    """Stop the race until the player releases and taps to restart."""
     game.crashed = True
     return "hazard"
 
@@ -243,6 +307,8 @@ class GameState:
         for entity in self.entities:
             entity.frame_bounds = entity.current_bounds
             entity.visible_before_frame = entity.active
+            if isinstance(entity, CrossingAnimal):
+                entity.frame_direction = entity.direction
 
     def move_player(self, direction):
         """Move the player one steering step while keeping it on the road."""
@@ -323,6 +389,8 @@ class GameState:
 
     def step(self, elapsed_ms):
         """Run one fixed simulation update and return road screen movement."""
+        if self.crashed:
+            return 0
         road_delta = self.road.advance(elapsed_ms)
         for entity in self.entities:
             if entity.active:
@@ -340,16 +408,101 @@ class GameState:
         return road_delta
 
 
+class ProgressiveRace(GameState):
+    """Keep the difficulty curve, animal schedule and workload cap in the app."""
+
+    __slots__ = ("elapsed_ms", "level", "max_entities", "next_rodent_ms",
+                 "next_chicken_ms", "animal_kinds")
+
+    def __init__(self, width, height, randint_source=randint, choice_source=choice):
+        coin = EntityKind("coin", "coin", 16, 9, collect_on_contact, 1)
+        hazards = tuple(
+            EntityKind(name, name, 16 * scale, radius * scale, crash_on_contact)
+            for name, radius, scale in (("cow", 11, COW_SPRITE_SCALE),
+                                        ("pylon", 10, 1), ("oil", 12, 1)))
+        super().__init__(RoadState(), width // 6, width - width // 6,
+                         48, height, width // 2, height - 54, CAR_RADIUS,
+                         (coin, coin) + hazards, DIFFICULTY_STAGES[0][2],
+                         randint_source, choice_source)
+        self.elapsed_ms = 0
+        self.level = 0
+        self.max_entities = DIFFICULTY_STAGES[0][1]
+        self.next_rodent_ms = RODENT_START_MS
+        self.next_chicken_ms = CHICKEN_START_MS
+        self.animal_kinds = {
+            "capybara": EntityKind("capybara", "capybara", 16, 12, crash_on_contact, 2),
+            "chicken": EntityKind("chicken", "chicken", 16, 8, crash_on_contact, 2),
+        }
+
+    def _animal_present(self, name):
+        return any(entity.active and entity.kind.name == name
+                   for entity in self.entities)
+
+    def spawn_entity(self, kind=None, y=None, horizontal_velocity=0,
+                     road_relative=True, boundary_policy=bounce_at_road_edge):
+        if len(self.entities) >= self.max_entities:
+            return None
+        if kind is None:
+            animal = None
+            if (self.elapsed_ms >= self.next_chicken_ms and
+                    not self._animal_present("chicken")):
+                animal = "chicken"
+            elif (self.elapsed_ms >= self.next_rodent_ms and
+                    not self._animal_present("capybara")):
+                animal = "capybara"
+            if animal is not None:
+                kind = self.animal_kinds[animal]
+                direction = self._choice((-1, 1))
+                x = (self.road_left + kind.visual_radius + 1 if direction > 0
+                     else self.road_right - kind.visual_radius - 2)
+                spawn_y = self.track_top + 20
+                speed = self._capybara_speed(kind, spawn_y) if animal == "capybara" else 96
+                entity = CrossingAnimal(kind, x, spawn_y,
+                                        direction, self._randint, speed)
+                if animal == "chicken":
+                    self.next_chicken_ms = self.elapsed_ms + 12000
+                else:
+                    self.next_rodent_ms = self.elapsed_ms + 18000
+                return self.add_entity(entity, spawned=True)
+            # Coins remain common early; later levels favor hazards.
+            pool = self.entity_kinds if self.level < 2 else self.entity_kinds[1:]
+            kind = self._choice(pool)
+        return super().spawn_entity(kind, y, horizontal_velocity,
+                                    road_relative, boundary_policy)
+
+    def _capybara_speed(self, kind, spawn_y):
+        """Pick one pace that puts this animal inside the road at encounter."""
+        span = self.road_right - self.road_left - kind.visual_radius * 2 - 3
+        # Use the current speed as a conservative bound: the road only speeds up.
+        # Include both collision radii and quantization so it stays through passing.
+        distance = max(1, self.player_y + self.player_radius +
+                       kind.collision.radius + SCROLL_QUANTUM - spawn_y)
+        fraction = self._randint(40, 70)
+        return max(1, span * self.road.speed_per_second * fraction // (distance * 100))
+
+    def step(self, elapsed_ms):
+        if not self.crashed:
+            self.elapsed_ms += int(elapsed_ms)
+            while (self.level + 1 < len(DIFFICULTY_STAGES) and
+                   self.elapsed_ms >= DIFFICULTY_STAGES[self.level + 1][0]):
+                self.level += 1
+                unused, limit, self.spawn_gap = DIFFICULTY_STAGES[self.level]
+                self.max_entities = min(MAX_ROAD_ENTITIES, limit)
+                self.next_spawn_distance = min(
+                    self.next_spawn_distance, self.road.distance + self.spawn_gap)
+        return super().step(elapsed_ms)
+
+
 class RoadRenderer:
     """Reconstruct clipped Racer road regions from authoritative state."""
 
     __slots__ = (
         "canvas", "game", "width", "center_x", "center_period",
         "center_radius", "grass", "asphalt", "marker", "player_color",
-        "_circle_spans")
+        "_circle_spans", "art")
 
     def __init__(self, canvas, game, width, center_period, center_radius,
-                 grass, asphalt, marker, player_color):
+                 grass, asphalt, marker, player_color, art=None):
         self.canvas = canvas
         self.game = game
         self.width = int(width)
@@ -360,6 +513,7 @@ class RoadRenderer:
         self.asphalt = asphalt
         self.marker = marker
         self.player_color = player_color
+        self.art = art
         self._circle_spans = {}
         self._cache_circle(self.center_radius)
         self._cache_circle(game.player_radius)
@@ -400,6 +554,18 @@ class RoadRenderer:
                     first_x - x_offset, target_y - y_offset,
                     last_x - first_x + 1, color)
 
+    def _draw_visual(self, target, x, y, radius, visual,
+                     left, top, right, bottom, x_offset=0, y_offset=0):
+        if self.art is None:
+            self._draw_circle(target, x, y, radius, visual,
+                              left, top, right, bottom, x_offset, y_offset)
+        else:
+            sprite = self.art.sprites[visual]
+            sprite.draw(target, x - sprite.width // 2,
+                        y - sprite.height // 2,
+                        (left, top, right - left, bottom - top),
+                        x_offset, y_offset)
+
     def rebuild_background(self, area, target=None, x_offset=0, y_offset=0,
                            center_phase=None):
         """Rebuild clipped grass, asphalt, and markers on one target."""
@@ -427,7 +593,7 @@ class RoadRenderer:
         center_y = game.track_top + phase - self.center_period
         while center_y - self.center_radius < bottom:
             if center_y + self.center_radius >= top:
-                self._draw_circle(
+                self._draw_visual(
                     target, self.center_x, center_y,
                     self.center_radius, self.marker,
                     left, top, right, bottom, x_offset, y_offset)
@@ -449,23 +615,26 @@ class RoadRenderer:
         for entity in game.entities:
             if (entity.active and self._intersects(
                     entity.current_bounds, left, top, right, bottom)):
-                self._draw_circle(
+                self._draw_visual(
                     self.canvas, entity.x, entity.y,
                     entity.kind.visual_radius,
-                    entity.kind.visual, left, top, right, bottom)
+                    (entity.kind.visual + "_left" if self.art is not None and
+                     isinstance(entity, CrossingAnimal) and entity.direction < 0
+                     else entity.kind.visual), left, top, right, bottom)
 
-        player_radius = game.player_radius
-        if not (
-                game.player_x + player_radius < left or
-                game.player_x - player_radius >= right or
-                game.player_y + player_radius < top or
-                game.player_y - player_radius >= bottom):
-            self._draw_circle(
-                self.canvas, game.player_x, game.player_y, player_radius,
+        if self._intersects(self.player_bounds(game.player_x),
+                            left, top, right, bottom):
+            self._draw_visual(
+                self.canvas, game.player_x, game.player_y, game.player_radius,
                 self.player_color, left, top, right, bottom)
         return True
 
     def player_bounds(self, x):
+        if self.art is not None:
+            sprite = self.art.sprites[self.player_color]
+            return (int(x) - sprite.width // 2,
+                    self.game.player_y - sprite.height // 2,
+                    sprite.width, sprite.height)
         radius = self.game.player_radius
         return (
             int(x) - radius, self.game.player_y - radius,
@@ -508,7 +677,9 @@ class DirtyRegionAnimator:
                 radius * 2 + 1, game.track_bottom - game.track_top)
 
         for entity in game.entities:
-            if entity.previous_bounds != entity.current_bounds:
+            if (entity.previous_bounds != entity.current_bounds or
+                    (isinstance(entity, CrossingAnimal) and
+                     entity.previous_direction != entity.direction)):
                 self.damage.add(entity.previous_bounds)
                 self.damage.add(entity.current_bounds)
         for entity in game.removed_entities:
@@ -611,6 +782,9 @@ class ScanoutAnimator:
             previous = entity.frame_bounds
             current = entity.current_bounds
             if (previous[0] != current[0] or
+                    (isinstance(entity, CrossingAnimal) and
+                     entity.frame_direction != entity.direction) or
+                    (delta > 0 and previous[1] < game.track_top) or
                     previous[1] + delta != current[1] or
                     previous[2] != current[2] or
                     previous[3] != current[3]):
@@ -671,62 +845,99 @@ def maximum_scroll_delta(speed_stages=ROAD_SPEED_STAGES,
     return ((distance + quantum - 1) // quantum) * quantum
 
 
+class RacerArt:
+    """Own the app's atlas layout and predecoded sprites and HUD glyphs."""
+
+    def __init__(self, path="/files/assets/racer.ts16"):
+        from tartlabutils.sprites import SpriteSheet
+
+        sheet = SpriteSheet(path)
+        self.sprites = {}
+        for index, name in enumerate(("car", "cow", "pylon", "oil", "coin",
+                                      "capybara", "chicken")):
+            scale = (CAR_SPRITE_SCALE if name == "car" else
+                     COW_SPRITE_SCALE if name == "cow" else 1)
+            self.sprites[name] = sheet.sprite(
+                index * 32, 0, 32, 32, scale=scale)
+            if name in ("capybara", "chicken"):
+                self.sprites[name + "_left"] = sheet.sprite(
+                    index * 32, 0, 32, 32, flip_x=True)
+        self.sprites["marker"] = sheet.sprite(0, 32, 7, 8)
+        self.background = sheet.color_at(9, 32)
+        self.asphalt = sheet.color_at(10, 32)
+        self.grass = sheet.color_at(11, 32)
+        self.glyphs = {}
+        for character in " SCORE0123456789DISTMCRASHED-TAPLEFT/RIGHT":
+            if character not in self.glyphs:
+                index = ord(character) - 32
+                self.glyphs[character] = sheet.sprite(
+                    index % 26 * 6, 40 + index // 26 * 8, 6, 8, scale=2)
+
+    def text(self, canvas, value, x, y, clip):
+        for character in value:
+            self.glyphs[character].draw(canvas, x, y, clip)
+            x += 12
+
+
+class RacerHUD:
+    """Present changed score, distance and race status in the fixed top area."""
+
+    def __init__(self, canvas, game, art):
+        self.canvas, self.game, self.art = canvas, game, art
+        self.previous = None
+
+    def draw(self, present=True):
+        game = self.game
+        values = (game.score, game.road.distance // 100, game.crashed,
+                  getattr(game, "level", 0))
+        if values == self.previous:
+            return False
+        self.previous = values
+        area = (0, 0, self.canvas.width, game.track_top)
+        self.canvas.fill_rect(*area, self.art.background)
+        self.art.text(self.canvas, "SCORE %04d" % min(values[0], 9999), 8, 5, area)
+        distance = "%04dM" % min(values[1], 9999)
+        self.art.text(self.canvas, distance, self.canvas.width - 68, 5, area)
+        status = "CRASHED - TAP" if game.crashed else "L%d LEFT / RIGHT" % (values[3] + 1)
+        self.art.text(self.canvas, status, 8, 27, area)
+        if present:
+            self.canvas.show(area)
+        return True
+
+
+def create_race(width, height):
+    """Start with an easy coin on the player's line and one distant cow."""
+    game = ProgressiveRace(width, height)
+    coin_y = game.track_top + (game.player_y - game.track_top) // 2
+    game.add_entity(Entity(game.entity_kinds[0], game.player_x, coin_y))
+    cow = game.entity_kinds[2]
+    game.add_entity(Entity(cow, game.road_left + cow.visual_radius + 3,
+                           game.track_top + cow.visual_radius + 3))
+    game.spawned_entities.clear()
+    return game
+
+
 def main():
     """Create the display resources and run the interactive Racer."""
     from framebuf import FrameBuffer, RGB565
     from tartlabutils.modern_app import (
-        PortraitCanvas, PortraitTouchGrid, game_surface, rgb565)
+        PortraitCanvas, PortraitTouchGrid, game_surface)
 
     surface = game_surface()
     canvas = PortraitCanvas(surface)
     touch = PortraitTouchGrid(("left", "right"), 2, 1)
 
-    black = rgb565(0, 0, 0)
-    white = rgb565(255, 255, 255)
-    green = rgb565(34, 139, 34)
-    yellow = rgb565(255, 214, 0)
-    obstacle_colors = (
-        rgb565(244, 67, 54),
-        rgb565(33, 150, 243),
-        rgb565(156, 39, 176),
-        rgb565(255, 152, 0),
-    )
-
+    art = RacerArt()
     width = canvas.width
     height = canvas.height
-    header_height = 24
+    header_height = 48
     track_top = header_height
     track_height = height - track_top
-    road_margin = width // 6
-    road_left = road_margin
-    road_right = width - road_margin
-    car_y = height - 54
-
-    collectible_kind = EntityKind(
-        "coin", white, 7, 7, collect_on_contact, 0)
-    hazard_kinds = tuple(
-        EntityKind("hazard", color, radius, radius,
-                   crash_on_contact, 0)
-        for color, radius in zip(obstacle_colors, (9, 11, 8, 10)))
-    road = RoadState()
-    game = GameState(
-        road, road_left, road_right, track_top, height,
-        width // 2, car_y, CAR_RADIUS,
-        (collectible_kind,) + hazard_kinds)
-
-    for initial_y, kind in zip(
-            (track_top + 75, track_top + 185, track_top + 300),
-            hazard_kinds):
-        game.spawn_entity(kind, initial_y)
-    game.spawned_entities.clear()
-
-    def draw_header():
-        canvas.fill_rect(0, 0, width, header_height, black)
-        canvas.text("RACER  TAP LEFT / RIGHT", 8, 8, white)
-
+    game = create_race(width, height)
+    hud = RacerHUD(canvas, game, art)
     renderer = RoadRenderer(
-        canvas, game, width, CENTER_PERIOD, CENTER_RADIUS,
-        green, black, white, yellow)
+        canvas, game, width, CENTER_PERIOD, 4,
+        art.grass, art.asphalt, "marker", "car", art)
     if prefers_scanout_animation(canvas, game):
         def make_band(band_width, band_height):
             return FrameBuffer(
@@ -740,13 +951,14 @@ def main():
     else:
         animator = DirtyRegionAnimator(game, renderer)
 
-    canvas.fill(black)
+    canvas.fill(art.background)
     renderer.rebuild((0, track_top, width, track_height))
-    draw_header()
+    hud.draw(present=False)
     canvas.show()
 
     clock = FrameClock(
         TARGET_FRAME_MS, SIMULATION_STEP_MS, MAX_UPDATES_PER_FRAME)
+    restart_armed = False
 
     while True:
         updates = clock.updates_due()
@@ -756,6 +968,21 @@ def main():
 
         animator.begin_frame()
         key = touch.read()
+        if game.crashed:
+            if key is None:
+                restart_armed = True
+            elif restart_armed:
+                game = create_race(width, height)
+                renderer.game = game
+                animator.game = game
+                hud.game = game
+                hud.previous = None
+                renderer.rebuild((0, track_top, width, track_height))
+                hud.draw(present=False)
+                canvas.show()
+                restart_armed = False
+            clock.pace()
+            continue
         if key == "left":
             game.move_player(-STEER_STEP)
         elif key == "right":
@@ -766,6 +993,7 @@ def main():
             animator.record_step(game.step(SIMULATION_STEP_MS))
 
         animator.present()
+        hud.draw()
         clock.pace()
 
 
