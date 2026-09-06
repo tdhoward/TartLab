@@ -1,0 +1,62 @@
+TartLab modern-v0.15.4 Elecrow DLE06235B sanitized qualification bridge
+Operator: Tim
+Board: Elecrow DLE06235B observed-2026-08-29, ESP32-S3 revision 0.2
+Tested at UTC: 2026-09-06T00:18:47Z
+Candidate commit: f86c6b02b66ed62399b73ad4f9270774e0f366e9
+Candidate checksums SHA-256: 2c3688ec80a279dccb6e6265c2b72a0e7b2b510f95047670a45b5c1ddda53da8
+Candidate payload inventory SHA-256: f7ecb9e188cdd140f275c3b87528d05c48ffd274e34ebff2de6bae66a16a8295
+Firmware SHA-256: 50d98625a1ef58eee6c5fbe55b5107968301ea4dc6b8954167cad9f0d65ee5a3
+
+This transcript contains no Wi-Fi values, credentials, protected-file
+contents, student work, device MAC address, COM mapping, or private workspace
+path. Raw serial output, journals, and complete device snapshots remain in the
+private hardware workspace.
+
+Candidate authentication
+------------------------
+Protected workflow run 34000604884 built tag modern-v0.15.4 at the commit
+above. Its deterministic double build, profile and firmware preflight, host
+matrix, and candidate authentication passed. All 27 downloaded subjects were
+independently verified against the preserved GitHub Artifact Attestation,
+source ref refs/tags/modern-v0.15.4, source repository, qualification signer
+workflow, SLSA provenance predicate, and hosted-runner policy. The preserved
+attestation bundle has SHA-256
+c740e58629a99e7d3b5726e36aea7b566db73e088ee735746c12a0e6978ac8f7.
+
+Bound physical records
+----------------------
+The full Elecrow physical qualification was performed against signed
+modern-v0.15.2 and is recorded in
+tests/evidence/modern-v0.15.2-elecrow-physical-transcript.txt, source SHA-256
+d8228ab7e0ecb0755235ae6824f78e035a7f237e7982b537f62f45cb20546475.
+It covers adult provisioning and interruption/resume, display and touch,
+brightness, renderer ownership and teardown endurance, Wi-Fi and browser IDE,
+normal and corrupted OTA, recovery installation and offline resume, real
+power-loss checkpoints, protected state, release-feed isolation, reset, and
+cold-power behavior.
+
+The exact modern-v0.15.3 clean-provision and health bridge is recorded in
+tests/evidence/modern-v0.15.3-elecrow-physical-transcript.txt, source SHA-256
+6c4c77692cc5eed092d4b4f1322e1d2c86a0d7021fafc0eae52ffbcb612cc7f3.
+Its authenticated clean-provisioning journal has SHA-256
+dd7496bf18beab59f5b26c0914fa19cc06c940d8b4b58525e8e1a688d3f9453d.
+That session confirmed the corrected portrait chooser geometry, touch,
+launcher reset behavior, IDE route, browser IDE, and final installed inventory.
+
+Candidate equivalence
+---------------------
+modern-v0.15.4 changes the host-side qualification validator, its tests, and
+qualification documentation only. Both board firmware images are byte-identical
+to modern-v0.15.3. Both candidates contain the same 208 installed payload
+entries. Of those, 204 have identical stored hashes and sizes. The four gzip
+entries have identical sizes and identical decompressed SHA-256 values; only
+their build-epoch gzip metadata differs. No executable or rendered device
+content changed.
+
+Qualification result
+--------------------
+The adult clean-provisioning, hardware, OTA, recovery, and release-feed
+isolation gates are satisfied by the bound physical records and the exact
+candidate equivalence above. Legacy-to-modern migration is not a supported
+deployment path and is not an input, gate, artifact, or claimed result in this
+qualification.

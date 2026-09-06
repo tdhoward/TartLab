@@ -1,0 +1,68 @@
+TartLab modern-v0.15.4 LilyGO T-Display-S3 Pro sanitized qualification bridge
+Operator: Tim
+Board: LilyGO T-Display-S3 Pro PCB 1.1, ESP32-S3 revision 0.2
+Tested at UTC: 2026-09-06T00:18:47Z
+Candidate commit: f86c6b02b66ed62399b73ad4f9270774e0f366e9
+Candidate checksums SHA-256: 2c3688ec80a279dccb6e6265c2b72a0e7b2b510f95047670a45b5c1ddda53da8
+Candidate payload inventory SHA-256: f7ecb9e188cdd140f275c3b87528d05c48ffd274e34ebff2de6bae66a16a8295
+Firmware SHA-256: 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
+
+This transcript contains no Wi-Fi values, credentials, protected-file
+contents, student work, device MAC address, COM mapping, or private workspace
+path. Raw serial output, journals, and complete device snapshots remain in the
+private hardware workspace.
+
+Candidate authentication
+------------------------
+Protected workflow run 34000604884 built tag modern-v0.15.4 at the commit
+above. Its deterministic double build, profile and firmware preflight, host
+matrix, and candidate authentication passed. All 27 downloaded subjects were
+independently verified against the preserved GitHub Artifact Attestation,
+source ref refs/tags/modern-v0.15.4, source repository, qualification signer
+workflow, SLSA provenance predicate, and hosted-runner policy. The preserved
+attestation bundle has SHA-256
+c740e58629a99e7d3b5726e36aea7b566db73e088ee735746c12a0e6978ac8f7.
+
+Bound physical records
+----------------------
+The full LilyGO physical qualification was performed against signed
+modern-v0.14.8 and is recorded in
+tests/evidence/modern-v0.14.8-physical-transcript.txt, source SHA-256
+d7e0caeaa8c64b08c55b40f251a921153fdfddbcab6b8f1e24f9cf5ad228862a.
+It covers corrupted-download rejection, normal OTA with real power loss,
+recovery installation with real power loss and offline resume, committed-state
+preservation, final inventory, browser/API behavior, and release-feed
+isolation.
+
+During this qualification session, the LilyGO was clean-provisioned from the
+authenticated modern-v0.15.3 candidate. The selected board identity, 16 MiB
+flash target, firmware, prepared filesystem, and final health state all
+matched. Authenticated resume reported board lilygo_t_display_s3_pro, profile
+lvgl-modern, version modern-v0.15.3, healthy=true, and stage=complete. The
+clean-provisioning journal has SHA-256
+975221e3521e322dba6fe77a03082780bfba3c4c5933faa79eebc14294ad365b.
+
+The owner confirmed that the landscape launcher was upright and readable,
+touch was responsive, the IDE route behaved correctly, Wi-Fi setup remained
+usable, and the browser IDE worked normally. At the end of the session, the
+exact modern firmware was erased, rewritten, and read-verified; the clean
+prepared image was uploaded with both entry points activated together. The
+owner confirmed the normal modern launcher after restoration.
+
+Candidate equivalence
+---------------------
+modern-v0.15.4 changes the host-side qualification validator, its tests, and
+qualification documentation only. Both board firmware images are byte-identical
+to modern-v0.15.3. Both candidates contain the same 208 installed payload
+entries. Of those, 204 have identical stored hashes and sizes. The four gzip
+entries have identical sizes and identical decompressed SHA-256 values; only
+their build-epoch gzip metadata differs. No executable or rendered device
+content changed.
+
+Qualification result
+--------------------
+The adult clean-provisioning, hardware, OTA, recovery, and release-feed
+isolation gates are satisfied by the bound physical records, current focused
+smoke, and exact candidate equivalence above. Legacy-to-modern migration is not
+a supported deployment path and is not an input, gate, artifact, or claimed
+result in this qualification.
