@@ -220,7 +220,8 @@ The repeatable path is:
 7. Change the descriptor to `candidate`, run the catalog and hardware-free
    suites, and build the exact candidate release.
 8. Run clean provisioning, interruption/resume, OTA, recovery, rollback,
-   protected-state, feed-isolation, and future-update physical gates.
+   protected-state, feed-isolation, and future-update physical gates. Legacy
+   migration is not part of modern board qualification.
 9. Attach sanitized board-bound evidence and change the descriptor to
    `qualified` only as part of protected promotion.
 

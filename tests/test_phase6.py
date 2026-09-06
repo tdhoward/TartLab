@@ -563,10 +563,7 @@ class ModernQualificationTests(unittest.TestCase):
             "tested_at_utc": "2026-08-26T20:00:00Z",
             "artifacts": {
                 "clean_provisioning_journal_sha256": "b" * 64,
-                "migration_provisioning_journal_sha256": "c" * 64,
                 "serial_log_sha256": "d" * 64,
-                "support_window_policy_sha256": sha256_source_file(
-                    ROOT / "profiles/modern-support-window.json"),
             },
             "gates": {
                 name: {"status": "passed", "evidence": ["record:" + name]}
@@ -590,22 +587,22 @@ class ModernQualificationTests(unittest.TestCase):
             })
 
     def test_schema2_qualification_binds_each_board_result(self):
-        legacy = self._evidence()
+        base = self._evidence()
         evidence = {
             "schema": 2,
-            "profile": legacy["profile"],
-            "version": legacy["version"],
-            "target_repository": legacy["target_repository"],
-            "candidate_checksums_sha256": legacy[
+            "profile": base["profile"],
+            "version": base["version"],
+            "target_repository": base["target_repository"],
+            "candidate_checksums_sha256": base[
                 "candidate_checksums_sha256"],
-            "operator": legacy["operator"],
-            "tested_at_utc": legacy["tested_at_utc"],
+            "operator": base["operator"],
+            "tested_at_utc": base["tested_at_utc"],
             "boards": {
                 "lilygo_t_display_s3_pro": {
-                    "firmware_sha256": legacy["firmware_sha256"],
-                    "board": legacy["board"],
-                    "artifacts": legacy["artifacts"],
-                    "gates": legacy["gates"],
+                    "firmware_sha256": base["firmware_sha256"],
+                    "board": base["board"],
+                    "artifacts": base["artifacts"],
+                    "gates": base["gates"],
                 },
             },
         }
@@ -622,24 +619,20 @@ class ModernQualificationTests(unittest.TestCase):
                 evidence, tag="modern-v1.2.3",
                 candidate_sha256=self.candidate_sha256)
 
-    def test_schema2_uses_policy_disposition_for_non_migratable_board(self):
-        legacy = self._evidence()
-        artifacts = dict(legacy["artifacts"])
-        artifacts["migration_disposition_sha256"] = artifacts.pop(
-            "migration_provisioning_journal_sha256")
-        artifacts["migration_disposition_sha256"] = sha256_source_file(
-            ROOT / "profiles/modern-support-window.json")
+    def test_schema2_uses_the_same_modern_evidence_contract_for_each_board(self):
+        base = self._evidence()
+        artifacts = dict(base["artifacts"])
         elecrow = json.loads((
             ROOT / "boards/elecrow_dle06235b/board.json").read_text())
         evidence = {
             "schema": 2,
-            "profile": legacy["profile"],
-            "version": legacy["version"],
-            "target_repository": legacy["target_repository"],
-            "candidate_checksums_sha256": legacy[
+            "profile": base["profile"],
+            "version": base["version"],
+            "target_repository": base["target_repository"],
+            "candidate_checksums_sha256": base[
                 "candidate_checksums_sha256"],
-            "operator": legacy["operator"],
-            "tested_at_utc": legacy["tested_at_utc"],
+            "operator": base["operator"],
+            "tested_at_utc": base["tested_at_utc"],
             "boards": {
                 "elecrow_dle06235b": {
                     "firmware_sha256": elecrow["firmware"]["sha256"],
@@ -653,7 +646,7 @@ class ModernQualificationTests(unittest.TestCase):
                             "psram_size_bytes"],
                     },
                     "artifacts": artifacts,
-                    "gates": legacy["gates"],
+                    "gates": base["gates"],
                 },
             },
         }
@@ -663,12 +656,6 @@ class ModernQualificationTests(unittest.TestCase):
         self.assertEqual(result["boards"], {
             "elecrow_dle06235b": elecrow["firmware"]["sha256"],
         })
-        evidence["boards"]["elecrow_dle06235b"]["artifacts"][
-            "migration_disposition_sha256"] = "f" * 64
-        with self.assertRaisesRegex(ValueError, "disposition differs"):
-            validate_modern_qualification(
-                evidence, tag="modern-v1.2.3",
-                candidate_sha256=self.candidate_sha256)
 
     def test_qualification_rejects_missing_or_failed_gate(self):
         missing = self._evidence()
@@ -700,10 +687,11 @@ class ModernQualificationTests(unittest.TestCase):
                 wrong_feed, tag="modern-v1.2.3",
                 candidate_sha256=self.candidate_sha256)
 
-    def test_qualification_rejects_a_different_support_window(self):
+    def test_qualification_rejects_legacy_migration_artifacts(self):
         evidence = self._evidence()
-        evidence["artifacts"]["support_window_policy_sha256"] = "f" * 64
-        with self.assertRaisesRegex(ValueError, "different support-window"):
+        evidence["artifacts"]["migration_provisioning_journal_sha256"] = (
+            "f" * 64)
+        with self.assertRaisesRegex(ValueError, "unexpected=.*migration"):
             validate_modern_qualification(
                 evidence, tag="modern-v1.2.3",
                 candidate_sha256=self.candidate_sha256)

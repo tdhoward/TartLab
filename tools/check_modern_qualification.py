@@ -9,12 +9,10 @@ import re
 from typing import Any, Sequence
 
 from board_catalog import default_board, select_board
-from release_utils import read_json, sha256_file, sha256_source_file
+from release_utils import read_json, sha256_file
 
 
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
-ROOT = Path(__file__).resolve().parents[1]
-SUPPORT_WINDOW_POLICY = ROOT / "profiles/modern-support-window.json"
 MODERN_TAG = re.compile(r"^modern-v[0-9]+\.[0-9]+(?:\.[0-9]+)?$")
 PROFILE = "lvgl-modern"
 TARGET_REPOSITORY = "tdhoward/TartLab-modern-releases"
@@ -26,7 +24,6 @@ REQUIRED_GATES = (
     "ota",
     "recovery",
     "release_feed_isolation",
-    "support_window",
 )
 TOP_LEVEL_KEYS = {
     "schema", "profile", "version", "target_repository",
@@ -41,11 +38,7 @@ BOARD_RESULT_KEYS = {"firmware_sha256", "board", "artifacts", "gates"}
 BASE_ARTIFACT_KEYS = {
     "clean_provisioning_journal_sha256",
     "serial_log_sha256",
-    "support_window_policy_sha256",
 }
-MIGRATION_JOURNAL_KEY = "migration_provisioning_journal_sha256"
-MIGRATION_DISPOSITION_KEY = "migration_disposition_sha256"
-ARTIFACT_KEYS = BASE_ARTIFACT_KEYS | {MIGRATION_JOURNAL_KEY}
 
 
 def _require_exact_keys(value: dict[str, Any], expected: set[str],
@@ -66,7 +59,6 @@ def _require_sha256(value: Any, label: str) -> str:
 def validate(evidence: dict[str, Any], *, tag: str, candidate_sha256: str,
              firmware_sha256: str = FIRMWARE_SHA256,
              board_descriptor: dict[str, Any] = PROFILE_BOARD,
-             multi_board: bool = False,
              ) -> dict[str, Any]:
     """Validate one candidate-bound, sanitized qualification summary."""
     if not isinstance(evidence, dict):
@@ -107,7 +99,7 @@ def validate(evidence: dict[str, Any], *, tag: str, candidate_sha256: str,
             results[board_id] = validate(
                 single, tag=tag, candidate_sha256=candidate_sha256,
                 firmware_sha256=board_firmware,
-                board_descriptor=descriptor, multi_board=True)
+                board_descriptor=descriptor)
         return {
             "profile": PROFILE,
             "version": tag,
@@ -167,23 +159,10 @@ def validate(evidence: dict[str, Any], *, tag: str, candidate_sha256: str,
     artifacts = evidence["artifacts"]
     if not isinstance(artifacts, dict):
         raise ValueError("Qualification artifacts must be an object")
-    migration_key = (
-        MIGRATION_JOURNAL_KEY
-        if board_descriptor["id"] == PROFILE_BOARD["id"] or not multi_board
-        else MIGRATION_DISPOSITION_KEY)
     _require_exact_keys(
-        artifacts, BASE_ARTIFACT_KEYS | {migration_key},
-        "qualification artifacts")
+        artifacts, BASE_ARTIFACT_KEYS, "qualification artifacts")
     for name, value in artifacts.items():
         _require_sha256(value, name)
-    policy_sha256 = sha256_source_file(SUPPORT_WINDOW_POLICY)
-    if artifacts["support_window_policy_sha256"] != policy_sha256:
-        raise ValueError(
-            "Qualification evidence targets a different support-window policy")
-    if migration_key == MIGRATION_DISPOSITION_KEY and \
-            artifacts[migration_key] != policy_sha256:
-        raise ValueError(
-            "Non-migratable board disposition differs from support-window policy")
 
     gates = evidence["gates"]
     if not isinstance(gates, dict):
@@ -208,8 +187,6 @@ def validate(evidence: dict[str, Any], *, tag: str, candidate_sha256: str,
         "candidate_checksums_sha256": candidate_sha256,
         "firmware_sha256": firmware_sha256,
         "boards": {board_descriptor["id"]: firmware_sha256},
-        "support_window_policy_sha256": artifacts[
-            "support_window_policy_sha256"],
         "passed_gates": list(REQUIRED_GATES),
     }
 

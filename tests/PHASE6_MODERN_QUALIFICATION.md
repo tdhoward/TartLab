@@ -8,36 +8,31 @@ profile-bound repository record:
 - `manifest: modern-manifest.json`; and
 - the exact qualified `firmware_sha256`.
 
-They reject cross-profile feeds, legacy manifests, mismatched release versions,
-and mismatched firmware before installation. Only manifest filesystem packages
+They reject cross-profile feeds, mismatched release versions, and mismatched
+firmware before installation. Only manifest filesystem packages
 are staged; firmware and provenance assets are never installed by device OTA.
-The legacy updater contract remains unchanged.
 
 ## Promotion evidence contract
 
 `tools/check_modern_qualification.py` validates a sanitized, candidate-bound
 schema-1 single-board summary or schema-2 aggregate. It binds the modern tag,
-target repository, candidate checksums, each firmware and board, support-window
-policy, operator/date, artifact hashes, and these six passed gates:
+target repository, candidate checksums, each firmware and board, operator/date,
+artifact hashes, and these five passed gates:
 
-1. adult provisioning and migration;
+1. adult clean provisioning;
 2. profile-specific hardware;
 3. OTA;
 4. recovery;
-5. release-feed isolation; and
-6. support window.
+5. release-feed isolation.
 
 Each gate must reference durable sanitized evidence. Credentials, serial logs,
 student files, private backups, and protected-state values do not belong in the
 summary. Missing, pending, unreachable, or mismatched evidence fails before
 signing or publication.
 
-For the default LilyGO board, artifacts include the direct-migration journal.
-A schema-2 result for another board must instead include
-`migration_disposition_sha256`, equal to the checked-in support-window policy
-that excludes it from direct migration. This records clean-provision-only as an
-explicit policy result and prevents a board with no approved source profile
-from inventing a migration journal merely to satisfy promotion syntax.
+Qualification artifacts include the clean-provisioning journal and sanitized
+physical transcript hashes. Legacy-to-modern migration is not a supported
+deployment path and is deliberately outside the modern qualification contract.
 
 ## Qualified candidate and physical results
 
