@@ -41,6 +41,42 @@ DIFFICULTY_STAGES = (
 RODENT_START_MS = 45000
 CHICKEN_START_MS = 100000
 RODENT_SPEED = 48
+HIGH_SCORE_FILE = "/state/racer_high_score.json"
+
+
+class HighScore:
+    """Keep the best completed race across restarts and device reboots."""
+
+    def __init__(self, path=HIGH_SCORE_FILE):
+        import json
+
+        self.path = path
+        self.value = 0
+        try:
+            with open(path, "r") as stream:
+                data = json.load(stream)
+            value = data.get("high_score") if isinstance(data, dict) else None
+            if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+                self.value = value
+        except (OSError, ValueError):
+            pass
+
+    def record(self, score):
+        """Write once for a new record; keep playing if storage is unavailable."""
+        import json
+        import os
+
+        if score <= self.value:
+            return False
+        self.value = score
+        try:
+            with open(self.path + ".new", "w") as stream:
+                json.dump({"high_score": score}, stream)
+            replace = getattr(os, "replace", os.rename)
+            replace(self.path + ".new", self.path)
+        except OSError as error:
+            print("Racer high score could not be saved:", error)
+        return True
 
 
 class CircleCollision:
@@ -867,7 +903,7 @@ class RacerArt:
         self.asphalt = sheet.color_at(10, 32)
         self.grass = sheet.color_at(11, 32)
         self.glyphs = {}
-        for character in " SCORE0123456789DISTMCRASHED-TAPLEFT/RIGHT":
+        for character in " SCORE0123456789DISTMCRASHED-TAPLEFT/RIGHTNEW":
             if character not in self.glyphs:
                 index = ord(character) - 32
                 self.glyphs[character] = sheet.sprite(
@@ -882,23 +918,33 @@ class RacerArt:
 class RacerHUD:
     """Present changed score, distance and race status in the fixed top area."""
 
-    def __init__(self, canvas, game, art):
+    def __init__(self, canvas, game, art, high_score=None):
         self.canvas, self.game, self.art = canvas, game, art
+        self.high_score = high_score
+        self.new_record = False
         self.previous = None
 
     def draw(self, present=True):
         game = self.game
         values = (game.score, game.road.distance // 100, game.crashed,
-                  getattr(game, "level", 0))
+                  getattr(game, "level", 0),
+                  self.high_score.value if self.high_score is not None else 0,
+                  self.new_record)
         if values == self.previous:
             return False
         self.previous = values
         area = (0, 0, self.canvas.width, game.track_top)
         self.canvas.fill_rect(*area, self.art.background)
         self.art.text(self.canvas, "SCORE %04d" % min(values[0], 9999), 8, 5, area)
-        distance = "%04dM" % min(values[1], 9999)
-        self.art.text(self.canvas, distance, self.canvas.width - 68, 5, area)
+        if game.crashed:
+            comparison = "HI %04d" % min(values[4], 9999)
+            self.art.text(self.canvas, comparison, self.canvas.width - 92, 5, area)
+        else:
+            distance = "%04dM" % min(values[1], 9999)
+            self.art.text(self.canvas, distance, self.canvas.width - 68, 5, area)
         status = "CRASHED - TAP" if game.crashed else "L%d LEFT / RIGHT" % (values[3] + 1)
+        if game.crashed and self.new_record:
+            status = "NEW HIGH - TAP"
         self.art.text(self.canvas, status, 8, 27, area)
         if present:
             self.canvas.show(area)
@@ -920,7 +966,7 @@ def create_race(width, height):
 def main():
     """Create the display resources and run the interactive Racer."""
     from framebuf import FrameBuffer, RGB565
-    from tartlabutils.modern_app import (
+    from tartlabutils.app import (
         PortraitCanvas, PortraitTouchGrid, game_surface)
 
     surface = game_surface()
@@ -934,7 +980,8 @@ def main():
     track_top = header_height
     track_height = height - track_top
     game = create_race(width, height)
-    hud = RacerHUD(canvas, game, art)
+    high_score = HighScore()
+    hud = RacerHUD(canvas, game, art, high_score)
     renderer = RoadRenderer(
         canvas, game, width, CENTER_PERIOD, 4,
         art.grass, art.asphalt, "marker", "car", art)
@@ -976,6 +1023,7 @@ def main():
                 renderer.game = game
                 animator.game = game
                 hud.game = game
+                hud.new_record = False
                 hud.previous = None
                 renderer.rebuild((0, track_top, width, track_height))
                 hud.draw(present=False)
@@ -992,6 +1040,8 @@ def main():
         for unused in range(updates):
             animator.record_step(game.step(SIMULATION_STEP_MS))
 
+        if game.crashed:
+            hud.new_record = high_score.record(game.score)
         animator.present()
         hud.draw()
         clock.pace()

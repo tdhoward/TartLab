@@ -182,7 +182,7 @@
     "inputs": [
       {
         "path": "firmware/lvgl-modern/pydevices/runtime/pydevices_modern.py",
-        "sha256": "732fe5726c4cc67cd187dbf9ab70f133dbf26372e130009aa74723f60b99710c"
+        "sha256": "530e79568e719c2cd3864c5f3eb28ceedfe2a1bdcd1e562ca20e83cd558221e3"
       },
       {
         "path": "firmware/lvgl-modern/pydevices/runtime/lilygo_t_display_s3_pro_pydevices.py",

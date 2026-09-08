@@ -1,3 +1,4 @@
+import ast
 import json
 from pathlib import Path
 import sys
@@ -28,13 +29,18 @@ class RacerBenchmarkTests(unittest.TestCase):
         self.assertIn("def shadow_valid(self):", source)
         self.assertIn("def wait_for_frame_sync(self, timeout_ms=30):", source)
         self.assertIn("'frame_sync_us': summary(frame_sync_values)", source)
-        self.assertNotIn("__MODERN_APP_SOURCE__", source)
+        self.assertNotIn("__APP_SOURCE__", source)
         self.assertNotIn("__DAMAGE_SOURCE__", source)
         self.assertNotIn("__TIMING_SOURCE__", source)
         self.assertNotIn("__MOTION_SOURCE__", source)
         self.assertNotIn("__RACER_SOURCE__", source)
         self.assertNotIn("machine.reset", source)
-        self.assertNotIn("open(", source)
+        # The embedded app source defines persistence for interactive play.
+        # The benchmark itself must neither open files nor start that app.
+        calls = {node.func.id for node in ast.walk(ast.parse(source))
+                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)}
+        self.assertFalse(calls & {"open", "HighScore", "main"})
+        self.assertIn("'_RACER_AUTOSTART': False", source)
 
     def test_rejects_too_few_samples(self):
         with self.assertRaises(ValueError):

@@ -1,4 +1,4 @@
-"""LVGL and direct-game rendering boundary for the modern firmware profile.
+"""Default LVGL and direct-game rendering boundary.
 
 The upstream display driver owns panel initialization and LVGL flushing.  This
 module owns the public TartLab rendering contract: callers never receive the
@@ -216,7 +216,7 @@ class DirectRGB565Surface:
             self._frame_sync.disable()
 
 
-class ModernDisplayController:
+class DisplayController:
     """Serialize LVGL and direct rendering over one completion-signaled bus."""
 
     def __init__(self, bus, panel, lv_display, lvgl, task_handler,
@@ -330,7 +330,7 @@ class ModernDisplayController:
         self.wait_for_transfer(timeout_ms)
 
 
-class ModernIDEView:
+class IDEView:
     """Small TartLab status view rendered entirely with LVGL widgets."""
 
     def __init__(self, controller, lvgl):
@@ -399,7 +399,7 @@ class ModernIDEView:
         self._app_error_indicator = indicator
 
 
-class ModernPlatform:
+class Platform:
     """TartLab platform implementation for the pinned modern LVGL firmware."""
 
     def __init__(self, controller, panel, input_device, ide_button_pin=None,
@@ -474,7 +474,7 @@ class ModernPlatform:
 
     @property
     def lvgl(self):
-        """Return the supported LVGL module for modern user interfaces."""
+        """Return the supported LVGL module for LVGL user interfaces."""
         return self._lvgl
 
     def read_game_touch(self):
@@ -491,7 +491,7 @@ class ModernPlatform:
             return None
         get_coords = getattr(self.input, "_get_coords", None)
         if get_coords is None:
-            raise RuntimeError("modern pointer does not support game polling")
+            raise RuntimeError("pointer does not support game polling")
         try:
             point = get_coords()
         except OSError:
@@ -513,7 +513,7 @@ class ModernPlatform:
         raise RuntimeError("unsupported display rotation")
 
     def create_ide_view(self):
-        return ModernIDEView(self.controller, self._lvgl)
+        return IDEView(self.controller, self._lvgl)
 
     def keep_touch_awake(self):
         if self._touch_keep_awake is not None:

@@ -1,4 +1,4 @@
-"""Construct modern platforms from declarative board payloads."""
+"""Construct platforms from declarative board payloads."""
 
 from tartlabutils.board import (
     import_reference,
@@ -6,7 +6,7 @@ from tartlabutils.board import (
     pin_number,
     validate_board_config,
 )
-from tartlabutils.modern import ModernDisplayController, ModernPlatform
+from tartlabutils.runtime import DisplayController, Platform
 
 
 def _rotation(lvgl, degrees):
@@ -138,7 +138,7 @@ def _touch_keep_awake(pointer, config):
 
 
 def create_platform(board):
-    """Create a modern platform using only values from ``BOARD_CONFIG``."""
+    """Create a platform using only values from ``BOARD_CONFIG``."""
     import lcd_bus
     import lvgl as lv
     import machine
@@ -156,14 +156,14 @@ def create_platform(board):
     if adapter_reference is None:
         width, height = board["display"]["logical_size"]
         offset_x, offset_y = board["display"].get("offset", (0, 0))
-        controller = ModernDisplayController(
+        controller = DisplayController(
             bus, panel, lv_display, lv, handler, pointer,
             width=width, height=height, offset_x=offset_x, offset_y=offset_y,
             allocation_flags=flags,
             buffer_allocator=lcd_bus.allocate_buffer,
             buffer_free=lcd_bus.free_buffer,
         )
-        platform_class = ModernPlatform
+        platform_class = Platform
     else:
         adapter = __import__(adapter_reference, None, None, ("*",))
         controller = adapter.create_controller(

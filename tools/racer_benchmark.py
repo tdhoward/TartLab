@@ -29,8 +29,8 @@ for search_path in reversed(('/device', '/lib', '/', '/files/user')):
     if search_path not in sys.path:
         sys.path.insert(0, search_path)
 
-import tartlabutils.modern_app as modern_app
-exec(__MODERN_APP_SOURCE__, modern_app.__dict__)
+import tartlabutils.app as app
+exec(__APP_SOURCE__, app.__dict__)
 
 damage_scope = {'__name__': 'tartlabutils.damage_probe'}
 exec(__DAMAGE_SOURCE__, damage_scope)
@@ -67,8 +67,8 @@ RoadBandCache = racer_scope['RoadBandCache']
 ScanoutAnimator = racer_scope['ScanoutAnimator']
 maximum_scroll_delta = racer_scope['maximum_scroll_delta']
 supports_scanout_animation = racer_scope['supports_scanout_animation']
-PortraitCanvas = modern_app.PortraitCanvas
-rgb565 = modern_app.rgb565
+PortraitCanvas = app.PortraitCanvas
+rgb565 = app.rgb565
 
 SAMPLES = __SAMPLES__
 ENTITY_COUNTS = __ENTITY_COUNTS__
@@ -434,7 +434,7 @@ def device_program(
         raise ValueError("entity counts must be nonempty and nonnegative")
 
     sources = {
-        "__MODERN_APP_SOURCE__": ROOT / "src/lib/tartlabutils/modern_app.py",
+        "__APP_SOURCE__": ROOT / "src/lib/tartlabutils/app.py",
         "__DAMAGE_SOURCE__": ROOT / "src/lib/tartlabutils/damage.py",
         "__MOTION_SOURCE__": ROOT / "src/lib/tartlabutils/motion.py",
         "__TIMING_SOURCE__": ROOT / "src/lib/tartlabutils/timing.py",

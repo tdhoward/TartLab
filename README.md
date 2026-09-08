@@ -21,12 +21,12 @@ updates.
 
 ## Qualified hardware and profiles
 
-The currently qualified board is the LilyGO T-Display-S3 Pro PCB v1.1. TartLab
-is intended to support more Wi-Fi-capable MicroPython boards, but other ESP32,
-ESP8266, RP2040, and RP2350 targets are ports requiring their own adapter and
-test evidence. The machine-checked [`boards`](boards) catalog distinguishes
-bring-up work from candidate and qualified support. The repeatable port layout
-and onboarding process are documented in
+The qualified modern boards are listed in the machine-checked
+[`boards`](boards) catalog. TartLab is intended to support more Wi-Fi-capable
+MicroPython boards, but additional ESP32, ESP8266, RP2040, and RP2350 targets
+are ports requiring their own adapter and test evidence. The catalog
+distinguishes bring-up work from candidate and qualified support. The repeatable
+port layout and onboarding process are documented in
 [`BOARD_SUPPORT.md`](BOARD_SUPPORT.md).
 
 TartLab maintains two profiles:
@@ -99,6 +99,11 @@ remove saved networks from **Settings → WiFi Settings**.
 
 ### Update TartLab
 
+TartLab has one public product version covering the platform, browser IDE, and
+example apps. Students update TartLab as a whole without choosing or tracking
+component versions. Frequent app and browser releases can reuse the same
+qualified platform.
+
 Use **Settings → Check for updates** while the device has Internet access. One
 request moves the device directly to the latest compatible stable release;
 internal migrations and restarts may occur automatically. Keep the board on
@@ -118,13 +123,17 @@ updaters cannot distinguish the profiles and cannot flash firmware.
 The complete hardware-free suite is:
 
 ```text
-python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_app tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_modern_power tests.test_headless_ide tests.test_timing tests.test_motion tests.test_racer_benchmark tests.test_racer_entities -v
+python -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_app tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_power tests.test_headless_ide tests.test_timing tests.test_motion tests.test_racer_benchmark tests.test_racer_entities -v
 ```
 
 Host tests cover deterministic builds, update/recovery behavior, virtual device
 state, startup modes, headless IDE initialization, and profile policy. They do
 not replace physical display, touch, Wi-Fi, reset, memory, migration, or release
-qualification. See [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md).
+qualification. Testing follows change impact: routine app/browser releases can
+reuse applicable platform evidence, while affected platform and update behavior
+requires fresh qualification. See [`RELEASE_POLICY.md`](RELEASE_POLICY.md) for
+the agreed model and automation still to implement, and
+[`tests/TEST_TIERS.md`](tests/TEST_TIERS.md) for the test matrix.
 
 ![TartLab in action](images/screenshots/TartLab_ss2.png)
 

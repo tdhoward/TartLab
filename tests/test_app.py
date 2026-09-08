@@ -393,7 +393,7 @@ def fake_lvgl(initialized=True, fail_copy=False, fail_rotate=False):
     return module
 
 
-def load_modern_app(platform, lvgl=None, viper_swap=None, viper_copy=None):
+def load_app(platform, lvgl=None, viper_swap=None, viper_copy=None):
     package = types.ModuleType("tartlabutils")
     package.__path__ = []
     platform_module = types.ModuleType("tartlabutils.platform")
@@ -404,21 +404,21 @@ def load_modern_app(platform, lvgl=None, viper_swap=None, viper_copy=None):
     framebuf.RGB565 = 1
     emitters = None
     if viper_swap is not None or viper_copy is not None:
-        emitters = types.ModuleType("tartlabutils._modern_emitters")
+        emitters = types.ModuleType("tartlabutils._emitters")
         if viper_swap is not None:
             emitters.swap565 = viper_swap
         if viper_copy is not None:
             emitters.copy_rgb565_rows = viper_copy
-    path = ROOT / "src/lib/tartlabutils/modern_app.py"
+    path = ROOT / "src/lib/tartlabutils/app.py"
     spec = importlib.util.spec_from_file_location(
-        "tartlabutils.modern_app", path)
+        "tartlabutils.app", path)
     module = importlib.util.module_from_spec(spec)
     imports = {
             "tartlabutils": package,
             "tartlabutils.platform": platform_module,
             "framebuf": framebuf,
             "lvgl": lvgl,
-            "tartlabutils._modern_emitters": emitters,
+            "tartlabutils._emitters": emitters,
     }
     with mock.patch.dict(sys.modules, imports):
         spec.loader.exec_module(module)
@@ -428,7 +428,7 @@ def load_modern_app(platform, lvgl=None, viper_swap=None, viper_copy=None):
 class ModernAppDrawingTests(unittest.TestCase):
     def test_canvas_seeds_shadow_surface_before_sending_dirty_regions(self):
         surface = FakeSeedSurface(width=5, height=3)
-        module = load_modern_app(types.SimpleNamespace(), fake_lvgl())
+        module = load_app(types.SimpleNamespace(), fake_lvgl())
         canvas = module.DirectCanvas(
             surface, transfer_rows=1, rotation=90)
         canvas.buffer[:] = bytes(range(len(canvas.buffer)))
@@ -451,7 +451,7 @@ class ModernAppDrawingTests(unittest.TestCase):
         surface = FakeSurface()
         platform = types.SimpleNamespace(
             enter_game_mode=lambda: surface)
-        module = load_modern_app(platform)
+        module = load_app(platform)
         canvas = module.DirectCanvas(surface, transfer_rows=2)
         canvas.buffer[:] = bytes(range(len(canvas.buffer)))
 
@@ -467,7 +467,7 @@ class ModernAppDrawingTests(unittest.TestCase):
     def test_canvas_uses_compiled_strided_copy_and_swapped_format(self):
         surface = FakeSurface()
         lvgl = fake_lvgl()
-        module = load_modern_app(types.SimpleNamespace(), lvgl)
+        module = load_app(types.SimpleNamespace(), lvgl)
         canvas = module.DirectCanvas(surface, transfer_rows=2)
         canvas.buffer[:] = bytes(range(len(canvas.buffer)))
 
@@ -485,7 +485,7 @@ class ModernAppDrawingTests(unittest.TestCase):
 
     def test_canvas_tiles_wide_area_and_clips_each_edge(self):
         surface = FakeSurface()
-        module = load_modern_app(types.SimpleNamespace(), fake_lvgl())
+        module = load_app(types.SimpleNamespace(), fake_lvgl())
         canvas = module.DirectCanvas(surface, transfer_rows=2)
         canvas.buffer[:] = bytes(range(len(canvas.buffer)))
 
@@ -498,7 +498,7 @@ class ModernAppDrawingTests(unittest.TestCase):
 
     def test_canvas_skips_empty_and_outside_areas(self):
         surface = FakeSurface()
-        module = load_modern_app(types.SimpleNamespace(), fake_lvgl())
+        module = load_app(types.SimpleNamespace(), fake_lvgl())
         canvas = module.DirectCanvas(surface)
 
         for area in ((0, 0, 0, 1), (0, 0, 1, 0),
@@ -512,7 +512,7 @@ class ModernAppDrawingTests(unittest.TestCase):
     def test_canvas_falls_back_after_compiled_copy_error(self):
         surface = FakeSurface()
         lvgl = fake_lvgl(fail_copy=True)
-        module = load_modern_app(types.SimpleNamespace(), lvgl)
+        module = load_app(types.SimpleNamespace(), lvgl)
         canvas = module.DirectCanvas(surface)
         canvas.buffer[:] = bytes(range(len(canvas.buffer)))
 
@@ -524,7 +524,7 @@ class ModernAppDrawingTests(unittest.TestCase):
 
     def test_canvas_preserves_non_symmetric_rgb565_bytes(self):
         surface = FakeSurface(width=3, height=1)
-        module = load_modern_app(types.SimpleNamespace(), fake_lvgl())
+        module = load_app(types.SimpleNamespace(), fake_lvgl())
         canvas = module.DirectCanvas(surface)
         canvas.buffer[:] = bytes((0xF8, 0x00, 0x07, 0xE0, 0x00, 0x1F))
 
@@ -536,7 +536,7 @@ class ModernAppDrawingTests(unittest.TestCase):
 
     def test_canvas_packs_one_column_in_one_transfer(self):
         surface = FakeSurface()
-        module = load_modern_app(types.SimpleNamespace(), fake_lvgl())
+        module = load_app(types.SimpleNamespace(), fake_lvgl())
         canvas = module.DirectCanvas(surface, transfer_rows=1)
         canvas.buffer[:] = bytes(range(len(canvas.buffer)))
 
@@ -548,7 +548,7 @@ class ModernAppDrawingTests(unittest.TestCase):
 
     def test_canvas_can_close_once_after_surface_write_error(self):
         surface = FakeSurface()
-        module = load_modern_app(types.SimpleNamespace(), fake_lvgl())
+        module = load_app(types.SimpleNamespace(), fake_lvgl())
         canvas = module.DirectCanvas(surface)
         surface.write = mock.Mock(side_effect=RuntimeError("write failed"))
 
@@ -562,7 +562,7 @@ class ModernAppDrawingTests(unittest.TestCase):
             canvas.show()
 
     def test_rgb565_helpers_produce_big_endian_framebuffer_bytes(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         self.assertEqual(module.framebuffer_color(0xF800), 0x00F8)
         self.assertEqual(module.rgb565(255, 0, 0), 0x00F8)
         pixels = bytearray((0x00, 0xF8, 0xE0, 0x07))
@@ -589,7 +589,7 @@ class ModernAppDrawingTests(unittest.TestCase):
                 buffer[offset], buffer[offset + 1] = (
                     buffer[offset + 1], buffer[offset])
 
-        module = load_modern_app(
+        module = load_app(
             types.SimpleNamespace(), viper_swap=viper_swap)
         pixels = bytearray((0x00, 0xF8, 0xE0, 0x07))
 
@@ -614,7 +614,7 @@ class ModernAppDrawingTests(unittest.TestCase):
             read_game_touch=lambda: points.pop(0),
             keep_touch_awake=lambda: None,
         )
-        module = load_modern_app(platform)
+        module = load_app(platform)
         keypad = module.TouchGrid(["left", "right"], 2, 1)
 
         self.assertEqual(keypad.read(), "left")
@@ -624,7 +624,7 @@ class ModernAppDrawingTests(unittest.TestCase):
 
     def test_portrait_canvas_is_rotation_compatibility_layer(self):
         surface = FakeSurface(width=4, height=3)
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         canvas = module.PortraitCanvas(surface, transfer_rows=2)
 
         canvas.fill_rect(0, 1, 2, 3, 9)
@@ -639,7 +639,7 @@ class ModernAppDrawingTests(unittest.TestCase):
         self.assertEqual(surface.writes[0][1:], (1, 1, 3, 2))
 
     def test_direct_canvas_normalizes_rotation_and_reports_logical_size(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         for value, degrees in ((0, 0), (1, 90), (2, 180), (3, 270),
                                (90, 90), (180, 180), (270, 270)):
             with self.subTest(rotation=value):
@@ -655,7 +655,7 @@ class ModernAppDrawingTests(unittest.TestCase):
                     module.DirectCanvas(FakeSurface(), rotation=value)
 
     def test_direct_canvas_maps_pixels_and_dirty_regions_at_every_rotation(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         point_maps = {
             0: lambda x, y: (x, y),
             90: lambda x, y: (y, 2 - x),
@@ -687,7 +687,7 @@ class ModernAppDrawingTests(unittest.TestCase):
                     surface.writes[0][1:], area_maps[rotation](*clipped))
 
     def test_direct_canvas_primitives_clip_in_logical_space_at_every_rotation(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         for rotation in (0, 90, 180, 270):
             with self.subTest(rotation=rotation):
                 canvas = module.DirectCanvas(
@@ -712,7 +712,7 @@ class ModernAppDrawingTests(unittest.TestCase):
                             (rotation, x, y))
 
     def test_direct_canvas_maps_ellipses_at_every_rotation(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         operations = (
             (4, 4, 3, 2, 1, False, 0xF),
             (1, 2, 3, 2, 2, True, 0x5),
@@ -735,7 +735,7 @@ class ModernAppDrawingTests(unittest.TestCase):
                             (rotation, x, y))
 
     def test_direct_canvas_maps_polygons_at_every_rotation(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         coordinates = array("h", (0, 0, 5, 1, 3, 5, -1, 3))
         clipped = array("h", (0, 0, 6, -2, 8, 3, 3, 6, -2, 3))
         for rotation in (0, 90, 180, 270):
@@ -757,7 +757,7 @@ class ModernAppDrawingTests(unittest.TestCase):
                             (rotation, x, y))
 
     def test_direct_canvas_scrolls_in_logical_space_at_every_rotation(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         for rotation in (0, 90, 180, 270):
             for x_step, y_step in ((2, 0), (-2, 0), (0, 1), (0, -1),
                                    (2, -1), (-1, 2)):
@@ -793,7 +793,7 @@ class ModernAppDrawingTests(unittest.TestCase):
                                      x, y))
 
     def test_scroll_region_matches_portable_reference_at_every_rotation(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         for rotation in (0, 90, 180, 270):
             with self.subTest(rotation=rotation):
                 surface = FakeScrollSurface(width=7, height=5,
@@ -849,7 +849,7 @@ class ModernAppDrawingTests(unittest.TestCase):
                 data = bytes(view[source:source + row_bytes])
                 view[target:target + row_bytes] = data
 
-        module = load_modern_app(
+        module = load_app(
             types.SimpleNamespace(), viper_copy=viper_copy)
         surface = FakeScrollSurface(width=8, height=6, accelerate=False)
         canvas = module.DirectCanvas(surface)
@@ -866,7 +866,7 @@ class ModernAppDrawingTests(unittest.TestCase):
                     canvas.pixel(x, y), (y - 1) * canvas.width + x)
 
     def test_scroll_region_accelerates_only_an_exposed_band(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         surface = FakeScrollSurface(width=8, height=6)
         canvas = module.DirectCanvas(surface)
         canvas.fill(0x1234)
@@ -881,7 +881,7 @@ class ModernAppDrawingTests(unittest.TestCase):
             self.assertEqual(canvas.pixel(x, 4), 0xBEEF)
 
     def test_scroll_capabilities_use_final_canvas_rotation(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         surface = FakeScrollSurface(width=8, height=6)
         rotations = []
 
@@ -897,7 +897,7 @@ class ModernAppDrawingTests(unittest.TestCase):
         self.assertEqual(rotations, [90])
 
     def test_scroll_capabilities_have_portable_fallback(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         canvas = module.DirectCanvas(FakeSurface(width=8, height=6))
 
         self.assertEqual(canvas.scroll_capabilities(), {
@@ -908,7 +908,7 @@ class ModernAppDrawingTests(unittest.TestCase):
         })
 
     def test_frame_sync_capabilities_and_wait_delegate_to_surface(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         surface = FakeSyncSurface(width=8, height=6)
         canvas = module.DirectCanvas(surface)
 
@@ -920,7 +920,7 @@ class ModernAppDrawingTests(unittest.TestCase):
         self.assertEqual(surface.sync_timeouts, [45])
 
     def test_frame_sync_has_portable_unsupported_fallback(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         canvas = module.DirectCanvas(FakeSurface(width=8, height=6))
 
         self.assertEqual(canvas.frame_sync_capabilities(), {
@@ -930,7 +930,7 @@ class ModernAppDrawingTests(unittest.TestCase):
         self.assertFalse(canvas.wait_for_frame_sync())
 
     def test_scroll_region_composes_prepared_exposed_band_before_one_show(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         for rotation in (0, 90, 180, 270):
             with self.subTest(rotation=rotation):
                 surface = FakeScrollSurface(width=7, height=5)
@@ -955,7 +955,7 @@ class ModernAppDrawingTests(unittest.TestCase):
                     surface.writes[0][1:], canvas._area(0, 1, width, 1))
 
     def test_scroll_region_validates_exposed_sprite_before_moving_ram(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         surface = FakeScrollSurface(width=8, height=6)
         canvas = module.DirectCanvas(surface)
         canvas.fill(0x1234)
@@ -975,7 +975,7 @@ class ModernAppDrawingTests(unittest.TestCase):
         self.assertEqual(surface.writes, [])
 
     def test_scroll_region_falls_back_for_overlong_and_diagonal_moves(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         surface = FakeScrollSurface(width=8, height=6)
         canvas = module.DirectCanvas(surface)
 
@@ -989,7 +989,7 @@ class ModernAppDrawingTests(unittest.TestCase):
         ])
 
     def test_canvas_close_restores_surface_scroll_before_freeing(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         surface = FakeScrollSurface()
         canvas = module.DirectCanvas(surface)
 
@@ -1000,7 +1000,7 @@ class ModernAppDrawingTests(unittest.TestCase):
         self.assertEqual(surface.freed, [canvas._transfer])
 
     def test_scroll_command_failure_flushes_software_result_and_reraises(self):
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         surface = FakeScrollSurface(width=8, height=6)
         canvas = module.DirectCanvas(surface)
 
@@ -1017,7 +1017,7 @@ class ModernAppDrawingTests(unittest.TestCase):
 
     def test_direct_canvas_draws_prepared_sprite_without_copying_it(self):
         surface = FakeSurface(width=4, height=3)
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         canvas = module.DirectCanvas(surface)
         source = FakeFrameBuffer(bytearray(8), 2, 2, 1)
 
@@ -1029,7 +1029,7 @@ class ModernAppDrawingTests(unittest.TestCase):
 
     def test_portrait_canvas_rotates_prepared_sprite_only_once(self):
         surface = FakeSurface(width=4, height=3)
-        module = load_modern_app(types.SimpleNamespace())
+        module = load_app(types.SimpleNamespace())
         canvas = module.PortraitCanvas(surface)
         source = FakeFrameBuffer(bytearray(12), 2, 3, 1)
         for y, row in enumerate(((1, 2), (3, 4), (5, 6))):
@@ -1051,7 +1051,7 @@ class ModernAppDrawingTests(unittest.TestCase):
     def test_portrait_canvas_uses_compiled_rotation_for_tight_sprite(self):
         surface = FakeSurface(width=4, height=3)
         lvgl = fake_lvgl()
-        module = load_modern_app(types.SimpleNamespace(), lvgl)
+        module = load_app(types.SimpleNamespace(), lvgl)
         canvas = module.PortraitCanvas(surface)
         source = FakeFrameBuffer(bytearray(12), 2, 3, 1)
         for y, row in enumerate(((1, 2), (3, 4), (5, 6))):
@@ -1067,7 +1067,7 @@ class ModernAppDrawingTests(unittest.TestCase):
             [[2, 4, 6], [1, 3, 5]])
 
     def test_direct_canvas_prepares_sprites_at_every_rotation(self):
-        module = load_modern_app(types.SimpleNamespace(), fake_lvgl())
+        module = load_app(types.SimpleNamespace(), fake_lvgl())
         expected = {
             0: [[1, 2], [3, 4], [5, 6]],
             90: [[2, 4, 6], [1, 3, 5]],
@@ -1107,7 +1107,7 @@ class ModernAppDrawingTests(unittest.TestCase):
         for value, x, y, color, background in cases:
             with self.subTest(value=value, x=x, y=y):
                 lvgl = fake_lvgl()
-                module = load_modern_app(types.SimpleNamespace(), lvgl)
+                module = load_app(types.SimpleNamespace(), lvgl)
                 optimized = module.PortraitCanvas(
                     FakeSurface(width=40, height=24))
                 reference = module.PortraitCanvas(
@@ -1130,7 +1130,7 @@ class ModernAppDrawingTests(unittest.TestCase):
 
     def test_portrait_text_disables_compiled_path_after_rotation_error(self):
         surface = FakeSurface(width=40, height=24)
-        module = load_modern_app(
+        module = load_app(
             types.SimpleNamespace(), fake_lvgl(fail_rotate=True))
         canvas = module.PortraitCanvas(surface)
         reference = module.PortraitCanvas(FakeSurface(width=40, height=24))
@@ -1148,7 +1148,7 @@ class ModernAppDrawingTests(unittest.TestCase):
         for rotation in (90, 180, 270):
             with self.subTest(rotation=rotation):
                 lvgl = fake_lvgl()
-                module = load_modern_app(types.SimpleNamespace(), lvgl)
+                module = load_app(types.SimpleNamespace(), lvgl)
                 optimized = module.DirectCanvas(
                     FakeSurface(width=40, height=24), rotation=rotation)
                 reference = module.DirectCanvas(
@@ -1173,7 +1173,7 @@ class ModernAppDrawingTests(unittest.TestCase):
             read_game_touch=lambda: points.pop(0),
             keep_touch_awake=lambda: None,
         )
-        module = load_modern_app(platform)
+        module = load_app(platform)
         keypad = module.PortraitTouchGrid(
             ("top-left", "top-right", "bottom-left", "bottom-right"),
             2, 2)
@@ -1196,7 +1196,7 @@ class ModernAppDrawingTests(unittest.TestCase):
                     read_game_touch=lambda: None,
                     keep_touch_awake=lambda: None,
                 )
-                module = load_modern_app(platform)
+                module = load_app(platform)
                 canvas = module.DirectCanvas(
                     FakeSurface(width=5, height=3), rotation=rotation)
                 grid = module.TouchGrid(
@@ -1242,7 +1242,7 @@ class ModernHelpSourceTests(unittest.TestCase):
                 self.assertFalse(imports.intersection(forbidden))
                 self.assertFalse({"lvgl", "enter_ui_mode"}.intersection(attributes))
                 if path.name != "pybasics.py":
-                    self.assertIn("tartlabutils.modern_app", modules)
+                    self.assertIn("tartlabutils.app", modules)
 
     def test_portrait_examples_use_portrait_canvas_and_touch(self):
         for name in (
@@ -1253,7 +1253,7 @@ class ModernHelpSourceTests(unittest.TestCase):
                 alias.name
                 for node in ast.walk(tree)
                 if isinstance(node, ast.ImportFrom) and
-                node.module == "tartlabutils.modern_app"
+                node.module == "tartlabutils.app"
                 for alias in node.names
             }
             with self.subTest(path=name):

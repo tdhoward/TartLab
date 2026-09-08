@@ -1,6 +1,6 @@
 """Draw pixels and primitive shapes on the modern direct canvas."""
 
-from tartlabutils.modern_app import DirectCanvas, game_surface, rgb565
+from tartlabutils.app import DirectCanvas, game_surface, rgb565
 
 
 surface = game_surface()

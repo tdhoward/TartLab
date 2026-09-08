@@ -75,8 +75,8 @@ def load_touch_driver():
 _MODULE_NAMES = (
     "tartlabutils",
     "tartlabutils.board",
-    "tartlabutils.modern",
-    "tartlabutils.modern_st77922",
+    "tartlabutils.runtime",
+    "tartlabutils.st77922",
     "elecrow_dle06235b_modern",
 )
 _SAVED_MODULES = {name: sys.modules.get(name) for name in _MODULE_NAMES}
@@ -89,12 +89,12 @@ try:
         ROOT / "src/lib/tartlabutils/board.py",
     )
     load_source(
-        "tartlabutils.modern",
-        ROOT / "src/lib/tartlabutils/modern.py",
+        "tartlabutils.runtime",
+        ROOT / "src/lib/tartlabutils/runtime.py",
     )
     module = load_source(
-        "tartlabutils.modern_st77922",
-        ROOT / "src/lib/tartlabutils/modern_st77922.py",
+        "tartlabutils.st77922",
+        ROOT / "src/lib/tartlabutils/st77922.py",
     )
     board_payload = load_source(
         "elecrow_dle06235b_modern",
@@ -333,7 +333,7 @@ class ElecrowControllerTests(unittest.TestCase):
         self.assertEqual(board["display"]["backlight_state"], "STATE_PWM")
         self.assertEqual(
             board["display"]["adapter"],
-            "tartlabutils.modern_st77922",
+            "tartlabutils.st77922",
         )
 
 
@@ -387,7 +387,7 @@ class ElecrowDriverSourceTests(unittest.TestCase):
         self.assertIn("lcd_bus.free_buffer(rotation_buffer)", source)
 
     def test_shared_factory_clears_while_backlight_is_off(self):
-        source = (ROOT / "src/lib/tartlabutils/modern_factory.py").read_text(
+        source = (ROOT / "src/lib/tartlabutils/factory.py").read_text(
             encoding="utf-8")
         backlight_off = source.index("panel.set_backlight(0)")
         panel_init = source.index("panel.init()")

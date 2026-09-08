@@ -1,17 +1,17 @@
-"""Reusable ST77922 transport and ownership adapter for modern boards."""
+"""Reusable ST77922 transport and ownership adapter for declarative board configurations."""
 
-from tartlabutils.modern import (
+from tartlabutils.runtime import (
     DisplayFrameSync,
     DirectRGB565Surface,
     GAME_OWNER,
-    ModernDisplayController,
-    ModernPlatform,
+    DisplayController,
+    Platform as BasePlatform,
     UI_OWNER,
 )
 from tartlabutils.board import pin_definition
 
 try:
-    from tartlabutils._modern_emitters import (
+    from tartlabutils._emitters import (
         copy_rgb565_rows_between as _copy_rows_viper,
     )
 except ImportError:
@@ -175,7 +175,7 @@ class ST77922DirectRGB565Surface(DirectRGB565Surface):
         self._resources_freed = True
 
 
-class ST77922DisplayController(ModernDisplayController):
+class ST77922DisplayController(DisplayController):
     """Modern ownership controller with an ISR-safe completion boundary."""
 
     def __init__(self, bus, panel, lv_display, lvgl, task_handler,
@@ -204,7 +204,7 @@ class ST77922DisplayController(ModernDisplayController):
                 self._callback_failed = True
 
     def wait_for_transfer(self, timeout_ms=1000):
-        ModernDisplayController.wait_for_transfer(self, timeout_ms)
+        DisplayController.wait_for_transfer(self, timeout_ms)
         if self._callback_failed:
             self._callback_failed = False
             surface = getattr(self, "surface", None)
@@ -215,18 +215,18 @@ class ST77922DisplayController(ModernDisplayController):
 
     def acquire_game(self, timeout_ms=1000):
         entering = self._owner != GAME_OWNER
-        surface = ModernDisplayController.acquire_game(self, timeout_ms)
+        surface = DisplayController.acquire_game(self, timeout_ms)
         surface.enable_frame_sync()
         if entering:
             surface.invalidate_shadow()
         return surface
 
     def acquire_ui(self, timeout_ms=1000):
-        ModernDisplayController.acquire_ui(self, timeout_ms)
+        DisplayController.acquire_ui(self, timeout_ms)
         self.surface.disable_frame_sync()
 
 
-class Platform(ModernPlatform):
+class Platform(BasePlatform):
     def deinit(self):
         if self._deinitialized:
             return

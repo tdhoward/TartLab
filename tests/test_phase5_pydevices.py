@@ -21,7 +21,7 @@ from pydevices_modern_firmware import (
 
 
 def load_adapter():
-    modern_path = ROOT / "src/lib/tartlabutils/modern.py"
+    modern_path = ROOT / "src/lib/tartlabutils/runtime.py"
     modern_spec = importlib.util.spec_from_file_location(
         "phase5_pydevices_modern_dependency", modern_path)
     modern = importlib.util.module_from_spec(modern_spec)
@@ -32,9 +32,9 @@ def load_adapter():
     spec = importlib.util.spec_from_file_location("phase5_pydevices_adapter", path)
     module = importlib.util.module_from_spec(spec)
     old_package = sys.modules.get("tartlabutils")
-    old_modern = sys.modules.get("tartlabutils.modern")
+    old_modern = sys.modules.get("tartlabutils.runtime")
     sys.modules["tartlabutils"] = package
-    sys.modules["tartlabutils.modern"] = modern
+    sys.modules["tartlabutils.runtime"] = modern
     try:
         spec.loader.exec_module(module)
     finally:
@@ -43,9 +43,9 @@ def load_adapter():
         else:
             sys.modules["tartlabutils"] = old_package
         if old_modern is None:
-            sys.modules.pop("tartlabutils.modern", None)
+            sys.modules.pop("tartlabutils.runtime", None)
         else:
-            sys.modules["tartlabutils.modern"] = old_modern
+            sys.modules["tartlabutils.runtime"] = old_modern
     return module
 
 

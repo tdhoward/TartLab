@@ -26,7 +26,7 @@ from phase5_device import (
 
 
 def load_modern_rendering():
-    path = ROOT / "src/lib/tartlabutils/modern.py"
+    path = ROOT / "src/lib/tartlabutils/runtime.py"
     spec = importlib.util.spec_from_file_location("phase5_modern", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -41,26 +41,26 @@ def load_lilygo_platform(modern):
     return module
 
 
-def load_modern_factory(modern):
+def load_factory(modern):
     package = types.ModuleType("tartlabutils")
     package.__path__ = []
     board_path = ROOT / "src/lib/tartlabutils/board.py"
     board_spec = importlib.util.spec_from_file_location(
         "tartlabutils.board", board_path)
     board = importlib.util.module_from_spec(board_spec)
-    factory_path = ROOT / "src/lib/tartlabutils/modern_factory.py"
+    factory_path = ROOT / "src/lib/tartlabutils/factory.py"
     factory_spec = importlib.util.spec_from_file_location(
-        "phase5_modern_factory", factory_path)
+        "phase5_factory", factory_path)
     factory = importlib.util.module_from_spec(factory_spec)
-    adapter_path = ROOT / "src/lib/tartlabutils/modern_st7796.py"
+    adapter_path = ROOT / "src/lib/tartlabutils/st7796.py"
     adapter_spec = importlib.util.spec_from_file_location(
-        "tartlabutils.modern_st7796", adapter_path)
+        "tartlabutils.st7796", adapter_path)
     adapter = importlib.util.module_from_spec(adapter_spec)
     with mock.patch.dict(sys.modules, {
         "tartlabutils": package,
         "tartlabutils.board": board,
-        "tartlabutils.modern": modern,
-        "tartlabutils.modern_st7796": adapter,
+        "tartlabutils.runtime": modern,
+        "tartlabutils.st7796": adapter,
     }):
         board_spec.loader.exec_module(board)
         adapter_spec.loader.exec_module(adapter)
@@ -346,9 +346,9 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
         inputs = profile["application_adapter"]["inputs"]
         self.assertEqual({item["path"] for item in inputs}, {
             "src/lib/tartlabutils/board.py",
-            "src/lib/tartlabutils/modern.py",
-            "src/lib/tartlabutils/modern_factory.py",
-            "src/lib/tartlabutils/modern_st7796.py",
+            "src/lib/tartlabutils/runtime.py",
+            "src/lib/tartlabutils/factory.py",
+            "src/lib/tartlabutils/st7796.py",
             "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
         })
 
@@ -512,7 +512,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         lvgl = FakeModernLVGL(lv_display, bus)
         tasks = FakeTaskHandler()
         pointer = FakeModernInput()
-        controller = module.ModernDisplayController(
+        controller = module.DisplayController(
             bus, panel, lv_display, lvgl, tasks, pointer,
             offset_y=49, allocation_flags=3,
             buffer_allocator=bus.allocate_framebuffer,
@@ -621,7 +621,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
                 return self.points.pop(0)
 
         pointer = Pointer()
-        platform = module.ModernPlatform(
+        platform = module.Platform(
             controller, panel, pointer, lvgl=lvgl)
         lv_display.rotation = lvgl.DISPLAY_ROTATION._270
         platform.enter_game_mode()
@@ -636,7 +636,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
     def test_platform_clear_display_flushes_black_before_returning(self):
         (module, unused_bus, panel, unused_lv_display, lvgl, unused_tasks,
          pointer, controller) = self.prepare()
-        platform = module.ModernPlatform(
+        platform = module.Platform(
             controller, panel, pointer, lvgl=lvgl)
         lvgl.color_hex = lambda value: value
 
@@ -676,7 +676,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
 
         pointer = Input()
         panel = Panel()
-        platform = module.ModernPlatform(controller, panel, pointer)
+        platform = module.Platform(controller, panel, pointer)
         self.assertFalse(platform.capabilities["ide_button"])
         self.assertFalse(platform.capabilities["frame_sync"])
 
@@ -693,7 +693,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         modern = load_modern_rendering()
         module = load_lilygo_platform(modern)
         factory, tartlabutils_package, st7796_adapter = \
-            load_modern_factory(modern)
+            load_factory(modern)
         bus = FakeModernBus()
         display = FakeLVDisplay(bus)
         screen = FakeLVScreen()
@@ -780,7 +780,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
 
         with mock.patch.dict(sys.modules, {
             "tartlabutils": tartlabutils_package,
-            "tartlabutils.modern_st7796": st7796_adapter,
+            "tartlabutils.st7796": st7796_adapter,
             "cst226": cst226,
             "i2c": i2c,
             "lcd_bus": lcd_bus,
@@ -826,7 +826,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         self.assertEqual(board["display"]["driver"], "st7796.ST7796")
         self.assertEqual(
             board["display"]["adapter"],
-            "tartlabutils.modern_st7796")
+            "tartlabutils.st7796")
         self.assertEqual(
             board["display"]["scroll"]["qualified_rotations"], (270,))
         self.assertEqual(board["touch"]["driver"], "cst226.CST226")
@@ -887,7 +887,7 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         controller = types.SimpleNamespace(acquire_ui=lambda: None)
         controller.surface = types.SimpleNamespace(width=480, height=222)
 
-        view = module.ModernIDEView(controller, lvgl)
+        view = module.IDEView(controller, lvgl)
         self.assertEqual(view._status.text, "")
         self.assertEqual(bar.size, (420, 20))
         view.show_update_progress("TEST", 1, 3)

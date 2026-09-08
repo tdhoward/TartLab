@@ -5,7 +5,7 @@ Status: Phase 4 implemented; Phase 5 not started
 Related implementation:
 
 - [`src/files/help/racer.py`](src/files/help/racer.py)
-- [`src/lib/tartlabutils/modern_app.py`](src/lib/tartlabutils/modern_app.py)
+- [`src/lib/tartlabutils/app.py`](src/lib/tartlabutils/app.py)
 - [`PANEL_SCROLL_PRESENTATION_PROJECT.md`](PANEL_SCROLL_PRESENTATION_PROJECT.md)
 - [`tests/PANEL_SCROLL_HARDWARE.md`](tests/PANEL_SCROLL_HARDWARE.md)
 

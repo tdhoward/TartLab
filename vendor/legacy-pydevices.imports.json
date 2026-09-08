@@ -41,7 +41,7 @@
         "graphics/_shapes.py"
       ],
       "roots": [
-        "src/lib/tartlabutils/platform.py"
+        "src/lib/tartlabutils/legacy_platform.py"
       ],
       "stop_modules": [
         "hdwconfig"

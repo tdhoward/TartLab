@@ -5,7 +5,7 @@ from random import choice
 from time import sleep_ms
 
 from bmp565 import BMP565
-from tartlabutils.modern_app import (
+from tartlabutils.app import (
     DirectCanvas, TouchGrid, framebuffer_color, game_surface,
     swap565_buffer)
 

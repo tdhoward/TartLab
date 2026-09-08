@@ -28,21 +28,21 @@ for search_path in reversed(('/device', '/lib', '/', '/files/user')):
     if search_path not in sys.path:
         sys.path.insert(0, search_path)
 
-adapter_scope = {'__name__': 'tartlabutils.modern_st7796_probe'}
+adapter_scope = {'__name__': 'tartlabutils.st7796_probe'}
 exec(__ADAPTER_SOURCE__, adapter_scope)
-import tartlabutils._modern_emitters as modern_emitters
+import tartlabutils._emitters as modern_emitters
 exec(__EMITTER_SOURCE__, modern_emitters.__dict__)
-modern_app = sys.modules.get('tartlabutils.modern_app')
-if modern_app is None:
-    import tartlabutils.modern_app as modern_app
-exec(__MODERN_APP_SOURCE__, modern_app.__dict__)
+app = sys.modules.get('tartlabutils.app')
+if app is None:
+    import tartlabutils.app as app
+exec(__APP_SOURCE__, app.__dict__)
 board_scope = {'__name__': 't_display_s3_pro_modern_probe'}
 exec(__BOARD_SOURCE__, board_scope)
 
 from tartlabutils.platform import get_platform
-DirectCanvas = modern_app.DirectCanvas
-FrameBuffer = modern_app.FrameBuffer
-RGB565 = modern_app.RGB565
+DirectCanvas = app.DirectCanvas
+FrameBuffer = app.FrameBuffer
+RGB565 = app.RGB565
 BaseSurface = adapter_scope['ST7796DirectRGB565Surface']
 
 def ticks():
@@ -259,17 +259,17 @@ finally:
 
 
 def device_program(visual_hold_seconds: int = 0) -> str:
-    adapter = (ROOT / "src/lib/tartlabutils/modern_st7796.py").read_text(
+    adapter = (ROOT / "src/lib/tartlabutils/st7796.py").read_text(
         encoding="utf-8")
-    emitters = (ROOT / "src/lib/tartlabutils/_modern_emitters.py").read_text(
+    emitters = (ROOT / "src/lib/tartlabutils/_emitters.py").read_text(
         encoding="utf-8")
-    modern_app = (ROOT / "src/lib/tartlabutils/modern_app.py").read_text(
+    app = (ROOT / "src/lib/tartlabutils/app.py").read_text(
         encoding="utf-8")
     return DEVICE_PROGRAM.replace(
         "__VISUAL_HOLD_MS__", str(max(0, visual_hold_seconds) * 1000)).replace(
         "__ADAPTER_SOURCE__", repr(adapter)).replace(
         "__EMITTER_SOURCE__", repr(emitters)).replace(
-        "__MODERN_APP_SOURCE__", repr(modern_app)).replace(
+        "__APP_SOURCE__", repr(app)).replace(
         "__BOARD_SOURCE__", repr((
             ROOT / "boards/lilygo_t_display_s3_pro/runtime/"
             "t_display_s3_pro_modern.py").read_text(encoding="utf-8")))

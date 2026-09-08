@@ -320,7 +320,7 @@ class FakeNetwork:
 
 def probe_platform(source_root):
     platform_module = load_source(
-        source_root, "src/lib/tartlabutils/platform.py", "compat_platform")
+        source_root, "src/lib/tartlabutils/legacy_platform.py", "compat_platform")
     paths = ["/device", "/lib", "/", "/files/user", "host-library"]
     platform_module["configure_legacy_paths"](paths)
     expected = ["/device", "/lib", "/", "/files/user"] + list(

@@ -36,7 +36,7 @@ Run the web build and complete hardware-free suite:
 
 ```powershell
 npm run build --prefix src/ide/www
-.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_modern_app tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_modern_power tests.test_headless_ide -v
+.\.venv\Scripts\python.exe -m unittest tests.test_phase1 tests.test_phase2 tests.test_phase4 tests.test_phase5 tests.test_app tests.test_board_catalog tests.test_modern_profile tests.test_phase6 tests.test_phase6_provisioning tests.test_virtual_device tests.test_platform tests.test_power tests.test_headless_ide -v
 ```
 
 Verify tracked firmware identities when firmware or profile metadata changes:
@@ -56,6 +56,29 @@ CI additionally builds pinned MicroPython 1.23 host tools and runs the Tier 2
 compatibility probe. The optional local command and exact claim boundaries are
 in [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md). Host tests do not replace an
 applicable physical smoke or release gate.
+
+## Release scope and versioning
+
+Follow [`RELEASE_POLICY.md`](RELEASE_POLICY.md): one public TartLab version
+combines a qualified platform with the browser client, apps, and assets. Use
+major/minor/patch for compatibility, features, and fixes; determine testing
+separately from actual change impact.
+
+For routine app/browser releases, retain the qualified platform content and
+compare the complete built candidate with its baseline. Do not include
+unqualified platform work from the checkout. Run normal automated release
+checks, validate payload sizes and compatibility, and complete the focused
+checks in [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md#selecting-release-tests).
+Platform changes need fresh evidence for affected behavior and boards; changes
+to firmware or installation/update behavior require full relevant physical
+qualification.
+
+Current tools still build from the source candidate and require the existing
+candidate-bound evidence schema. Baseline assembly, impact reports, and
+automatic validation of inherited qualification remain planned work. For now,
+record reviewed content comparisons and evidence reuse in the new candidate's
+sanitized qualification artifacts, then use the existing protected workflows.
+The commands below do not select a reduced-testing mode.
 
 ## Build a legacy candidate
 
@@ -160,11 +183,13 @@ releases. See [`profiles/lvgl-modern-migration.md`](profiles/lvgl-modern-migrati
 
 ## Optional physical modern-board work
 
-The touchscreen launcher and IDE backlight behavior require a focused physical
-smoke before they can enter a release candidate's qualification record. Follow
+Changes to the touchscreen launcher and IDE backlight behavior require a
+focused physical smoke for the affected claims and boards. Follow
 [`tests/MODERN_TOUCHSCREEN_QUALIFICATION.md`](tests/MODERN_TOUCHSCREEN_QUALIFICATION.md)
-and bind results to the exact candidate and firmware identity. The historical
-`modern-v0.14.8` evidence predates this feature and cannot be reused.
+and bind results to the exact candidate and firmware identity. Unchanged
+behavior may use applicable baseline evidence under the release policy. The
+historical `modern-v0.14.8` evidence predates this feature and cannot establish
+its launcher/backlight claims.
 
 The existing modern helpers can recheck the underlying display, touch, and
 ownership boundary without installing or flashing anything:
@@ -232,7 +257,10 @@ The sanitized legacy fixture is `tests/fixtures/legacy_mp123`.
 - Legacy releases require the protected `legacy-release` workflow and an exact
   candidate-bound physical gate.
 - Modern releases require the protected qualification and `modern-release`
-  workflows and all six physical gates.
+  workflows and candidate-bound evidence for all five gates in
+  [`tests/PHASE6_MODERN_QUALIFICATION.md`](tests/PHASE6_MODERN_QUALIFICATION.md).
+  Each included board needs applicable evidence; prior results may be reused
+  only with the comparison and justification required by the release policy.
 - Never mix legacy and modern release assets or feeds.
 - Installed versions commit only after a healthy boot; recovery and future OTA
   must remain available after every promoted release.

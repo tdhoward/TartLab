@@ -19,7 +19,7 @@ BOARD_CONFIG = {
     ),
     "display": {
         "driver": "st7796.ST7796",
-        "adapter": "tartlabutils.modern_st7796",
+        "adapter": "tartlabutils.st7796",
         "native_size": (222, 480),
         "logical_size": (480, 222),
         "offset": (0, 49),

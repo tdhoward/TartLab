@@ -4,7 +4,7 @@ from random import randint
 from time import sleep_ms, ticks_diff, ticks_ms
 import ujson as json
 
-from tartlabutils.modern_app import (
+from tartlabutils.app import (
     PortraitCanvas, PortraitTouchGrid, game_surface, rgb565)
 
 

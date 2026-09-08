@@ -832,7 +832,7 @@ for name in logs[-3:]:
     with open("/state/logs/" + name, "r") as stream:
         recent_logs.append((name, stream.read()[-6000:]))
 try:
-    import tartlabutils.launcher as launcher
+    import tartlabutils.app_runner as launcher
     launcher_timer = repr(launcher._health_timer)
 except Exception as error:
     launcher_timer = repr(error)

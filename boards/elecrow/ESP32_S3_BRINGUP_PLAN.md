@@ -453,5 +453,5 @@ Primary vendor and upstream references used for this plan:
 
 TartLab-local facts and constraints are taken from `PROJECT_NOTES.md`,
 `profiles/lvgl-modern.json`, `firmware/lvgl-modern/reference.lock.json`,
-`src/lib/tartlabutils/modern.py`, `tests/TEST_TIERS.md`, and the built
+`src/lib/tartlabutils/runtime.py`, `tests/TEST_TIERS.md`, and the built
 `modern-v0.14.8` payload inventory in the local workspace.

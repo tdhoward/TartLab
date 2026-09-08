@@ -34,6 +34,33 @@ Qualification artifacts include the clean-provisioning journal and sanitized
 physical transcript hashes. Legacy-to-modern migration is not a supported
 deployment path and is deliberately outside the modern qualification contract.
 
+## Baseline evidence and fresh qualification
+
+[`RELEASE_POLICY.md`](../RELEASE_POLICY.md) defines one public product version
+and different testing scopes for routine app/browser releases and platform
+changes. All five gates still need applicable evidence for every board in the
+candidate. Satisfying that evidence contract does not require rerunning every
+physical test when the implementation and assumptions behind a claim remain
+unchanged.
+
+For reused claims, add a new candidate record referencing the prior board-bound
+artifacts and a reviewed comparison of built content, installation semantics,
+dependencies, and relevant resource limits. Record fresh focused or full test
+results for changed claims, including affected supported update paths. Keep
+historical records unchanged. An unchanged firmware hash alone is insufficient,
+and one board's qualification cannot be inherited by another board.
+
+The v0.15.4 records below demonstrate reviewed reuse with candidate equivalence.
+They do not qualify arbitrary later app or platform changes. Select additional
+checks using [`TEST_TIERS.md`](TEST_TIERS.md#selecting-release-tests).
+
+The current schema requires `passed` plus evidence references for each gate;
+it has no machine-readable inherited-claim or platform-baseline fields. Explain
+the distinction in the referenced sanitized artifacts using the existing
+schema. Automatic impact analysis, baseline assembly, and validation of reuse
+are pending implementation. Continue through the existing protected promotion
+workflow with its exact candidate, board-set, and firmware bindings.
+
 ## Qualified candidate and physical results
 
 The qualified multi-board candidate is `modern-v0.15.4` at commit

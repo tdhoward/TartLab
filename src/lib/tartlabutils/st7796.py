@@ -1,10 +1,10 @@
-"""Reusable ST7796 scanout-scroll adapter for modern direct surfaces."""
+"""Reusable ST7796 scanout-scroll adapter for direct surfaces."""
 
-from tartlabutils.modern import (
+from tartlabutils.runtime import (
     DirectRGB565Surface,
     GAME_OWNER,
-    ModernDisplayController,
-    ModernPlatform,
+    DisplayController,
+    Platform as BasePlatform,
 )
 
 
@@ -338,7 +338,7 @@ class ST7796DirectRGB565Surface(DirectRGB565Surface):
         self._resources_freed = True
 
 
-class ST7796DisplayController(ModernDisplayController):
+class ST7796DisplayController(DisplayController):
     """Modern controller that restores neutral scanout before LVGL resumes."""
 
     def __init__(self, bus, panel, lv_display, lvgl, task_handler,
@@ -359,10 +359,10 @@ class ST7796DisplayController(ModernDisplayController):
         if self._owner == GAME_OWNER:
             self.wait_for_transfer(timeout_ms)
             self.surface.reset_scroll()
-        return ModernDisplayController.acquire_ui(self, timeout_ms)
+        return DisplayController.acquire_ui(self, timeout_ms)
 
 
-class Platform(ModernPlatform):
+class Platform(BasePlatform):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.capabilities["panel_scroll"] = bool(

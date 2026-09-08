@@ -68,8 +68,8 @@ class ModernProfileTests(unittest.TestCase):
             inventory = distribution_inventory(dist)
             self.assertEqual(len(inventory), len(REQUIRED_DIST_FILES))
 
-            (dist / "lib/tartlabutils/modern.py").unlink()
-            with self.assertRaisesRegex(ValueError, "modern.py"):
+            (dist / "lib/tartlabutils/runtime.py").unlink()
+            with self.assertRaisesRegex(ValueError, "runtime.py"):
                 distribution_inventory(dist)
 
 

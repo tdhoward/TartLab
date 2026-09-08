@@ -47,12 +47,21 @@ python tools/check_modern_release_authenticity.py --release path/to/candidate --
 
 Final publication uses the distinct protected
 `promote-modern-release.yml` signer. It rebuilds twice, checks the candidate
-checksum, downloads and hash-verifies the six-gate qualification summary, and
+checksum, downloads and hash-verifies the five-gate qualification summary, and
 publishes only to the modern repository. Verify a published release with:
 
 ```text
 python tools/check_modern_release_authenticity.py --release path/to/release --source-ref refs/tags/modern-vX.Y.Z --execute
 ```
+
+The evidence may combine fresh physical results and justified reuse from a
+qualified platform baseline as described in
+[`PHASE6_MODERN_QUALIFICATION.md`](PHASE6_MODERN_QUALIFICATION.md). Both the
+routine app/browser path and the platform path retain the same authentication,
+exact-candidate evidence binding, and protected promotion requirements.
+Automatic validation of qualification reuse remains planned work under
+[`RELEASE_POLICY.md`](../RELEASE_POLICY.md); signing does not itself establish
+that an inherited hardware claim applies.
 
 Published alpha reference `modern-v0.14.8` passed this process in workflow run
 `33223821198`.

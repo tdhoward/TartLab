@@ -7,6 +7,7 @@ import sys
 import tempfile
 import types
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,20 +28,28 @@ def load_module(name, path):
 class PlatformContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.legacy_module = load_module(
+            "legacy_platform_contract_under_test",
+            ROOT / "src/lib/tartlabutils/legacy_platform.py")
+        modules = mock.patch.dict(sys.modules, {
+            "tartlabutils.legacy_platform": cls.legacy_module,
+        })
+        modules.start()
+        cls.addClassCleanup(modules.stop)
         cls.platform_module = load_module(
             "platform_contract_under_test",
             ROOT / "src/lib/tartlabutils/platform.py")
 
     def test_legacy_paths_follow_core_paths_without_duplicates(self):
         paths = ["/device", "/lib", "/", "/files/user", "host-library"]
-        result = self.platform_module.configure_legacy_paths(paths)
+        result = self.platform_module.configure_paths(paths)
         expected = [
             "/device", "/lib", "/", "/files/user",
-            *self.platform_module.LEGACY_SEARCH_PATHS,
+            *self.legacy_module.LEGACY_SEARCH_PATHS,
             "host-library",
         ]
         self.assertEqual(result, expected)
-        self.platform_module.configure_legacy_paths(paths)
+        self.platform_module.configure_paths(paths)
         self.assertEqual(paths, expected)
 
     def test_protected_board_identity_selects_an_isolated_runtime_path(self):
@@ -65,12 +74,12 @@ class PlatformContractTests(unittest.TestCase):
         self.platform_module.board_runtime_path = (
             lambda: "/board/lilygo_t_display_s3_pro")
         try:
-            self.platform_module.configure_legacy_paths(paths)
+            self.platform_module.configure_paths(paths)
         finally:
             self.platform_module.board_runtime_path = original
         self.assertEqual(paths, [
             "/device", "/board/lilygo_t_display_s3_pro", "/lib", "/",
-            "/files/user", *self.platform_module.LEGACY_SEARCH_PATHS,
+            "/files/user", *self.legacy_module.LEGACY_SEARCH_PATHS,
             "host-library",
         ])
 
@@ -90,13 +99,13 @@ class PlatformContractTests(unittest.TestCase):
             def value(self):
                 return 0
 
-        original = self.platform_module.configure_legacy_paths
-        self.platform_module.configure_legacy_paths = lambda paths=None: paths
+        original = self.legacy_module.configure_legacy_paths
+        self.legacy_module.configure_legacy_paths = lambda paths=None: paths
         try:
-            platform = self.platform_module.LegacyPlatform(
+            platform = self.legacy_module.LegacyPlatform(
                 hardware=hardware, pin_factory=PinFactory)
         finally:
-            self.platform_module.configure_legacy_paths = original
+            self.legacy_module.configure_legacy_paths = original
 
         self.assertIs(platform.display, display)
         self.assertIs(platform.input, pointer)
@@ -143,14 +152,14 @@ class PlatformContractTests(unittest.TestCase):
 
         hardware = types.SimpleNamespace(
             display_drv=HeadlessDisplay(), IDE_BUTTON_PIN=12)
-        original = self.platform_module.configure_legacy_paths
-        self.platform_module.configure_legacy_paths = lambda paths=None: paths
+        original = self.legacy_module.configure_legacy_paths
+        self.legacy_module.configure_legacy_paths = lambda paths=None: paths
         try:
-            platform = self.platform_module.LegacyPlatform(
+            platform = self.legacy_module.LegacyPlatform(
                 hardware=hardware, pin_factory=lambda *args: None,
                 network_module=NetworkModule)
         finally:
-            self.platform_module.configure_legacy_paths = original
+            self.legacy_module.configure_legacy_paths = original
 
         platform.set_hostname("headless-test")
         self.assertIs(platform.station_interface(), interfaces["station"])
@@ -184,20 +193,33 @@ class PlatformContractTests(unittest.TestCase):
             else:
                 sys.modules["hdwconfig"] = previous
 
+    def test_hardware_without_board_config_selects_legacy_adapter(self):
+        hardware = types.ModuleType("hdwconfig")
+        hardware.display_drv = HeadlessDisplay()
+        self.platform_module.set_platform(None)
+        try:
+            with mock.patch.dict(sys.modules, {"hdwconfig": hardware}):
+                platform = self.platform_module.get_platform()
+                self.assertIsInstance(platform, self.legacy_module.LegacyPlatform)
+                self.assertIs(platform.display, hardware.display_drv)
+                self.assertIs(self.platform_module.get_platform(), platform)
+        finally:
+            self.platform_module.set_platform(None)
+
     def test_declarative_board_payload_uses_shared_platform_factory(self):
         selected = object()
         board = {"id": "synthetic_modern", "pins": ()}
         hardware = types.ModuleType("hdwconfig")
         hardware.BOARD_CONFIG = board
-        factory_module = types.ModuleType("tartlabutils.modern_factory")
+        factory_module = types.ModuleType("tartlabutils.factory")
         calls = []
         factory_module.create_platform = lambda value: (
             calls.append(value), selected)[1]
         previous_hardware = sys.modules.get("hdwconfig")
-        previous_factory = sys.modules.get("tartlabutils.modern_factory")
+        previous_factory = sys.modules.get("tartlabutils.factory")
         self.platform_module.set_platform(None)
         sys.modules["hdwconfig"] = hardware
-        sys.modules["tartlabutils.modern_factory"] = factory_module
+        sys.modules["tartlabutils.factory"] = factory_module
         try:
             self.assertIs(self.platform_module.get_platform(), selected)
             self.assertEqual(calls, [board])
@@ -208,9 +230,9 @@ class PlatformContractTests(unittest.TestCase):
             else:
                 sys.modules["hdwconfig"] = previous_hardware
             if previous_factory is None:
-                sys.modules.pop("tartlabutils.modern_factory", None)
+                sys.modules.pop("tartlabutils.factory", None)
             else:
-                sys.modules["tartlabutils.modern_factory"] = previous_factory
+                sys.modules["tartlabutils.factory"] = previous_factory
 
     def test_modern_board_payloads_are_single_declarative_objects(self):
         paths = (
@@ -286,7 +308,7 @@ class PlatformContractTests(unittest.TestCase):
 
         display = Display()
         try:
-            view = self.platform_module.LegacyIDEView(display)
+            view = self.legacy_module.LegacyIDEView(display)
             view.show_startup("candidate")
             view.show_network("Classroom", "10.0.0.42", "tartlab")
             view.show_update_progress("Installing", 1, 4)
@@ -363,7 +385,7 @@ class LauncherHealthTimerTests(unittest.TestCase):
         try:
             launcher = load_module(
                 package_name + ".launcher",
-                ROOT / "src/lib/tartlabutils/launcher.py")
+                ROOT / "src/lib/tartlabutils/app_runner.py")
             launcher._arm_health_check()
             self.assertEqual(timers[0].timer_id, 3)
             self.assertEqual(timers[0].options["period"], 3000)
@@ -387,7 +409,7 @@ class LauncherHealthTimerTests(unittest.TestCase):
 
 class ModernTouchscreenLauncherTests(unittest.TestCase):
     def load_launcher(self):
-        package_name = "modern_launcher_test"
+        package_name = "launcher_test"
         package = types.ModuleType(package_name)
         package.__path__ = []
         state = types.ModuleType(package_name + ".state")
@@ -416,8 +438,8 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
         sys.modules[package_name + ".state"] = state
         try:
             module = load_module(
-                package_name + ".modern_launcher",
-                ROOT / "src/lib/tartlabutils/modern_launcher.py")
+                package_name + ".launcher",
+                ROOT / "src/lib/tartlabutils/launcher.py")
         finally:
             for name, previous in saved.items():
                 if previous is None:
@@ -548,7 +570,7 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
         original = lvgl.active
         clock = {"now": 0}
 
-        launcher = module.ModernTouchscreenLauncher(
+        launcher = module.TouchscreenLauncher(
             lvgl, 480, 222, "hello.py", timeout_seconds=10,
             ticks_ms=lambda: clock["now"],
             ticks_diff=lambda new, old: new - old,
@@ -572,7 +594,7 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
             _lvgl=lvgl,
             enter_ui_mode=lambda: None,
         )
-        original = module.ModernTouchscreenLauncher
+        original = module.TouchscreenLauncher
 
         class FastLauncher(original):
             def __init__(self, *args, **kwargs):
@@ -582,11 +604,11 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
                     "now", clock["now"] + milliseconds)
                 super().__init__(*args, **kwargs)
 
-        module.ModernTouchscreenLauncher = FastLauncher
+        module.TouchscreenLauncher = FastLauncher
         try:
             route = module.run_startup_launcher(platform, timeout_seconds=10)
         finally:
-            module.ModernTouchscreenLauncher = original
+            module.TouchscreenLauncher = original
 
         self.assertEqual(route, "IDE")
         self.assertGreaterEqual(clock["now"], 10000)
@@ -604,7 +626,7 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
                 self.find_button(lvgl, "Cancel").click()
                 self.find_button(lvgl, "Run selected app").click()
 
-        launcher = module.ModernTouchscreenLauncher(
+        launcher = module.TouchscreenLauncher(
             lvgl, 320, 480, "games/hello.py", timeout_seconds=10,
             ticks_ms=lambda: clock["now"],
             ticks_diff=lambda new, old: new - old,
@@ -639,7 +661,7 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
     def test_browser_list_scrolls_vertically_without_horizontal_overflow(self):
         module = self.load_launcher()
         lvgl = self.LVGL()
-        launcher = module.ModernTouchscreenLauncher(
+        launcher = module.TouchscreenLauncher(
             lvgl, 320, 480, "hello.py",
             list_directory=lambda unused: ["hello.py"],
             get_path_kind=lambda unused: 1)
@@ -668,7 +690,7 @@ class ModernTouchscreenLauncherTests(unittest.TestCase):
             "/files/user/games/tetris.py": 1,
         }
         saved = []
-        launcher = module.ModernTouchscreenLauncher(
+        launcher = module.TouchscreenLauncher(
             lvgl, 480, 222, "hello.py",
             list_directory=lambda path: listing[path],
             get_path_kind=lambda path: kinds.get(path, 0),
@@ -891,7 +913,7 @@ class HeadlessStartupTests(unittest.TestCase):
             self.assertEqual(routes, ["startup_mode"])
             self.assertEqual(errors, [])
 
-    def test_modern_app_failure_restores_brightness_and_falls_back_to_ide(self):
+    def test_app_failure_restores_brightness_and_falls_back_to_ide(self):
         with tempfile.TemporaryDirectory() as temp:
             unused_device, state, unused_bootstate, main, logs, \
                 errors = self.prepare(Path(temp) / "device")

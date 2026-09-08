@@ -33,7 +33,7 @@ BUILTIN_PRECEDENCE = ("framebuf", "micropython")
 CATEGORY_CONFIG = (
     (
         "core_startup_ide",
-        ("src/lib/tartlabutils/platform.py",),
+        ("src/lib/tartlabutils/legacy_platform.py",),
         ("hdwconfig",),
         "Core platform and IDE display dependencies; hardware loading stops at "
         "the explicit hdwconfig boundary.",

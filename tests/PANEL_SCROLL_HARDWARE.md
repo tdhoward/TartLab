@@ -95,7 +95,7 @@ RAM composition, and panel-scroll mapping agree.
 
 ## Replacement-band fixture smoke
 
-The verified `modern_app.py` and Racer payloads were then staged on COM3. A
+The verified `app.py` and Racer payloads were then staged on COM3. A
 bounded run of the installed Racer initialization created all 12 prepared road
 bands and completed the exact fixed-header replacement scroll in 38.243 ms
 before restoring UI ownership. Temporary rollback copies were removed after

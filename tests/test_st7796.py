@@ -14,18 +14,18 @@ ROOT = Path(__file__).resolve().parents[1]
 def load_modules():
     package = types.ModuleType("tartlabutils")
     package.__path__ = []
-    modern_path = ROOT / "src/lib/tartlabutils/modern.py"
+    modern_path = ROOT / "src/lib/tartlabutils/runtime.py"
     modern_spec = importlib.util.spec_from_file_location(
-        "tartlabutils.modern", modern_path)
+        "tartlabutils.runtime", modern_path)
     modern = importlib.util.module_from_spec(modern_spec)
-    adapter_path = ROOT / "src/lib/tartlabutils/modern_st7796.py"
+    adapter_path = ROOT / "src/lib/tartlabutils/st7796.py"
     adapter_spec = importlib.util.spec_from_file_location(
-        "tartlabutils.modern_st7796", adapter_path)
+        "tartlabutils.st7796", adapter_path)
     adapter = importlib.util.module_from_spec(adapter_spec)
     with mock.patch.dict(sys.modules, {
         "tartlabutils": package,
-        "tartlabutils.modern": modern,
-        "tartlabutils.modern_st7796": adapter,
+        "tartlabutils.runtime": modern,
+        "tartlabutils.st7796": adapter,
     }):
         modern_spec.loader.exec_module(modern)
         adapter_spec.loader.exec_module(adapter)
@@ -247,7 +247,7 @@ class ST7796ScrollTests(unittest.TestCase):
             reset_scroll=lambda: events.append(("reset",)))
 
         with mock.patch.object(
-                modern.ModernDisplayController, "acquire_ui",
+                modern.DisplayController, "acquire_ui",
                 return_value="ui") as acquire_ui:
             result = controller.acquire_ui(321)
 

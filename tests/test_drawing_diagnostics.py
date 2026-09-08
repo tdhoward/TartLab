@@ -91,9 +91,9 @@ class DrawingDiagnosticTests(unittest.TestCase):
         compile(source, "<drawing-diagnostics>", "exec")
         self.assertIn("SAMPLES = 7", source)
         self.assertNotIn("__SAMPLES__", source)
-        self.assertIn("working_modern_app.__dict__", source)
-        self.assertNotIn("__MODERN_APP_SOURCE__", source)
-        self.assertNotIn("__MODERN_EMITTER_SOURCE__", source)
+        self.assertIn("working_app.__dict__", source)
+        self.assertNotIn("__APP_SOURCE__", source)
+        self.assertNotIn("__EMITTER_SOURCE__", source)
         self.assertNotIn("__EMITTER_SWAP_SIZES__", source)
 
     def test_program_rejects_too_few_samples(self):

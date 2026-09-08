@@ -9,8 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def load_power_module():
     spec = importlib.util.spec_from_file_location(
-        "modern_power_under_test",
-        ROOT / "src/lib/tartlabutils/modern_power.py")
+        "power_under_test",
+        ROOT / "src/lib/tartlabutils/power.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

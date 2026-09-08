@@ -1,4 +1,4 @@
-"""Touch-inactivity backlight policy used only by modern LVGL IDE mode."""
+"""Touch-inactivity backlight support for LVGL IDE mode."""
 
 import time
 

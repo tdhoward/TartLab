@@ -443,15 +443,15 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
             )
             package = types.ModuleType("tartlabutils")
             package.__path__ = []
-            power = types.ModuleType("tartlabutils.modern_power")
+            power = types.ModuleType("tartlabutils.power")
             power.ModernIDEBacklightController = FakePowerController
             previous = {
                 name: sys.modules.get(name)
-                for name in ("tartlabutils", "tartlabutils.modern_power")
+                for name in ("tartlabutils", "tartlabutils.power")
             }
             try:
                 sys.modules["tartlabutils"] = package
-                sys.modules["tartlabutils.modern_power"] = power
+                sys.modules["tartlabutils.power"] = power
                 ide.main()
             finally:
                 for task in loop.tasks:

@@ -74,7 +74,7 @@
   },
   "application_adapter": {
     "status": "implemented-hardware-qualified",
-    "platform": "src/lib/tartlabutils/modern.py",
+    "platform": "src/lib/tartlabutils/runtime.py",
     "board_config": "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
     "ui_renderer": "LVGL 9",
     "game_surface": "RGB565_BE dirty rectangles",
@@ -85,20 +85,20 @@
         "sha256": "c1e95e01f2279e5a08a3e31f67ea034ab523a440c1ff547014372ce142255cf1"
       },
       {
-        "path": "src/lib/tartlabutils/modern.py",
-        "sha256": "c25abe8911662346a0bd6561e2a6dc367bc5231e416621f08707e63a00fd8e0f"
+        "path": "src/lib/tartlabutils/runtime.py",
+        "sha256": "dcedc98f6ba26c5dc3c732935db91ccdeffafdd08e269f67dd4fb81d4a637a7a"
       },
       {
-        "path": "src/lib/tartlabutils/modern_factory.py",
-        "sha256": "0936ccbb49d834b26652383c1e8762a1f3bf5c76c462d252bcc55d5471003dbc"
+        "path": "src/lib/tartlabutils/factory.py",
+        "sha256": "8ef66200d1224d455bf262c0eb5371865e309070cfefe0190d7ecc35cc3521c9"
       },
       {
-        "path": "src/lib/tartlabutils/modern_st7796.py",
-        "sha256": "69198a700e4bd2732c5f1ede012572a4ed75362890734e93c9de13a6a3fd430a"
+        "path": "src/lib/tartlabutils/st7796.py",
+        "sha256": "6e9030a843de824acc7c8a33a582c8f3d59a421992495d9e4661698546c8146a"
       },
       {
         "path": "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
-        "sha256": "9810e1f99de5ebfe4c7a6b016a0c452c7d62c49ef1484f1156876e283a9b91b9"
+        "sha256": "25a3df140099867c1297bd6ee82b411846118bac1f30cee1629b633677250f37"
       }
     ]
   }

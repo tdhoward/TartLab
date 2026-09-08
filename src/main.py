@@ -51,7 +51,7 @@ def _select_mode(settings, platform, start_launcher=None):
             settings["STARTUP_MODE"] = "BUTTON"
             save_settings(settings)
         if start_launcher is None:
-            from tartlabutils.modern_launcher import run_startup_launcher
+            from tartlabutils.launcher import run_startup_launcher
             start_launcher = run_startup_launcher
         selected = start_launcher(platform)
         if selected not in ("IDE", "APP"):
@@ -67,7 +67,7 @@ def _select_mode(settings, platform, start_launcher=None):
 def _restore_modern_brightness(platform, settings):
     if not platform.capabilities.get("lvgl_ui", False):
         return
-    from tartlabutils.modern_power import restore_normal_brightness
+    from tartlabutils.power import restore_normal_brightness
     restore_normal_brightness(platform, settings)
 
 
@@ -148,7 +148,7 @@ def run(platform=None, start_ide=None, start_app=None, start_recovery=None,
             if enter_game_mode is not None:
                 enter_game_mode()
             if start_app is None:
-                from tartlabutils.launcher import launch_selected_app
+                from tartlabutils.app_runner import launch_selected_app
                 start_app = launch_selected_app
             mark_boot_route_started("APP")
             app_started = True

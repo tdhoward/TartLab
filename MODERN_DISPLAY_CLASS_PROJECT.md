@@ -350,7 +350,7 @@ DMA-capable surface buffer was accepted by `framebuf` on-device.
 
 ### Host tests
 
-Extend `tests/test_modern_app.py` with fake LVGL draw buffers and surfaces to
+Extend `tests/test_app.py` with fake LVGL draw buffers and surfaces to
 cover:
 
 - full-screen and dirty-region copies;
@@ -403,7 +403,7 @@ driver configuration pass this focused physical check.
 ### Regression coverage
 
 Run the normal host suite, static checks, and pinned-MicroPython compatibility
-checks applicable to `tartlabutils.modern_app`. Hardware results from temporary
+checks applicable to `tartlabutils.app`. Hardware results from temporary
 working-tree code are engineering evidence only; they do not qualify a release.
 
 ## Acceptance criteria

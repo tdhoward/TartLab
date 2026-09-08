@@ -187,7 +187,7 @@ def build_distribution(
     # genuinely empty filesystem without weakening protected-path ownership.
     copy_tree(source / "files" / "user", output / "defaults" / "user", False)
     lib_excludes = (
-        ("tartlabutils/modern_app.py",)
+        ("tartlabutils/app.py",)
         if runtime_profile == "legacy-mp123" else ())
     copy_tree(
         source / "lib", output / "lib", minify_python,

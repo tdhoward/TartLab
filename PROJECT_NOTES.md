@@ -2,18 +2,17 @@
 
 This file is the short architectural brief for contributors and AI agents. Use
 [`README.md`](README.md) for product usage, [`DEVELOPMENT.md`](DEVELOPMENT.md)
-for commands, and the documents under [`tests`](tests) for qualification
-evidence.
+for commands, [`RELEASE_POLICY.md`](RELEASE_POLICY.md) for release scope and
+versioning, and the documents under [`tests`](tests) for qualification evidence.
 
 ## Product and current status
 
 TartLab is a browser-based MicroPython IDE hosted by a Wi-Fi microcontroller.
 It is designed for classrooms: students use a browser to edit, save, and run
 programs without installing drivers, desktop IDEs, or firmware tools. The
-qualified board is currently the LilyGO T-Display-S3 Pro PCB v1.1. The Elecrow
-DLE06235B has a healthy experimental IDE-mode bench boot with owner-confirmed
-setup-AP, LAN, and browser editing workflows, but remains recorded separately
-in `bringup` state; this is not a supported-board claim.
+current qualified modern board set is recorded in the [`boards`](boards)
+catalog and the candidate-bound records in
+[`tests/PHASE6_MODERN_QUALIFICATION.md`](tests/PHASE6_MODERN_QUALIFICATION.md).
 
 The modern platform is still in early alpha and has no field-deployed devices.
 The published modern reference and lab fixtures do not create a rollout
@@ -26,7 +25,7 @@ Two runtime profiles are maintained:
 | Profile | Runtime and release feed | Status |
 | --- | --- | --- |
 | `legacy-mp123` | Exact MicroPython 1.23.0 octal-SPIRAM image; `tdhoward/TartLab`; legacy `manifest.json` | `v0.15` is published and physically qualified on the exact MicroPython 1.23.0 image. |
-| `lvgl-modern` | Pinned MicroPython 1.27.0/LVGL image; `tdhoward/TartLab-modern-releases`; `modern-manifest.json` | The `modern-v0.14.8` lab reference is published and physically qualified for the T-Display-S3 Pro, but modern remains early alpha with no field deployments. Installation or migration is an adult-admin operation. |
+| `lvgl-modern` | Pinned MicroPython 1.27.0/LVGL image; `tdhoward/TartLab-modern-releases`; `modern-manifest.json` | The two-board-qualified `modern-v0.15.4` alpha is published; modern has no field deployments. Firmware provisioning is an adult-admin operation. |
 
 The authoritative runtime-profile identities and status live in
 [`profiles/legacy-mp123.json`](profiles/legacy-mp123.json) and
@@ -40,6 +39,8 @@ identity, capabilities, firmware binding, and lifecycle state live under
 - A normal update is one user action directly to the latest compatible stable
   release. Internal migrations may restart and resume, but users must not hunt
   for intermediate releases.
+- Keep one public TartLab version for platform, browser IDE, and apps. Testing
+  follows changed behavior, independently of major/minor/patch numbering.
 - The browser updater changes filesystem packages only. It cannot replace
   MicroPython firmware.
 - Students must not need serial drivers, firmware flashing, build tools, or a
@@ -113,6 +114,19 @@ a healthy boot. Interrupted operations must resume safely.
 
 ## Release channels and authentication
 
+Routine app/browser releases retain a qualified platform baseline and reuse
+its applicable board-bound evidence. Platform changes require fresh tests for
+affected claims; new boards and changes to firmware or installation/update
+behavior require full relevant physical qualification. The baseline includes
+shared runtime, startup, device-side IDE services, updater, recovery, board
+configuration, and installation contracts as well as firmware.
+
+[`RELEASE_POLICY.md`](RELEASE_POLICY.md) defines these boundaries and the
+single-version convention. Current tooling still requires reviewed comparisons
+and the existing candidate-bound evidence schema. Automated baseline assembly,
+change-impact reports, and validation of evidence reuse remain implementation
+work; they are not available release flags or permission to skip gates.
+
 Release discovery is part of the compatibility boundary:
 
 - `tdhoward/TartLab` is permanently reserved for `legacy-mp123`. Untouched
@@ -166,8 +180,10 @@ environments, raw hardware evidence, private captures, and local
 Run the hardware-free suite and applicable static/build checks before hardware
 work. Host and pinned-MicroPython tests do not emulate flash behavior, memory
 limits, reset behavior, GPIO, display/touch, or Wi-Fi. Hardware-facing changes
-need a focused physical smoke; a release needs the complete candidate-bound
-physical gate. Tier definitions are in
+need fresh physical checks for affected claims and boards. Modern releases
+need complete candidate-bound evidence coverage, combining fresh results with
+justified baseline reuse where applicable; an app/browser release need not
+repeat an unchanged platform's entire physical campaign. Test selection is in
 [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md).
 
 The phase documents are audit records; the entry-point summaries above avoid
@@ -259,7 +275,7 @@ screen and visibly updates the selected filename. Running the app remains a
 separate deliberate touch. Cancellation or navigation must not change durable
 state.
 
-The UI workflow belongs in a modern-only module, while `ModernPlatform`
+The UI workflow belongs in a modern-only module, while `Platform`
 provides LVGL, pointer, geometry, and backlight operations. `src/main.py`
 retains routing policy and must not import a board driver. Before APP mode, the
 launcher must delete or detach its LVGL objects and allow the existing
@@ -355,7 +371,7 @@ not expose:
 
 The follow-up cleanup preserves the intended hardware boundary. Reusable LVGL
 ownership, surface, view, and platform behavior remains in
-`tartlabutils.modern`; T-Display-S3 Pro pins, buses, display/touch construction,
+`tartlabutils.runtime`; T-Display-S3 Pro pins, buses, display/touch construction,
 rotation, and the CST226SE keep-awake policy now live in
 `boards/lilygo_t_display_s3_pro/runtime`. The Elecrow adapter follows the same
 board-owned layout. Rejected PyDevices comparison adapters live under
@@ -502,14 +518,19 @@ after candidate-content comparison. It was promoted through the protected
 after publication for signed provenance, feed isolation, recovery continuity,
 and future OTA availability.
 
-The immediate engineering milestone is the modern touchscreen/backlight
-qualification sequence above. No additional first-release UI feature is
-currently planned; a settings gear remains explicitly deferred. Hardware
-findings may still require source changes, and the feature must not be called
-complete until new evidence is bound to its exact candidate. The historical
-`modern-v0.14.8` evidence predates this feature and does not qualify it.
-Because modern has no field deployments, this candidate may include every
-ready modern board directly; no single-board bridge release is a prerequisite.
+Modern `modern-v0.15.4` qualification and promotion are recorded in
+[`tests/PHASE6_MODERN_QUALIFICATION.md`](tests/PHASE6_MODERN_QUALIFICATION.md).
+The touchscreen/backlight sequence above remains guidance for affected future
+changes; the historical `modern-v0.14.8` evidence cannot establish claims for
+features introduced after it.
+
+The next release-process work is automated qualification reuse: identify and
+retain qualified platform content, compare complete candidates, generate a
+short required-test checklist, and validate inherited evidence at promotion.
+Implement and test those capabilities before replacing reviewed comparisons.
+Routine app/browser releases should then need only their applicable focused
+checks while preserving one public TartLab version. See
+[`RELEASE_POLICY.md`](RELEASE_POLICY.md).
 
 The owner still needs to decide:
 
@@ -537,4 +558,5 @@ and continue removing stale historical status language when behavior changes.
 - Do not claim graphics improvement without reporting geometry, clocks,
   buffering, render/transfer/total timing, and firmware identity.
 - Do not publish to either profile's release feed without its protected,
-  candidate-bound physical gate.
+  candidate-bound qualification evidence. Modern evidence reuse must satisfy
+  the release policy; a version bump or app/browser label is not justification.

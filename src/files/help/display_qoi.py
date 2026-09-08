@@ -1,7 +1,7 @@
 """Decode a QOI image and send its RGB565 output to the direct surface."""
 
 from qoi_reader import QOIImage
-from tartlabutils.modern_app import fill_surface, game_surface
+from tartlabutils.app import fill_surface, game_surface
 
 
 surface = game_surface()

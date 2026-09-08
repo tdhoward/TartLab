@@ -1,10 +1,13 @@
 # Modern touchscreen startup and IDE power qualification
 
-This is the live focused-smoke checklist for the modern touchscreen launcher,
-local app chooser, and IDE inactivity backlight policy. The implementation is
-host-tested, but no physical or release qualification has been recorded for
-it. The published `modern-v0.14.8` evidence predates the feature and must not be
-reused.
+This is the focused-smoke checklist for changes to the modern touchscreen
+launcher, local app chooser, and IDE inactivity backlight policy. Published
+`modern-v0.15.4` qualification is recorded in
+[`PHASE6_MODERN_QUALIFICATION.md`](PHASE6_MODERN_QUALIFICATION.md). Unchanged
+claims may reuse applicable baseline evidence under
+[`RELEASE_POLICY.md`](../RELEASE_POLICY.md); changed claims need fresh checks.
+The published `modern-v0.14.8` evidence predates the feature and cannot establish
+its launcher/backlight claims.
 
 Modern remains early alpha and has no field-deployed devices. The exact
 candidate used for this qualification may therefore introduce selection-aware
@@ -128,7 +131,7 @@ not substituted for an exact-candidate gate.
 
 - [ ] The worktree and candidate inputs are clean and reviewed.
 - [ ] The normal Tier 0 and Tier 1 checks pass, including
-  `tests.test_modern_power`.
+  `tests.test_power`.
 - [ ] Tier 2 pinned-MicroPython compatibility passes on the generated
   distribution.
 - [ ] The modern profile, board catalog, firmware artifact, release package,
@@ -184,12 +187,15 @@ student work.
 
 ## Candidate and release completion
 
-- [ ] Rebuild after every source or packaging correction and repeat the smoke
-  against the replacement candidate.
-- [ ] Run the complete modern provisioning, migration, OTA, recovery,
-  interruption/resume, protected-state, feed-isolation, support-window, and
-  future-update gates from `PHASE6_PROVISIONING.md` and
-  `PHASE6_MODERN_QUALIFICATION.md`.
+- [ ] Rebuild after every source or packaging correction, reassess change
+  impact, and bind applicable smoke results or justified equivalence to the
+  replacement candidate.
+- [ ] Provide evidence for all modern gates in `PHASE6_PROVISIONING.md` and
+  `PHASE6_MODERN_QUALIFICATION.md`. Repeat affected physical checks and justify
+  any baseline reuse under `../RELEASE_POLICY.md`, including supported update
+  paths. New boards and changes to firmware or installation/update behavior
+  require full relevant physical qualification. Legacy migration is outside
+  the modern qualification contract.
 - [ ] Compare final installed inventory and protected-state digests with the
   expected candidate and pre-install values.
 - [ ] Add sanitized board-bound evidence and validate it with
@@ -197,6 +203,6 @@ student work.
 - [ ] Promote only the exact qualified tag through the protected modern
   workflow, then perform the post-publication feed and provenance audit.
 
-Until every applicable item passes for one unchanged candidate, describe the
-feature as implemented and host-tested, not physically qualified, complete, or
-released.
+Until every applicable item is satisfied for the final candidate, describe new
+behavior as implemented and host-tested, not physically qualified or released.
+Earlier qualification remains evidence only for the claims it established.

@@ -1,7 +1,7 @@
 """Display an RGB565 bitmap through the modern direct surface."""
 
 from bmp565 import BMP565
-from tartlabutils.modern_app import (
+from tartlabutils.app import (
     fill_surface, game_surface, swap565_buffer)
 
 

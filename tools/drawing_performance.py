@@ -41,10 +41,10 @@ import gc, machine, os, sys, time, ujson
 for search_path in reversed(('/device', '/lib', '/', '/files/user')):
     if search_path not in sys.path:
         sys.path.insert(0, search_path)
-_MODERN_APP_SOURCE = __MODERN_APP_SOURCE__
-if _MODERN_APP_SOURCE is not None:
-    import tartlabutils.modern_app as _working_modern_app
-    exec(_MODERN_APP_SOURCE, _working_modern_app.__dict__)
+_APP_SOURCE = __APP_SOURCE__
+if _APP_SOURCE is not None:
+    import tartlabutils.app as _working_app
+    exec(_APP_SOURCE, _working_app.__dict__)
 from framebuf import FrameBuffer, RGB565
 from tartlabutils.platform import get_platform
 
@@ -106,7 +106,7 @@ frame_counts = {
 results = {}
 
 if PROFILE == 'modern':
-    from tartlabutils.modern_app import (
+    from tartlabutils.app import (
         DirectCanvas, PortraitCanvas, game_surface)
 
     surface = game_surface()
@@ -307,14 +307,14 @@ def device_program(profile: str, samples: int) -> str:
         raise ValueError("profile must be legacy or modern")
     if samples < 3:
         raise ValueError("samples must be at least 3")
-    modern_app_source = None
+    app_source = None
     if profile == "modern":
-        modern_app_source = (ROOT / "src/lib/tartlabutils/modern_app.py").read_text(
+        app_source = (ROOT / "src/lib/tartlabutils/app.py").read_text(
             encoding="utf-8")
     return (DEVICE_PROGRAM
             .replace("__PROFILE__", repr(profile))
             .replace("__SAMPLES__", str(samples))
-            .replace("__MODERN_APP_SOURCE__", repr(modern_app_source)))
+            .replace("__APP_SOURCE__", repr(app_source)))
 
 
 def extract_result(output: bytes) -> dict:

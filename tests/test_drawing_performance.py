@@ -65,8 +65,8 @@ class DrawingPerformanceTests(unittest.TestCase):
         compile(source, "<drawing-performance>", "exec")
         self.assertIn("PROFILE = 'modern'", source)
         self.assertIn("SAMPLES = 7", source)
-        self.assertIn("working_modern_app.__dict__", source)
-        self.assertNotIn("__MODERN_APP_SOURCE__", source)
+        self.assertIn("working_app.__dict__", source)
+        self.assertNotIn("__APP_SOURCE__", source)
 
     def test_device_program_rejects_too_few_samples(self):
         with self.assertRaisesRegex(ValueError, "at least 3"):

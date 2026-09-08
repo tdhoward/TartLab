@@ -2,7 +2,7 @@
 
 from time import sleep_ms
 
-from tartlabutils.modern_app import (
+from tartlabutils.app import (
     PortraitCanvas, PortraitTouchGrid, game_surface, rgb565)
 
 

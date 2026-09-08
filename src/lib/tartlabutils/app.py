@@ -1,4 +1,4 @@
-"""Direct-drawing helpers for TartLab's modern student applications.
+"""Reusable direct-drawing helpers for TartLab applications.
 
 Use :class:`DirectCanvas` for framebuffer primitives and explicit refreshes,
 or :func:`game_surface` when an image is already packed as RGB565_BE.  Both
@@ -18,12 +18,12 @@ except ImportError:
     _lv = None
 
 try:
-    from ._modern_emitters import swap565 as _swap565_viper
+    from ._emitters import swap565 as _swap565_viper
 except ImportError:
     _swap565_viper = None
 
 try:
-    from ._modern_emitters import copy_rgb565_rows as _copy_rows_viper
+    from ._emitters import copy_rgb565_rows as _copy_rows_viper
 except ImportError:
     _copy_rows_viper = None
 
@@ -89,11 +89,11 @@ def swap565_buffer(buffer):
 
 
 def game_surface():
-    """Acquire exclusive modern display ownership and return its surface."""
+    """Acquire exclusive display ownership and return its surface."""
     platform = get_platform()
     surface = platform.enter_game_mode()
     if getattr(surface, "color_format", None) != "RGB565_BE":
-        raise RuntimeError("modern examples require an RGB565_BE game surface")
+        raise RuntimeError("direct drawing requires an RGB565_BE game surface")
     return surface
 
 

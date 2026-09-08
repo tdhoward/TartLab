@@ -36,13 +36,13 @@ import gc, machine, micropython, os, sys, time, ujson
 for search_path in reversed(('/device', '/lib', '/', '/files/user')):
     if search_path not in sys.path:
         sys.path.insert(0, search_path)
-_MODERN_APP_SOURCE = __MODERN_APP_SOURCE__
-_MODERN_EMITTER_SOURCE = __MODERN_EMITTER_SOURCE__
-import tartlabutils.modern_app as _working_modern_app
-exec(_MODERN_EMITTER_SOURCE, _working_modern_app.__dict__)
-exec(_MODERN_APP_SOURCE, _working_modern_app.__dict__)
+_APP_SOURCE = __APP_SOURCE__
+_EMITTER_SOURCE = __EMITTER_SOURCE__
+import tartlabutils.app as _working_app
+exec(_EMITTER_SOURCE, _working_app.__dict__)
+exec(_APP_SOURCE, _working_app.__dict__)
 from framebuf import FrameBuffer, MONO_HLSB, RGB565
-from tartlabutils.modern_app import DirectCanvas, PortraitCanvas, game_surface
+from tartlabutils.app import DirectCanvas, PortraitCanvas, game_surface
 from tartlabutils.platform import get_platform
 
 SAMPLES = __SAMPLES__
@@ -360,7 +360,7 @@ def swap_correct(function):
     return buffer == expected
 
 def public_viper_swap(buffer, unused_size):
-    _working_modern_app.swap565_buffer(buffer)
+    _working_app.swap565_buffer(buffer)
 
 def swap_samples(function, size, repeats):
     buffer = bytearray(size)
@@ -401,7 +401,7 @@ def python_fill(buffer):
 
 def compiled_fill(buffer):
     FrameBuffer(buffer, FILL_WIDTH, FILL_HEIGHT, RGB565).fill(
-        _working_modern_app.framebuffer_color(FILL_COLOR))
+        _working_app.framebuffer_color(FILL_COLOR))
 
 def fill_samples(function):
     buffer = bytearray(FILL_WIDTH * FILL_HEIGHT * 2)
@@ -480,17 +480,17 @@ print('DRAWING_DIAGNOSTICS=' + ujson.dumps(result))
 def device_program(samples: int) -> str:
     if samples < 3:
         raise ValueError("samples must be at least 3")
-    modern_app_source = (ROOT / "src/lib/tartlabutils/modern_app.py").read_text(
+    app_source = (ROOT / "src/lib/tartlabutils/app.py").read_text(
         encoding="utf-8")
-    emitter_source = (ROOT / "src/lib/tartlabutils/_modern_emitters.py").read_text(
+    emitter_source = (ROOT / "src/lib/tartlabutils/_emitters.py").read_text(
         encoding="utf-8")
-    modern_app_source = modern_app_source.replace(
-        "from ._modern_emitters import swap565 as _swap565_viper",
+    app_source = app_source.replace(
+        "from ._emitters import swap565 as _swap565_viper",
         "_swap565_viper = swap565")
     return (DEVICE_PROGRAM
             .replace("__SAMPLES__", str(samples))
-            .replace("__MODERN_APP_SOURCE__", repr(modern_app_source))
-            .replace("__MODERN_EMITTER_SOURCE__", repr(emitter_source))
+            .replace("__APP_SOURCE__", repr(app_source))
+            .replace("__EMITTER_SOURCE__", repr(emitter_source))
             .replace("__EMITTER_SWAP_SIZES__", repr(EMITTER_SWAP_SIZES)))
 
 

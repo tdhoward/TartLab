@@ -93,7 +93,7 @@ Implemented on 2026-09-03/04:
   overlap-safe Viper strided copy for partial regions. It can compose a prepared
   replacement sprite into a single exposed band before presentation, avoiding
   an intermediate solid-color upload.
-- `tartlabutils.modern_st7796` provides the reusable controller-family adapter,
+- `tartlabutils.st7796` provides the reusable controller-family adapter,
   final-coordinate capability reporting, fixed-area commands, retained origin,
   seam-aware writes, DMA serialization, and cleanup before LVGL ownership.
 - The LilyGO board selects the adapter declaratively and advertises rotation

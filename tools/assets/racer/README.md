@@ -16,6 +16,12 @@ The on-device atlas stays the same size.
 The cow also uses 2x integer scaling (a 64 by 64 sprite cell), with matching
 collision and redraw bounds. Its spawn clearance keeps it inside the road.
 
+On a crash, the HUD compares the current SCORE with HI (the saved high score).
+A new record displays NEW HIGH - TAP. Records are saved only when beaten,
+using a temporary file and replacement at `/state/racer_high_score.json`.
+The best score survives race restarts and reboots and is shared by the help
+example and the copy installed as `/files/user/racer.py` on the device.
+
 Rebuild with `python tools/build_racer_sprites.py` (host dependency: Pillow).
 The packer extracts alpha or magenta color-key bounds, samples at game resolution
 without smoothing, quantizes to sixteen colors, and adds road swatches, a lane

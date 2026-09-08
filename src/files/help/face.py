@@ -1,6 +1,6 @@
 """Build a cheerful face from direct framebuffer drawing primitives."""
 
-from tartlabutils.modern_app import DirectCanvas, game_surface, rgb565
+from tartlabutils.app import DirectCanvas, game_surface, rgb565
 
 
 surface = game_surface()

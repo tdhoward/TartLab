@@ -40,7 +40,7 @@ def copy_source_dist(target):
         if path.is_file():
             shutil.copy2(path, target / path.name)
     for relative in ("configs", "defaults", "recovery", "lib"):
-        ignore = shutil.ignore_patterns("modern_app.py") \
+        ignore = shutil.ignore_patterns("app.py") \
             if relative == "lib" else None
         shutil.copytree(source / relative, target / relative, ignore=ignore)
     shutil.copytree(source / "files/assets", target / "files/assets")
@@ -154,7 +154,7 @@ class DistributionBuildTests(unittest.TestCase):
         (source / "defaults/default.json").write_text("{}\n")
         (source / "recovery/recovery.py").write_text("def run(): pass\n")
         (source / "lib/pydevices/driver.py").write_text("VALUE = 2\n")
-        (source / "lib/tartlabutils/modern_app.py").write_text("MODERN = 1\n")
+        (source / "lib/tartlabutils/app.py").write_text("MODERN = 1\n")
         (source / "ide/ide.py").write_text("def main(): pass\n")
         (source / "ide/www/dist/index.html").write_text("x" * 4096)
         return source
@@ -199,9 +199,9 @@ class DistributionBuildTests(unittest.TestCase):
                 (modern / "files/help/help.py").read_text(), "VALUE = 2\n")
             self.assertFalse((modern / "files/help-legacy").exists())
             self.assertFalse(
-                (legacy / "lib/tartlabutils/modern_app.py").exists())
+                (legacy / "lib/tartlabutils/app.py").exists())
             self.assertTrue(
-                (modern / "lib/tartlabutils/modern_app.py").is_file())
+                (modern / "lib/tartlabutils/app.py").is_file())
             self.assertEqual(result["runtime_profile"], "legacy-mp123")
 
             with self.assertRaisesRegex(ValueError, "requires runtime profile"):

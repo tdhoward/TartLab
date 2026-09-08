@@ -1,18 +1,28 @@
 # TartLab modern board support
 
-TartLab treats a runtime profile, a physical board, and a release as separate
-things:
+TartLab distinguishes runtime profiles, physical boards, qualified platform
+baselines, and product releases:
 
 - a **runtime profile** defines the common MicroPython, LVGL, filesystem, OTA,
   and recovery contract;
 - a **board descriptor** identifies one hardware family/revision and binds it
-  to its selector, firmware, capabilities, and qualification evidence; and
+  to its selector, firmware, capabilities, and qualification evidence;
+- a **qualified platform baseline** binds exact board firmware, shared runtime,
+  startup, device services, updater, recovery, and installation contracts to
+  their board-specific qualification evidence; and
 - a **release** contains shared TartLab filesystem packages plus an explicit
-  compatibility matrix of accepted board and firmware identities.
+  compatibility matrix of accepted board and firmware identities. It combines
+  a platform baseline with the selected browser client, apps, and assets under
+  one public TartLab version.
 
 This separation lets many boards share `lvgl-modern` without copying the IDE,
 updater, recovery code, or release pipeline for each board. It also prevents an
 experimental port from silently becoming a supported target.
+
+Multiple product releases may reuse one qualified platform baseline. Testing
+follows change impact, independently of major/minor/patch numbering. The policy,
+evidence-reuse rules, and pending automation are defined in
+[`RELEASE_POLICY.md`](RELEASE_POLICY.md).
 
 ## Repository layout
 
@@ -29,8 +39,9 @@ src/
     tartlabutils/
       board.py                 Typed-pin and board-reference helpers
       platform.py              Stable application-facing platform boundary
-      modern.py                Shared LVGL/direct-surface implementation
-      modern_factory.py        Shared declarative board constructor
+      runtime.py               Default LVGL/direct-surface implementation
+      factory.py               Shared declarative board constructor
+      legacy_platform.py       Legacy hdwconfig/PyDevices compatibility
 firmware/lvgl-modern/
   pydevices/runtime/           Non-production comparison adapters
   boards/
@@ -44,6 +55,15 @@ Board runtime source belongs beside its descriptor. It is not copied into
 `src/lib/tartlabutils`, and experimental comparison adapters do not live under
 `src` at all. A distribution build must name its board IDs explicitly; the
 builder stages only those runtime directories beneath `dist/board/<board_id>`.
+
+The default runtime uses unprefixed `tartlabutils` module names: `app` for
+direct drawing, `launcher` for the touchscreen chooser, `power` for backlight
+support, and `st7796`/`st77922` for reusable controller adapters. `app_runner`
+launches the selected app and tracks boot health on both runtime profiles.
+Legacy platform behavior lives in `legacy_platform`; `platform` remains the
+shared selection boundary. App imports should use `tartlabutils.app`.
+Release profile IDs, board selector names, firmware paths, and recorded
+qualification evidence retain their existing identities.
 
 `boards/<board_id>/board.json` is the source of truth for board-specific host
 tooling. The catalog is discovered by directory scan, so adding a board does
@@ -152,6 +172,16 @@ same board IDs. Protected promotion requires its board set and firmware hashes
 to match the release matrix exactly, so a multi-board release cannot inherit
 evidence from only the default board.
 
+Every candidate needs applicable evidence for every included board, but this
+does not mean repeating every physical test for every app or browser update.
+Unchanged platform claims may reuse board-bound baseline evidence when a new
+candidate comparison establishes that it still applies. Changed behavior needs
+fresh tests at the scope defined in
+[`tests/TEST_TIERS.md`](tests/TEST_TIERS.md#selecting-release-tests). A new board
+still follows the full qualification sequence below. Current promotion tools
+require the existing candidate-bound evidence schema; automatic baseline
+assembly, change classification, and evidence reuse remain implementation work.
+
 Shared filesystem packages are built once. Modern releases additionally carry
 one authenticated `board-support.tar` with one top-level directory per board in
 the compatibility matrix. Its manifest entry uses the
@@ -225,9 +255,11 @@ The repeatable path is:
 9. Attach sanitized board-bound evidence and change the descriptor to
    `qualified` only as part of protected promotion.
 
-The physical gates remain deliberate because they protect classroom devices.
-The catalog, shared probes, generated selectors, compatibility matrix, and one
-release pipeline are what keep the routine parts from becoming repetitive.
+This full sequence establishes support for a new board. Subsequent releases
+reuse applicable baseline evidence and requalify changed claims under
+[`RELEASE_POLICY.md`](RELEASE_POLICY.md). The catalog, shared probes, generated
+selectors, compatibility matrix, and one release pipeline keep the routine
+parts from becoming repetitive.
 
 ## Review rules
 
@@ -247,5 +279,7 @@ release pipeline are what keep the routine parts from becoming repetitive.
   names, or hardware guesses; use the protected provisioned identity.
 - Do not edit historical evidence to match current structure; add new evidence
   for the new candidate.
+- Do not infer qualification reuse from the product version, unchanged firmware
+  alone, or an app/browser label; compare built content and affected contracts.
 - Keep raw logs, dumps, credentials, USB mappings, and unit identifiers out of
   descriptors and source control.

@@ -119,7 +119,7 @@ def restore_app_execution_brightness():
     if power_controller is not None:
         power_controller.wake()
         return
-    from tartlabutils.modern_power import restore_normal_brightness
+    from tartlabutils.power import restore_normal_brightness
     restore_normal_brightness(platform, settings)
 
 
@@ -840,7 +840,7 @@ def main():
         loop.set_exception_handler(handle_exception)
 
         if platform.capabilities.get("lvgl_ui", False):
-            from tartlabutils.modern_power import ModernIDEBacklightController
+            from tartlabutils.power import ModernIDEBacklightController
             power_controller = ModernIDEBacklightController(platform, settings)
             power_task = loop.create_task(power_controller.run(asyncio))
         else:

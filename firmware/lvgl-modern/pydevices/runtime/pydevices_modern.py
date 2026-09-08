@@ -2,7 +2,7 @@
 
 import time
 
-from tartlabutils.modern import DisplayOwnershipError, ModernIDEView
+from tartlabutils.runtime import DisplayOwnershipError, IDEView
 
 
 UI_OWNER = "ui"
@@ -225,7 +225,7 @@ class PyDevicesModernPlatform:
         return self.controller.acquire_game()
 
     def create_ide_view(self):
-        return ModernIDEView(self.controller, self._lvgl)
+        return IDEView(self.controller, self._lvgl)
 
     def pause_ui_for_benchmark(self):
         """Pause automatic LVGL servicing while the harness drives it."""
