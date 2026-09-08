@@ -42,7 +42,7 @@ REQUIRED_DIST_FILES = (
     "lib/tartlabutils/st7796.py",
     "lib/tartlabutils/st77922.py",
     "lib/tartlabutils/platform.py",
-    "lib/tartlabutils/legacy_platform.py",
+    "lib/tartlabutils/images/qoi.py",
 )
 APPLICATION_ADAPTER_INPUTS = {
     "src/lib/tartlabutils/board.py",
@@ -137,14 +137,12 @@ def validate_profile(profile: dict[str, Any]) -> None:
         "qualification_validator": "tools/check_modern_qualification.py",
         "support_window": "profiles/modern-support-window.json",
         "migration_instructions": "profiles/lvgl-modern-migration.md",
-        "filesystem_vendor_lock": "vendor/legacy-pydevices.lock.json",
     }
     if builder != expected_builder:
         raise ValueError("modern release builder contract is incomplete")
     for key in (
             "package_map", "provisioning_tool", "qualification_attestation_workflow",
-            "qualification_validator", "support_window", "migration_instructions",
-            "filesystem_vendor_lock"):
+            "qualification_validator", "support_window", "migration_instructions"):
         if not (ROOT / builder[key]).is_file():
             raise ValueError(f"modern release builder input is missing: {key}")
     support_window = load_json(ROOT / builder["support_window"])
@@ -209,6 +207,9 @@ def validate_profile(profile: dict[str, Any]) -> None:
 def distribution_inventory(dist: Path) -> list[dict[str, object]]:
     if not dist.is_dir():
         raise ValueError(f"modern distribution not found: {dist}")
+    for relative in ("lib/pydevices", "configs", "lib/tartlabutils/legacy_platform.py"):
+        if (dist / relative).exists():
+            raise ValueError("modern distribution contains legacy payload: %s" % relative)
     for relative in REQUIRED_DIST_FILES:
         if not (dist / relative).is_file():
             raise ValueError(f"modern distribution is missing {relative}")

@@ -54,7 +54,7 @@ def copy_source_dist(target):
         ignore = shutil.ignore_patterns("app.py") \
             if relative == "lib" else None
         shutil.copytree(source / relative, target / relative, ignore=ignore)
-    shutil.copytree(source / "files/assets", target / "files/assets")
+    shutil.copytree(source / "files/assets-legacy", target / "files/assets")
     shutil.copytree(source / "files/help-legacy", target / "files/help")
     shutil.copytree(source / "files/user", target / "files/user")
     (target / "ide/www").mkdir(parents=True)

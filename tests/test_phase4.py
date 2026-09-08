@@ -40,7 +40,7 @@ class PyDevicesImportInventoryTests(unittest.TestCase):
         self.assertIn("touch_drv/cst226.py", board)
         examples = categories["shipped_examples"]["files"]
         self.assertIn("add_ons/displaybuf.py", examples)
-        self.assertIn("add_ons/qoi_reader.py", examples)
+        self.assertNotIn("add_ons/qoi_reader.py", examples)
         self.assertIn("eventsys/keys.py", examples)
 
     def test_pinned_compiler_accepts_tag_or_exact_commit_identity(self):
@@ -95,8 +95,8 @@ class PyDevicesUpstreamMappingTests(unittest.TestCase):
             "drop_in_compatible_files": 0,
             "mapped_files": 38,
             "pinned_repositories": 4,
-            "reviewed_reachable_files": 39,
-            "without_current_equivalent": 1,
+            "reviewed_reachable_files": 38,
+            "without_current_equivalent": 0,
         })
 
         entries = {entry["local_path"]: entry
@@ -108,9 +108,7 @@ class PyDevicesUpstreamMappingTests(unittest.TestCase):
                 "board_config.py"),
             "repository": "pydevices",
         }])
-        qoi = entries["add_ons/qoi_reader.py"]
-        self.assertEqual(qoi["relationship"], "no_current_equivalent")
-        self.assertEqual(qoi["upstream"], [])
+        self.assertNotIn("add_ons/qoi_reader.py", entries)
         self.assertTrue(all(
             entry["drop_in_compatible"] is False
             for entry in mapping["mappings"]))

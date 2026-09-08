@@ -43,7 +43,7 @@ def copy_source_dist(target):
         ignore = shutil.ignore_patterns("app.py") \
             if relative == "lib" else None
         shutil.copytree(source / relative, target / relative, ignore=ignore)
-    shutil.copytree(source / "files/assets", target / "files/assets")
+    shutil.copytree(source / "files/assets-legacy", target / "files/assets")
     shutil.copytree(source / "files/help-legacy", target / "files/help")
     shutil.copytree(source / "files/user", target / "files/user")
     (target / "ide/www").mkdir(parents=True)
@@ -141,7 +141,7 @@ class DistributionBuildTests(unittest.TestCase):
     def make_source(self, root):
         source = root / "src"
         for relative in (
-                "files/help", "files/help-legacy", "files/assets",
+                "files/help", "files/help-legacy", "files/assets", "files/assets-legacy",
                 "files/user", "configs", "defaults", "recovery",
                 "lib/pydevices", "lib/tartlabutils",
                 "ide/www/dist"):
@@ -149,12 +149,15 @@ class DistributionBuildTests(unittest.TestCase):
         (source / "main.py").write_text("print('main')\n")
         (source / "files/help/help.py").write_text("VALUE = 2\n")
         (source / "files/help-legacy/help.py").write_text("VALUE = 1\n")
+        (source / "files/assets/modern.ts16").write_bytes(b"modern")
+        (source / "files/assets-legacy/warrior.bmp").write_bytes(b"legacy")
         (source / "files/user/hello.py").write_text("print('hello')\n")
         (source / "configs/board.py").write_text("BOARD = 1\n")
         (source / "defaults/default.json").write_text("{}\n")
         (source / "recovery/recovery.py").write_text("def run(): pass\n")
         (source / "lib/pydevices/driver.py").write_text("VALUE = 2\n")
         (source / "lib/tartlabutils/app.py").write_text("MODERN = 1\n")
+        (source / "lib/tartlabutils/legacy_platform.py").write_text("LEGACY = 1\n")
         (source / "ide/ide.py").write_text("def main(): pass\n")
         (source / "ide/www/dist/index.html").write_text("x" * 4096)
         return source
@@ -198,6 +201,15 @@ class DistributionBuildTests(unittest.TestCase):
             self.assertEqual(
                 (modern / "files/help/help.py").read_text(), "VALUE = 2\n")
             self.assertFalse((modern / "files/help-legacy").exists())
+            self.assertEqual([p.name for p in (modern / "files/assets").iterdir()],
+                             ["modern.ts16"])
+            self.assertEqual([p.name for p in (legacy / "files/assets").iterdir()],
+                             ["warrior.bmp"])
+            self.assertFalse((modern / "lib/pydevices").exists())
+            self.assertFalse((modern / "configs").exists())
+            self.assertFalse((modern / "lib/tartlabutils/legacy_platform.py").exists())
+            self.assertTrue((legacy / "lib/pydevices/driver.py").is_file())
+            self.assertTrue((legacy / "configs/board.py").is_file())
             self.assertFalse(
                 (legacy / "lib/tartlabutils/app.py").exists())
             self.assertTrue(

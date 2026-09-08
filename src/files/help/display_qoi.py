@@ -1,6 +1,6 @@
 """Decode a QOI image and send its RGB565 output to the direct surface."""
 
-from qoi_reader import QOIImage
+from tartlabutils.images.qoi import QOIImage
 from tartlabutils.app import fill_surface, game_surface
 
 
@@ -13,5 +13,12 @@ if image.width > surface.width or image.height > surface.height:
 
 x = (surface.width - image.width) // 2
 y = (surface.height - image.height) // 2
-# as_rgb565() already returns the big-endian format promised by the surface.
-surface.write(image.as_rgb565(), x, y, image.width, image.height)
+# Decode just eight rows at a time. Explicitly composite any alpha over black.
+strips = image.iter_rgb565(rows=8, background=(0, 0, 0))
+try:
+    for row, pixels in strips:
+        height = len(pixels) // (image.width * 2)
+        # write() waits for DMA completion before the decoder reuses this buffer.
+        surface.write(pixels, x, y + row, image.width, height)
+finally:
+    strips.close()

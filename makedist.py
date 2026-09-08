@@ -80,14 +80,16 @@ def copy_tree(
     for path in sorted(source.rglob("*")):
         relative = path.relative_to(source)
         if not path.is_file() or _is_excluded(relative) or \
-                relative.as_posix() in excludes:
+                any(relative == Path(excluded) or Path(excluded) in relative.parents
+                    for excluded in excludes):
             continue
         copy_file(path, target / relative, minify_python)
 
 
-def copy_top_level(source: Path, target: Path, minify_python: bool = False) -> None:
+def copy_top_level(source: Path, target: Path, minify_python: bool = False,
+                   excludes=()) -> None:
     for path in sorted(item for item in source.iterdir() if item.is_file()):
-        if not _is_excluded(path.relative_to(source)):
+        if path.name not in excludes and not _is_excluded(path.relative_to(source)):
             copy_file(path, target / path.name, minify_python)
 
 
@@ -174,10 +176,14 @@ def build_distribution(
         raise FileNotFoundError(
             "Web output is missing. Run without --skip-web-build: %s" % web_dist)
 
-    copy_top_level(source, output)
-    for relative in ("configs", "defaults", "recovery"):
+    copy_top_level(source, output, excludes=("hdwconfig.py",)
+                   if runtime_profile == "lvgl-modern" else ())
+    for relative in ("defaults", "recovery"):
         copy_tree(source / relative, output / relative, False)
-    copy_tree(source / "files" / "assets", output / "files" / "assets", False)
+    if runtime_profile == "legacy-mp123":
+        copy_tree(source / "configs", output / "configs", False)
+    assets_source = "assets" if runtime_profile == "lvgl-modern" else "assets-legacy"
+    copy_tree(source / "files" / assets_source, output / "files" / "assets", False)
     copy_tree(source / "files" / "user", output / "files" / "user", False)
     help_source = "help" if runtime_profile == "lvgl-modern" else "help-legacy"
     copy_tree(source / "files" / help_source, output / "files" / "help", False)
@@ -188,7 +194,7 @@ def build_distribution(
     copy_tree(source / "files" / "user", output / "defaults" / "user", False)
     lib_excludes = (
         ("tartlabutils/app.py",)
-        if runtime_profile == "legacy-mp123" else ())
+        if runtime_profile == "legacy-mp123" else ("pydevices", "tartlabutils/legacy_platform.py"))
     copy_tree(
         source / "lib", output / "lib", minify_python,
         excludes=lib_excludes)

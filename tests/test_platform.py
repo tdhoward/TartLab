@@ -79,7 +79,7 @@ class PlatformContractTests(unittest.TestCase):
             self.platform_module.board_runtime_path = original
         self.assertEqual(paths, [
             "/device", "/board/lilygo_t_display_s3_pro", "/lib", "/",
-            "/files/user", *self.legacy_module.LEGACY_SEARCH_PATHS,
+            "/files/user",
             "host-library",
         ])
 

@@ -305,18 +305,12 @@ def build_release(
     firmware = firmware_policies[default_board_id]
     firmware_asset = firmware_assets[default_board_id]
     published_firmware = published_firmwares[default_board_id]
-    vendor_lock_asset = output / "filesystem-vendor-lock.json"
     support_window_asset = output / "support-window.json"
-    _write_canonical_copy(
-        ROOT / profile["release_builder"]["filesystem_vendor_lock"],
-        vendor_lock_asset)
     support_window_source = ROOT / profile["release_builder"]["support_window"]
     support_window = load_json(support_window_source)
     validate_support_window(support_window)
     _write_canonical_copy(support_window_source, support_window_asset)
 
-    provenance_assets.append(
-        _release_file(vendor_lock_asset, kind="filesystem-vendor-lock"))
     published_support_window = _release_file(
         support_window_asset, kind="support-window-policy")
     compatibility = {
@@ -433,7 +427,6 @@ def build_release(
                 board_id: firmware_policies[board_id]["provenance_sha256"]
                 for board_id in sorted(firmware_policies)
             },
-            "filesystem_vendor_lock_sha256": sha256_file(vendor_lock_asset),
             "support_window_sha256": sha256_file(support_window_asset),
             "migration_instructions_sha256": sha256_file(migration_asset),
         },

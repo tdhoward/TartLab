@@ -27,7 +27,7 @@ def board_runtime_path(identity_file=BOARD_IDENTITY_FILE):
 
 
 def configure_paths(paths=None):
-    """Add the protected board runtime, then the legacy compatibility paths."""
+    """Use isolated modern board imports, or legacy paths on legacy devices."""
     if paths is None:
         paths = sys.path
     runtime_path = board_runtime_path()
@@ -38,8 +38,10 @@ def configure_paths(paths=None):
         insert_at = paths.index("/device") + 1 if "/device" in paths else 0
         paths.insert(insert_at, runtime_path)
 
-    from tartlabutils.legacy_platform import configure_legacy_paths
-    return configure_legacy_paths(paths)
+    if runtime_path is None:
+        from tartlabutils.legacy_platform import configure_legacy_paths
+        return configure_legacy_paths(paths)
+    return paths
 
 
 _current_platform = None

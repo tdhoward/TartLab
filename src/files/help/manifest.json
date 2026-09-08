@@ -2,82 +2,87 @@
 	"help_system_version": 1,
 	"folders": [
 		{
-			"folder name":"TartLab",
+			"folder name": "TartLab",
 			"entries": [
 				{
-					"title":"Getting started",
-					"subtitle":"Using the TartLab web app",
-					"file":"tartlab1.html"
+					"title": "Getting started",
+					"subtitle": "Using the TartLab web app",
+					"file": "tartlab1.html"
 				}
 			]
 		},
 		{
-			"folder name":"Intro to Python",
+			"folder name": "Intro to Python",
 			"entries": [
 				{
-					"title":"Basics",
-					"subtitle":"Rules, common examples, etc",
-					"file":"pybasics.py"
+					"title": "Basics",
+					"subtitle": "Rules, common examples, etc",
+					"file": "pybasics.py"
 				},
 				{
-					"title":"Drawing basics",
-					"subtitle":"Pixels, lines, rectangles, and explicit refreshes",
-					"file":"drawingbasics.py"
+					"title": "Drawing basics",
+					"subtitle": "Pixels, lines, rectangles, and explicit refreshes",
+					"file": "drawingbasics.py"
 				}
 			]
 		},
 		{
-			"folder name":"Examples",
+			"folder name": "Examples",
 			"entries": [
 				{
-					"title":"Racer",
-					"subtitle":"Isometric racing with coins and crossing animals",
-					"file":"racer.py"
+					"title": "Racer",
+					"subtitle": "Isometric racing with coins and crossing animals",
+					"file": "racer.py"
 				},
 				{
-					"title":"Testris",
-					"subtitle":"Portrait direct-rendered falling blocks",
-					"file":"testris.py"
+					"title": "Testris",
+					"subtitle": "Portrait direct-rendered falling blocks",
+					"file": "testris.py"
 				},
 				{
-					"title":"Snake",
-					"subtitle":"A portrait touch game on the direct canvas",
-					"file":"snake.py"
+					"title": "Snake",
+					"subtitle": "A portrait touch game on the direct canvas",
+					"file": "snake.py"
 				},
 				{
-					"title":"Calculator",
-					"subtitle":"Draw a portrait framebuffer keypad",
-					"file":"calculator.py"
+					"title": "Calculator",
+					"subtitle": "Draw a portrait framebuffer keypad",
+					"file": "calculator.py"
 				},
 				{
-					"title":"Face",
-					"subtitle":"Build curves from primitive pixel runs",
-					"file":"face.py"
+					"title": "Face",
+					"subtitle": "Build curves from primitive pixel runs",
+					"file": "face.py"
 				},
 				{
-					"title":"Moire (slow)",
-					"subtitle":"Draw lines and refresh after each pair",
-					"file":"moire_slow.py"
+					"title": "Moire (slow)",
+					"subtitle": "Draw lines and refresh after each pair",
+					"file": "moire_slow.py"
 				},
 				{
-					"title":"Moire (fast)",
-					"subtitle":"Draw all lines before one refresh",
-					"file":"moire_fast.py"
+					"title": "Moire (fast)",
+					"subtitle": "Draw all lines before one refresh",
+					"file": "moire_fast.py"
 				},
 				{
-					"title":"Animation",
-					"subtitle":"Animate with dirty-rectangle transfers",
-					"file":"animation.py"
+					"title": "Animation",
+					"subtitle": "Animate with dirty-rectangle transfers",
+					"file": "animation.py"
 				},
 				{
-					"title":"Display bitmap",
-					"subtitle":"Send RGB565 pixels to the direct surface",
-					"file":"display_bmp.py"
+					"title": "Display sprite sheet",
+					"subtitle": "Draw a compact TS16 image with transparency",
+					"file": "display_ts16.py"
 				},
 				{
-					"title":"Sprite",
-					"subtitle":"Animate pixels on a direct canvas",
-					"file":"sprite.py"
+					"title": "Display QOI image",
+					"subtitle": "Stream compressed pixels with a small decode buffer",
+					"file": "display_qoi.py"
+				},
+				{
+					"title": "Sprite",
+					"subtitle": "Animate prepared TS16 sprites on a direct canvas",
+					"file": "sprite.py"
 				}
 			]
 		}

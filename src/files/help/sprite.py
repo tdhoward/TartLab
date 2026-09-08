@@ -1,23 +1,20 @@
 """Animate one sprite sheet using TartLab's modern direct canvas."""
 
-from framebuf import FrameBuffer, RGB565
 from random import choice
 from time import sleep_ms
 
-from bmp565 import BMP565
-from tartlabutils.app import (
-    DirectCanvas, TouchGrid, framebuffer_color, game_surface,
-    swap565_buffer)
+from tartlabutils.app import DirectCanvas, TouchGrid, game_surface, rgb565
+from tartlabutils.sprites import SpriteSheet
 
 
 surface = game_surface()
 canvas = DirectCanvas(surface)
 stop_button = TouchGrid(["stop"], 1, 1)
 
-sheet = BMP565("files/assets/warrior.bmp", streamed=True)
+sheet = SpriteSheet("files/assets/warrior.ts16")
 sprite_width = sheet.width // 3
 sprite_height = sheet.height // 4
-background = framebuffer_color(sheet[0])
+background = rgb565(30, 40, 50)
 
 directions = {
     "down": sheet.height // 2,
@@ -25,16 +22,14 @@ directions = {
     "right": sheet.height // 4,
     "up": 0,
 }
-frames = (0, sprite_width, sprite_width * 2, sprite_width)
 
 
-def draw_sprite(x, y, frame_x, frame_y):
-    pixels = sheet[
-        frame_x:frame_x + sprite_width,
-        frame_y:frame_y + sprite_height]
-    swap565_buffer(pixels)
-    sprite = FrameBuffer(pixels, sprite_width, sprite_height, RGB565)
-    canvas.blit(sprite, x, y)
+# Prepare the twelve frames once; the animation performs no image decoding.
+sprites = {name: tuple(sheet.sprite(frame_x, frame_y, sprite_width, sprite_height)
+                       for frame_x in (0, sprite_width, sprite_width * 2))
+           for name, frame_y in directions.items()}
+del sheet
+clip = (0, 0, canvas.width, canvas.height)
 
 
 canvas.fill(background)
@@ -60,9 +55,9 @@ for unused in range(300):
         direction = choice(tuple(directions))
         continue
 
-    for frame_x in frames:
+    for frame in (0, 1, 2, 1):
         canvas.fill_rect(x, y, sprite_width, sprite_height, background)
         x, y = next_x, next_y
-        draw_sprite(x, y, frame_x, directions[direction])
+        sprites[direction][frame].draw(canvas, x, y, clip)
         canvas.show()
         sleep_ms(50)

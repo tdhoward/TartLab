@@ -426,6 +426,18 @@ def load_app(platform, lvgl=None, viper_swap=None, viper_copy=None):
 
 
 class ModernAppDrawingTests(unittest.TestCase):
+    def test_fill_seeds_shadow_surface_before_using_strips(self):
+        surface = FakeSeedSurface(width=5, height=19)
+        module = load_app(types.SimpleNamespace())
+        module.fill_surface(surface, 0xF800)
+        self.assertEqual(surface.writes, [(b"\xf8\x00" * 95, 0, 0, 5, 19)])
+        surface.writes.clear()
+        module.fill_surface(surface, 0x07E0)
+        self.assertEqual([entry[1:] for entry in surface.writes],
+                         [(0, 0, 5, 16), (0, 16, 5, 3)])
+        self.assertTrue(all(entry[0] == b"\x07\xe0" * (entry[3] * entry[4])
+                            for entry in surface.writes))
+
     def test_canvas_seeds_shadow_surface_before_sending_dirty_regions(self):
         surface = FakeSeedSurface(width=5, height=3)
         module = load_app(types.SimpleNamespace(), fake_lvgl())
@@ -1209,19 +1221,20 @@ class ModernAppDrawingTests(unittest.TestCase):
 
 
 class ModernHelpSourceTests(unittest.TestCase):
-    def test_modern_and_legacy_help_trees_have_the_same_files(self):
+    def test_help_trees_share_examples_except_their_image_formats(self):
         modern = ROOT / "src/files/help"
         legacy = ROOT / "src/files/help-legacy"
         modern_files = {
             path.name for path in modern.iterdir() if path.is_file()}
         legacy_files = {
             path.name for path in legacy.iterdir() if path.is_file()}
-        self.assertEqual(modern_files, legacy_files)
+        self.assertEqual(modern_files - {"display_ts16.py", "display_qoi.py"},
+                         legacy_files - {"display_bmp.py"})
 
     def test_modern_examples_use_only_the_direct_display_approach(self):
         forbidden = {
             "hdwconfig", "displaybuf", "touch_keypad", "eventsys",
-            "palettes", "graphics", "lvgl",
+            "palettes", "graphics", "lvgl", "bmp565", "qoi_reader", "pydevices",
         }
         for path in sorted((ROOT / "src/files/help").glob("*.py")):
             source = path.read_text(encoding="utf-8")

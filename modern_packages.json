@@ -18,7 +18,10 @@
     "source": "dist/*",
     "target": "/",
     "clear_first": false,
-    "exclude": ["app.py", "hdwconfig.py"],
+    "exclude": [
+      "app.py",
+      "hdwconfig.py"
+    ],
     "ownership": "system"
   },
   {
@@ -46,20 +49,6 @@
     "name": "libahttpserver",
     "source": "dist/lib/ahttpserver",
     "target": "/lib/ahttpserver",
-    "clear_first": true,
-    "ownership": "system"
-  },
-  {
-    "name": "pydevices",
-    "source": "dist/lib/pydevices",
-    "target": "/lib/pydevices",
-    "clear_first": true,
-    "ownership": "vendor"
-  },
-  {
-    "name": "configs",
-    "source": "dist/configs",
-    "target": "/configs",
     "clear_first": true,
     "ownership": "system"
   },

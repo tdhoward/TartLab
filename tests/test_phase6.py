@@ -228,7 +228,7 @@ class ModernReleaseTests(unittest.TestCase):
                 release, "lvgl-modern", self.firmware_sha256, dist=dist)
             self.assertFalse(result["mutation_performed"])
             self.assertEqual(result["packages"], 3)
-            self.assertEqual(result["published_provenance_assets"], 3)
+            self.assertEqual(result["published_provenance_assets"], 2)
             self.assertEqual(result["support_window_floor"], "v0.13")
             support_window = json.loads(
                 (release / "support-window.json").read_text(encoding="utf-8"))
@@ -432,16 +432,16 @@ class ModernReleaseAuthenticityTests(unittest.TestCase):
                     "checksums.json", "promotion_attestation.json",
                     "rootfiles.tar", "compatibility.json",
                     "firmware-build-lock.json", "firmware-provenance.json",
-                    "filesystem-vendor-lock.json", "support-window.json",
+                    "support-window.json",
                     "MIGRATION.md",
                     "tartlab-modern-v1.2.3.bin"):
                 (release / name).write_text("{}\n", encoding="utf-8")
             self.assertEqual(
-                len(modern_release_assets(release, self.policy)), 12)
+                len(modern_release_assets(release, self.policy)), 11)
             (release / "promotion_attestation.json").unlink()
             self.assertEqual(
                 len(modern_release_assets(
-                    release, self.policy, purpose="qualification")), 11)
+                    release, self.policy, purpose="qualification")), 10)
             with self.assertRaisesRegex(ValueError, "promotion_attestation"):
                 modern_release_assets(release, self.policy)
             (release / "manifest.json").write_text("[]\n", encoding="utf-8")

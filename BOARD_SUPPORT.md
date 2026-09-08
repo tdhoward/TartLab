@@ -42,6 +42,11 @@ src/
       runtime.py               Default LVGL/direct-surface implementation
       factory.py               Shared declarative board constructor
       legacy_platform.py       Legacy hdwconfig/PyDevices compatibility
+      sprites.py               Packed indexed sprite sheets and prepared runs
+      images/qoi.py            Streaming RGB565 image decoding
+  files/
+    assets/                    Modern TS16 and QOI assets
+    assets-legacy/             Original warrior.bmp for legacy builds
 firmware/lvgl-modern/
   pydevices/runtime/           Non-production comparison adapters
   boards/
@@ -62,6 +67,12 @@ support, and `st7796`/`st77922` for reusable controller adapters. `app_runner`
 launches the selected app and tracks boot health on both runtime profiles.
 Legacy platform behavior lives in `legacy_platform`; `platform` remains the
 shared selection boundary. App imports should use `tartlabutils.app`.
+Modern builds omit PyDevices, legacy configs, and `legacy_platform.py`; protected
+board identity selects modern import paths without adding the legacy paths.
+The modern package map and provenance no longer include the legacy vendor lock.
+No migration or cleanup packages are needed for this pre-public-release change.
+Image formats, conversion, and memory contracts are documented in
+[`IMAGE_ASSETS.md`](IMAGE_ASSETS.md).
 Release profile IDs, board selector names, firmware paths, and recorded
 qualification evidence retain their existing identities.
 

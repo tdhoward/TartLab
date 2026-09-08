@@ -142,7 +142,7 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
         "modern-manifest.json", "build_metadata.json",
         "payload_inventory.json", "dist_inventory.json", "compatibility.json",
         "firmware-build-lock.json", "firmware-provenance.json",
-        "filesystem-vendor-lock.json", "MIGRATION.md",
+        "MIGRATION.md",
         "support-window.json",
     }
     missing = sorted(required_metadata.difference(checksums))
@@ -280,8 +280,8 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
 
     provenance = published.get("provenance")
     if not isinstance(provenance, list) or \
-            len(provenance) != len(published_firmwares) * 2 + 1:
-        raise ValueError("modern source/vendor provenance inventory is incomplete")
+            len(provenance) != len(published_firmwares) * 2:
+        raise ValueError("modern firmware provenance inventory is incomplete")
     catalog = load_catalog()
     for compatible_board_id in published_firmwares:
         descriptor = catalog[compatible_board_id]
@@ -306,19 +306,6 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
                     ROOT / descriptor["firmware"][source_key]):
                 raise ValueError(
                     "published modern provenance differs from source: %s" % kind)
-    vendor_matches = [
-        item for item in provenance if isinstance(item, dict) and
-        item.get("kind") == "filesystem-vendor-lock"
-    ]
-    if len(vendor_matches) != 1:
-        raise ValueError("modern filesystem provenance is incomplete")
-    vendor_path = _validate_published_file(
-        release, vendor_matches[0], checksums, "filesystem-vendor-lock")
-    if vendor_path.name != "filesystem-vendor-lock.json" or \
-            vendor_matches[0].get("sha256") != sha256_source_file(
-                ROOT / profile["release_builder"]["filesystem_vendor_lock"]):
-        raise ValueError("published modern filesystem provenance differs")
-
     packages = manifest.get("packages")
     if not isinstance(packages, list) or not packages:
         raise ValueError("modern manifest contains no packages")

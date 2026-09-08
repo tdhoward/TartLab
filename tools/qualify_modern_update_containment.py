@@ -26,7 +26,7 @@ from release_utils import sha256_file
 
 
 STAGE_ROOT = "/qualification/modern-update"
-INTERRUPT_PACKAGE = "pydevices.tar"
+INTERRUPT_PACKAGE = "assetfiles.tar"
 CASES = ("corrupt-download", "interrupt-download", "interrupt-recovery")
 ATTESTATION_RECEIPT = "modern-containment-attestation.json"
 OPERATOR_POWER_LOSS_TIMEOUT = 600

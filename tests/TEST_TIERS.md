@@ -55,11 +55,20 @@ Important checks include:
 - `tools/modern_board_firmware.py`: validates each board-specific frozen-driver
   recipe, local input hashes, reproducibility record, and candidate artifact.
 - `tools/check_modern_profile.py`: validates the modern filesystem profile and
-  isolated release machinery.
+  isolated release machinery, rejecting legacy payloads in modern distributions.
 - `tools/check_release_feed_isolation.py`: compares checked-in profile policy
   with both live public release feeds without mutation.
 
 These are source and policy claims, not hardware claims.
+
+Image and asset changes run `python -m unittest tests.test_images
+tests.test_image_examples tests.test_racer_sprites tests.test_phase2 -v`.
+These cover QOI opcodes, bounded reads, borrowed strip buffers, alpha policy,
+invalid streams, TS16 frame extraction, example execution, and profile-specific
+help/assets/vendor selection. `tests.test_image_conversion` additionally checks
+the host converter with Pillow installed. See `IMAGE_ASSETS.md` for conversion
+commands and memory contracts. Run both profile builds when changing asset
+selection; modern releases must contain no PyDevices package or vendor lock.
 
 ## Tier 1: CPython virtual device
 

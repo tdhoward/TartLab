@@ -90,6 +90,8 @@ jobs:
           tests.test_modern_board_firmware
           tests.test_elecrow_dle06235b
           tests.test_app
+          tests.test_images
+          tests.test_image_examples
           tests.test_modern_profile
           tests.test_phase6
           tests.test_phase6_provisioning

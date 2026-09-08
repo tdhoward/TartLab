@@ -157,13 +157,6 @@
     },
     {
       "drop_in_compatible": false,
-      "local_path": "add_ons/qoi_reader.py",
-      "note": "No QOI reader path or source reference exists in any of the four pinned trees; this file was added in TartLab history after the original snapshot.",
-      "relationship": "no_current_equivalent",
-      "upstream": []
-    },
-    {
-      "drop_in_compatible": false,
       "local_path": "add_ons/touch_keypad.py",
       "relationship": "restructured_evolved",
       "upstream": [
@@ -521,7 +514,7 @@
     "drop_in_compatible_files": 0,
     "mapped_files": 38,
     "pinned_repositories": 4,
-    "reviewed_reachable_files": 39,
-    "without_current_equivalent": 1
+    "reviewed_reachable_files": 38,
+    "without_current_equivalent": 0
   }
 }

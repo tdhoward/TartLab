@@ -99,8 +99,13 @@ def game_surface():
 
 def fill_surface(surface, color):
     """Fill a direct surface with a standard 16-bit RGB565 color."""
-    rows = min(TRANSFER_ROWS, surface.height)
-    buffer = surface.allocate_buffer(surface.width, rows)
+    seed = (getattr(surface, "requires_full_frame_seed", False) and
+            not getattr(surface, "shadow_valid", False))
+    rows = surface.height if seed else min(TRANSFER_ROWS, surface.height)
+    # Surfaces that maintain a full-frame shadow require one complete first
+    # write. They copy the ordinary buffer into their own transport storage.
+    buffer = (bytearray(surface.width * rows * 2) if seed else
+              surface.allocate_buffer(surface.width, rows))
     try:
         view = memoryview(buffer)
         tile = FrameBuffer(buffer, surface.width, rows, RGB565)
@@ -112,7 +117,8 @@ def fill_surface(surface, color):
             surface.write(view[:size], 0, y, surface.width, height)
             y += height
     finally:
-        surface.free_buffer(buffer)
+        if not seed:
+            surface.free_buffer(buffer)
 
 
 class _PreparedSprite:

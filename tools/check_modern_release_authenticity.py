@@ -169,7 +169,7 @@ def release_assets(release: Path, policy: dict[str, Any], *,
         "modern-manifest.json", "build_metadata.json", "checksums.json",
         "compatibility.json",
         "firmware-build-lock.json", "firmware-provenance.json",
-        "filesystem-vendor-lock.json", "support-window.json", "MIGRATION.md",
+        "support-window.json", "MIGRATION.md",
     }
     if purpose == "release":
         required.add("promotion_attestation.json")
