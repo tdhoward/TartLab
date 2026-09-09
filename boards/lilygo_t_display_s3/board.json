@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "id": "lilygo_t_display_s3",
+  "name": "LilyGO T-Display-S3 (non-touch)",
+  "vendor": "LilyGO",
+  "runtime_profile": "lvgl-modern",
+  "support_status": "bringup",
+  "hardware": {
+    "revisions": ["unverified"],
+    "mcu": "ESP32-S3",
+    "flash_size_bytes": 16777216,
+    "psram_size_bytes": 8388608,
+    "display": {
+      "width": 320,
+      "height": 170,
+      "orientation": "landscape",
+      "transport": "I8080 (8-bit parallel)",
+      "controller": "ST7789V"
+    },
+    "touch": {"present": false, "controller": null},
+    "console": "ESP32-S3 native USB Serial/JTAG",
+    "power": "USB-C; battery operation untested"
+  },
+  "selector": null,
+  "runtime": null,
+  "firmware": null,
+  "qualification": null,
+  "documentation": [
+    "boards/lilygo_t_display_s3/README.md",
+    "boards/lilygo_t_display_s3/BRINGUP_RESULTS.md"
+  ]
+}

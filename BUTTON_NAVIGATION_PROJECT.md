@@ -1,7 +1,10 @@
 # Button navigation and non-touch device support
 
-Status: Planned. No modern non-touch board support is implemented or qualified
-by this document.
+Status: Initial board bring-up started. The standalone pinned-modern display
+and physical-button bench results are recorded in
+[T-Display-S3 bring-up results](boards/lilygo_t_display_s3/BRINGUP_RESULTS.md).
+Production button navigation remains planned; no modern non-touch board is
+qualified by this document.
 
 ## Objective and scope
 
