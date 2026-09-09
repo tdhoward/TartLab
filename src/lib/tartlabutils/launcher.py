@@ -1,4 +1,4 @@
-"""Touch-first per-boot launcher for the default LVGL runtime."""
+"""Per-boot LVGL launcher with pointer or physical-button navigation."""
 
 import os
 import time
@@ -134,7 +134,8 @@ class TouchscreenLauncher:
                  timeout_seconds=DEFAULT_TIMEOUT_SECONDS,
                  ticks_ms=None, ticks_diff=None, sleep_ms=None,
                  list_directory=None, get_path_kind=None,
-                 validate_app=None, save_app=None, user_root=USER_ROOT):
+                 validate_app=None, save_app=None, user_root=USER_ROOT,
+                 navigation=None):
         self._lv = lvgl
         self._width = width
         self._height = height
@@ -156,6 +157,16 @@ class TouchscreenLauncher:
         self._status = None
         self._last_countdown = None
         self._browser_folder = ""
+        self._navigation = navigation
+        self._focus = None
+        if navigation is not None:
+            navigation.add_activity_listener(self._navigation_activity)
+
+    def _navigation_activity(self):
+        self._countdown_cancelled = True
+        if self._status is not None:
+            self._status.set_text("Choose an action")
+        return False
 
     def _delete(self, widget, asynchronous=False):
         if widget is None:
@@ -170,10 +181,19 @@ class TouchscreenLauncher:
             delete()
 
     def _new_screen(self):
+        if self._focus is not None:
+            self._focus.close()
+        self._callbacks = []
+        self._status = None
         previous = self._screen
         screen = self._lv.obj()
         screen.set_style_bg_color(self._lv.color_hex(0x101820), 0)
         self._screen = screen
+        if self._navigation is not None:
+            screen.set_style_pad_all(0, 0)
+            screen.set_style_border_width(0, 0)
+            screen.set_scroll_dir(self._lv.DIR.NONE)
+            self._focus = self._navigation.page()
         self._lv.screen_load(screen)
         if previous is not None:
             # Screen changes are initiated by child event callbacks.  LVGL's
@@ -209,6 +229,8 @@ class TouchscreenLauncher:
         label.center()
         button.add_event_cb(callback, self._lv.EVENT.CLICKED, None)
         self._callbacks.append(callback)
+        if self._focus is not None:
+            self._focus.add(button)
         return button
 
     def _choose_route(self, route):
@@ -223,12 +245,12 @@ class TouchscreenLauncher:
 
     def _show_home(self):
         self._new_screen()
-        layout = launcher_layout(self._width, self._height)
+        layout = launcher_layout(self._width, self._height - (20 if self._navigation else 0))
         self._label("TartLab", layout["title_y"])
         self._label(
             "Selected app: " + self._selected_app, layout["selected_y"])
         self._status = self._label("", layout["selected_y"] + 24)
-        labels = ("Start IDE", "Run selected app", "Choose app")
+        labels = ("Start IDE", "Run app" if self._navigation and self._width < 400 else "Run selected app", "Choose app")
         callbacks = (
             self._choose_route(IDE_ROUTE),
             self._choose_route(APP_ROUTE),
@@ -237,6 +259,8 @@ class TouchscreenLauncher:
         for text, bounds, callback in zip(
                 labels, layout["buttons"], callbacks):
             self._button(text, bounds, callback)
+        if self._navigation is not None:
+            self._label("A: Next   B: Select", self._height - 20)
 
     def _browser_button(self, parent, text, x, y, width, callback):
         button = self._lv.button(parent)
@@ -246,6 +270,9 @@ class TouchscreenLauncher:
         label.center()
         button.add_event_cb(callback, self._lv.EVENT.CLICKED, None)
         self._callbacks.append(callback)
+        if self._focus is not None:
+            self._focus.add(button)
+        return button
 
     def _open_folder(self, folder):
         def callback(unused_event):
@@ -348,9 +375,11 @@ class TouchscreenLauncher:
         self._browser_button(
             self._screen, "Set as app", margin, button_y, button_width,
             self._commit_app(filename))
-        self._browser_button(
+        cancel = self._browser_button(
             self._screen, "Cancel", margin * 2 + button_width, button_y,
             button_width, self._confirmation_cancel)
+        if self._focus is not None:
+            self._focus.focus(cancel)
 
     def show(self):
         self._previous_screen = self._lv.screen_active()
@@ -377,6 +406,11 @@ class TouchscreenLauncher:
         return self._route
 
     def close(self):
+        if self._navigation is not None:
+            self._navigation.remove_activity_listener(self._navigation_activity)
+        if self._focus is not None:
+            self._focus.close()
+            self._focus = None
         if self._screen is None:
             return
         if self._previous_screen is not None:
@@ -401,5 +435,6 @@ def run_startup_launcher(platform, timeout_seconds=DEFAULT_TIMEOUT_SECONDS):
         raise RuntimeError("modern platform does not provide LVGL")
     launcher = TouchscreenLauncher(
         lvgl, platform.width, platform.height, get_selected_app(),
-        timeout_seconds=timeout_seconds)
+        timeout_seconds=timeout_seconds,
+        navigation=getattr(platform, "navigation", None))
     return launcher.run()

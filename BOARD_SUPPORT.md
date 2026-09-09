@@ -116,12 +116,27 @@ physical gates and their sanitized evidence is promoted.
 
 ## Runtime boundary
 
-Planned support for displays without touch is defined in
-[`BUTTON_NAVIGATION_PROJECT.md`](BUTTON_NAVIGATION_PROJECT.md). It requires
-explicit optional-touch configuration, multiple typed buttons, and reusable
-navigation input. These are future extensions: the current modern factory still
-requires touch and constructs SPI transport. Follow the plan and normal board
-lifecycle when introducing a non-touch target.
+Experimental support for displays without touch is tracked in
+[`BUTTON_NAVIGATION_PROJECT.md`](BUTTON_NAVIGATION_PROJECT.md). Set `touch` to
+`None` explicitly for absent touch. Multiple `BUTTON` entries must each have a
+unique `name`; single unnamed buttons retain the existing contract. A
+`navigation` object maps `next` and `activate` to distinct button names.
+`pin_definition()` still rejects ambiguous purpose-only lookup; callers may
+select a name or use `pin_definitions()` to obtain all entries of a purpose.
+
+The shared factory selects `display.spi` or `display.i80`. The latter declares
+`frequency` and a `pin_arguments` mapping from I80 constructor arguments to
+typed pin purposes. Optional `outputs` entries declare a typed `pin`, initial
+`value`, and `delay_ms`, in startup order. These supply power enables and static
+bus signals without putting GPIO values or sequencing policy in shared code.
+
+Platforms report `touch`, `buttons`, and `button_navigation` independently.
+`platform.read_button_events()` returns `(name, pressed)` edges only while
+direct-rendering mode owns input; it raises on UI-mode polling. Initialization,
+page replacement, and ownership changes suppress held gestures through release.
+LVGL keypad navigation activates on physical release and uses page-owned focus
+groups. The production board payload is declarative; `bringup` status still
+prevents this experimental port from becoming a supported release target.
 
 Student programs, the IDE, launcher, updater, and recovery code use
 `tartlabutils.platform`; they must never import board pins or panel drivers.

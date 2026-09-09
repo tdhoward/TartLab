@@ -45,14 +45,23 @@ limits remain qualified. It must still validate the complete new payload's
 compatibility, sizes, staging/install space, and update behavior. Record which
 claims are inherited and which have fresh results for each included board.
 
-## Planned non-touch input coverage
+## Experimental non-touch input coverage
 
 [`BUTTON_NAVIGATION_PROJECT.md`](../BUTTON_NAVIGATION_PROJECT.md) defines the
-planned two-button navigation milestone and initial non-touch board port.
+two-button navigation milestone and initial non-touch board port.
 It does not establish current support or qualification. Example-app adaptations,
 including Racer, are optional and do not gate the core milestone.
 
-As that work is implemented, extend host coverage for absent-touch startup,
+Run `python -m unittest tests.test_buttons tests.test_button_pages
+tests.test_t_display_s3 -v` for the input, focus, configuration and I80 contracts.
+These include absent-touch startup, debounce, release activation, page/ownership
+suppression, safe confirmation focus and wake-press consumption. Existing touch
+and legacy regressions remain in `tests.test_platform`, `tests.test_phase5`,
+`tests.test_device_settings`, `tests.test_power`, and `tests.test_headless_ide`.
+The current physical results and limits are in the board's
+[`DEVELOPMENT_RESULTS.md`](../boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md).
+
+Continue extending host coverage for absent-touch startup,
 multiple-button configuration, debounce and press/release handling, focus and
 scrolling, launcher countdown cancellation, settings confirmation and cleanup,
 wake-press consumption, and UI/app input ownership. Preserve existing touch

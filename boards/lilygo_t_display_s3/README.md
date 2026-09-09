@@ -3,6 +3,7 @@
 Lifecycle: `bringup`. This is the initial buttons-only modern development
 target in [BUTTON_NAVIGATION_PROJECT.md](../../BUTTON_NAVIGATION_PROJECT.md).
 Initial physical observations are in [BRINGUP_RESULTS.md](BRINGUP_RESULTS.md).
+Shared runtime integration is tracked in [DEVELOPMENT_RESULTS.md](DEVELOPMENT_RESULTS.md).
 It is not a supported installation target. PCB revision is unverified; the
 descriptor's revision value is a research placeholder, not an accepted
 production revision policy.
@@ -41,25 +42,29 @@ Button A is also the ROM boot strap. Normal navigation must use press/release
 gestures after startup. To recover manually, hold BOOT, press and release RST,
 then release BOOT. Press RST with BOOT released to boot the installed image.
 
-## Integration work still required
+## Development path
 
-1. Establish stock MicroPython console, memory, filesystem, radio, and reset
-   evidence, distinguishing automatic checks from manual power-cycle checks.
-2. Prove the pinned modern I80/ST7789 display and both buttons independently.
-   Record readable geometry, colors, edges, brightness and press/release data.
-3. Define compatible absent-touch and named multiple-button configuration;
-   add a declarative `BOARD_CONFIG` and reusable I80/power construction.
-   The current shared factory requires SPI and touch, and the current pin
-   validator requires a unique purpose for every pin. Do not bypass those
-   contracts with a fake pointer or a Pro selector.
-4. Implement debounce, focus groups, UI/app ownership, wake-press consumption,
-   and smaller-screen launcher/settings layouts under the navigation plan.
-5. Demonstrate browser programming, a simple button/display app, reliable IDE
-   return, and touch-only app fallback. Then complete the applicable new-board
-   provisioning, update/recovery, resource and existing-board regression gates.
+The declarative [runtime payload](runtime/t_display_s3_modern.py) now selects
+shared I80 construction, the packaged ST7789 driver, explicit absent touch,
+and named buttons. A advances focus and B activates it, both on release.
+The modern help menu includes a physical-button counter example; copy it to
+user files before choosing it as the startup app. Its B action restarts to
+the launcher, whose timeout defaults to the IDE.
 
-Firmware, selector, runtime, and qualification remain null until their actual
-artifacts and contracts exist. Bench use of a reference image does not bind
-this board to another board's qualification or make it eligible for releases.
+Build an experimental filesystem explicitly with:
+
+```text
+python makedist.py --output build/t-display-s3-dev --board lilygo_t_display_s3
+```
+
+This does not create an authenticated release or provision a device. The
+descriptor retains `bringup`, with firmware and qualification null. The local
+development fixture uses the verified reference firmware and a protected
+identity/selector; no supported installer or update matrix includes this port.
+
+Remaining gates include full firmware/provisioning/recovery qualification,
+PCB revision identification, power cycles and held-button/reset behavior,
+and fresh physical regressions on existing touch boards. Bench use of the
+reference image does not inherit another board's qualification.
 Raw logs, temporary scripts, USB mappings, and device identifiers belong in
 ignored hardware-test artifacts; checked-in results must be sanitized.

@@ -33,11 +33,15 @@ The authoritative runtime-profile identities and status live in
 identity, capabilities, firmware binding, and lifecycle state live under
 [`boards`](boards); see [`BOARD_SUPPORT.md`](BOARD_SUPPORT.md).
 
-Planned non-touch device support is scoped in
+Experimental non-touch device support is scoped in
 [`BUTTON_NAVIGATION_PROJECT.md`](BUTTON_NAVIGATION_PROJECT.md). Prioritize
 two-button launcher, app chooser, settings, and browser IDE workflows, using the
 non-Pro LilyGO T-Display-S3 as the initial bring-up target. Example-app ports,
-including Racer, are optional. This plan does not add a qualified board.
+including Racer, are optional. The non-Pro port now has declarative I80/pin
+configuration, optional touch, named button events, and LVGL focus navigation;
+its validation and outstanding qualification are recorded in
+[`DEVELOPMENT_RESULTS.md`](boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md).
+This work does not add a qualified board.
 
 ## Non-negotiable constraints
 

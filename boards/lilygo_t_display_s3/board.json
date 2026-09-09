@@ -21,12 +21,20 @@
     "console": "ESP32-S3 native USB Serial/JTAG",
     "power": "USB-C; battery operation untested"
   },
-  "selector": null,
-  "runtime": null,
+  "selector": {
+    "module": "t_display_s3_modern",
+    "source": "boards/lilygo_t_display_s3/runtime/t_display_s3_modern.py",
+    "protected_path": "/device/hdwconfig.py"
+  },
+  "runtime": {
+    "source": "boards/lilygo_t_display_s3/runtime",
+    "target": "/board/lilygo_t_display_s3"
+  },
   "firmware": null,
   "qualification": null,
   "documentation": [
     "boards/lilygo_t_display_s3/README.md",
-    "boards/lilygo_t_display_s3/BRINGUP_RESULTS.md"
+    "boards/lilygo_t_display_s3/BRINGUP_RESULTS.md",
+    "boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md"
   ]
 }

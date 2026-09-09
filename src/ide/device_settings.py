@@ -7,7 +7,7 @@ TIMEOUTS = (0, 30, 60, 180, 300, 600, 1800, 3600)
 class DeviceSettings:
     def __init__(self, lvgl, width, height, get_display, save_display,
                  get_networks, forget_network, get_versions, check_updates,
-                 install_updates, log_error):
+                 install_updates, log_error, navigation=None):
         self._lv = lvgl
         self._width = width
         self._height = height
@@ -28,6 +28,8 @@ class DeviceSettings:
         self._updates = []
         self._buttons = []
         self._callbacks = []
+        self._navigation = navigation
+        self._focus = navigation.page() if navigation is not None else None
         self._entry = lvgl.button(self._home)
         self._entry.set_size(36, 32)
         self._entry.set_pos(8, 8)
@@ -36,6 +38,12 @@ class DeviceSettings:
         label.center()
         self._entry_callback = lambda event: self._queue('settings')
         self._entry.add_event_cb(self._entry_callback, lvgl.EVENT.CLICKED, None)
+        self._hint = None
+        if self._focus is not None:
+            self._focus.add(self._entry)
+            self._hint = lvgl.label(self._home)
+            self._hint.set_text('A: Next   B: Select')
+            self._hint.set_pos(12, height - 22)
 
     def _queue(self, action, value=None):
         # LVGL callbacks only queue work. Filesystem and network operations run
@@ -57,6 +65,8 @@ class DeviceSettings:
         button.add_event_cb(callback, self._lv.EVENT.CLICKED, None)
         self._callbacks.append(callback)
         self._buttons.append(button)
+        if self._focus is not None:
+            self._focus.add(button)
         return button
 
     def _label(self, text, y, width=None):
@@ -67,6 +77,9 @@ class DeviceSettings:
         return label
 
     def _new_page(self, title, page, back='settings'):
+        if self._focus is not None:
+            self._focus.close()
+            self._focus = self._navigation.page()
         old = self._screen
         self._screen = self._lv.obj()
         self._page = page
@@ -88,13 +101,17 @@ class DeviceSettings:
         heading.set_pos(84, 16)
         self._body = self._lv.obj(self._screen)
         self._body.set_pos(8, 54)
-        self._body.set_size(self._width - 16, self._height - 62)
+        self._body.set_size(self._width - 16, self._height - (82 if self._navigation else 62))
         self._body.set_style_bg_color(self._lv.color_hex(0x101820), 0)
         self._body.set_style_border_width(0, 0)
         self._body.set_style_pad_all(0, 0)
         self._body.set_scroll_dir(self._lv.DIR.VER)
         self._content_width = self._width - 28
         self._status = None
+        if self._navigation is not None:
+            hint = self._lv.label(self._screen)
+            hint.set_text('A: Next   B: Select')
+            hint.set_pos(12, self._height - 22)
 
     def _timeout_text(self):
         if self._timeout == 0:
@@ -141,6 +158,8 @@ class DeviceSettings:
         self._status = self._label('', 158)
 
     def _updates_page(self, message='Tap Check now to look for updates.'):
+        if self._navigation is not None and message.startswith('Tap '):
+            message = 'Select Check now for updates.'
         self._new_page('Updates', 'updates')
         self._status = self._label(message, 0)
         y = 56
@@ -180,6 +199,10 @@ class DeviceSettings:
             self._status.set_text('%s\nStep %s of %s' % (status, step, max(step, steps)))
 
     def _return_home(self):
+        if self._focus is not None:
+            self._focus.close()
+            self._focus = self._navigation.page()
+            self._focus.add(self._entry)
         self._lv.screen_load(self._home)
         if self._screen is not None:
             self._screen.delete()
@@ -202,14 +225,14 @@ class DeviceSettings:
             elif action == 'brightness':
                 self._brightness = min(1, max(0.1, round(self._brightness + value * 0.1, 2)))
                 self._brightness_label.set_text('Brightness: %d%%' % round(self._brightness * 100))
-                self._status.set_text('Tap Save to apply.')
+                self._status.set_text('Select Save to apply.')
             elif action == 'timeout':
                 choices = [delay for delay in TIMEOUTS
                            if (delay > self._timeout if value > 0 else delay < self._timeout)]
                 if choices:
                     self._timeout = choices[0] if value > 0 else choices[-1]
                 self._timeout_label.set_text(self._timeout_text())
-                self._status.set_text('Tap Save to apply.')
+                self._status.set_text('Select Save to apply.')
             elif action == 'save':
                 self._save_display(self._brightness, self._timeout)
                 self._status.set_text('Saved and applied.')
@@ -262,4 +285,9 @@ class DeviceSettings:
     def close(self):
         self._pending = None
         self._return_home()
+        if self._focus is not None:
+            self._focus.close()
+            self._focus = None
         self._entry.delete()
+        if self._hint is not None:
+            self._hint.delete()

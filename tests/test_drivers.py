@@ -25,11 +25,16 @@ class DriverPackageTests(unittest.TestCase):
             importlib.import_module("tartlabdrivers")
             self.assertNotIn("tartlabdrivers.display.st7796", sys.modules)
             self.assertNotIn("tartlabdrivers.display.st77922", sys.modules)
+            self.assertNotIn("tartlabdrivers.display.st7789", sys.modules)
             references = set()
             for path in sorted((ROOT / "boards").glob("*/runtime/*.py")):
                 scope = {}
                 exec(compile(path.read_bytes(), str(path), "exec"), scope)
-                reference = scope["BOARD_CONFIG"]["display"]["adapter"]
+                reference = scope["BOARD_CONFIG"]["display"].get("adapter")
+                if reference is None:
+                    # Ordinary panels use the common DisplayController;
+                    # only controller-specific ownership needs an adapter.
+                    continue
                 references.add(reference)
                 adapter = __import__(reference, None, None, ("*",))
                 self.assertTrue(callable(adapter.create_controller))

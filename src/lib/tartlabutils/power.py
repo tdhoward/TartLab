@@ -132,6 +132,9 @@ class ModernIDEBacklightController:
             self._last_touch_keep_awake = now
 
     def _attach_inputs(self):
+        navigation = getattr(self._platform, "navigation", None)
+        if navigation is not None:
+            navigation.add_activity_listener(self._button_activity)
         if self._lvgl is None:
             return
         pressed = getattr(getattr(self._lvgl, "EVENT", None), "PRESSED", None)
@@ -143,12 +146,22 @@ class ModernIDEBacklightController:
             input_device.add_event_cb(self._touch_callback, pressed, None)
 
     def _detach_inputs(self):
+        navigation = getattr(self._platform, "navigation", None)
+        if navigation is not None:
+            navigation.remove_activity_listener(self._button_activity)
         for input_device in self._inputs:
             remove = getattr(
                 input_device, "remove_event_cb_with_user_data", None)
             if remove is not None:
                 remove(self._touch_callback, None)
         self._inputs = ()
+
+    def _button_activity(self):
+        """Queue a wake and consume the full gesture when currently dimmed."""
+        if not self._active:
+            return False
+        self._touch_pending = True
+        return self._dimmed
 
     def start(self):
         """Begin IDE-mode timing. Repeated starts do not duplicate callbacks."""

@@ -346,6 +346,8 @@ class ModernFirmwareReferenceLockTests(unittest.TestCase):
         inputs = profile["application_adapter"]["inputs"]
         self.assertEqual({item["path"] for item in inputs}, {
             "src/lib/tartlabutils/board.py",
+            "src/lib/tartlabutils/buttons.py",
+            "src/lib/tartlabutils/navigation.py",
             "src/lib/tartlabutils/runtime.py",
             "src/lib/tartlabutils/factory.py",
             "src/lib/tartlabdrivers/display/st7796.py",

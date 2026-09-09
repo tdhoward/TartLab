@@ -367,7 +367,8 @@ class IDEView:
 
     def show_startup(self, version):
         self._set_label(
-            self._title, "TARTLAB " + version, self._lv.ALIGN.TOP_MID, 18)
+            self._title, "TARTLAB" if self._controller.surface.width < 400
+            else "TARTLAB " + version, self._lv.ALIGN.TOP_MID, 18)
 
     def show_network(self, wifi_name, address, hostname=None):
         self._set_label(
@@ -377,6 +378,13 @@ class IDEView:
         self._set_label(
             self._hostname, (hostname + ".local") if hostname else "",
             self._lv.ALIGN.CENTER, 28)
+    def show_message(self, message, hint):
+        """Replace status text while keeping the connection address visible."""
+        self._network.set_text(message)
+        self._network.set_width(self._controller.surface.width - 20)
+        self._network.align(self._lv.ALIGN.CENTER, 0, -28)
+        self._hostname.set_text(hint)
+        self._hostname.align(self._lv.ALIGN.CENTER, 0, 28)
 
     def show_update_progress(self, status, step, steps):
         if step > steps:
@@ -418,9 +426,13 @@ class Platform:
         self._lvgl = lvgl or controller._lvgl
         self._touch_keep_awake = touch_keep_awake
         self._deinitialized = False
+        self.buttons = None
+        self.navigation = None
         self.capabilities = {
             "display": True,
             "touch": input_device is not None,
+            "buttons": False,
+            "button_navigation": False,
             "ide_button": ide_button_pin is not None,
             "backlight": True,
             "network": True,
@@ -468,9 +480,28 @@ class Platform:
 
     def enter_ui_mode(self):
         self.controller.acquire_ui()
+        if self.navigation is not None:
+            self.navigation.enable(True)
 
     def enter_game_mode(self):
-        return self.controller.acquire_game()
+        if self.navigation is not None:
+            self.navigation.enable(False)
+        try:
+            previous = self.controller.owner
+            surface = self.controller.acquire_game()
+        except Exception:
+            if self.navigation is not None:
+                self.navigation.enable(True)
+            raise
+        if self.buttons is not None and previous != GAME_OWNER:
+            self.buttons.reset()
+        return surface
+
+    def read_button_events(self):
+        """Return named press/release edges while the app owns input."""
+        if self.controller.owner != GAME_OWNER:
+            raise DisplayOwnershipError("button polling requires game ownership")
+        return self.buttons.poll() if self.buttons is not None else ()
 
     @property
     def lvgl(self):
@@ -546,6 +577,8 @@ class Platform:
         self.controller.wait_for_transfer()
         self.game_surface.deinit_frame_sync()
         self._task_handler_deinit()
+        if self.navigation is not None:
+            self.navigation.close()
 
         # The upstream Python wrappers retain displays and input devices in
         # class-level registries.  Bus teardown alone therefore leaves LVGL

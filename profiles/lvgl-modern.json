@@ -81,15 +81,15 @@
     "inputs": [
       {
         "path": "src/lib/tartlabutils/board.py",
-        "sha256": "c1e95e01f2279e5a08a3e31f67ea034ab523a440c1ff547014372ce142255cf1"
+        "sha256": "49d563cc4d84a5b367b9a14e511f69f87485acf0eed3882a3ec1058a95b71732"
       },
       {
         "path": "src/lib/tartlabutils/runtime.py",
-        "sha256": "dcedc98f6ba26c5dc3c732935db91ccdeffafdd08e269f67dd4fb81d4a637a7a"
+        "sha256": "093ed5e047f090708108c9fece9505f359033e5fdb73713fa84203798e152466"
       },
       {
         "path": "src/lib/tartlabutils/factory.py",
-        "sha256": "8ef66200d1224d455bf262c0eb5371865e309070cfefe0190d7ecc35cc3521c9"
+        "sha256": "1f4909a99c7a3f019c6130fafbac43f55105530f91ce52052fa90e95a1a0a296"
       },
       {
         "path": "src/lib/tartlabdrivers/display/st7796.py",
@@ -98,6 +98,14 @@
       {
         "path": "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
         "sha256": "88833f5a64a288d7ba047f749f44f85e83ea4f10344bdfec61a73072c4c6a2aa"
+      },
+      {
+        "path": "src/lib/tartlabutils/buttons.py",
+        "sha256": "61b5afe10ed54ead5f3790b61685b595129c411d359a4e1a6a7795cc2a584d47"
+      },
+      {
+        "path": "src/lib/tartlabutils/navigation.py",
+        "sha256": "f48e40bc06d7dc21e2c705398c426f734ed825dfa2a3b2e1bc414b3448de2d3c"
       }
     ]
   }

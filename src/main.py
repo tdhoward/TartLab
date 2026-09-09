@@ -50,6 +50,9 @@ def _select_mode(settings, platform, start_launcher=None):
         if start_mode != "BUTTON":
             settings["STARTUP_MODE"] = "BUTTON"
             save_settings(settings)
+        if not (platform.capabilities.get("touch", False) or
+                platform.capabilities.get("button_navigation", False)):
+            return "IDE"
         if start_launcher is None:
             from tartlabutils.launcher import run_startup_launcher
             start_launcher = run_startup_launcher

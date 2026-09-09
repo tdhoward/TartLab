@@ -32,6 +32,8 @@ REQUIRED_DIST_FILES = (
     "main.py",
     PROFILE_RUNTIME_FILE,
     "lib/tartlabutils/board.py",
+    "lib/tartlabutils/buttons.py",
+    "lib/tartlabutils/navigation.py",
     "lib/tartlabutils/app.py",
     "lib/tartlabutils/app_runner.py",
     "lib/tartlabutils/_emitters.py",
@@ -52,6 +54,8 @@ REQUIRED_DIST_FILES = (
 )
 APPLICATION_ADAPTER_INPUTS = {
     "src/lib/tartlabutils/board.py",
+    "src/lib/tartlabutils/buttons.py",
+    "src/lib/tartlabutils/navigation.py",
     "src/lib/tartlabutils/runtime.py",
     "src/lib/tartlabutils/factory.py",
     "src/lib/tartlabdrivers/display/st7796.py",

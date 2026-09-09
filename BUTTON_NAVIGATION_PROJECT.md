@@ -1,10 +1,12 @@
 # Button navigation and non-touch device support
 
-Status: Initial board bring-up started. The standalone pinned-modern display
-and physical-button bench results are recorded in
+Status: Experimental integration implemented; physical validation in progress.
+The standalone pinned-modern display and physical-button bench results are recorded in
 [T-Display-S3 bring-up results](boards/lilygo_t_display_s3/BRINGUP_RESULTS.md).
-Production button navigation remains planned; no modern non-touch board is
-qualified by this document.
+The shared configuration, I80 transport, optional touch, button input, launcher,
+chooser and settings focus paths are implemented. Follow-up integration evidence
+is in [DEVELOPMENT_RESULTS.md](boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md).
+No modern non-touch board is qualified by this document.
 
 ## Objective and scope
 
@@ -61,18 +63,15 @@ LVGL describes the underlying model in its [focus-group documentation](https://l
 
 ## Architecture work
 
-The current implementation has several assumptions to remove deliberately:
+The implementation now addresses these original assumptions:
 
-- `src/lib/tartlabutils/board.py` requires a touch driver and permits only one
-  entry per pin type. Define an explicit absent-touch representation and a
-  compatible way to identify multiple typed buttons. Preserve existing board
-  payloads and unique-purpose pin lookup; do not simply allow ambiguous matches.
-- `src/lib/tartlabutils/factory.py` always constructs SPI and touch hardware.
-  Select transport and optional input from declarative configuration instead.
-- Runtime capabilities already distinguish touch presence, but startup selects
-  the touchscreen launcher based on LVGL availability. Keep UI availability,
-  pointer availability, and button navigation distinct through startup, IDE
-  settings, power management, and app execution.
+- `board.py` accepts explicit `touch=None` and uniquely named typed buttons.
+  Purpose-only lookup remains strict; existing single-button payloads work.
+- `factory.py` selects SPI or I80 and skips touch construction when absent.
+  Typed static outputs provide declarative power and read-strobe sequencing.
+- Runtime and startup distinguish LVGL, touch, and button navigation. UI
+  without either input goes directly to the IDE. The launcher and settings
+  share the keypad/focus helper while retaining their own actions and layouts.
 - `TouchGrid` requires touch input. Keep that contract honest and expose reusable
   physical-button input separately; a keypad must not masquerade as a pointer.
 

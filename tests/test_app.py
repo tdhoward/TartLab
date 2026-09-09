@@ -1221,14 +1221,14 @@ class ModernAppDrawingTests(unittest.TestCase):
 
 
 class ModernHelpSourceTests(unittest.TestCase):
-    def test_help_trees_share_examples_except_their_image_formats(self):
+    def test_help_trees_share_examples_except_profile_specific_capabilities(self):
         modern = ROOT / "src/files/help"
         legacy = ROOT / "src/files/help-legacy"
         modern_files = {
             path.name for path in modern.iterdir() if path.is_file()}
         legacy_files = {
             path.name for path in legacy.iterdir() if path.is_file()}
-        self.assertEqual(modern_files - {"display_ts16.py", "display_qoi.py"},
+        self.assertEqual(modern_files - {"display_ts16.py", "display_qoi.py", "buttons.py"},
                          legacy_files - {"display_bmp.py"})
 
     def test_modern_examples_use_only_the_direct_display_approach(self):

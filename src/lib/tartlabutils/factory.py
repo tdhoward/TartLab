@@ -3,6 +3,7 @@
 from tartlabutils.board import (
     import_reference,
     pin_definition,
+    pin_definitions,
     pin_number,
     validate_board_config,
 )
@@ -49,6 +50,29 @@ def _buffers(display, bus, lcd_bus):
     if first is None or second is None:
         raise MemoryError("unable to allocate dual DMA display buffers")
     return flags, first, second
+
+
+def _transport(board, machine, lcd_bus):
+    display = board["display"]
+    if "i80" not in display:
+        return _spi(board, machine, lcd_bus)
+    if "spi" in display:
+        raise ValueError("display must select exactly one transport")
+    config = display["i80"]
+    options = {"freq": config["frequency"]}
+    for argument, purpose in config["pin_arguments"].items():
+        options[argument] = pin_number(board, purpose, True)
+    return None, lcd_bus.I80Bus(**options)
+
+
+def _outputs(board, machine):
+    from time import sleep_ms
+    outputs = []
+    for output in board.get("outputs", ()):
+        outputs.append(machine.Pin(pin_number(board, output["pin"], True),
+                                   machine.Pin.OUT, value=output["value"]))
+        sleep_ms(output["delay_ms"])
+    return outputs
 
 
 def _panel(board, bus, buffers, lvgl):
@@ -103,9 +127,10 @@ def _panel(board, bus, buffers, lvgl):
 
 
 def _touch(board, lvgl):
-    import i2c
-
     config = board["touch"]
+    if config is None:
+        return None, None, None
+    import i2c
     driver = import_reference(config["driver"])
     driver_module = __import__(
         config["driver"].rsplit(".", 1)[0], None, None, ("*",))
@@ -129,6 +154,8 @@ def _touch(board, lvgl):
 
 
 def _touch_keep_awake(pointer, config):
+    if config is None:
+        return None
     call = config.get("keep_awake")
     if call is None:
         return None
@@ -145,7 +172,8 @@ def create_platform(board):
     import task_handler
 
     validate_board_config(board)
-    spi, bus = _spi(board, machine, lcd_bus)
+    outputs = _outputs(board, machine) if board.get("outputs") else []
+    spi, bus = _transport(board, machine, lcd_bus)
     flags, first, second = _buffers(board["display"], bus, lcd_bus)
     panel = _panel(board, bus, (first, second), lv)
     i2c_bus, touch_device, pointer = _touch(board, lv)
@@ -175,11 +203,21 @@ def create_platform(board):
         controller,
         panel,
         pointer,
-        ide_button_pin=pin_number(board, "BUTTON"),
+        ide_button_pin=(pin_number(board, "BUTTON")
+                        if len(pin_definitions(board, "BUTTON")) <= 1 else None),
         lvgl=lv,
         touch_keep_awake=_touch_keep_awake(pointer, board["touch"]),
     )
     platform.board = board
+    platform._outputs = outputs
+    if board.get("navigation") or any(pin.get("name") for pin in pin_definitions(board, "BUTTON")):
+        from tartlabutils.buttons import ButtonInput
+        platform.buttons = ButtonInput(pin_definitions(board, "BUTTON"), machine.Pin)
+        platform.capabilities["buttons"] = True
+    if board.get("navigation"):
+        from tartlabutils.navigation import ButtonNavigation
+        platform.navigation = ButtonNavigation(lv, platform.buttons, board["navigation"])
+        platform.capabilities["button_navigation"] = True
     platform._spi_bus = spi
     platform._i2c_bus = i2c_bus
     platform._touch_device = touch_device

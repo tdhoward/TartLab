@@ -1,0 +1,52 @@
+"""Declarative payload for the non-touch LilyGO T-Display-S3."""
+
+BOARD_CONFIG = {
+    "id": "lilygo_t_display_s3",
+    "pins": (
+        {"type": "BUTTON", "name": "A", "number": 0, "active_high": False},
+        {"type": "BUTTON", "name": "B", "number": 14, "active_high": False},
+        {"type": "DISPLAY_POWER", "number": 15, "active_high": True},
+        {"type": "DISPLAY_RD", "number": 9},
+        {"type": "DISPLAY_RESET", "number": 5},
+        {"type": "BACKLIGHT", "number": 38, "active_high": True},
+        {"type": "DISPLAY_DC", "number": 7},
+        {"type": "DISPLAY_CS", "number": 6},
+        {"type": "DISPLAY_WR", "number": 8},
+        {"type": "DISPLAY_D0", "number": 39},
+        {"type": "DISPLAY_D1", "number": 40},
+        {"type": "DISPLAY_D2", "number": 41},
+        {"type": "DISPLAY_D3", "number": 42},
+        {"type": "DISPLAY_D4", "number": 45},
+        {"type": "DISPLAY_D5", "number": 46},
+        {"type": "DISPLAY_D6", "number": 47},
+        {"type": "DISPLAY_D7", "number": 48},
+    ),
+    "outputs": (
+        {"pin": "DISPLAY_POWER", "value": 1, "delay_ms": 100},
+        {"pin": "DISPLAY_RD", "value": 1, "delay_ms": 0},
+    ),
+    "display": {
+        "driver": "tartlabdrivers.display.st7789.ST7789",
+        "native_size": (170, 320),
+        "logical_size": (320, 170),
+        "offset": (0, 35),
+        "rotation": 90,
+        "transfer_rows": 24,
+        "reset_state": "STATE_LOW",
+        "backlight_state": "STATE_PWM",
+        "color_order": "BGR",
+        "inversion": True,
+        "i80": {
+            "frequency": 16_000_000,
+            "pin_arguments": {
+                "dc": "DISPLAY_DC", "cs": "DISPLAY_CS", "wr": "DISPLAY_WR",
+                "data0": "DISPLAY_D0", "data1": "DISPLAY_D1",
+                "data2": "DISPLAY_D2", "data3": "DISPLAY_D3",
+                "data4": "DISPLAY_D4", "data5": "DISPLAY_D5",
+                "data6": "DISPLAY_D6", "data7": "DISPLAY_D7",
+            },
+        },
+    },
+    "touch": None,
+    "navigation": {"next": "A", "activate": "B"},
+}

@@ -849,7 +849,8 @@ class TouchGrid:
                  width=None, height=None, rotation=0):
         self._platform = get_platform()
         if self._platform.input is None:
-            raise RuntimeError("the modern platform has no touch input")
+            from .platform import InputUnavailableError
+            raise InputUnavailableError("This app needs touch input. Choose a button app.")
         try:
             self._quarter_turns = DirectCanvas._ROTATIONS[rotation]
         except (KeyError, TypeError):

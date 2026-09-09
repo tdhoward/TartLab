@@ -7,6 +7,12 @@ BOARD_IDENTITY_FILE = "/device/board.json"
 BOARD_RUNTIME_ROOT = "/board"
 
 
+class InputUnavailableError(RuntimeError):
+    """An application requests an input capability this device lacks."""
+
+    input_unavailable = True
+
+
 def board_runtime_path(identity_file=BOARD_IDENTITY_FILE):
     """Return the provisioned board's isolated runtime path, if present."""
     try:

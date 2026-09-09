@@ -97,6 +97,11 @@ def pseudoREPL(cmd, source):
             except Exception as e:
                 error = True
                 repl_exception(e, source)
+                if getattr(e, 'input_unavailable', False):
+                    platform.enter_ui_mode()
+                    show_notice = getattr(ide_view, 'show_message', None)
+                    if show_notice is not None:
+                        show_notice(str(e).split('.')[0], 'Reset to choose another app')
 
     except Exception as e:
         error = True
@@ -273,6 +278,11 @@ else:
     text = ip_address
     local_hostname = settings['hostname']
 ide_view.show_network(wifi_ssid, text, local_hostname)
+if (not platform.capabilities.get('touch', False) and
+        (get_app_failure() or '').startswith('This app needs touch input')):
+    show_notice = getattr(ide_view, 'show_message', None)
+    if show_notice is not None:
+        show_notice('This app needs touch input', 'Reset to choose another app')
 
 
 def show_update_progress(status, stepnum, steps):
@@ -352,7 +362,8 @@ async def install_device_updates():
 
 def create_device_settings():
     if not (platform.capabilities.get('lvgl_ui', False) and
-            platform.capabilities.get('touch', False)):
+            (platform.capabilities.get('touch', False) or
+             platform.capabilities.get('button_navigation', False))):
         return None
     from .device_settings import DeviceSettings
     from tartlabutils.power import modern_ui_settings
@@ -361,7 +372,8 @@ def create_device_settings():
         lambda: modern_ui_settings(settings), save_display_settings,
         lambda: list(settings['wifi_ssids']), forget_wifi_network,
         lambda: [(repo['name'], repo['installed_version']) for repo in repos['list']],
-        check_device_updates, install_device_updates, log_exception)
+        check_device_updates, install_device_updates, log_exception,
+        navigation=getattr(platform, 'navigation', None))
 
 
 # list folder contents, returns tuple (files, folders)
