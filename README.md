@@ -29,6 +29,12 @@ distinguishes bring-up work from candidate and qualified support. The repeatable
 port layout and onboarding process are documented in
 [`BOARD_SUPPORT.md`](BOARD_SUPPORT.md).
 
+Basic support for displays without touch is planned in
+[`BUTTON_NAVIGATION_PROJECT.md`](BUTTON_NAVIGATION_PROJECT.md), starting with
+two-button navigation on the non-Pro LilyGO T-Display-S3. Launcher, settings,
+and browser programming are the priority; example-app adaptations are optional.
+This target is not yet a qualified modern board.
+
 TartLab maintains two profiles:
 
 - `legacy-mp123` supports deployed devices running the exact MicroPython

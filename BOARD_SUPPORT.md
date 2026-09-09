@@ -116,6 +116,13 @@ physical gates and their sanitized evidence is promoted.
 
 ## Runtime boundary
 
+Planned support for displays without touch is defined in
+[`BUTTON_NAVIGATION_PROJECT.md`](BUTTON_NAVIGATION_PROJECT.md). It requires
+explicit optional-touch configuration, multiple typed buttons, and reusable
+navigation input. These are future extensions: the current modern factory still
+requires touch and constructs SPI transport. Follow the plan and normal board
+lifecycle when introducing a non-touch target.
+
 Student programs, the IDE, launcher, updater, and recovery code use
 `tartlabutils.platform`; they must never import board pins or panel drivers.
 Every modern board adapter exposes the same capabilities:

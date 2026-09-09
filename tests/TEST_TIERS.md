@@ -45,6 +45,32 @@ limits remain qualified. It must still validate the complete new payload's
 compatibility, sizes, staging/install space, and update behavior. Record which
 claims are inherited and which have fresh results for each included board.
 
+## Planned non-touch input coverage
+
+[`BUTTON_NAVIGATION_PROJECT.md`](../BUTTON_NAVIGATION_PROJECT.md) defines the
+planned two-button navigation milestone and initial non-touch board port.
+It does not establish current support or qualification. Example-app adaptations,
+including Racer, are optional and do not gate the core milestone.
+
+As that work is implemented, extend host coverage for absent-touch startup,
+multiple-button configuration, debounce and press/release handling, focus and
+scrolling, launcher countdown cancellation, settings confirmation and cleanup,
+wake-press consumption, and UI/app input ownership. Preserve existing touch
+navigation and legacy startup-button behavior.
+
+Focused physical evidence must establish readable layouts and reachable
+launcher, chooser, settings, and Back/Cancel controls using only buttons, plus
+browser connectivity, running a simple app, and a dependable return to the IDE.
+Verify a clear fallback for touch-only apps. Test held buttons across page,
+mode, and reset transitions. Host input stubs cannot establish these hardware
+or usability claims.
+
+A new non-touch board still requires full applicable new-board qualification.
+Extend qualification records and tooling to represent touch as absent with an
+explicit reason and require button-input evidence in its place; do not record
+unperformed touch checks as passes. Shared platform changes also require fresh
+physical regressions on affected existing boards under the impact table above.
+
 ## Tier 0: build and static checks
 
 CI verifies deterministic builds, Python compilation, archive ownership,
