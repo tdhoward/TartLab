@@ -68,6 +68,13 @@
     "ownership": "system"
   },
   {
+    "name": "tartlabdrivers",
+    "source": "dist/lib/tartlabdrivers",
+    "target": "/lib/tartlabdrivers",
+    "clear_first": true,
+    "ownership": "system"
+  },
+  {
     "name": "tartlabutils",
     "source": "dist/lib/tartlabutils",
     "target": "/lib/tartlabutils",

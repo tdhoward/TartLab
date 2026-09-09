@@ -24,11 +24,15 @@ directions = {
 }
 
 
-# Prepare the twelve frames once; the animation performs no image decoding.
-sprites = {name: tuple(sheet.sprite(frame_x, frame_y, sprite_width, sprite_height)
-                       for frame_x in (0, sprite_width, sprite_width * 2))
-           for name, frame_y in directions.items()}
-del sheet
+# One decoder pass also works for QOI sheets. The animation does no decoding.
+frames = sheet.sprites([
+    (frame_x, frame_y, sprite_width, sprite_height)
+    for frame_y in directions.values()
+    for frame_x in (0, sprite_width, sprite_width * 2)
+])
+sprites = {name: tuple(frames[index * 3:index * 3 + 3])
+           for index, name in enumerate(directions)}
+del frames, sheet
 clip = (0, 0, canvas.width, canvas.height)
 
 

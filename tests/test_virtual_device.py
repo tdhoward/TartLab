@@ -51,7 +51,7 @@ def copy_source_dist(target):
         if path.is_file():
             shutil.copy2(path, target / path.name)
     for relative in ("configs", "defaults", "recovery", "lib"):
-        ignore = shutil.ignore_patterns("app.py") \
+        ignore = shutil.ignore_patterns("app.py", "tartlabdrivers") \
             if relative == "lib" else None
         shutil.copytree(source / relative, target / relative, ignore=ignore)
     shutil.copytree(source / "files/assets-legacy", target / "files/assets")

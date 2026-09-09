@@ -4,8 +4,9 @@ import io
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from tests.test_images import ROOT, load, qoi, rgb565, sprites
+from tests.test_images import IMAGE_MODULES, ROOT, load, qoi, rgb565, sprites
 
 try:
     from PIL import Image
@@ -15,6 +16,9 @@ except ImportError:
 
 @unittest.skipIf(Image is None, "Pillow is required only for host asset conversion")
 class ImageConversionTests(unittest.TestCase):
+    def setUp(self):
+        self.enterContext(patch.dict("sys.modules", IMAGE_MODULES))
+
     def test_warrior_conversion_is_reproducible_and_preserves_transparent_mask(self):
         converter = load("test_ts16_encoder", "tools/convert_ts16.py")
         with Image.open(ROOT / "src/files/assets-legacy/warrior.bmp") as original:

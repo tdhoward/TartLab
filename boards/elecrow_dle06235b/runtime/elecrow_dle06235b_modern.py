@@ -20,7 +20,7 @@ BOARD_CONFIG = {
     ),
     "display": {
         "driver": "st77922.ST77922",
-        "adapter": "tartlabutils.st77922",
+        "adapter": "tartlabdrivers.display.st77922",
         "native_size": (320, 480),
         "logical_size": (320, 480),
         "rotation": 0,

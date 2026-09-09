@@ -5,16 +5,16 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tests.test_racer_entities import RACER, ROOT, load_module
+from tests.test_racer_entities import RACER, ROOT
 from tests.test_racer_rendering import PixelCanvas
+from tests.image_support import IMAGE_MODULES, sprites as SPRITES
 
 
-SPRITES = load_module("sprite_tests", ROOT / "src/lib/tartlabutils/sprites.py")
 ATLAS = ROOT / "src/files/assets/racer.ts16"
 
 
 def load_art():
-    with patch.dict("sys.modules", {"tartlabutils.sprites": SPRITES}):
+    with patch.dict("sys.modules", IMAGE_MODULES):
         return RACER.RacerArt(str(ATLAS))
 
 
@@ -24,6 +24,9 @@ def renderer(canvas, game, art):
 
 
 class SpriteTests(unittest.TestCase):
+    def setUp(self):
+        self.enterContext(patch.dict("sys.modules", IMAGE_MODULES))
+
     def test_atlas_decoding_matches_palette_pixels_and_transparency(self):
         sheet = SPRITES.SpriteSheet(str(ATLAS))
         self.assertLess(ATLAS.stat().st_size, 8 * 1024)

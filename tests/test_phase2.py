@@ -40,7 +40,7 @@ def copy_source_dist(target):
         if path.is_file():
             shutil.copy2(path, target / path.name)
     for relative in ("configs", "defaults", "recovery", "lib"):
-        ignore = shutil.ignore_patterns("app.py") \
+        ignore = shutil.ignore_patterns("app.py", "tartlabdrivers") \
             if relative == "lib" else None
         shutil.copytree(source / relative, target / relative, ignore=ignore)
     shutil.copytree(source / "files/assets-legacy", target / "files/assets")
@@ -143,7 +143,7 @@ class DistributionBuildTests(unittest.TestCase):
         for relative in (
                 "files/help", "files/help-legacy", "files/assets", "files/assets-legacy",
                 "files/user", "configs", "defaults", "recovery",
-                "lib/pydevices", "lib/tartlabutils",
+                "lib/pydevices", "lib/tartlabutils", "lib/tartlabdrivers/display",
                 "ide/www/dist"):
             (source / relative).mkdir(parents=True)
         (source / "main.py").write_text("print('main')\n")
@@ -158,6 +158,9 @@ class DistributionBuildTests(unittest.TestCase):
         (source / "lib/pydevices/driver.py").write_text("VALUE = 2\n")
         (source / "lib/tartlabutils/app.py").write_text("MODERN = 1\n")
         (source / "lib/tartlabutils/legacy_platform.py").write_text("LEGACY = 1\n")
+        (source / "lib/tartlabdrivers/__init__.py").write_text("")
+        (source / "lib/tartlabdrivers/display/__init__.py").write_text("")
+        (source / "lib/tartlabdrivers/display/driver.py").write_text("DRIVER = 1\n")
         (source / "ide/ide.py").write_text("def main(): pass\n")
         (source / "ide/www/dist/index.html").write_text("x" * 4096)
         return source
@@ -208,6 +211,8 @@ class DistributionBuildTests(unittest.TestCase):
             self.assertFalse((modern / "lib/pydevices").exists())
             self.assertFalse((modern / "configs").exists())
             self.assertFalse((modern / "lib/tartlabutils/legacy_platform.py").exists())
+            self.assertTrue((modern / "lib/tartlabdrivers/display/driver.py").is_file())
+            self.assertFalse((legacy / "lib/tartlabdrivers").exists())
             self.assertTrue((legacy / "lib/pydevices/driver.py").is_file())
             self.assertTrue((legacy / "configs/board.py").is_file())
             self.assertFalse(

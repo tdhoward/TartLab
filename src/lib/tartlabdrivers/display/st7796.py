@@ -1,4 +1,4 @@
-"""Reusable ST7796 scanout-scroll adapter for direct surfaces."""
+"""Modern ST7796 scanout-scroll adapter for direct surfaces."""
 
 from tartlabutils.runtime import (
     DirectRGB565Surface,

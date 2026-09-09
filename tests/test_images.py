@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from tests.image_support import IMAGE_MODULES, qoi, sprites
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -21,8 +23,6 @@ def load(name, path):
     return module
 
 
-qoi = load("test_qoi_decoder", "src/lib/tartlabutils/images/qoi.py")
-sprites = load("test_image_sprites", "src/lib/tartlabutils/sprites.py")
 END = b"\x00" * 7 + b"\x01"
 
 
@@ -139,6 +139,9 @@ class QOIImageTests(unittest.TestCase):
 
 
 class ImageAssetsTests(unittest.TestCase):
+    def setUp(self):
+        self.enterContext(patch.dict("sys.modules", IMAGE_MODULES))
+
     def test_legacy_assets_contain_only_the_preserved_bitmap(self):
         paths = list((ROOT / "src/files/assets-legacy").iterdir())
         self.assertEqual([p.name for p in paths], ["warrior.bmp"])

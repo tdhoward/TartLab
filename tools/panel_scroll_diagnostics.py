@@ -28,7 +28,7 @@ for search_path in reversed(('/device', '/lib', '/', '/files/user')):
     if search_path not in sys.path:
         sys.path.insert(0, search_path)
 
-adapter_scope = {'__name__': 'tartlabutils.st7796_probe'}
+adapter_scope = {'__name__': 'tartlabdrivers.display.st7796_probe'}
 exec(__ADAPTER_SOURCE__, adapter_scope)
 import tartlabutils._emitters as modern_emitters
 exec(__EMITTER_SOURCE__, modern_emitters.__dict__)
@@ -259,7 +259,7 @@ finally:
 
 
 def device_program(visual_hold_seconds: int = 0) -> str:
-    adapter = (ROOT / "src/lib/tartlabutils/st7796.py").read_text(
+    adapter = (ROOT / "src/lib/tartlabdrivers/display/st7796.py").read_text(
         encoding="utf-8")
     emitters = (ROOT / "src/lib/tartlabutils/_emitters.py").read_text(
         encoding="utf-8")

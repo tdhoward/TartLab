@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from tests.test_app import FakeSurface, FakeSeedSurface, load_app
-from tests.test_images import ROOT, qoi, sprites
+from tests.test_images import IMAGE_MODULES, ROOT, qoi, sprites
 
 
 class ImageExampleTests(unittest.TestCase):
@@ -24,7 +24,7 @@ class ImageExampleTests(unittest.TestCase):
                 path = ROOT / "src" / path
             return real_open(path, *args, **kwargs)
 
-        modules = {"tartlabutils.app": app, "tartlabutils.sprites": sprites,
+        modules = {**IMAGE_MODULES, "tartlabutils.app": app, "tartlabutils.sprites": sprites,
                    "tartlabutils.images.qoi": qoi, "bmp565": None,
                    "qoi_reader": None, "pydevices": None}
         path = ROOT / "src/files/help" / name

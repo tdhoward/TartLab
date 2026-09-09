@@ -1,4 +1,4 @@
-"""Reusable ST77922 transport and ownership adapter for declarative board configurations."""
+"""Modern ST77922 transport and ownership adapter for declarative board configurations."""
 
 from tartlabutils.runtime import (
     DisplayFrameSync,

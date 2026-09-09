@@ -92,12 +92,12 @@
         "sha256": "8ef66200d1224d455bf262c0eb5371865e309070cfefe0190d7ecc35cc3521c9"
       },
       {
-        "path": "src/lib/tartlabutils/st7796.py",
-        "sha256": "6e9030a843de824acc7c8a33a582c8f3d59a421992495d9e4661698546c8146a"
+        "path": "src/lib/tartlabdrivers/display/st7796.py",
+        "sha256": "da0a581dc11cd5565a0149237e1df746de011f113f2fe21735a7ec2b11f1e9b7"
       },
       {
         "path": "boards/lilygo_t_display_s3_pro/runtime/t_display_s3_pro_modern.py",
-        "sha256": "25a3df140099867c1297bd6ee82b411846118bac1f30cee1629b633677250f37"
+        "sha256": "88833f5a64a288d7ba047f749f44f85e83ea4f10344bdfec61a73072c4c6a2aa"
       }
     ]
   }

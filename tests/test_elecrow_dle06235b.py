@@ -76,7 +76,7 @@ _MODULE_NAMES = (
     "tartlabutils",
     "tartlabutils.board",
     "tartlabutils.runtime",
-    "tartlabutils.st77922",
+    "tartlabdrivers.display.st77922",
     "elecrow_dle06235b_modern",
 )
 _SAVED_MODULES = {name: sys.modules.get(name) for name in _MODULE_NAMES}
@@ -93,8 +93,8 @@ try:
         ROOT / "src/lib/tartlabutils/runtime.py",
     )
     module = load_source(
-        "tartlabutils.st77922",
-        ROOT / "src/lib/tartlabutils/st77922.py",
+        "tartlabdrivers.display.st77922",
+        ROOT / "src/lib/tartlabdrivers/display/st77922.py",
     )
     board_payload = load_source(
         "elecrow_dle06235b_modern",
@@ -333,7 +333,7 @@ class ElecrowControllerTests(unittest.TestCase):
         self.assertEqual(board["display"]["backlight_state"], "STATE_PWM")
         self.assertEqual(
             board["display"]["adapter"],
-            "tartlabutils.st77922",
+            "tartlabdrivers.display.st77922",
         )
 
 

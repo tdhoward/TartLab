@@ -61,14 +61,24 @@ Important checks include:
 
 These are source and policy claims, not hardware claims.
 
-Image and asset changes run `python -m unittest tests.test_images
+Image and asset changes run `python -m unittest tests.test_images tests.test_sprites
 tests.test_image_examples tests.test_racer_sprites tests.test_phase2 -v`.
 These cover QOI opcodes, bounded reads, borrowed strip buffers, alpha policy,
-invalid streams, TS16 frame extraction, example execution, and profile-specific
+invalid streams, TS16/QOI frame extraction, the alpha-128 cutoff, background
+compositing, one-pass batches, decoder extension, example execution, and profile-specific
 help/assets/vendor selection. `tests.test_image_conversion` additionally checks
 the host converter with Pillow installed. See `IMAGE_ASSETS.md` for conversion
 commands and memory contracts. Run both profile builds when changing asset
 selection; modern releases must contain no PyDevices package or vendor lock.
+
+Hardware package moves additionally run `tests.test_drivers tests.test_st7796
+tests.test_elecrow_dle06235b tests.test_phase5 tests.test_modern_profile
+tests.test_platform tests.test_panel_scroll_diagnostics`. These check actual
+board-selected adapter imports, package ownership, register/transfer behavior,
+source hashes and platform selection. Build both filesystem profiles to check
+that `tartlabdrivers` is shipped only on modern devices. Run release packaging
+and update/recovery tests when adding or moving an archive. Hardware behavior
+still requires the physical checks selected by the impact table above.
 
 ## Tier 1: CPython virtual device
 
@@ -120,6 +130,8 @@ for all board-specific qualification.
 
 Relevant records and helpers:
 
+- `IMAGE_DRIVER_HARDWARE.md`: TS16/QOI sprite and modern driver package smoke
+  on the Elecrow fixture, including visual observations and explicit limits.
 - `PHASE3_HARDWARE.md`: legacy platform-abstraction smoke.
 - `PHASE4_HARDWARE.md`: generated legacy PyDevices comparison.
 - `PHASE5_HARDWARE.md`: modern lifecycle and renderer ownership.

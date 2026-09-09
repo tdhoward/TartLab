@@ -42,8 +42,14 @@ src/
       runtime.py               Default LVGL/direct-surface implementation
       factory.py               Shared declarative board constructor
       legacy_platform.py       Legacy hdwconfig/PyDevices compatibility
-      sprites.py               Packed indexed sprite sheets and prepared runs
-      images/qoi.py            Streaming RGB565 image decoding
+      sprites.py               Format-independent sprite extraction and drawing
+      images/                  Image detection and bounded row decoding
+        ts16.py                Packed indexed images
+        qoi.py                 Streaming QOI images
+    tartlabdrivers/            Modern-only hardware integration package
+      display/
+        st7796.py              Scanout-scroll runtime adapter
+        st77922.py             Transport, alignment, and ownership adapter
   files/
     assets/                    Modern TS16 and QOI assets
     assets-legacy/             Original warrior.bmp for legacy builds
@@ -63,12 +69,17 @@ builder stages only those runtime directories beneath `dist/board/<board_id>`.
 
 The default runtime uses unprefixed `tartlabutils` module names: `app` for
 direct drawing, `launcher` for the touchscreen chooser, `power` for backlight
-support, and `st7796`/`st77922` for reusable controller adapters. `app_runner`
+support. Reusable controller adapters live in `tartlabdrivers.display`, selected
+by the `BOARD_CONFIG` display adapter reference. `app_runner`
 launches the selected app and tracks boot health on both runtime profiles.
 Legacy platform behavior lives in `legacy_platform`; `platform` remains the
 shared selection boundary. App imports should use `tartlabutils.app`.
 Modern builds omit PyDevices, legacy configs, and `legacy_platform.py`; protected
 board identity selects modern import paths without adding the legacy paths.
+Legacy builds omit `tartlabdrivers`. Modern releases own that complete package
+through the `/lib/tartlabdrivers` archive. Its package initializers do not load
+devices; the factory imports only the adapter selected by the board payload.
+Underlying frozen device drivers remain inputs of the firmware build recipes.
 The modern package map and provenance no longer include the legacy vendor lock.
 No migration or cleanup packages are needed for this pre-public-release change.
 Image formats, conversion, and memory contracts are documented in

@@ -18,14 +18,14 @@ def load_modules():
     modern_spec = importlib.util.spec_from_file_location(
         "tartlabutils.runtime", modern_path)
     modern = importlib.util.module_from_spec(modern_spec)
-    adapter_path = ROOT / "src/lib/tartlabutils/st7796.py"
+    adapter_path = ROOT / "src/lib/tartlabdrivers/display/st7796.py"
     adapter_spec = importlib.util.spec_from_file_location(
-        "tartlabutils.st7796", adapter_path)
+        "tartlabdrivers.display.st7796", adapter_path)
     adapter = importlib.util.module_from_spec(adapter_spec)
     with mock.patch.dict(sys.modules, {
         "tartlabutils": package,
         "tartlabutils.runtime": modern,
-        "tartlabutils.st7796": adapter,
+        "tartlabdrivers.display.st7796": adapter,
     }):
         modern_spec.loader.exec_module(modern)
         adapter_spec.loader.exec_module(adapter)

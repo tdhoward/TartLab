@@ -39,16 +39,22 @@ REQUIRED_DIST_FILES = (
     "lib/tartlabutils/power.py",
     "lib/tartlabutils/runtime.py",
     "lib/tartlabutils/factory.py",
-    "lib/tartlabutils/st7796.py",
-    "lib/tartlabutils/st77922.py",
+    "lib/tartlabdrivers/__init__.py",
+    "lib/tartlabdrivers/display/__init__.py",
+    "lib/tartlabdrivers/display/st7796.py",
+    "lib/tartlabdrivers/display/st77922.py",
     "lib/tartlabutils/platform.py",
+    "lib/tartlabutils/sprites.py",
+    "lib/tartlabutils/images/__init__.py",
+    "lib/tartlabutils/images/_common.py",
+    "lib/tartlabutils/images/ts16.py",
     "lib/tartlabutils/images/qoi.py",
 )
 APPLICATION_ADAPTER_INPUTS = {
     "src/lib/tartlabutils/board.py",
     "src/lib/tartlabutils/runtime.py",
     "src/lib/tartlabutils/factory.py",
-    "src/lib/tartlabutils/st7796.py",
+    "src/lib/tartlabdrivers/display/st7796.py",
     PROFILE_SELECTOR_SOURCE,
 }
 
