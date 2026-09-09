@@ -28,6 +28,7 @@ settings = {}
 repos = {}
 updates_in_progress = False
 power_controller = None
+device_settings = None
 
 class CaptureOutput(io.IOBase):
     def __init__(self):
@@ -276,6 +277,91 @@ ide_view.show_network(wifi_ssid, text, local_hostname)
 
 def show_update_progress(status, stepnum, steps):
     ide_view.show_update_progress(status, stepnum, steps)
+    if device_settings is not None:
+        device_settings.show_update_progress(status, stepnum, steps)
+
+
+def save_display_settings(brightness, timeout):
+    """Persist just the display preferences, preserving other device state."""
+    global settings
+    if isinstance(brightness, bool) or not isinstance(brightness, (int, float)) or \
+            not 0.1 <= brightness <= 1:
+        raise ValueError('Brightness must be between 10% and 100%.')
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or \
+            not 0 <= timeout <= 86400:
+        raise ValueError('Timeout must be between 0 and 86400 seconds.')
+    updated = dict(settings)
+    current = settings.get('modern_ui', {})
+    display = dict(current) if isinstance(current, dict) else {}
+    display['max_brightness'] = brightness
+    display['auto_dim_seconds'] = timeout
+    updated['modern_ui'] = display
+    save_settings(updated)
+    settings = updated
+    if power_controller is not None:
+        power_controller.configure(settings)
+    else:
+        platform.set_brightness(brightness)
+
+
+def forget_wifi_network(ssid):
+    """Remove a saved SSID and its matching key without disconnecting WiFi."""
+    global settings
+    if ssid not in settings['wifi_ssids']:
+        raise ValueError('SSID not found!')
+    index = settings['wifi_ssids'].index(ssid)
+    updated = dict(settings)
+    updated['wifi_ssids'] = list(settings['wifi_ssids'])
+    updated['wifi_passwords'] = list(settings['wifi_passwords'])
+    del updated['wifi_ssids'][index]
+    del updated['wifi_passwords'][index]
+    save_settings(updated)
+    settings = updated
+
+
+def require_update_access():
+    if softAP or not sta_if.isconnected():
+        raise ValueError('Connect to WiFi with internet access first.')
+    if updates_in_progress:
+        raise ValueError('Updates are in progress.')
+
+
+async def check_device_updates():
+    global updates_in_progress
+    require_update_access()
+    updates_in_progress = True
+    try:
+        updates = []
+        for repo in repos['list']:
+            assets, latest = await check_for_update(repo, raise_errors=True)
+            updates.append((repo['name'], repo['installed_version'], latest, assets))
+        return updates
+    finally:
+        updates_in_progress = False
+
+
+async def install_device_updates():
+    global updates_in_progress
+    require_update_access()
+    updates_in_progress = True
+    try:
+        await main_update_routine(show_update_progress)
+    finally:
+        updates_in_progress = False
+
+
+def create_device_settings():
+    if not (platform.capabilities.get('lvgl_ui', False) and
+            platform.capabilities.get('touch', False)):
+        return None
+    from .device_settings import DeviceSettings
+    from tartlabutils.power import modern_ui_settings
+    return DeviceSettings(
+        platform.lvgl, platform.width, platform.height,
+        lambda: modern_ui_settings(settings), save_display_settings,
+        lambda: list(settings['wifi_ssids']), forget_wifi_network,
+        lambda: [(repo['name'], repo['installed_version']) for repo in repos['list']],
+        check_device_updates, install_device_updates, log_exception)
 
 
 # list folder contents, returns tuple (files, folders)
@@ -606,23 +692,14 @@ async def api_get_versions(reader, writer, request):
 # check for version updates for the repos
 @app.route("GET", "/api/checkupdates")
 async def api_check_updates(reader, writer, request):
-    global softAP, repos, updates_in_progress
-    if softAP:
-        return await sendHTTPResponse(writer, 400, 'This WiFi has no internet access.')
-    if updates_in_progress:
-        return await sendHTTPResponse(writer, 400, 'Updates are in progress.')
+    try:
+        updates = await check_device_updates()
+    except Exception as error:
+        return await sendHTTPResponse(writer, 400, str(error))
     response = HTTPResponse(200, "application/json", close=True)
     await response.send(writer)
     await writer.drain()
-    updates = []
-    for repo in repos['list']:
-        try:
-            assets, latest_version = await check_for_update(repo)
-            updates.append((assets, latest_version))
-        except Exception as e:
-            log_exception(e)
-            updates.append(('error', e))
-    writer.write(ujson.dumps(updates))
+    writer.write(ujson.dumps([(item[3], item[2]) for item in updates]))
     await writer.drain()
     print(f"API request: {request.path} with response code 200")
 
@@ -630,14 +707,14 @@ async def api_check_updates(reader, writer, request):
 @app.route("POST", "/api/doupdates")
 async def api_do_updates(reader, writer, request):
     global softAP, updates_in_progress
-    if softAP:
-        return await sendHTTPResponse(writer, 400, 'This WiFi has no internet access.')
-    if updates_in_progress:
-        return await sendHTTPResponse(writer, 400, 'Updates are in progress.')
-    updates_in_progress = True
-    await sendHTTPResponse(writer, 200, 'success')  # we return success right away, since we're restarting
-    print(f"API request: {request.path} with response code 200")
     try:
+        require_update_access()
+    except ValueError as error:
+        return await sendHTTPResponse(writer, 400, str(error))
+    updates_in_progress = True
+    try:
+        await sendHTTPResponse(writer, 200, 'success')  # acknowledge before restarting
+        print(f"API request: {request.path} with response code 200")
         await main_update_routine(show_update_progress)
     finally:
         updates_in_progress = False
@@ -725,20 +802,15 @@ async def api_add_ssid(reader, writer, request):
 
 # delete the SSID
 @app.route("DELETE", "/api/remove_ssid/*")
-async def api_add_ssid(reader, writer, request):
-    global settings
+async def api_remove_ssid(reader, writer, request):
     ssid = unquote(request.path[len('/api/remove_ssid/'):])
+    if ssid not in settings['wifi_ssids']:
+        return await sendHTTPResponse(writer, 404, 'SSID not found!')
     try:
-        for idx, s in enumerate(settings['wifi_ssids']):
-            if s == ssid:
-                del settings['wifi_ssids'][idx]  # remove ssid and password
-                del settings['wifi_passwords'][idx]
-                save_settings(settings)
-                print(f"DELETE SSID {ssid} with response code 200")
-                return await sendHTTPResponse(writer, 200, 'success')
+        forget_wifi_network(ssid)
     except:
         return await sendHTTPResponse(writer, 400, 'Unable to remove SSID!')
-    return await sendHTTPResponse(writer, 404, 'SSID not found!')    
+    return await sendHTTPResponse(writer, 200, 'success')
 
 
 # get the stored logs
@@ -827,10 +899,11 @@ def _cancel_background_task(task):
 
 
 def main():
-    global sta_if, ap_if, ip_address, softAP, app, power_controller
+    global sta_if, ap_if, ip_address, softAP, app, power_controller, device_settings
 
     power_controller = None
     power_task = None
+    settings_task = None
     try:
         def handle_exception(loop, context):
             # uncaught exceptions end up here
@@ -845,6 +918,9 @@ def main():
             power_task = loop.create_task(power_controller.run(asyncio))
         else:
             loop.create_task(check_buttons())
+        device_settings = create_device_settings()
+        if device_settings is not None:
+            settings_task = loop.create_task(device_settings.run(asyncio))
         loop.create_task(free_memory_task())
         loop.create_task(start_ide_server())
 
@@ -852,6 +928,10 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        _cancel_background_task(settings_task)
+        if device_settings is not None:
+            device_settings.close()
+            device_settings = None
         if power_controller is not None:
             power_controller.stop()
             power_controller = None

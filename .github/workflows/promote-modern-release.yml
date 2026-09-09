@@ -68,7 +68,9 @@ jobs:
         shell: bash
         env:
           RELEASE_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          python tools/modern_release_baseline.py prepare
           echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
           mapfile -t BOARD_IDS < <(python tools/modern_release_matrix.py list)
           BOARD_ARGS=()
@@ -76,13 +78,17 @@ jobs:
             BOARD_ARGS+=(--board "$board_id")
           done
           printf 'Promotion board: %s\n' "${BOARD_IDS[@]}"
-          python makedist.py --output build/promote-modern/dist-one --clean --skip-web-build "${BOARD_ARGS[@]}"
-          python makedist.py --output build/promote-modern/dist-two --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python makedist.py --output build/promote-modern/source-dist-one --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python makedist.py --output build/promote-modern/source-dist-two --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python tools/modern_release_baseline.py assemble --dist build/promote-modern/source-dist-one --output build/promote-modern/dist-one --clean
+          python tools/modern_release_baseline.py assemble --dist build/promote-modern/source-dist-two --output build/promote-modern/dist-two --clean
           python tools/build_modern_release.py --dist build/promote-modern/dist-one --output build/promote-modern/release --version "$RELEASE_TAG" --clean "${BOARD_ARGS[@]}"
           python tools/build_modern_release.py --dist build/promote-modern/dist-two --output build/promote-modern/release-two --version "$RELEASE_TAG" --clean "${BOARD_ARGS[@]}"
           python tools/compare_releases.py build/promote-modern/release build/promote-modern/release-two
 
       - name: Enforce runtime-profile and firmware preflight
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           python tools/check_firmware_artifacts.py
           python tools/modern_release_matrix.py check --release build/promote-modern/release --dist build/promote-modern/dist-one
@@ -94,6 +100,7 @@ jobs:
           CANDIDATE_HASH: ${{ inputs.candidate_checksums_sha256 }}
           EVIDENCE_HASH: ${{ inputs.hardware_evidence_sha256 }}
           EVIDENCE_REFERENCE: ${{ inputs.hardware_evidence_reference }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           case "$EVIDENCE_REFERENCE" in
             https://*) ;;
@@ -104,6 +111,7 @@ jobs:
             --output build/promote-modern/qualification-evidence.json \
             "$EVIDENCE_REFERENCE"
           python tools/check_modern_qualification.py \
+            --release build/promote-modern/release \
             --evidence build/promote-modern/qualification-evidence.json \
             --tag "$RELEASE_TAG" \
             --candidate-checksums-sha256 "$CANDIDATE_HASH" \
@@ -115,6 +123,7 @@ jobs:
           CANDIDATE_HASH: ${{ inputs.candidate_checksums_sha256 }}
           EVIDENCE_HASH: ${{ inputs.hardware_evidence_sha256 }}
           EVIDENCE_REFERENCE: ${{ inputs.hardware_evidence_reference }}
+          GH_TOKEN: ${{ github.token }}
         run: >-
           python tools/create_modern_promotion_attestation.py
           --release build/promote-modern/release

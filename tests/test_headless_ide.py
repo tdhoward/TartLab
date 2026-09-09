@@ -436,6 +436,12 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
                     self.stop_calls += 1
 
             loop = FakeLoop()
+            settings_ui = types.SimpleNamespace(closed=False)
+            async def run_settings(unused_asyncio):
+                pass
+            settings_ui.run = run_settings
+            settings_ui.close = lambda: setattr(settings_ui, 'closed', True)
+            ide.create_device_settings = lambda: settings_ui
             ide.asyncio = types.SimpleNamespace(
                 get_event_loop=lambda: loop,
                 run=asyncio.run,
@@ -468,6 +474,9 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
             self.assertNotIn("check_buttons", task_names)
             self.assertIn("free_memory_task", task_names)
             self.assertIn("start_ide_server", task_names)
+            self.assertIn("run_settings", task_names)
+            self.assertTrue(settings_ui.closed)
+            self.assertIsNone(ide.device_settings)
             self.assertEqual(len(FakePowerController.instances), 1)
             self.assertEqual(FakePowerController.instances[0].stop_calls, 1)
             self.assertTrue(loop.tasks[0].cancelled)

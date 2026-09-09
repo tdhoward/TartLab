@@ -59,9 +59,11 @@ qualified platform baseline as described in
 [`PHASE6_MODERN_QUALIFICATION.md`](PHASE6_MODERN_QUALIFICATION.md). Both the
 routine app/browser path and the platform path retain the same authentication,
 exact-candidate evidence binding, and protected promotion requirements.
-Automatic validation of qualification reuse remains planned work under
-[`RELEASE_POLICY.md`](../RELEASE_POLICY.md); signing does not itself establish
-that an inherited hardware claim applies.
+Promotion verifies the selected baseline's signed snapshot, report, checksums,
+and promotion record against the protected release signer and exact source tag.
+It recomputes the new candidate's report before accepting inherited schema-3
+claims. See [`RELEASE_TOOLING.md`](../RELEASE_TOOLING.md); signing alone does not
+establish that a previous hardware claim applies to changed content.
 
 Published alpha reference `modern-v0.14.8` passed this process in workflow run
 `33223821198`.

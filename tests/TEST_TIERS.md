@@ -5,9 +5,11 @@ fast feedback but do not replace physical hardware qualification.
 
 Tiers describe test environments, not a mandatory ladder to repeat in full for
 every release. TartLab keeps one public version and reuses applicable qualified
-platform evidence under [`RELEASE_POLICY.md`](../RELEASE_POLICY.md). The current
-promotion workflow still requires a complete candidate-bound record; automated
-change classification and qualification reuse are not implemented yet.
+platform evidence under [`RELEASE_POLICY.md`](../RELEASE_POLICY.md). The modern
+workflow generates change reports and validates fresh/inherited schema-3
+results for the complete candidate. See
+[`RELEASE_TOOLING.md`](../RELEASE_TOOLING.md) for the initial baseline procedure
+and conservative automated classification.
 
 ## Selecting release tests
 
@@ -24,6 +26,13 @@ additional testing from the complete candidate's impact, not its version bump.
 | Shared platform, startup, or device-side IDE services | Fresh physical regression checks on affected boards; expand to Tier 4 claims as behavior requires. |
 | Firmware, updater, recovery, provisioning, or installation contract | Full relevant physical qualification on affected boards, including interruption/resume, protected state, and supported update paths. |
 | New board | Full board qualification, plus regressions on existing boards when shared behavior changes. |
+
+The initial automated classifier checks app smoke on every included board and
+uses full relevant gates for shared platform changes. HTML/JavaScript and
+browser dependency changes request device integration smoke; CSS/static-only
+changes can retain physical evidence. More selective dependency analysis and
+representative-board selection remain manual engineering judgments, not
+automatic reductions of the generated requirements.
 
 Changes to a shared renderer or helper are platform changes even when motivated
 by an example app. Dependency, toolchain, configuration, package-size, ownership,
@@ -98,6 +107,14 @@ touchscreen timeout and chooser, confined app navigation, wake-touch
 consumption, settings validation, brightness lifecycle, and preservation of
 legacy button behavior.
 
+Touchscreen IDE settings run `python -m unittest tests.test_device_settings
+tests.test_headless_ide tests.test_power -v`. These cover deferred touch actions,
+page cleanup and geometry, durable display preferences, immediate backlight
+reconfiguration, paired SSID/password removal, browser/device update exclusion,
+and failed update checks. Run the update/recovery regressions when changing the
+services behind these controls. Physical checks for the settings pages are in
+`MODERN_TOUCHSCREEN_QUALIFICATION.md`.
+
 It does not emulate ESP32 flash physics, MicroPython heap constraints, reset
 behavior, GPIO, display/touch, or radio behavior.
 
@@ -157,8 +174,10 @@ gates for platform changes that invalidate them. For unchanged claims, a modern
 candidate record may reference prior board-bound evidence with an explicit
 baseline comparison and justification. This retains complete evidence coverage
 without requiring a new power-loss campaign for an app or cosmetic browser
-change. The current workflow requires reviewed evidence; the planned automated
-reuse checks are described in [`RELEASE_POLICY.md`](../RELEASE_POLICY.md).
+change. Promotion recomputes the report, authenticates the selected baseline,
+and checks schema-3 fresh/inherited results as described in
+[`RELEASE_TOOLING.md`](../RELEASE_TOOLING.md). Historical candidates without
+signed snapshots cannot bootstrap automatic reuse.
 
 - Legacy qualification follows `PHASE2_HARDWARE.md` and publishes only through
   the protected legacy workflow to `tdhoward/TartLab`.

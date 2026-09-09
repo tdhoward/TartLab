@@ -132,7 +132,8 @@ not replace physical display, touch, Wi-Fi, reset, memory, migration, or release
 qualification. Testing follows change impact: routine app/browser releases can
 reuse applicable platform evidence, while affected platform and update behavior
 requires fresh qualification. See [`RELEASE_POLICY.md`](RELEASE_POLICY.md) for
-the agreed model and automation still to implement, and
+the release model, [`RELEASE_TOOLING.md`](RELEASE_TOOLING.md) for the implemented
+baseline and evidence workflow, and
 [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md) for the test matrix.
 
 ![TartLab in action](images/screenshots/TartLab_ss2.png)

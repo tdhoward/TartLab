@@ -184,7 +184,7 @@ def _package_member_prefix(package, repo):
     return board_id + "/"
 
 
-async def check_for_update(repo):
+async def check_for_update(repo, raise_errors=False):
     release_contract(repo)
     log("\nChecking %s for updates" % repo["repo"])
     url = "https://api.github.com/repos/%s/releases" % repo["repo"]
@@ -194,6 +194,8 @@ async def check_for_update(repo):
         settings = load_settings()
         if response.status_code != 200:
             log("Failed to fetch releases: %s" % response.status_code)
+            if raise_errors:
+                raise OSError("Unable to check updates (HTTP %s)" % response.status_code)
             return None, None
         for release in response.json():
             if release.get("prerelease", False) and not settings.get("pre-release-updates", False):
@@ -206,6 +208,8 @@ async def check_for_update(repo):
     except Exception as error:
         log("Error checking repo!")
         log_exception(error)
+        if raise_errors:
+            raise
         return None, None
     finally:
         if response is not None:

@@ -21,8 +21,8 @@ experimental port from silently becoming a supported target.
 
 Multiple product releases may reuse one qualified platform baseline. Testing
 follows change impact, independently of major/minor/patch numbering. The policy,
-evidence-reuse rules, and pending automation are defined in
-[`RELEASE_POLICY.md`](RELEASE_POLICY.md).
+evidence-reuse rules are defined in [`RELEASE_POLICY.md`](RELEASE_POLICY.md);
+the implemented workflow is in [`RELEASE_TOOLING.md`](RELEASE_TOOLING.md).
 
 ## Repository layout
 
@@ -200,9 +200,10 @@ Unchanged platform claims may reuse board-bound baseline evidence when a new
 candidate comparison establishes that it still applies. Changed behavior needs
 fresh tests at the scope defined in
 [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md#selecting-release-tests). A new board
-still follows the full qualification sequence below. Current promotion tools
-require the existing candidate-bound evidence schema; automatic baseline
-assembly, change classification, and evidence reuse remain implementation work.
+still follows the full qualification sequence below. New candidates include
+signed snapshots and change reports; promotion validates schema-3 evidence and
+recomputes inheritance decisions. Automatic reuse requires a baseline promoted
+with this metadata, as described in [`RELEASE_TOOLING.md`](RELEASE_TOOLING.md).
 
 Shared filesystem packages are built once. Modern releases additionally carry
 one authenticated `board-support.tar` with one top-level directory per board in

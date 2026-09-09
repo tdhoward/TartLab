@@ -193,6 +193,15 @@ class ModernIDEBacklightController:
         self._platform.set_brightness(self.max_brightness)
         self._dimmed = False
 
+    def configure(self, settings):
+        """Apply saved brightness/timing values and restart inactivity timing."""
+        values = modern_ui_settings(settings)
+        self.max_brightness = values["max_brightness"]
+        self.dim_brightness = values["dim_brightness"]
+        self.auto_dim_seconds = values["auto_dim_seconds"]
+        self._timeout_ms = int(self.auto_dim_seconds * 1000)
+        self.wake()
+
     async def run(self, asyncio_module):
         """Run the policy until stopped by the IDE lifecycle."""
         self.start()

@@ -7,19 +7,17 @@ with testing effort determined by the behavior and artifacts that change.
 
 ## Policy and implementation status
 
-This is the agreed release model for ongoing modern development. The current
-builders and protected promotion workflows still require a candidate-bound
-qualification record covering every board in the release compatibility matrix.
-They do not yet calculate change impact, assemble a release from a separately
-stored platform baseline, or automatically validate inherited qualification.
+The modern builders and protected workflows implement baseline capture,
+platform assembly, change reports, and validation of inherited qualification.
+Every included board still needs applicable candidate-bound evidence. Follow
+[`RELEASE_TOOLING.md`](RELEASE_TOOLING.md) for the release plan, commands,
+schema-3 evidence, and conservative classification rules.
 
-Until that automation exists, use the existing workflows and evidence schema.
-Record the baseline comparison, reasons earlier evidence remains applicable,
-and fresh test results in a new sanitized candidate qualification record and
-its referenced artifacts. Do not omit required gates or mark unsupported claims
-as passed. The modern v0.15.4 records provide a precedent for reviewed evidence
-reuse; they are not blanket qualification for later changes. See
-[`tests/PHASE6_MODERN_QUALIFICATION.md`](tests/PHASE6_MODERN_QUALIFICATION.md).
+The initial plan has no baseline and requires fresh qualification. Earlier
+published candidates lack the signed snapshot and schema-3 records required
+for automatic reuse; establish the first baseline by qualifying and promoting
+a release built with this tooling. Historical modern v0.15.4 evidence remains
+an audit record and precedent, not an automatically imported qualification.
 
 Legacy release gates and profile-specific feed isolation remain in force.
 Introducing automated evidence reuse into the legacy workflow would require
@@ -82,10 +80,10 @@ as described in [`BOARD_SUPPORT.md`](BOARD_SUPPORT.md).
 
 An app/browser release must use the qualified platform content. Unqualified
 platform development must not enter that release incidentally through the
-current checkout. Until baseline assembly is implemented, prepare a source
-candidate containing only the intended changes and verify its built platform
-content against the baseline. Separate public component releases or repository
-forks are not required.
+current checkout. The assembly tool combines the selected baseline's platform
+files with the current built app/browser files and reports excluded platform
+changes. Host and installation-contract differences still reject the routine
+path. Separate public component releases or repository forks are not required.
 
 ## Release paths and test scope
 
@@ -148,7 +146,7 @@ durable prior artifacts and the comparison that justifies reuse. Protected
 promotion must still bind the exact candidate, board set, firmware identities,
 and evidence; signatures and feed-isolation checks apply to both release paths.
 
-## Routine release process and automation work
+## Routine release process
 
 1. Select the qualified platform baseline and supported board set; prepare the
    intended app/browser changes or identify the platform changes to qualify.
@@ -158,10 +156,9 @@ and evidence; signatures and feed-isolation checks apply to both release paths.
 4. Complete those checks and bind their results to the exact final candidate.
 5. Promote through the existing protected workflow and verify publication.
 
-The next release-tooling work is to store machine-readable baseline inventories
-and evidence bindings, build routine releases with the selected platform content,
-generate change-impact reports, and validate evidence reuse during promotion.
-The report should give maintainers a short concrete checklist and explain why
-each fresh check is needed. Validate that mechanism before allowing it to
-replace the current reviewed comparisons; documentation alone does not change
-the promotion validator or authorize automatic gate skipping.
+The tooling stores signed baseline inventories and evidence bindings, assembles
+routine releases, generates a concrete testing checklist, and validates reuse
+during promotion. Maintainers review and supply the fresh test results. The
+initial classifier is conservative for shared platform changes and checks all
+included boards for app smoke; it does not infer a dependency graph or choose
+representative hardware automatically. See [`RELEASE_TOOLING.md`](RELEASE_TOOLING.md).

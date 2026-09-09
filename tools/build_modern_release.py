@@ -117,12 +117,22 @@ def build_release(
         packages_path: Path = DEFAULT_PACKAGES,
         source_epoch: int | None = None,
         allow_dirty: bool = False,
-        board_ids: Sequence[str] | None = None) -> dict[str, object]:
+        board_ids: Sequence[str] | None = None,
+        qualification_plan: Path | None = None) -> dict[str, object]:
     """Create a modern candidate without changing or reusing legacy manifest data."""
 
     dist = dist.resolve()
     if not dist.is_dir():
         raise ValueError("modern distribution not found: %s" % dist)
+    from modern_release_baseline import load_plan
+    from modern_qualification import BASELINE, write_candidate_metadata
+    # Library callers get a fully unqualified candidate unless they explicitly
+    # supply a plan. CLI/CI always supplies the checked-in default plan. This
+    # keeps synthetic build/provisioning tests independent of live baselines.
+    qualification_request, baseline, capsule_path = (
+        load_plan(qualification_plan) if qualification_plan is not None else (
+            {"schema": 1, "mode": "platform", "resource_limits": {}, "update_sources": {}},
+            None, None))
     output = ensure_safe_output(output, (ROOT, dist))
     if output.exists():
         if not clean:
@@ -441,6 +451,9 @@ def build_release(
         "remaining_promotion_gates": profile["promotion_gates"],
     }
     write_json(output / "build_metadata.json", metadata)
+    if capsule_path:
+        shutil.copyfile(capsule_path, output / BASELINE)
+    write_candidate_metadata(output, qualification_request, baseline)
     checksums = {
         path.name: sha256_file(path)
         for path in sorted(output.iterdir()) if path.is_file()
@@ -457,6 +470,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--profile", type=Path, default=DEFAULT_PROFILE)
     parser.add_argument("--packages", type=Path, default=DEFAULT_PACKAGES)
     parser.add_argument("--source-date-epoch", type=int)
+    parser.add_argument("--qualification-plan", type=Path,
+                        default=ROOT / "profiles/modern-release-plan.json",
+                        help="release plan; defaults to profiles/modern-release-plan.json")
     parser.add_argument(
         "--board", dest="board_ids", action="append",
         help="candidate/qualified board ID to include; repeat for multiple boards")
@@ -471,7 +487,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.dist, args.output, args.version, clean=args.clean,
         profile_path=args.profile, packages_path=args.packages,
         source_epoch=args.source_date_epoch, allow_dirty=args.allow_dirty,
-        board_ids=args.board_ids)
+        board_ids=args.board_ids, qualification_plan=args.qualification_plan)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

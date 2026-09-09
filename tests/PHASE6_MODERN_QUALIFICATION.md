@@ -14,8 +14,9 @@ are staged; firmware and provenance assets are never installed by device OTA.
 
 ## Promotion evidence contract
 
-`tools/check_modern_qualification.py` validates a sanitized, candidate-bound
-schema-1 single-board summary or schema-2 aggregate. It binds the modern tag,
+`tools/check_modern_qualification.py` validates sanitized, candidate-bound
+schema-3 results for new candidates and retains schema-1/schema-2 validation
+for historical records. It binds the modern tag,
 target repository, candidate checksums, each firmware and board, operator/date,
 artifact hashes, and these five passed gates:
 
@@ -54,12 +55,14 @@ The v0.15.4 records below demonstrate reviewed reuse with candidate equivalence.
 They do not qualify arbitrary later app or platform changes. Select additional
 checks using [`TEST_TIERS.md`](TEST_TIERS.md#selecting-release-tests).
 
-The current schema requires `passed` plus evidence references for each gate;
-it has no machine-readable inherited-claim or platform-baseline fields. Explain
-the distinction in the referenced sanitized artifacts using the existing
-schema. Automatic impact analysis, baseline assembly, and validation of reuse
-are pending implementation. Continue through the existing protected promotion
-workflow with its exact candidate, board-set, and firmware bindings.
+New candidates carry a signed snapshot, qualification request, and computed
+report. Schema-3 evidence records each gate as fresh or inherited, plus current
+automated, resource, browser, and update-path results as required. Validate it
+with `tools/check_modern_qualification.py --release ...`; promotion performs
+the same recomputation and verifies the baseline's protected release signatures.
+Historical schemas cannot bypass those checks on new candidates. Follow
+[`RELEASE_TOOLING.md`](../RELEASE_TOOLING.md) to establish the first signed
+baseline, generate the evidence form, and complete the required results.
 
 ## Qualified candidate and physical results
 

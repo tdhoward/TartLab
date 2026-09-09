@@ -73,12 +73,13 @@ Platform changes need fresh evidence for affected behavior and boards; changes
 to firmware or installation/update behavior require full relevant physical
 qualification.
 
-Current tools still build from the source candidate and require the existing
-candidate-bound evidence schema. Baseline assembly, impact reports, and
-automatic validation of inherited qualification remain planned work. For now,
-record reviewed content comparisons and evidence reuse in the new candidate's
-sanitized qualification artifacts, then use the existing protected workflows.
-The commands below do not select a reduced-testing mode.
+[`RELEASE_TOOLING.md`](RELEASE_TOOLING.md) documents the implemented baseline
+capture, assembly, change reports, and schema-3 evidence validation. The
+checked-in `profiles/modern-release-plan.json` selects the release path and
+baseline for both candidate builds and protected promotion. Initially it
+requires fresh qualification to establish the first signed baseline. For an
+app/browser release, use the documented prepare/assemble steps before the
+modern builder; a raw distribution with differing platform files is rejected.
 
 ## Build a legacy candidate
 

@@ -122,10 +122,11 @@ shared runtime, startup, device-side IDE services, updater, recovery, board
 configuration, and installation contracts as well as firmware.
 
 [`RELEASE_POLICY.md`](RELEASE_POLICY.md) defines these boundaries and the
-single-version convention. Current tooling still requires reviewed comparisons
-and the existing candidate-bound evidence schema. Automated baseline assembly,
-change-impact reports, and validation of evidence reuse remain implementation
-work; they are not available release flags or permission to skip gates.
+single-version convention. [`RELEASE_TOOLING.md`](RELEASE_TOOLING.md) documents
+signed baseline capture, distribution assembly, computed change reports, and
+schema-3 evidence validation during protected promotion. The initial release
+plan requires fresh qualification to establish the first baseline; historical
+releases do not have the signed metadata needed for automatic reuse.
 
 Release discovery is part of the compatibility boundary:
 
@@ -524,13 +525,13 @@ The touchscreen/backlight sequence above remains guidance for affected future
 changes; the historical `modern-v0.14.8` evidence cannot establish claims for
 features introduced after it.
 
-The next release-process work is automated qualification reuse: identify and
-retain qualified platform content, compare complete candidates, generate a
-short required-test checklist, and validate inherited evidence at promotion.
-Implement and test those capabilities before replacing reviewed comparisons.
-Routine app/browser releases should then need only their applicable focused
-checks while preserving one public TartLab version. See
-[`RELEASE_POLICY.md`](RELEASE_POLICY.md).
+Automated qualification reuse is implemented. The next release-process step
+is to qualify and promote the first release with signed snapshots and schema-3
+results, capture its baseline, and select it in the release plan. Routine
+app/browser releases can then reuse applicable platform evidence while retaining
+one public TartLab version. The classifier remains conservative for shared
+platform changes and representative-board coverage. See
+[`RELEASE_TOOLING.md`](RELEASE_TOOLING.md).
 
 The owner still needs to decide:
 

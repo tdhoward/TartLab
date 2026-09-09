@@ -175,6 +175,21 @@ record observations without exposing protected data.
   after the observation.
 - [ ] APP handoff, an injected startup error, and repeated IDE teardown restore
   normal brightness without leaving duplicate inactivity tasks.
+- [ ] The small settings button on the IDE status screen opens Settings.
+  Brightness, timeout, Save, WiFi, and Updates remain readable and reachable in
+  both landscape and portrait; Back restores the network status screen.
+- [ ] Save applies brightness immediately and restarts the dim timer. Brightness
+  and timeout (including Never dim) survive reset. Unsaved edits do not persist.
+- [ ] Saved WiFi lists SSIDs without passwords. Selecting a synthetic network
+  opens a forget confirmation; Back cancels. Forget removes only that SSID and
+  its matching password, survives reset, and leaves the current connection
+  active until restart. Verify the empty list and scrolling a longer list.
+- [ ] Updates shows installed and available versions. Offline/failed checks
+  display a retryable error. Installation requires the on-screen confirmation,
+  reports progress, and follows the existing update/reset/health-commit flow.
+  Concurrent browser/device update requests cannot start a second updater.
+- [ ] A wake touch does not activate settings controls. Repeated page changes
+  do not accumulate LVGL screens, callbacks, or background tasks.
 - [ ] At least 100 LVGL/direct-surface ownership cycles complete without panel
   corruption, a stuck DMA transfer, heap exhaustion, or a crash.
 - [ ] Display orientation, touch regions, free heap, reset behavior, Wi-Fi/AP,

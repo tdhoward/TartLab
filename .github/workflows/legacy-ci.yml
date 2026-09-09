@@ -236,14 +236,19 @@ jobs:
 
       - name: Build modern filesystem twice from clean outputs
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          python tools/modern_release_baseline.py prepare
           mapfile -t BOARD_IDS < <(python tools/modern_release_matrix.py list)
           BOARD_ARGS=()
           for board_id in "${BOARD_IDS[@]}"; do
             BOARD_ARGS+=(--board "$board_id")
           done
-          python makedist.py --output build/modern-one/dist --clean --skip-web-build "${BOARD_ARGS[@]}"
-          python makedist.py --output build/modern-two/dist --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python makedist.py --output build/modern-one/source-dist --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python makedist.py --output build/modern-two/source-dist --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python tools/modern_release_baseline.py assemble --dist build/modern-one/source-dist --output build/modern-one/dist --clean
+          python tools/modern_release_baseline.py assemble --dist build/modern-two/source-dist --output build/modern-two/dist --clean
 
       - name: Verify deterministic modern filesystem and adapter inputs
         run: >-
@@ -253,6 +258,8 @@ jobs:
 
       - name: Build isolated modern release candidates twice
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mapfile -t BOARD_IDS < <(python tools/modern_release_matrix.py list)
           BOARD_ARGS=()
@@ -264,6 +271,8 @@ jobs:
           python tools/compare_releases.py build/modern-one/release build/modern-two/release
 
       - name: Validate modern release and provisioning preflight
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: >-
           python tools/modern_release_matrix.py check
           --release build/modern-one/release
@@ -284,6 +293,7 @@ jobs:
           tests.test_board_catalog
           tests.test_modern_profile
           tests.test_phase6
+          tests.test_modern_qualification
           tests.test_phase6_provisioning
           tests.test_virtual_device
           tests.test_platform

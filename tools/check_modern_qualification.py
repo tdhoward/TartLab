@@ -192,13 +192,26 @@ def validate(evidence: dict[str, Any], *, tag: str, candidate_sha256: str,
 
 
 def check(path: Path, *, tag: str, candidate_sha256: str,
-          expected_sha256: str | None = None) -> dict[str, Any]:
+          expected_sha256: str | None = None,
+          release: Path | None = None) -> dict[str, Any]:
     if expected_sha256 is not None:
         _require_sha256(expected_sha256, "expected evidence SHA-256")
         if sha256_file(path) != expected_sha256:
             raise ValueError("Qualification evidence SHA-256 does not match input")
-    return validate(
-        read_json(path), tag=tag, candidate_sha256=candidate_sha256)
+    evidence = read_json(path)
+    if evidence.get("schema") == 3 or (release is not None and
+            (release / "qualification-report.json").exists()):
+        from modern_qualification import REPORT, check_candidate, validate_results
+        if release is None:
+            raise ValueError("Schema-3 qualification requires the complete candidate --release")
+        if sha256_file(release / "checksums.json") != candidate_sha256:
+            raise ValueError("Qualification targets a different candidate")
+        current, analysis = check_candidate(release)
+        if current["version"] != tag:
+            raise ValueError("Qualification tag differs from candidate")
+        return validate_results(evidence, analysis, current, candidate_sha256,
+                                sha256_file(release / REPORT))
+    return validate(evidence, tag=tag, candidate_sha256=candidate_sha256)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -207,11 +220,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--tag", required=True)
     parser.add_argument("--candidate-checksums-sha256", required=True)
     parser.add_argument("--expected-sha256", required=True)
+    parser.add_argument("--release", type=Path)
     args = parser.parse_args(argv)
     result = check(
         args.evidence, tag=args.tag,
         candidate_sha256=args.candidate_checksums_sha256.lower(),
-        expected_sha256=args.expected_sha256.lower())
+        expected_sha256=args.expected_sha256.lower(), release=args.release)
     print(
         "Modern qualification passed %d gates for %s" % (
             len(result["passed_gates"]), result["version"]))

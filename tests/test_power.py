@@ -148,6 +148,32 @@ class ModernBacklightControllerTests(unittest.TestCase):
         self.assertEqual(platform.brightness, [1.0, 0.2, 1.0])
         self.assertFalse(controller.dimmed)
 
+    def test_reconfigure_wakes_applies_timeout_and_keeps_one_input_callback(self):
+        clock, input_device, platform, controller = self.controller()
+        controller.start()
+        clock['now'] = 1000
+        controller.check()
+        self.assertTrue(controller.dimmed)
+        controller.configure({'modern_ui': {
+            'max_brightness': 0.1, 'auto_dim_seconds': 2}})
+        self.assertEqual(platform.brightness[-1], 0.1)
+        self.assertFalse(controller.dimmed)
+        self.assertEqual(len(input_device.callbacks), 1)
+        clock['now'] = 2999
+        controller.check()
+        self.assertFalse(controller.dimmed)
+        clock['now'] = 3000
+        controller.check()
+        self.assertTrue(controller.dimmed)
+        self.assertEqual(platform.brightness[-1], 0.1)
+        controller.configure({'modern_ui': {
+            'max_brightness': 0.6, 'auto_dim_seconds': 0}})
+        clock['now'] = 1000000
+        controller.check()
+        self.assertFalse(controller.dimmed)
+        controller.stop()
+        self.assertEqual(platform.brightness[-1], 0.6)
+
     def test_activity_postpones_timeout_without_consuming_normal_touch(self):
         clock, input_device, platform, controller = self.controller()
         controller.start()

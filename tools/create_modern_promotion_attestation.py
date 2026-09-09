@@ -51,7 +51,8 @@ def main() -> None:
         raise ValueError("Rebuilt modern release differs from the tested candidate")
     qualification = check_modern_qualification(
         args.hardware_evidence, tag=args.tag,
-        candidate_sha256=candidate_hash, expected_sha256=evidence_hash)
+        candidate_sha256=candidate_hash, expected_sha256=evidence_hash,
+        release=args.release)
     metadata = read_json(args.release / "build_metadata.json")
     manifest = read_json(args.release / "modern-manifest.json")
     if metadata["tartlab_version"] != args.tag or manifest["version"] != args.tag:

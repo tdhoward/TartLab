@@ -423,6 +423,10 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
     if metadata.get("totals", {}).get("firmware_bytes") != sum(
             path.stat().st_size for path in firmware_paths.values()):
         raise ValueError("Modern firmware total differs from build metadata")
+    if (release / "qualification-snapshot.json").exists() or \
+            (release / "qualification-report.json").exists():
+        from modern_qualification import check_candidate
+        check_candidate(release)
     return {
         "profile": "lvgl-modern",
         "version": manifest["version"],

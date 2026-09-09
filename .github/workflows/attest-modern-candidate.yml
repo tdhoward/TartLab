@@ -57,8 +57,15 @@ jobs:
         shell: bash
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
+      - name: Verify selected platform baseline and prepare its archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/modern_release_baseline.py prepare
+
       - name: Build qualification candidate twice
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mapfile -t BOARD_IDS < <(python tools/modern_release_matrix.py list)
           BOARD_ARGS=()
@@ -66,14 +73,18 @@ jobs:
             BOARD_ARGS+=(--board "$board_id")
           done
           printf 'Qualification board: %s\n' "${BOARD_IDS[@]}"
-          python makedist.py --output build/qualification/dist-one --clean --skip-web-build "${BOARD_ARGS[@]}"
-          python makedist.py --output build/qualification/dist-two --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python makedist.py --output build/qualification/source-dist-one --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python makedist.py --output build/qualification/source-dist-two --clean --skip-web-build "${BOARD_ARGS[@]}"
+          python tools/modern_release_baseline.py assemble --dist build/qualification/source-dist-one --output build/qualification/dist-one --clean
+          python tools/modern_release_baseline.py assemble --dist build/qualification/source-dist-two --output build/qualification/dist-two --clean
           python tools/build_modern_release.py --dist build/qualification/dist-one --output build/qualification/release --version "$RELEASE_TAG" --clean "${BOARD_ARGS[@]}"
           python tools/build_modern_release.py --dist build/qualification/dist-two --output build/qualification/release-two --version "$RELEASE_TAG" --clean "${BOARD_ARGS[@]}"
           python tools/compare_releases.py build/qualification/release build/qualification/release-two
 
       - name: Enforce profile and firmware preflight
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           python tools/check_firmware_artifacts.py
           python tools/check_modern_profile.py --dist build/qualification/dist-one --compare-dist build/qualification/dist-two
@@ -94,11 +105,28 @@ jobs:
           tests.test_image_examples
           tests.test_modern_profile
           tests.test_phase6
+          tests.test_modern_qualification
           tests.test_phase6_provisioning
           tests.test_virtual_device
           tests.test_platform
           tests.test_headless_ide
           -v
+
+      - name: Generate the required testing checklist and pending evidence form
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python tools/modern_release_baseline.py report --release build/qualification/release --output build/qualification/qualification-checklist.md
+          python tools/modern_release_baseline.py template --release build/qualification/release --output build/qualification/qualification-template.json
+
+      - name: Upload qualification checklist separately from immutable candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: lvgl-modern-checklist-${{ github.sha }}
+          path: |
+            build/qualification/qualification-checklist.md
+            build/qualification/qualification-template.json
+          if-no-files-found: error
 
       - name: Authenticate qualification candidate
         id: attest_candidate
