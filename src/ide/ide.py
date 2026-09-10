@@ -71,9 +71,24 @@ def extract_error_and_line(traceback_str, source):
 
 # This isn't meant to be fast, just usable
 replGlobals = {}
+
+
+def show_app_failure(message):
+    if isinstance(message, BaseException):
+        detail = str(message)
+        message = type(message).__name__ + (': ' + detail if detail else '')
+    ide_view.show_app_error()
+    show_message = getattr(ide_view, 'show_error_message', None)
+    if show_message is not None:
+        show_message(message)
+
+
 def pseudoREPL(cmd, source):
     global replGlobals
     error = False
+    clear_error = getattr(ide_view, 'clear_app_error', None)
+    if clear_error is not None:
+        clear_error()
     if source != 'console':
         restore_app_execution_brightness()
     # Capture the output
@@ -92,20 +107,14 @@ def pseudoREPL(cmd, source):
         except (SyntaxError, NameError):
             do_exec = True  # If eval fails, fall back to exec
         if do_exec:
-            try:
-                exec(cmd, replGlobals)
-            except Exception as e:
-                error = True
-                repl_exception(e, source)
-                if getattr(e, 'input_unavailable', False):
-                    platform.enter_ui_mode()
-                    show_notice = getattr(ide_view, 'show_message', None)
-                    if show_notice is not None:
-                        show_notice(str(e).split('.')[0], 'Reset to choose another app')
+            exec(cmd, replGlobals)
 
     except Exception as e:
         error = True
         repl_exception(e, source)
+        if platform.capabilities.get('lvgl_ui', False):
+            platform.enter_ui_mode()
+            show_app_failure(e)
     finally:
         # Stop capturing
         os.dupterm(None)
@@ -257,8 +266,9 @@ initialize()
 # Write the title info on the screen
 version = next((repo['installed_version'] for repo in repos['list'] if repo['name'] == 'TartLab'))
 ide_view.show_startup(version)
-if get_app_failure():
-    ide_view.show_app_error()
+pending_app_failure = get_app_failure(consume=True)
+if pending_app_failure:
+    show_app_failure(pending_app_failure)
 
 platform.set_hostname(settings['hostname'])
 sta_if = platform.station_interface()
@@ -278,11 +288,6 @@ else:
     text = ip_address
     local_hostname = settings['hostname']
 ide_view.show_network(wifi_ssid, text, local_hostname)
-if (not platform.capabilities.get('touch', False) and
-        (get_app_failure() or '').startswith('This app needs touch input')):
-    show_notice = getattr(ide_view, 'show_message', None)
-    if show_notice is not None:
-        show_notice('This app needs touch input', 'Reset to choose another app')
 
 
 def show_update_progress(status, stepnum, steps):

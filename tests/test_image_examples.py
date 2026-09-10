@@ -12,8 +12,12 @@ from tests.test_images import IMAGE_MODULES, ROOT, qoi, sprites
 
 
 class ImageExampleTests(unittest.TestCase):
-    def run_example(self, name, surface):
-        platform = types.SimpleNamespace(enter_game_mode=lambda: surface)
+    def run_example(self, name, surface, touch=True):
+        button_events = iter([[], [('A', True)], [('A', False)]])
+        platform = types.SimpleNamespace(
+            enter_game_mode=lambda: surface,
+            capabilities={'touch': touch, 'buttons': not touch},
+            read_button_events=lambda: next(button_events))
         app = load_app(platform)
         touches = iter([None, "stop"])
         app.TouchGrid = lambda *args: types.SimpleNamespace(read=lambda: next(touches))
@@ -25,6 +29,7 @@ class ImageExampleTests(unittest.TestCase):
             return real_open(path, *args, **kwargs)
 
         modules = {**IMAGE_MODULES, "tartlabutils.app": app, "tartlabutils.sprites": sprites,
+                   "tartlabutils.platform": types.SimpleNamespace(get_platform=lambda: platform),
                    "tartlabutils.images.qoi": qoi, "bmp565": None,
                    "qoi_reader": None, "pydevices": None}
         path = ROOT / "src/files/help" / name
@@ -35,6 +40,14 @@ class ImageExampleTests(unittest.TestCase):
                 patch("random.choice", return_value="down"):
             exec(compile(path.read_bytes(), str(path), "exec"), scope)
         return scope
+
+    def test_sprite_stops_on_button_release_without_touch(self):
+        surface = FakeSurface(width=320, height=170)
+        result = self.run_example('sprite.py', surface, touch=False)
+        self.assertIsNone(result['stop_button'])
+        self.assertTrue(surface.writes)
+        self.assertEqual(result['unused'], 2)
+        result['canvas'].close()
 
     def test_ts16_sheet_and_animation_render_on_both_surface_types(self):
         for surface_class, size in ((FakeSurface, (480, 222)),

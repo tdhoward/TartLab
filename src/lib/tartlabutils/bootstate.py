@@ -103,13 +103,21 @@ def mark_boot_route_started(mode):
     write_json(BOOT_STATE_FILE, state)
 
 
-def get_app_failure():
-    value = read_json(BOOT_STATE_FILE, {}).get("app_error")
+def get_app_failure(consume=False):
+    """Read the pending app failure, optionally consuming its UI notice."""
+    state = read_json(BOOT_STATE_FILE, {})
+    value = state.get("app_error")
+    if consume and "app_error" in state:
+        state.pop("app_error")
+        write_json(BOOT_STATE_FILE, state)
     return value if isinstance(value, str) and value else None
 
 
 def mark_app_failed(message):
     state = ensure_boot_started()
+    if isinstance(message, BaseException):
+        detail = str(message)
+        message = type(message).__name__ + (': ' + detail if detail else '')
     state["app_error"] = str(message)[:160]
     write_json(BOOT_STATE_FILE, state)
 

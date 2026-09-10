@@ -5,11 +5,21 @@ from time import sleep_ms
 
 from tartlabutils.app import DirectCanvas, TouchGrid, game_surface, rgb565
 from tartlabutils.sprites import SpriteSheet
+from tartlabutils.platform import get_platform
 
 
 surface = game_surface()
 canvas = DirectCanvas(surface)
-stop_button = TouchGrid(["stop"], 1, 1)
+platform = get_platform()
+stop_button = TouchGrid(["stop"], 1, 1) if platform.capabilities.get("touch", False) else None
+
+
+def stop_requested():
+    if stop_button is not None:
+        return stop_button.read() == "stop"
+    if platform.capabilities.get("buttons", False):
+        return any(not pressed for name, pressed in platform.read_button_events())
+    return False
 
 sheet = SpriteSheet("files/assets/warrior.ts16")
 sprite_width = sheet.width // 3
@@ -43,7 +53,7 @@ step = 7
 direction = choice(tuple(directions))
 
 for unused in range(300):
-    if stop_button.read() == "stop":
+    if stop_requested():
         break
     if direction == "down":
         next_x, next_y = x, y + step

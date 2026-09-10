@@ -128,6 +128,63 @@ Raw logs and temporary host probes remain ignored in
 `hardware_test_artifacts/t_display_s3_bringup_20260909/`. The setup AP used for
 the browser smoke is `TartLab-Buttons`; no network credentials are checked in.
 
+### Sprite and error-display follow-up
+
+The owner subsequently reported that the sprite example required touch and
+that its failure notice replaced the connected WiFi name and `.local` hostname.
+The modern sprite example now uses touch when available or either physical
+button's release to stop. Unsupported-input errors retain the existing red
+error indicator and browser diagnostics without replacing connection labels.
+This supersedes the earlier on-screen missing-touch explanation/reset hint.
+The 45 focused image-example, platform, headless IDE and button-page tests
+passed, including sprite rendering and stopping without touch. The modern
+profile source-integrity check also passed.
+On COM5, a bounded five-iteration sprite run completed on the native display;
+showing the error indicator preserved all three connection labels. The device
+associated with its saved station network and resumed a healthy IDE server.
+This establishes one configured-station association, not repeated reconnect
+qualification. The user's differing sprite copy was preserved; the corrected
+example is installed in `/files/help/sprite.py`.
+
+### Combined address and error row
+
+The owner confirmed the updated sprite example works well. At the owner's
+request, the modern IDE now presents `hostname.local (IP address)` on one row,
+or just the IP address when no hostname is available. A separate red error row
+below it displays the persisted app failure or an error from an app run in the
+browser. Long address/error text scrolls horizontally within its row. The red
+indicator remains; update progress clears the error row to avoid overlap.
+This replaces the preceding indicator-only presentation.
+
+The change was installed on COM5 with verified file hashes. Native LVGL checks
+confirmed the combined address, IP-only fallback, unchanged connection labels
+during errors, and a single error row above the button hints even for long
+messages. Temporary test messages were removed and the healthy IDE resumed.
+The 60 focused platform, IDE, settings, button-page and image-example tests and
+the modern profile integrity check passed.
+
+Exception summaries are now automatic for startup app failures and browser
+execution/evaluation errors, including console expressions. New failures retain
+the exception type and message (for example `ValueError: bad value`); empty
+messages show the type alone. Persisted summaries retain the existing 160-character
+limit. No explicit notification call is required in user apps. Exceptions caught
+by the app itself and failures outside these execution handlers are not covered.
+The 62 focused IDE/platform/boot tests passed.
+
+Saved app failures are now one-time IDE notices: IDE initialization consumes
+the saved notice while retaining its text on the current screen. The next
+reset into the IDE has no stale notice; another app failure creates a new one.
+Browser-run errors are not saved as next-boot notices. The 63 focused tests passed, including first display,
+second-start clearance, and display of a subsequent new failure. The modern
+profile integrity check passed, and the change was installed on COM5.
+
+Every new browser execution now clears the preceding error text and red
+indicator before running, including console commands. A new failure replaces
+them; a successful run leaves them clear. The 45 focused tests and modern
+profile integrity check passed. After installation on COM5, native file and
+console failure/success sequences confirmed both widgets clear while connection
+labels remain intact. The IDE resumed healthy with no test error displayed.
+
 Still required before support/promotion: PCB revision identification;
 authenticated candidate/firmware binding; power-cycle and held-button/reset
 campaigns; sustained heap/radio/rendering checks; provisioning interruptions,

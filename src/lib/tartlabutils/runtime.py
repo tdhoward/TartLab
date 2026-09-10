@@ -345,12 +345,17 @@ class IDEView:
         self._title = lvgl.label(self._screen)
         self._network = lvgl.label(self._screen)
         self._address = lvgl.label(self._screen)
-        self._hostname = lvgl.label(self._screen)
+        self._error = lvgl.label(self._screen)
         self._status = lvgl.label(self._screen)
         for label in (
                 self._title, self._network, self._address,
-                self._hostname, self._status):
+                self._error, self._status):
             label.set_text("")
+        for label in (self._address, self._error):
+            label.set_width(max(1, controller.surface.width - 40))
+            label.set_long_mode(lvgl.label.LONG_MODE.SCROLL_CIRCULAR)
+            label.set_style_text_align(lvgl.TEXT_ALIGN.CENTER, 0)
+        self._error.set_style_text_color(lvgl.color_hex(0xFF0000), 0)
         self._app_error_indicator = None
         self._progress = lvgl.bar(self._screen)
         animation = getattr(lvgl, "ANIM", None)
@@ -374,19 +379,16 @@ class IDEView:
         self._set_label(
             self._network, "WiFi: " + wifi_name, self._lv.ALIGN.CENTER, -28)
         self._set_label(
-            self._address, address, self._lv.ALIGN.CENTER, 0)
-        self._set_label(
-            self._hostname, (hostname + ".local") if hostname else "",
-            self._lv.ALIGN.CENTER, 28)
-    def show_message(self, message, hint):
-        """Replace status text while keeping the connection address visible."""
-        self._network.set_text(message)
-        self._network.set_width(self._controller.surface.width - 20)
-        self._network.align(self._lv.ALIGN.CENTER, 0, -28)
-        self._hostname.set_text(hint)
-        self._hostname.align(self._lv.ALIGN.CENTER, 0, 28)
+            self._address, (hostname + '.local (' + address + ')') if hostname
+            else address, self._lv.ALIGN.CENTER, 0)
+
+    def show_error_message(self, message):
+        """Show a single scrolling error row below connection information."""
+        self._set_label(self._error, ' '.join(str(message).split()),
+                        self._lv.ALIGN.CENTER, 28)
 
     def show_update_progress(self, status, step, steps):
+        self._error.set_text('')
         if step > steps:
             steps = step
         self._set_label(
@@ -405,6 +407,13 @@ class IDEView:
         indicator.set_style_border_width(0, 0)
         indicator.set_style_radius(7, 0)
         self._app_error_indicator = indicator
+
+    def clear_app_error(self):
+        """Clear the previous execution's error text and indicator."""
+        self._error.set_text('')
+        if self._app_error_indicator is not None:
+            self._app_error_indicator.delete()
+            self._app_error_indicator = None
 
 
 class Platform:

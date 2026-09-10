@@ -51,6 +51,12 @@ class HeadlessIDEView:
     def show_app_error(self):
         self.events.append(("app_error",))
 
+    def clear_app_error(self):
+        self.events.append(('clear_app_error',))
+
+    def show_error_message(self, message):
+        self.events.append(("error_message", message))
+
 
 class HeadlessWLAN:
     def __init__(self, networks=None, address="0.0.0.0"):

@@ -200,12 +200,31 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
                     Path(temp) / "device", app_error="student app failed")
 
             self.assertEqual(errors, [])
-            self.assertEqual(platform.ide_view.events[:3], [
+            self.assertEqual(platform.ide_view.events[:4], [
                 ("startup", "v0.13"),
                 ("app_error",),
+                ("error_message", "student app failed"),
                 ("network", "SYNTHETIC_CLASSROOM", "10.0.0.42",
                  "tartlab-fixture"),
             ])
+
+    def test_app_failure_is_shown_once_and_new_failures_are_shown_again(self):
+        with tempfile.TemporaryDirectory() as temp:
+            device, _, first, _, _, _ = self.prepare(
+                Path(temp) / 'device', app_error='first failure')
+            self.assertIn(('error_message', 'first failure'), first.ide_view.events)
+            state, bootstate = self.load_state_runtime(device)
+            self.assertIsNone(bootstate.get_app_failure())
+            before = state.read_json(bootstate.BOOT_STATE_FILE)
+            second = HeadlessPlatform()
+            self.load_ide(device, state, bootstate, second)
+            self.assertNotIn(('app_error',), second.ide_view.events)
+            self.assertEqual(state.read_json(bootstate.BOOT_STATE_FILE), before)
+            bootstate.mark_app_failed('new failure')
+            third = HeadlessPlatform()
+            self.load_ide(device, state, bootstate, third)
+            self.assertIn(('error_message', 'new failure'), third.ide_view.events)
+            self.assertIsNone(bootstate.get_app_failure())
 
     def test_real_ide_initializes_routes_station_and_view_headlessly(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -389,6 +408,31 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
             ide.pseudoREPL("pass", "console")
 
             self.assertEqual(controller.wake_calls, 1)
+
+    def test_exception_summaries_are_automatic_for_exec_and_eval(self):
+        with tempfile.TemporaryDirectory() as temp:
+            _, _, platform, ide, _, _ = self.prepare(Path(temp) / 'device')
+            platform.capabilities['lvgl_ui'] = True
+            ide.os = types.SimpleNamespace(dupterm=lambda stream: None)
+            ide.power_controller = types.SimpleNamespace(wake=lambda: None)
+            platform.enter_ui_mode = lambda: None
+            for command, source, expected in (
+                    ("raise ValueError('bad value')", 'student.py', 'ValueError: bad value'),
+                    ('1 / 0', 'console', 'ZeroDivisionError: division by zero'),
+                    ('raise RuntimeError()', 'student.py', 'RuntimeError')):
+                ide.pseudoREPL(command, source)
+                self.assertIn(('error_message', expected), platform.ide_view.events)
+                self.assertEqual(platform.ide_view.events[-3:], [
+                    ('clear_app_error',), ('app_error',), ('error_message', expected)])
+                ide.pseudoREPL('pass', source)
+                self.assertEqual(platform.ide_view.events[-1], ('clear_app_error',))
+
+    def test_persisted_exception_includes_type_and_message(self):
+        with tempfile.TemporaryDirectory() as temp:
+            _, _, platform, _, _, _ = self.prepare(
+                Path(temp) / 'device', app_error=ValueError('bad startup value'))
+            self.assertIn(('error_message', 'ValueError: bad startup value'),
+                          platform.ide_view.events)
 
     def test_modern_ide_schedules_power_policy_not_button_polling(self):
         with tempfile.TemporaryDirectory() as temp:
