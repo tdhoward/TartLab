@@ -1,0 +1,123 @@
+TartLab modern-v0.16.0 LilyGO physical qualification session
+Operator: Tim, with Codex-operated USB probes
+Session date: 2026-09-10
+Source commit: 5c5b722c266700bd3fb849cdd6728c350e9c92b3
+Candidate checksums SHA-256: 2d308e32537e263a0812567243d69aee5d0b19a6f4ee89e898e4a69a8c3eebba
+Firmware SHA-256: 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
+Board: LilyGO T-Display-S3 Pro PCB v1.2, ESP32-S3 revision v0.2,
+16 MiB flash, 8 MiB PSRAM
+
+Raw logs, full inventories, journals, network configuration, and device
+identifiers remain in the private hardware workspace outside Git. This
+transcript contains no credentials, network addresses, protected-file
+contents, or student work.
+
+Authentication and clean provisioning
+--------------------------------------
+Protected qualification run 34516699539 and tagged profile CI run 34516699846
+passed. The downloaded candidate and all 28 subjects were independently
+verified against the qualification signer, hosted-runner policy, SLSA
+provenance predicate, and refs/tags/modern-v0.16.0.
+
+The authenticated clean provisioner selected lilygo_t_display_s3_pro, erased
+the disposable target, wrote and verified the board-bound firmware, installed
+the authenticated packages, and left the transaction awaiting health. The
+first normal boot reported HEALTHY mode=IDE update_committed=True.
+Authenticated resume then reported healthy=true and stage=complete. The clean
+provisioning journal SHA-256 is
+c997021b12f1399faca97c675b9087203e1f81fc2fa31224081b791e0c48afc4.
+The clean device contained only hello.py in the user area.
+
+Hardware, resources, and operator observations
+---------------------------------------------
+Initial healthy filesystem free space was 11,440,128 bytes of 12,517,376
+bytes; free MicroPython heap was 8,102,784 bytes. The runtime identified the
+pinned MicroPython 1.27.0 modern build, ST7796 display, CST226 touch, direct
+RGB565 and panel-scroll capabilities, and exclusive display ownership.
+
+One hundred direct-renderer/UI ownership cycles returned to UI ownership with
+no pending transfer. First-to-last free-heap change was -2,480 bytes. All 25
+initialization/deinitialization cycles completed successfully and returned to
+UI ownership. The injected-clock backlight probe verified approximately 75%
+maximum, 15% dim, queued wake, repeated stop, 60% explicit restore, and final
+100% restore.
+
+The first combined color/touch helper attempted one full-frame transfer and
+the ESP-IDF panel API rejected that oversized diagnostic operation with error
+257 before a visual result was produced. After a normal healthy reset, the
+LilyGO-specific bounded-band probe completed. Tim confirmed stable red, green,
+blue, white, and black bands in the expected top-to-bottom order. A 60-second
+touch capture recorded 337 distinct samples spanning controller coordinates
+x=3..218 and y=6..476, with edge, corner, and center contacts.
+
+Browser, Wi-Fi, and device API
+-----------------------------
+From a separate laptop, Tim connected to the temporary TartLab Wi-Fi AP and
+confirmed that the web client looked normal. He loaded, edited, saved, and ran
+a file successfully. He saved credentials for his home network, reset the
+device, observed a successful station connection, and accessed TartLab over
+the PC network as expected.
+
+A host API regression over that station connection loaded the HTML and
+JavaScript bundle; checked version, free-space, and file-list endpoints; and
+created, edited, read, ran, selected, renamed, and deleted a temporary file.
+It also rejected an unsafe selection path and reset the REPL. The update-check
+endpoint returned HTTP 200 because the configured station had internet access;
+the AP-only helper's expected-400 assertion was therefore inapplicable. No
+update installation was requested. The private HTTP request log SHA-256 is
+ea9ba0087e368d04d90e4f288d627527adf2ce460ac885faa16053aa5d9837fe.
+
+Updater and real power-loss containment
+---------------------------------------
+All 12 authenticated update inputs were staged over USB in the isolated
+/qualification/modern-update directory and hash-verified on-device. A
+one-bit-corrupted assetfiles.tar was rejected before installation: result=-1,
+the installed version remained modern-v0.16.0, and no update marker existed.
+Its private receipt SHA-256 is
+f0d143f2e3c380f8d3f003b1aba37a431fdc2859f032535263a37518ffb08154.
+
+The unmodified candidate was then applied as a same-version normal OTA. It
+left pending_health without changing the committed version. The first healthy
+boot committed the update and the second healthy boot did not recommit.
+Protected qualification sentinels remained present.
+
+At the normal-download checkpoint, Tim removed USB power after the device
+showed the white signal and the helper observed USB removal. After five
+seconds disconnected and reconnection, normal boot was healthy, the version
+was unchanged, no update marker existed, and every one of 78 files outside
+mutable state and temporary staging matched the pre-interruption inventory.
+The private receipt SHA-256 is
+1a2ef4cb4017b0a02ba1355d591d08ae329aa06a2c4a2f3939dbc35f32873a10.
+
+Two recovery-install power-loss checkpoints were exercised. The first removed
+power while assetfiles.tar was being installed; offline resume installed all
+packages and committed on the first healthy boot only. The second removed
+power while libahttpserver.tar was being installed after assetfiles.tar had
+completed durably. Offline resume explicitly reported Already installed
+assetfiles.tar, installed the remaining packages, and again committed only on
+the first of two healthy boots. Protected qualification sentinels survived
+both cases. The private receipt SHA-256 values are
+ca53c8dd7b73df361977b236121043fecdf9d684b4e13b08d350c5a2fe4fcf9b and
+027b35ff9175d51f9b6c501fc599162d09bf35a5881eec9645a4c05eb9971cbe.
+
+Recovery interface, cleanup, and final state
+--------------------------------------------
+Tim connected to the TartLab-Recovery AP, confirmed that the recovery page
+looked correct, opened Redacted diagnostic status and confirmed it exposed no
+credentials or user-file contents, then used Retry normal boot and confirmed
+the normal launcher/IDE returned.
+
+Cleanup removed only the exact hash-verified qualification sentinels and
+temporary qualification/update staging. Final normal boot reported HEALTHY
+mode=IDE update_committed=False with modern-v0.16.0, zero consecutive boot
+failures, no update marker, only hello.py in the user area, 11,436,032 bytes
+filesystem free, and 8,102,592 bytes heap free. All 75 managed files outside
+mutable user/state areas matched the authenticated prepared image. The private
+final inventory SHA-256 is
+55df7346e04c3c0c42e49c3bc7b6b91ed862b4326fbda0ecd29526c09b4f0863.
+
+The final feed-isolation audit performed for this exact candidate found no
+legacy/modern cross-profile assets. This transcript records the LilyGO board's
+fresh physical gates. It does not promote the candidate or represent a field
+deployment. The completed schema-3 aggregate still requires durable immutable
+HTTPS references to both board transcripts before protected promotion.

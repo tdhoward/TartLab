@@ -1,0 +1,110 @@
+TartLab modern-v0.16.0 Elecrow physical qualification session
+Operator: Tim, with Codex-operated USB probes
+Session date: 2026-09-10
+Source commit: 5c5b722c266700bd3fb849cdd6728c350e9c92b3
+Candidate checksums SHA-256: 2d308e32537e263a0812567243d69aee5d0b19a6f4ee89e898e4a69a8c3eebba
+Firmware SHA-256: 50d98625a1ef58eee6c5fbe55b5107968301ea4dc6b8954167cad9f0d65ee5a3
+Board: Elecrow DLE06235B, ESP32-S3 revision 0.2, 16 MiB flash, 8 MiB PSRAM
+Catalog revision identity: observed-2026-08-29
+
+Tim reports no visible printed PCB revision and confirms this is the same
+unit used for earlier qualification. The catalog identifier is an observation
+identity, not a claimed printed revision. Raw logs, inventories, and journals
+remain in the private hardware workspace outside Git. This transcript contains
+no credentials, device addresses, protected-file contents, or student work.
+
+Authentication and provisioning
+-------------------------------
+Protected qualification run 34516699539 and tagged profile CI run 34516699846
+passed. Candidate assets were independently verified against the qualification
+signer and refs/tags/modern-v0.16.0. The authenticated clean provisioner erased,
+wrote and verified the board-bound firmware, installed the candidate, and
+reached awaiting_health. First normal boot reported:
+  HEALTHY mode=IDE update_committed=True
+Authenticated resume recorded healthy=true and stage=complete. State reported
+modern-v0.16.0, zero boot failures, and no pending update. Only the authenticated
+hello.py starter existed in the user area after clean provisioning.
+
+A second clean transaction deliberately terminated the final boot.py/main.py
+activation subprocess after 0.25 seconds, while it was still active. Its journal
+remained incomplete. Authenticated resume reconstructed the image and returned
+to healthy startup. Final authenticated resume recorded stage=complete. This
+was a host-process interruption; physical power loss was tested separately.
+
+Hardware, resources, and user observations
+----------------------------------------
+Initial healthy filesystem free space was 11,452,416 bytes of 12,517,376 bytes;
+free MicroPython heap was 7,841,120 bytes. The installed prepared files matched
+except for expected version-commit, consumed update-marker, and generated state.
+One hundred UI/direct-renderer ownership cycles restored UI ownership with no
+pending transfers and performed required full-frame seeds. First-to-last heap
+change was -2,480 bytes. Twenty-five initialization/teardown cycles passed.
+Ten Wi-Fi scans concurrent with 80 display frames reported no scan errors;
+minimum observed free heap was 7,595,808 bytes and transfers settled normally.
+
+Backlight checks using an injected clock/event verified approximately 75%
+maximum, 15% dim, queued wake, repeated stop, 60% explicit restore and final
+100% restore. This automated probe does not claim a physical wake-touch test.
+Tim confirmed stable red/green/blue/white/black bands in the expected order.
+Touch sampling recorded 135 points spanning x=20..319 and y=0..475 on the
+320-by-480 logical surface.
+
+From another laptop, Tim connected to the temporary device Wi-Fi AP, opened
+TartLab, and loaded, edited, saved, and ran a file successfully. Tim subsequently
+reported a thorough IDE Settings-page test with everything working properly,
+in response to checks covering brightness/save, WiFi and Updates pages, Back,
+readable layout, and the internet-connection requirement while using the AP.
+These are operator observations, not browser-automation results.
+
+Updater and physical power-loss containment
+------------------------------------------
+The candidate manifest and 11 package archives were staged over USB in an
+isolated qualification directory and hash-verified on-device. No host HTTP
+server was used. A one-bit-corrupted assetfiles.tar was rejected before active
+installation: result=-1, committed version unchanged, update marker absent,
+and all 76 then-checked active files unchanged.
+
+The real normal updater installed unmodified signed packages through a test
+download transport reading those staged files. This was a same-version reapply,
+not a claim of internet delivery or an older-source upgrade. Installation left
+pending_health; first healthy boot committed and second healthy boot did not
+recommit. Device/user/selection digests, including test sentinels, matched.
+
+At the download checkpoint, Tim removed USB power at the white-screen signal,
+waited five seconds, and reconnected. The helper observed USB removal. Normal
+boot was healthy, with unchanged version, no update marker, all 76 checked
+active files unchanged, and identical protected digests. Partial downloads
+remained isolated under temporary storage.
+
+Two recovery-install power-loss checkpoints were exercised. The first paused
+before the first package completed. All 12 staged inputs and the installing
+marker survived; offline resume completed and committed on healthy boot.
+The second paused at libahttpserver.tar after assetfiles.tar had been durably
+recorded complete. On reconnection, completed_packages contained assetfiles.tar.
+Offline resume explicitly reported Already installed assetfiles.tar and
+installed the remaining packages. First healthy boot committed; second healthy
+boot did not recommit. A fresh protected digest taken after Tim's browser edits
+matched after recovery, confirming those edits survived as well.
+
+Recovery interface, cleanup, and final state
+------------------------------------------
+Tim confirmed the recovery Wi-Fi page and Redacted diagnostic status worked
+exactly as requested, with no passwords or user-file contents shown, and Retry
+normal boot returned to the launcher/IDE.
+Cleanup removed only the exact hash-verified test sentinels and temporary
+qualification/update staging. The user's edited file was preserved. All 75
+managed files outside mutable user/state areas matched the candidate. Final
+normal boot reported HEALTHY mode=IDE update_committed=False. The temporary
+Windows Wi-Fi profile created for testing was removed; Ethernet was retained.
+
+The final live feed audit found no cross-profile assets: 16 legacy releases
+selected v0.15 and two modern releases selected modern-v0.15.4. The candidate
+has not been promoted. No production sources were changed by physical testing.
+
+Remaining release boundary
+--------------------------
+This records the checks actually performed on Elecrow. It does not qualify
+the LilyGO board, assert internet OTA or a specific older installed source,
+or substitute for complete schema-3 evidence and protected promotion. The
+release plan declares no update sources. Review any additional app-specific
+or supported-source coverage before finalizing the aggregate qualification.
