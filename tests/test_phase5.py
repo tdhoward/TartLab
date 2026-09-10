@@ -865,6 +865,21 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             def set_size(self, width, height):
                 self.size = (width, height)
 
+        class Label(Widget):
+            LONG_MODE = types.SimpleNamespace(SCROLL_CIRCULAR=1)
+
+            def set_width(self, width):
+                self.width = width
+
+            def set_long_mode(self, mode):
+                self.long_mode = mode
+
+            def set_style_text_align(self, alignment, unused_selector):
+                self.text_alignment = alignment
+
+            def set_style_text_color(self, color, unused_selector):
+                self.text_color = color
+
         class Bar(Widget):
             def __init__(self):
                 super().__init__()
@@ -881,7 +896,8 @@ class ModernRenderingAdapterTests(unittest.TestCase):
             ALIGN=types.SimpleNamespace(
                 BOTTOM_MID=1, TOP_MID=2, CENTER=3, TOP_RIGHT=4),
             obj=Widget,
-            label=lambda unused_parent: Widget(),
+            label=Label,
+            TEXT_ALIGN=types.SimpleNamespace(CENTER=1),
             bar=lambda unused_parent: bar,
             color_hex=lambda value: value,
             screen_load=lambda unused_screen: None,

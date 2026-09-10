@@ -372,7 +372,7 @@ class IDEView:
 
     def show_startup(self, version):
         self._set_label(
-            self._title, "TARTLAB" if self._controller.surface.width < 400
+            self._title, "TARTLAB" if self._controller.surface.width < 300
             else "TARTLAB " + version, self._lv.ALIGN.TOP_MID, 18)
 
     def show_network(self, wifi_name, address, hostname=None):
