@@ -1,0 +1,190 @@
+{
+  "boards": {
+    "elecrow_dle06235b": {
+      "board": {
+        "chip_revision": "0.2",
+        "flash_size_bytes": 16777216,
+        "model": "Elecrow DLE06235B",
+        "pcb_revision": "observed-2026-08-29",
+        "psram_size_bytes": 8388608
+      },
+      "firmware_sha256": "50d98625a1ef58eee6c5fbe55b5107968301ea4dc6b8954167cad9f0d65ee5a3",
+      "gates": {
+        "adult_provisioning": {
+          "evidence": [
+            {
+              "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-elecrow-physical-transcript.txt",
+              "sha256": "008170700f1f63b2e18d5bb0a42f86b2014138c2d06b41c01ae12621be96a624"
+            }
+          ],
+          "mode": "fresh",
+          "status": "passed"
+        },
+        "hardware": {
+          "evidence": [
+            {
+              "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-elecrow-physical-transcript.txt",
+              "sha256": "008170700f1f63b2e18d5bb0a42f86b2014138c2d06b41c01ae12621be96a624"
+            }
+          ],
+          "mode": "fresh",
+          "status": "passed"
+        },
+        "ota": {
+          "evidence": [
+            {
+              "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-elecrow-physical-transcript.txt",
+              "sha256": "008170700f1f63b2e18d5bb0a42f86b2014138c2d06b41c01ae12621be96a624"
+            }
+          ],
+          "mode": "fresh",
+          "status": "passed"
+        },
+        "recovery": {
+          "evidence": [
+            {
+              "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-elecrow-physical-transcript.txt",
+              "sha256": "008170700f1f63b2e18d5bb0a42f86b2014138c2d06b41c01ae12621be96a624"
+            }
+          ],
+          "mode": "fresh",
+          "status": "passed"
+        },
+        "release_feed_isolation": {
+          "evidence": [
+            {
+              "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-elecrow-physical-transcript.txt",
+              "sha256": "008170700f1f63b2e18d5bb0a42f86b2014138c2d06b41c01ae12621be96a624"
+            }
+          ],
+          "mode": "fresh",
+          "status": "passed"
+        }
+      }
+    },
+    "lilygo_t_display_s3_pro": {
+      "board": {
+        "chip_revision": "v0.2",
+        "flash_size_bytes": 16777216,
+        "model": "LilyGO T-Display-S3 Pro",
+        "pcb_revision": "1.1",
+        "psram_size_bytes": 8388608
+      },
+      "firmware_sha256": "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab",
+      "gates": {
+        "adult_provisioning": {
+          "evidence": [
+            {
+              "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-lilygo-physical-transcript.txt",
+              "sha256": "7d35a95713b13a6a9ae8354208d8df5cd39d8445f65bf8c4e1788b8ca8f04b55"
+            }
+          ],
+          "mode": "fresh",
+          "status": "passed"
+        },
+        "hardware": {
+          "evidence": [
+            {
+              "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-lilygo-physical-transcript.txt",
+              "sha256": "7d35a95713b13a6a9ae8354208d8df5cd39d8445f65bf8c4e1788b8ca8f04b55"
+            }
+          ],
+          "mode": "fresh",
+          "status": "passed"
+        },
+        "ota": {
+          "evidence": [
+            {
+              "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-lilygo-physical-transcript.txt",
+              "sha256": "7d35a95713b13a6a9ae8354208d8df5cd39d8445f65bf8c4e1788b8ca8f04b55"
+            }
+          ],
+          "mode": "fresh",
+          "status": "passed"
+        },
+        "recovery": {
+          "evidence": [
+            {
+              "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-lilygo-physical-transcript.txt",
+              "sha256": "7d35a95713b13a6a9ae8354208d8df5cd39d8445f65bf8c4e1788b8ca8f04b55"
+            }
+          ],
+          "mode": "fresh",
+          "status": "passed"
+        },
+        "release_feed_isolation": {
+          "evidence": [
+            {
+              "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-lilygo-physical-transcript.txt",
+              "sha256": "7d35a95713b13a6a9ae8354208d8df5cd39d8445f65bf8c4e1788b8ca8f04b55"
+            }
+          ],
+          "mode": "fresh",
+          "status": "passed"
+        }
+      }
+    }
+  },
+  "candidate_checksums_sha256": "2d308e32537e263a0812567243d69aee5d0b19a6f4ee89e898e4a69a8c3eebba",
+  "checks": {
+    "automated": {
+      "evidence": [
+        {
+          "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-elecrow-physical-transcript.txt",
+          "sha256": "008170700f1f63b2e18d5bb0a42f86b2014138c2d06b41c01ae12621be96a624"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-lilygo-physical-transcript.txt",
+          "sha256": "7d35a95713b13a6a9ae8354208d8df5cd39d8445f65bf8c4e1788b8ca8f04b55"
+        }
+      ],
+      "status": "passed"
+    },
+    "browser": {
+      "evidence": [
+        {
+          "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-elecrow-physical-transcript.txt",
+          "sha256": "008170700f1f63b2e18d5bb0a42f86b2014138c2d06b41c01ae12621be96a624"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-lilygo-physical-transcript.txt",
+          "sha256": "7d35a95713b13a6a9ae8354208d8df5cd39d8445f65bf8c4e1788b8ca8f04b55"
+        }
+      ],
+      "status": "passed"
+    },
+    "resources": {
+      "evidence": [
+        {
+          "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-elecrow-physical-transcript.txt",
+          "sha256": "008170700f1f63b2e18d5bb0a42f86b2014138c2d06b41c01ae12621be96a624"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-lilygo-physical-transcript.txt",
+          "sha256": "7d35a95713b13a6a9ae8354208d8df5cd39d8445f65bf8c4e1788b8ca8f04b55"
+        }
+      ],
+      "status": "passed"
+    },
+    "update_paths": {
+      "evidence": [
+        {
+          "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-elecrow-physical-transcript.txt",
+          "sha256": "008170700f1f63b2e18d5bb0a42f86b2014138c2d06b41c01ae12621be96a624"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/tdhoward/TartLab/7137fa63909c003eba7730f056a6c31eef125ef0/tests/evidence/modern-v0.16.0-lilygo-physical-transcript.txt",
+          "sha256": "7d35a95713b13a6a9ae8354208d8df5cd39d8445f65bf8c4e1788b8ca8f04b55"
+        }
+      ],
+      "status": "passed"
+    }
+  },
+  "operator": "Tim",
+  "profile": "lvgl-modern",
+  "report_sha256": "63630c5fdfdea774cadc6a164a01fa9b5d1891bb0a22a64f352341b6c370356e",
+  "schema": 3,
+  "target_repository": "tdhoward/TartLab-modern-releases",
+  "tested_at_utc": "2026-09-10T23:20:08Z",
+  "version": "modern-v0.16.0"
+}
