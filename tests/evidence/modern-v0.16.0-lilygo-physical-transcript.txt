@@ -4,8 +4,17 @@ Session date: 2026-09-10
 Source commit: 5c5b722c266700bd3fb849cdd6728c350e9c92b3
 Candidate checksums SHA-256: 2d308e32537e263a0812567243d69aee5d0b19a6f4ee89e898e4a69a8c3eebba
 Firmware SHA-256: 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab
-Board: LilyGO T-Display-S3 Pro PCB v1.2, ESP32-S3 revision v0.2,
+Board: LilyGO T-Display-S3 Pro PCB v1.1, ESP32-S3 revision v0.2,
 16 MiB flash, 8 MiB PSRAM
+
+Hardware identity correction (confirmed by Tim after this session)
+----------------------------------------------------------------
+The earlier PCB v1.2 entry was a recording error. Tim confirms that the
+T-Display-S3 Pro tested in this session is PCB v1.1. PCB v1.2 identifies his
+separate non-Pro T-Display-S3 with physical pushbuttons. This correction
+changes only the recorded PCB identity; all test observations and candidate
+and firmware hashes below remain those of the tested Pro board. Machine-readable
+evidence uses "1.1", matching the signed candidate compatibility declaration.
 
 Raw logs, full inventories, journals, network configuration, and device
 identifiers remain in the private hardware workspace outside Git. This
