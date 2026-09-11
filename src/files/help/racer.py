@@ -6,6 +6,8 @@ from tartlabutils.damage import DamageTracker
 from tartlabutils.motion import StagedMotion
 from tartlabutils.timing import FrameClock
 
+from tartlabutils.platform import get_platform
+platform = get_platform()
 
 MILLIUNITS_PER_PIXEL = 1000
 
@@ -971,7 +973,18 @@ def main():
 
     surface = game_surface()
     canvas = PortraitCanvas(surface)
-    touch = PortraitTouchGrid(("left", "right"), 2, 1)
+    print("Checking input types")
+    touch_available = False
+    if platform.capabilities.get("touch", False):
+        touch_available = True
+        touch = PortraitTouchGrid(("left", "right"), 2, 1)
+        print("Touch available")
+    buttons_available = False
+    if platform.capabilities.get("buttons", False):
+        button_names = platform.buttons.names
+        if len(button_names) > 1:  # we need more than one button
+            buttons_available = True
+            print("Buttons available")
 
     art = RacerArt()
     width = canvas.width
@@ -1014,7 +1027,16 @@ def main():
             continue
 
         animator.begin_frame()
-        key = touch.read()
+        key = None
+        if touch_available:
+            key = touch.read()
+        if buttons_available:
+            for name, pressed in platform.read_button_events():
+                if name == button_names[0]:
+                    key = "left"
+                elif name == button_names[1]:
+                    key = "right"
+
         if game.crashed:
             if key is None:
                 restart_armed = True
