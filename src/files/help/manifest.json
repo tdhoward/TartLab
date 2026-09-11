@@ -30,6 +30,11 @@
 			"folder name": "Examples",
 			"entries": [
 				{
+					"title": "Nearby Chat",
+					"subtitle": "ESP-NOW groups with passwords and a touch keyboard",
+					"file": "messaging.py"
+				},
+				{
 					"title": "Physical buttons",
 					"subtitle": "Count button presses and restart to the launcher",
 					"file": "buttons.py"
