@@ -1,7 +1,10 @@
 {
   "schema": 1,
   "mode": "platform",
-  "baseline": null,
+  "baseline": {
+    "path": "profiles/baselines/modern-v0.16.0.json",
+    "sha256": "d9bc1f53e83ab555646a84a81a20ca325838acf7296bba0f0f4589450aa7291e"
+  },
   "resource_limits": {},
   "update_sources": {}
 }

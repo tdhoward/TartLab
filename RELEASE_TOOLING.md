@@ -34,8 +34,10 @@ invent physical observations or complete tests on an operator's behalf.
 
 ## Establish the first baseline
 
-The checked-in plan starts in `platform` mode with no baseline. All five gates
-therefore need fresh evidence for every included board. Earlier published
+The checked-in plan remains in `platform` mode and now pins the authenticated
+`modern-v0.16.0` baseline in `profiles/baselines/modern-v0.16.0.json`. That
+release established the first baseline with fresh evidence for all five gates
+on both included boards. Earlier published
 releases, including `modern-v0.15.4`, lack these signed snapshots and schema-3
 records. Their historical evidence is preserved, but it cannot be imported as
 an automatically reusable baseline by this tool.

@@ -64,7 +64,46 @@ Historical schemas cannot bypass those checks on new candidates. Follow
 [`RELEASE_TOOLING.md`](../RELEASE_TOOLING.md) to establish the first signed
 baseline, generate the evidence form, and complete the required results.
 
-## Qualified candidate and physical results
+## Modern v0.16.0 promotion
+
+`modern-v0.16.0` at source commit
+`5c5b722c266700bd3fb849cdd6728c350e9c92b3` was published on 2026-09-10 by
+[protected promotion run 34543990735](https://github.com/tdhoward/TartLab/actions/runs/34543990735).
+The workflow rebuilt the candidate twice, validated schema-3 evidence, and
+published 30 assets to the isolated modern release repository.
+
+- Candidate checksums SHA-256:
+  `2d308e32537e263a0812567243d69aee5d0b19a6f4ee89e898e4a69a8c3eebba`.
+- Qualification evidence SHA-256:
+  `abdf977cbe59a1fc349ec7d983db2eb5f6d5ca1c87ab583cfbf7f3dea3f19547`.
+- Evidence: [`modern-v0.16.0-qualification.json`](evidence/modern-v0.16.0-qualification.json),
+  with immutable references and hashes for both physical transcripts.
+
+Fresh physical results cover the Elecrow DLE06235B and LilyGO T-Display-S3 Pro
+PCB 1.1. Tim corrected the Pro's original PCB 1.2 entry: that revision belongs
+to his separate non-Pro pushbutton board. The corrected transcript preserves
+the explanation. The tested candidate and firmware did not change.
+
+The tests include clean provisioning, browser editing and commands, resource
+checks, same-version update application, corrupted-package rejection, real
+power loss during download and recovery installation, offline recovery, and
+healthy-boot commit behavior. The release declares no older installed update
+sources; these results do not claim an older-version upgrade or internet OTA
+delivery. See the transcripts for exact scope and operator observations.
+
+The downloaded release matched the tested candidate checksum and both firmware
+identities. The live feed audit selected `modern-v0.16.0` for modern and `v0.15`
+for legacy, with no cross-profile assets.
+
+Independent verification passed for all 29 signed release subjects against
+the protected promotion workflow and `refs/tags/modern-v0.16.0`. The captured
+baseline is `profiles/baselines/modern-v0.16.0.json`, pinned in the release plan
+with SHA-256
+`d9bc1f53e83ab555646a84a81a20ca325838acf7296bba0f0f4589450aa7291e`.
+The plan remains in platform mode; future candidates compute which claims can
+be inherited and which require fresh evidence.
+
+## Historical modern v0.15.4 candidate and physical results
 
 The qualified multi-board candidate is `modern-v0.15.4` at commit
 `f86c6b02b66ed62399b73ad4f9270774e0f366e9`:

@@ -41,9 +41,9 @@ TartLab maintains two profiles:
   1.23.0 octal-SPIRAM image
   `ESP32_GENERIC_S3-SPIRAM_OCT-20240602-v1.23.0.bin`.
 - `lvgl-modern` uses the pinned MicroPython 1.27.0/LVGL firmware and native
-  display transport. The two-board-qualified `modern-v0.15.4` release is published
+  display transport. The two-board-qualified `modern-v0.16.0` release is published
   in the isolated
-  [modern release repository](https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.15.4).
+  [modern release repository](https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.16.0).
 
 The modern profile remains early alpha software. No modern TartLab devices have
 been field-deployed. The supported modern alpha is selection-aware and binds
