@@ -1,5 +1,10 @@
 # Modern release qualification tooling
 
+For routine operation, start with the short
+[operator quick start](RELEASE_QUALIFICATION.md). Its generated text form and
+`qualification_session.py` report pending work, hash evidence files, validate
+results, and export promotion inputs without agent orchestration.
+
 The modern release pipeline implements the model in
 [`RELEASE_POLICY.md`](RELEASE_POLICY.md). One TartLab release contains a fixed
 platform, browser client, and app set. Maintainers select its qualification

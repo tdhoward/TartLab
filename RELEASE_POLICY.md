@@ -13,11 +13,11 @@ Every included board still needs applicable candidate-bound evidence. Follow
 [`RELEASE_TOOLING.md`](RELEASE_TOOLING.md) for the release plan, commands,
 schema-3 evidence, and conservative classification rules.
 
-The initial plan has no baseline and requires fresh qualification. Earlier
+The checked-in plan pins the signed `modern-v0.16.0` baseline. Earlier
 published candidates lack the signed snapshot and schema-3 records required
-for automatic reuse; establish the first baseline by qualifying and promoting
-a release built with this tooling. Historical modern v0.15.4 evidence remains
-an audit record and precedent, not an automatically imported qualification.
+for automatic reuse. Historical modern v0.15.4 evidence remains an audit record
+and precedent, not an automatically imported qualification. Routine operators
+can use the [generated form workflow](RELEASE_QUALIFICATION.md).
 
 Legacy release gates and profile-specific feed isolation remain in force.
 Introducing automated evidence reuse into the legacy workflow would require

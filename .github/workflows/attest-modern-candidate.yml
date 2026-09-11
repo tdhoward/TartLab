@@ -106,6 +106,7 @@ jobs:
           tests.test_modern_profile
           tests.test_phase6
           tests.test_modern_qualification
+          tests.test_qualification_session
           tests.test_phase6_provisioning
           tests.test_virtual_device
           tests.test_platform
@@ -115,17 +116,13 @@ jobs:
       - name: Generate the required testing checklist and pending evidence form
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          python tools/modern_release_baseline.py report --release build/qualification/release --output build/qualification/qualification-checklist.md
-          python tools/modern_release_baseline.py template --release build/qualification/release --output build/qualification/qualification-template.json
+        run: python tools/qualification_session.py prepare --release build/qualification/release --output build/qualification/operator
 
       - name: Upload qualification checklist separately from immutable candidate
         uses: actions/upload-artifact@v7
         with:
           name: lvgl-modern-checklist-${{ github.sha }}
-          path: |
-            build/qualification/qualification-checklist.md
-            build/qualification/qualification-template.json
+          path: build/qualification/operator/
           if-no-files-found: error
 
       - name: Authenticate qualification candidate
