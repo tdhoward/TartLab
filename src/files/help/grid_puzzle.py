@@ -1,7 +1,8 @@
-"""Grid puzzle: Phase 1 room contracts and interactive layout/input probe.
+"""Grid puzzle: Phase 2 first playable room.
 
 Copy this file to /files/user/my_puzzle.py to edit the actual implementation.
-The movement and hazard phases are still pending; this probe inspects a room.
+Move, collect keys, push boulders into water, and reach the exit.
+Dirt, teleportation, hazards, and original sprite art arrive in later phases.
 
 CODE MAP (search these numbered headings):
 1. Settings   2. Symbols   3. Loading and state   4. Player interactions
@@ -38,6 +39,9 @@ DIRECTIONS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 TERRAIN_NAMES = ("floor", "wall", "dirt", "water", "false wall", "exit")
 OBJECT_NAMES = ("empty", "key", "diamond", "boulder")
 ACTOR_NAMES = ("player", "snake", "spider", "spear emitter")
+MOVED, COLLECTED, TERRAIN_CHANGED, OBJECT_CHANGED = 1, 2, 4, 8
+DIED, FINISHED = 16, 32
+ACTION_DIRECTIONS = {"north": NORTH, "east": EAST, "south": SOUTH, "west": WEST}
 
 
 def cell_at(x, y):
@@ -279,7 +283,7 @@ class Actor:
     def __init__(self, actor_id, record):
         self.id = actor_id
         self.kind, self.cell, self.heading, self.follow, self.interval_ms = record
-        self.next_due_ms = 0 if self.kind == PLAYER else self.interval_ms
+        self.next_due_ms = UPDATE_MS if self.kind == PLAYER else self.interval_ms
         self.alive = True
         self.trap_state = IDLE
         self.tip = self.cell
@@ -315,6 +319,8 @@ class LevelState:
         self.paused = self.active_message != -1
         # Reused, room-bounded flags for the later simulation/rendering phases.
         self.changed_cells = bytearray(CELL_COUNT)
+        self.events = bytearray(CELL_COUNT)  # Per-cell event bits; reused each step.
+        self.step_events = 0
         self.pending_explosions = bytearray(CELL_COUNT)
 
 
@@ -323,15 +329,168 @@ def create_state(definition):
 
 
 # 4. Player movement, pushing, collection, teleportation ---------------------
-# Phase 2 implements player transactions here; Phase 3 adds terrain/teleports.
-# The probe below moves an inspector cursor, never the player or room objects.
+def mark_changed(state, cell, event):
+    state.changed_cells[cell] = 1
+    state.events[cell] |= event
+
+
+def accepts_boulder(state, cell):
+    """Check the entire destination before committing either half of a push."""
+    return (0 <= cell < CELL_COUNT and state.terrain[cell] in (FLOOR, WATER)
+            and state.objects[cell] == EMPTY and state.actor_at[cell] == -1
+            and state.spear_at[cell] == -1 and state.definition["twins"][cell] == -1)
+
+
+def can_player_enter(state, cell):
+    """Ordinary entry; boulder pushing has its own transaction below.
+
+    Phase 3 adds digging/revealing; Phase 4 replaces actor blocking with contact
+    hazards. The device rejects rooms needing those unimplemented mechanics.
+    """
+    return (0 <= cell < CELL_COUNT and (state.terrain[cell] == FLOOR or
+            (state.terrain[cell] == EXIT and state.exit_active))
+            and state.objects[cell] != BOULDER and state.actor_at[cell] == -1
+            and state.spear_at[cell] == -1)
+
+
+def move_player(state, heading):
+    player = state.player
+    destination = neighbor(player.cell, heading)
+    if destination == -1:
+        return False
+    if state.objects[destination] == BOULDER:
+        target = neighbor(destination, heading)
+        if not accepts_boulder(state, target):
+            return False
+        # Nothing changes before the complete push is known to be legal.
+        state.objects[destination] = EMPTY
+        mark_changed(state, destination, OBJECT_CHANGED)
+        if state.terrain[target] == WATER:
+            state.terrain[target], state.variants[target] = FLOOR, 0
+            mark_changed(state, target, TERRAIN_CHANGED)
+        else:
+            state.objects[target] = BOULDER
+            mark_changed(state, target, OBJECT_CHANGED)
+    elif not can_player_enter(state, destination):
+        return False
+    origin = player.cell
+    state.actor_at[origin], state.actor_at[destination] = -1, player.id
+    player.cell, player.heading = destination, heading
+    mark_changed(state, origin, MOVED)
+    mark_changed(state, destination, MOVED)
+    return True
+
+
+def collect_player_object(state):
+    cell = state.player.cell
+    obj = state.objects[cell]
+    if obj in (KEY, DIAMOND):
+        state.objects[cell] = EMPTY
+        if obj == KEY:
+            state.remaining_keys -= 1
+        else:
+            state.score += DIAMOND_SCORE
+        mark_changed(state, cell, COLLECTED)
 
 # 5. Snakes, spiders, traps, explosions --------------------------------------
 # Phase 4 implements the documented predicates and hazard rules here.
 
 # 6. Explicit simulation order ---------------------------------------------
-# No simulation runs in Phase 1. Implement step(state, input_state, dt_ms=10)
-# here with all fourteen stages documented in GRID_PUZZLE_PROJECT.md.
+def step(state, direction=None, dt_ms=UPDATE_MS):
+    """One pure simulation quantum. None releases input; no clocks or I/O here.
+
+    Event buffers describe only this quantum, including when it is frozen.
+    Renderers must accumulate them before the next call (Phase 2 redraws fully).
+    """
+    if type(dt_ms) is not int or dt_ms != UPDATE_MS:
+        raise ValueError("step requires one %s ms quantum" % UPDATE_MS)
+    if direction is not None and (type(direction) is not int or direction not in range(4)):
+        raise ValueError("direction must be one cardinal integer or None")
+    state.step_events = 0
+    for cell in range(CELL_COUNT):
+        state.changed_cells[cell] = state.events[cell] = 0
+    if state.paused or state.status != PLAYING:
+        return
+    state.elapsed_ms += dt_ms
+    player = state.player
+    # 1. Eligible intent. Failed attempts also advance the same deadline.
+    moved = False
+    if direction is not None and state.elapsed_ms >= player.next_due_ms:
+        # After idle time, start a fresh interval. While held, retain the prior
+        # due time so nonmultiples of 10 do not accumulate rounding drift.
+        if player.next_due_ms <= state.elapsed_ms - dt_ms:
+            player.next_due_ms = state.elapsed_ms
+        player.next_due_ms += player.interval_ms
+        # 2. Movement transaction (Phase 3 adds digging and revealing).
+        moved = move_player(state, direction)
+    # 3. Collect once on entry.
+    if moved:
+        collect_player_object(state)
+    # 4. Player teleportation: Phase 3.
+    # 5. Immediate contact and snake exposure: Phase 4.
+    # 6. Due enemy movement and teleportation: Phase 4.
+    # 7. Enemy/player collisions: Phase 4.
+    # 8. Snapshot trapped spiders and queue explosions: Phase 4.
+    # 9. Recalculate snake exposure: Phase 4.
+    # 10. Activate/advance spear traps: Phase 4.
+    # 11. Resolve explosions and resulting hazards: Phase 4.
+    # 12. Reconcile keys from authoritative occupancy.
+    state.remaining_keys = sum(1 for obj in state.objects if obj == KEY)
+    # 13. Activate the exit in the same step as the final collection.
+    active = state.remaining_keys == 0
+    if active != state.exit_active:
+        state.exit_active = active
+        mark_changed(state, state.definition["exit"], TERRAIN_CHANGED)
+    state.bonus = max(0, state.definition["bonusStart"] - state.elapsed_ms // 1000)
+    # 14. Complete last; a latched death can never become completion.
+    if state.status == PLAYING and player.alive and state.exit_active and player.cell == state.definition["exit"]:
+        state.status = COMPLETED
+        state.step_events |= FINISHED
+
+
+class Session:
+    """Room-local score rolls back on restart; completed rooms bank once."""
+    def __init__(self, pack, start_level=0):
+        self.pack, self.room_index = pack, start_level
+        self.banked_score, self.room_award = 0, 0
+        self.direction = None
+        self.state = create_state(pack["levels"][start_level])
+
+    def advance(self, updates):
+        for unused in range(updates):
+            step(self.state, self.direction)
+            if self.state.step_events & FINISHED:
+                self.room_award = self.state.score + self.state.bonus
+                self.banked_score += self.room_award
+
+    def restart(self):
+        # Restart after completion must not allow banking this room twice.
+        self.banked_score -= self.room_award
+        self.room_award = 0
+        self.direction = None
+        self.state = create_state(self.pack["levels"][self.room_index])
+
+    def next_room(self):
+        if self.state.status != COMPLETED or self.room_index + 1 >= len(self.pack["levels"]):
+            return False
+        self.room_index += 1
+        self.room_award = 0
+        self.direction = None
+        self.state = create_state(self.pack["levels"][self.room_index])
+        return True
+
+    def total_score(self):
+        return self.banked_score if self.state.status == COMPLETED else self.banked_score + self.state.score
+
+
+def validate_playable_pack(pack):
+    """Keep future schema support without silently running incomplete rules."""
+    for definition in pack["levels"]:
+        if (any(t in (DIRT, FALSE_WALL) for t in definition["terrain"])
+                or any(t != -1 for t in definition["twins"])
+                or definition["messages"]
+                or any(a[0] != PLAYER for a in definition["actors"])):
+            raise ValueError('Room "%s" uses terrain, pads, messages or hazards pending Phases 3/4' % definition["name"])
 
 # 7. Art preparation, layout, rendering, debug -------------------------------
 HUD_HEIGHT, PANEL_WIDTH, PANEL_HEIGHT, CONTROL_SIZE = 24, 112, 112, 32
@@ -429,91 +588,174 @@ def inspect_cell(state, cell):
     return "(%s,%s) %s" % (cell % COLS, cell // COLS, description)
 
 
-def draw_probe(canvas, state, layout, selected, last_action, debug=False):
-    """Primitive contract preview. Original sprites and game rendering follow."""
+def draw_game(canvas, session, layout, last_action=None, debug=False):
+    """Primitive full redraw of live layers; no reference to initial occupancy."""
+    state = session.state
     canvas.fill(0)
-    canvas.text("Grid puzzle: layout probe", 0, 0, 0xFFFF)
-    canvas.text("K:%s %s" % (state.remaining_keys, state.definition["name"][:20]), 0, 12, 0xFFFF)
+    title = "%s/%s %s" % (session.room_index + 1, len(session.pack["levels"]), state.definition["name"])
+    canvas.text(title[:layout.width // 8], 0, 0, 0xFFFF)
+    status = "PAUSED" if state.paused else ("PLAY", "DEAD", "DONE")[state.status]
+    hud = "K%s S%s B%s %s" % (state.remaining_keys, session.total_score(), state.bonus, status)
+    canvas.text(hud[:layout.width // 8], 0, 12, 0xFFFF)
     bx, by, unused_w, unused_h = layout.board
     size = layout.tile_size
-    for cell, token in enumerate(state.definition["tokens"]):
+    colors = (0x1082, 0x632C, 0x8200, 0x025F, 0x632C, 0x7800)
+    for cell in range(CELL_COUNT):
         x, y = bx + (cell % COLS) * size, by + (cell // COLS) * size
-        # Concealed features use exactly the same pixels as their visible base.
-        visible = ".." if token[0] == "T" else ("#" + token[1] if token[0] == "F" else token)
+        terrain = state.terrain[cell]
+        color = 0x0400 if terrain == EXIT and state.exit_active else colors[terrain]
+        canvas.rect(x, y, size, size, color, True)
         canvas.rect(x, y, size, size, 0x4208)
-        canvas.text(token if debug else visible, x, y + (size - 8) // 2, 0xFFFF)
-    x, y = bx + (selected % COLS) * size, by + (selected // COLS) * size
-    canvas.rect(x, y, size, size, 0xFFFF)
+        glyph = "E" if terrain == EXIT else ""
+        obj = state.objects[cell]
+        if obj != EMPTY:
+            glyph = ("", "K", "*", "O")[obj]
+        actor_id = state.actor_at[cell]
+        if actor_id != -1:
+            glyph = ("P", "S", "X", "R")[state.actors[actor_id].kind]
+        if glyph:
+            canvas.text(glyph, x + (size - 8) // 2, y + (size - 8) // 2, 0xFFFF)
+        if debug and (terrain == FALSE_WALL or state.definition["labels"][cell] != -1):
+            canvas.text(state.definition["tokens"][cell], x, y, 0xFFE0)
     rx, ry = layout.readout
-    canvas.text("%s,%s %s" % (selected % COLS, selected // COLS,
-                              state.definition["tokens"][selected] if debug else ""), rx, ry, 0xFFFF)
+    canvas.text("Exit open" if state.exit_active else "Exit locked", rx, ry, 0xFFFF)
+    pause_label = "Play" if state.paused else "Pause"
+    if state.status == COMPLETED:
+        pause_label = "Next" if session.room_index + 1 < len(session.pack["levels"]) else "Done"
     labels = {"north": "^", "east": ">", "south": "v", "west": "<",
-              "restart": "Reset", "pause": "Pause", "back": "Back"}
+              "restart": "Reset", "pause": pause_label, "back": "Back"}
     for action, (x, y, width, height) in layout.controls:
         canvas.rect(x, y, width, height, 0xFFFF)
         if action == last_action:
             canvas.rect(x + 2, y + 2, width - 4, height - 4, 0xFFFF)
         canvas.text(labels[action], x + 4, y + 12, 0xFFFF)
-    canvas.show()
+    canvas.show()  # Exactly one presentation coordinator.
 
 
-# 8. Input handling, probe session, resource cleanup, main -------------------
-def run_probe(pack, platform, canvas, layout, debug=False):
-    import time
-    state = create_state(pack["levels"][0])
-    selected = state.player.cell
-    last_action = None
-    released = False  # Require a release after ownership changes.
-    wake_polls = 0
-    draw_probe(canvas, state, layout, selected, last_action, debug)
-    print("Phase 1: directions select cells; Reset rebuilds state; Pause toggles labels; Back returns to UI.")
-    print(inspect_cell(state, selected))
-    while True:
-        action, point = None, None
-        touch_is_down = False
-        if layout.touch:
-            if wake_polls == 0:
-                platform.keep_touch_awake()
-            wake_polls = (wake_polls + 1) % 250
-            raw = platform.read_game_touch()
-            touch_is_down = raw is not None
-            if raw is None:
-                released = True
-            elif released:
-                point = layout.logical_point(raw, platform.height)
-                action = layout.action_from_point(*point)
-                released = False
-        for name, pressed in platform.read_button_events():
-            if pressed:
-                action = BUTTON_ACTIONS.get(name)
-        if action == "back":
-            return
-        changed = False
-        if point is not None:
-            cell = layout.cell_from_point(*point)
-            if cell != -1:
-                selected, changed = cell, True
-        if action in ("north", "east", "south", "west"):
-            cell = neighbor(selected, ("north", "east", "south", "west").index(action))
-            if cell != -1:
-                selected = cell
-        elif action == "restart":
-            state = create_state(pack["levels"][0])
-            selected = state.player.cell
-        elif action == "pause":
-            debug = not debug
-        clear_highlight = not touch_is_down and last_action is not None
-        if action is not None or changed or clear_highlight:
-            last_action = action
-            draw_probe(canvas, state, layout, selected, last_action, debug)
-            if action or changed:
-                print(inspect_cell(state, selected))
-        time.sleep_ms(20)
+# 8. Input handling, session, resource cleanup, main -------------------------
+class Controls:
+    """Most recent held direction wins; action controls fire only on edges.
+
+    Touch precedes ordered button events within a poll, so a simultaneous button
+    press wins. Releasing it restores the most recent still-held direction.
+    """
+    def __init__(self):
+        self.buttons_down = {}
+        self.touch_direction = None
+        self.touch_down = False
+        self.held = []  # At most four direction buttons and one touch.
+        self.suppressed = True
+        self.fresh_touch = False
+
+    def reset(self):
+        self.held[:] = []
+        self.touch_direction = None
+        self.suppressed = True  # All physical inputs must release after reset.
+
+    def _hold(self, source, direction):
+        for index, entry in enumerate(self.held):
+            if entry[0] == source:
+                del self.held[index]
+                break
+        if direction is not None:
+            self.held.append((source, direction))
+
+    def poll(self, point, button_events, layout):
+        was_down = self.touch_down
+        self.touch_down = point is not None
+        self.fresh_touch = self.touch_down and not was_down and not self.suppressed
+        touch_action = layout.action_from_point(*point) if point is not None else None
+        direction = ACTION_DIRECTIONS.get(touch_action)
+        action = None
+        if not self.suppressed:
+            if direction != self.touch_direction:
+                self._hold("touch", direction)
+            if self.fresh_touch and touch_action not in ACTION_DIRECTIONS:
+                action = touch_action
+        self.touch_direction = direction
+        for name, pressed in button_events:
+            mapped = BUTTON_ACTIONS.get(name)
+            if mapped is None:
+                continue
+            previous = self.buttons_down.get(name, False)
+            self.buttons_down[name] = pressed
+            if not self.suppressed and pressed != previous:
+                if mapped in ACTION_DIRECTIONS:
+                    self._hold(name, ACTION_DIRECTIONS[mapped] if pressed else None)
+                elif pressed:
+                    action = mapped
+        if self.suppressed and not self.touch_down and not any(self.buttons_down.values()):
+            self.suppressed = False
+        return action
+
+    def direction(self):
+        return self.held[-1][1] if self.held else None
+
+
+def run(pack, platform, canvas, layout, debug=False, clock_factory=None):
+    if clock_factory is None:
+        from tartlabutils.timing import FrameClock
+        clock_factory = lambda: FrameClock(frame_ms=FRAME_MS, update_ms=UPDATE_MS, max_updates=10)
+    validate_playable_pack(pack)
+    session, controls = Session(pack), Controls()
+    clock = clock_factory()
+    missed, dropped, wake_polls = 0, 0, 0
+    print("Directions move; Reset restarts; Pause/Play freezes/resumes; Next advances; Back returns to UI.")
+    print(inspect_cell(session.state, session.state.player.cell))
+    try:
+        while True:
+            point = None
+            if layout.touch:
+                if wake_polls == 0:
+                    platform.keep_touch_awake()
+                wake_polls = (wake_polls + 1) % 100
+                raw = platform.read_game_touch()
+                if raw is not None:
+                    point = layout.logical_point(raw, platform.height)
+            action = controls.poll(point, platform.read_button_events(), layout)
+            updates = clock.updates_due() if session.state.status == PLAYING and not session.state.paused else 0
+            if action == "back":
+                return session
+            rebase = False
+            if action == "restart":
+                session.restart()
+                rebase = True
+            elif action == "pause":
+                if session.state.status == COMPLETED:
+                    rebase = session.next_room()
+                elif session.state.status == PLAYING:
+                    session.state.paused = not session.state.paused
+                    rebase = True
+            if rebase:
+                controls.reset()
+                session.direction = None
+                missed += clock.missed_deadlines
+                dropped += clock.dropped_update_ms
+                clock = clock_factory()  # Discard paused wall time and old backlog.
+            else:
+                # Observed input belongs to the END of the elapsed batch. Queue
+                # it for the next quantum, never apply a newly polled edge to
+                # already elapsed catch-up steps.
+                was_playing = session.state.status == PLAYING
+                session.advance(updates)
+                if was_playing and session.state.status != PLAYING:
+                    controls.reset()
+                session.direction = controls.direction() if not session.state.paused else None
+            if controls.fresh_touch and point is not None:
+                selected = layout.cell_from_point(*point)
+                if selected != -1:
+                    print(inspect_cell(session.state, selected))
+            draw_game(canvas, session, layout, action, debug)
+            clock.pace()
+    finally:
+        print("Grid puzzle timing: missed=%s dropped_update_ms=%s" %
+              (missed + clock.missed_deadlines, dropped + clock.dropped_update_ms))
 
 
 def main():
     # Validate first, before importing device modules or allocating a canvas.
     pack = load_level_pack(LEVEL_FILE)
+    validate_playable_pack(pack)
     from tartlabutils.platform import get_platform
     platform = get_platform()
     if not platform.capabilities.get("direct_rgb565", False):
@@ -529,7 +771,7 @@ def main():
     canvas = None
     try:
         canvas = DirectCanvas(game_surface(), rotation=layout.rotation)
-        run_probe(pack, platform, canvas, layout, DEBUG)
+        run(pack, platform, canvas, layout, DEBUG)
     finally:
         try:
             if canvas is not None:

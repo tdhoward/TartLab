@@ -1,5 +1,9 @@
 # Grid puzzle Phase 1 implementation evidence
 
+Historical milestone record. Phase 2 has replaced the probe with playable
+movement; use [Phase 2 evidence](GRID_PUZZLE_PHASE2.md) for current commands and
+the pending operator checklist. The observations below remain unperformed.
+
 Recorded 2026-09-11. Software foundation implemented; physical acceptance remains
 pending. The next code phase is **Phase 2: first playable room** in
 [the project plan](../GRID_PUZZLE_PROJECT.md). The current app is an interactive

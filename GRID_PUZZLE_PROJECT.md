@@ -1,16 +1,18 @@
 # Grid puzzle/action example: architecture and development plan
 
-Status (2026-09-11): Phase 1 software foundation implemented. The editable
-single-file source, strict JSON loader/state model, browser JSON support, Help
-entries, editing guide, and interactive layout/input probe are in place. Host,
-frontend, MicroPython 1.23, and initial packaging checks pass; this is still a
-probe, not a playable game. See [Phase 1 evidence](tests/GRID_PUZZLE_PHASE1.md).
+Status (2026-09-11): Phase 2 software milestone implemented. The editable
+single-file example now plays First Crossing with timed movement, atomic pushing,
+water filling, keys/diamonds, exit completion, scoring, pause, and restart. The
+host validator replays its checked-in solution and records source/data hashes.
+See [Phase 2 evidence](tests/GRID_PUZZLE_PHASE2.md) and the earlier
+[Phase 1 foundation evidence](tests/GRID_PUZZLE_PHASE1.md).
 
-Next implementation entry point: Phase 2 in
+Next implementation entry point: Phase 3 in
 [Development phases and exit criteria](#development-phases-and-exit-criteria).
-The unfinished Phase 1 acceptance gate is actual browser/device observation of
-copy/edit/recovery, full-room readability, and input comfort. The exact pending
-checks are recorded in the evidence document; no physical pass is inferred.
+The unfinished acceptance gate is actual browser/device observation of
+copy/edit/recovery, full-room readability, input comfort, and playable controls.
+The current operator checklist is in the Phase 2 evidence document; no physical
+pass or frame-rate qualification is inferred from host tests.
 Keep this status current as phases finish; record the next unfinished gate and
 link to its evidence instead of repeating completed investigations.
 
@@ -73,8 +75,8 @@ reported dimensions, rotation, input availability, and surface capabilities.
 
 ### Proposed source layout
 
-The Phase 1 Python/JSON/guide, host validator, and contract tests now exist.
-Art, hazard tests, solution traces, benchmarking, and physical qualification
+The Python/JSON/guide, host validator, movement tests, and first solution trace exist.
+Art, hazard tests, campaign traces, benchmarking, and physical qualification
 deliverables below remain scheduled for their later phases.
 
 ```text
@@ -178,11 +180,10 @@ catch-all error handling that hides the traceback or silently restores rules.
 
 ### Browser and distribution integration
 
-The current browser [tab implementation](src/ide/www/js/tabs.js) recognizes
-Python and plain text but does not open `.json` as editable text. Include a small
-generic change to route `.json` to the existing text editor, enable normal save,
-and keep Run/Set as App unavailable for JSON. JSON syntax highlighting can follow
-later. The current [save flow](src/ide/www/js/main.js) and
+The browser [tab implementation](src/ide/www/js/tabs.js) now routes `.json` to
+the existing text editor and supports normal save, while Run/Set as App remain
+unavailable for JSON. JSON syntax highlighting can follow later.
+The current [save flow](src/ide/www/js/main.js) and
 [user-file endpoint](src/ide/ide.py) already allow non-Python filenames; verify
 the complete help-open/save-user-copy/reopen path instead of adding a new upload
 or project system. Register the room file in the help manifest for discoverability.
@@ -811,14 +812,15 @@ Automate campaign validation and solution replay with one short host command:
 python tools/check_grid_puzzle_levels.py
 ```
 
-This command now loads the bundled JSON and single Python source by default,
-validates all rooms and constructs their state, prints a short structural
-pass/fail summary, and writes detailed results to `build/grid_puzzle/validation.json`.
-Timed solution replay remains pending the simulation implementation; the tool
-reports that explicitly and does not claim solvability. Extend it to replay
-checked-in timed solutions as the gameplay phases land.
-Accept explicit `--engine` and `--levels` paths for a trusted local experiment;
-report both selected paths. Replay records include engine-source and room-data
+This command loads the bundled JSON and single Python source by default,
+validates every room, and replays `tests/fixtures/grid_puzzle/solutions.json`.
+It requires a successful timed solution for each bundled room and writes detailed
+results to `build/grid_puzzle/validation.json`. The Phase 2 trace completes First
+Crossing in 2540 ms of simulation with 100 collected points and 498 bonus points.
+These are scripted results, not a physical playtest or fairness assessment.
+Accept explicit `--engine`, `--levels`, and `--solutions` paths for a trusted
+local experiment; report selected paths. Custom rooms without `--solutions` get
+structural checks only and explicitly report replay pending. Replay records include engine-source and room-data
 hashes, schema version, timed press/release/wait events, and expected completion/
 score. Hash and validate these mechanically. Running the command again must not
 require an agent to reread every room or transcript.

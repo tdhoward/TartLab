@@ -30,4 +30,40 @@ choose_layout = namespace["choose_layout"]
 assert choose_layout(480, 222).scale == 1
 assert choose_layout(320, 480).rotation == 90
 assert choose_layout(800, 480).scale == 2
-print("PASS: grid puzzle definitions, all symbols, fresh state, pairing and layouts")
+import json
+pack = load(root + "/src/files/help/grid_puzzle_levels.json")
+namespace["validate_playable_pack"](pack)
+with open(root + "/tests/fixtures/grid_puzzle/solutions.json") as stream:
+    recordings = json.load(stream)["solutions"]
+for recording in recordings:
+    session = namespace["Session"](pack, recording["room"])
+    events, index = recording["events"], 0
+    for elapsed in range(0, recording["end_ms"], namespace["UPDATE_MS"]):
+        while index < len(events) and events[index]["at_ms"] <= elapsed:
+            event = events[index]
+            if event["action"] == "press":
+                session.direction = namespace["ACTION_DIRECTIONS"][event["direction"]]
+            elif event["action"] == "release":
+                session.direction = None
+            index += 1
+        session.advance(1)
+    state = session.state
+    expected = recording["expected"]
+    assert state.status == namespace["COMPLETED"]
+    assert state.score == expected["score"]
+    assert state.bonus == expected["bonus"]
+    assert state.elapsed_ms == expected["elapsed_ms"]
+    assert session.banked_score == state.score + state.bonus
+    session.restart()
+    assert session.banked_score == 0
+    assert session.state.elapsed_ms == 0
+    assert session.state.remaining_keys == 1
+controls = namespace["Controls"]()
+layout = choose_layout(480, 222)
+controls.poll(None, (), layout)
+controls.poll(None, (("right", True),), layout)
+assert controls.direction() == namespace["EAST"]
+controls.reset()
+controls.poll(None, (("right", False),), layout)
+assert controls.direction() is None
+print("PASS: definitions, all symbols, layouts, timed solutions, score rollback and controls")

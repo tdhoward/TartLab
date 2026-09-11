@@ -74,16 +74,39 @@ class GridPuzzleLayoutTests(unittest.TestCase):
             self.assertEqual(layout.cell_from_point(bx - 1, by), -1)
             self.assertEqual(layout.action_from_point(-1, -1), None)
 
-    def test_normal_probe_conceals_false_walls_and_pads_exactly(self):
+    def test_normal_renderer_conceals_false_walls_and_pads_exactly(self):
         layout = g.choose_layout(480, 320)
-        hidden = g.create_state(g.validate_level(room({(3, 3): "F4", (4, 3): "T0", (5, 3): "T0"})))
-        visible = g.create_state(g.validate_level(room({(3, 3): "#4"})))
+        hidden = g.Session({"levels": [g.validate_level(room({(3, 3): "F4", (4, 3): "T0", (5, 3): "T0"}))]})
+        visible = g.Session({"levels": [g.validate_level(room({(3, 3): "#4"}))]})
         first, second, debug = RecordingCanvas(), RecordingCanvas(), RecordingCanvas()
-        g.draw_probe(first, hidden, layout, 0, None)
-        g.draw_probe(second, visible, layout, 0, None)
-        g.draw_probe(debug, hidden, layout, 0, None, True)
+        g.draw_game(first, hidden, layout)
+        g.draw_game(second, visible, layout)
+        g.draw_game(debug, hidden, layout, debug=True)
         self.assertEqual(first.commands, second.commands)
         self.assertNotEqual(first.commands, debug.commands)
+
+    def test_full_redraw_uses_current_layers_without_mutating_state(self):
+        import copy
+        definition = g.validate_level(room({(1, 0): "D.", (2, 0): "O.", (3, 0): "W4"}))
+        session = g.Session({"levels": (definition,)})
+        layout = g.choose_layout(480, 222)
+        before, after = RecordingCanvas(), RecordingCanvas()
+        g.draw_game(before, session, layout)
+        session.direction = g.EAST
+        session.advance(12)
+        snapshot = copy.deepcopy(session.state.__dict__)
+        g.draw_game(after, session, layout)
+        self.assertEqual(session.state.terrain, snapshot["terrain"])
+        self.assertEqual(session.state.objects, snapshot["objects"])
+        self.assertEqual(session.state.player.cell, snapshot["player"].cell)
+        self.assertNotEqual(before.commands, after.commands)
+        # Neither the collected diamond nor the consumed boulder is still drawn.
+        glyphs = [args[0] for name, args in after.commands if name == "text"]
+        self.assertNotIn("*", glyphs)
+        self.assertNotIn("O", glyphs)
+        self.assertEqual(glyphs.count("P"), 1)
+        self.assertEqual(sum(name == "show" for name, _ in after.commands), 1)
+        self.assertEqual(after.commands[0], ("fill", (0,)))
 
 
 if __name__ == "__main__":

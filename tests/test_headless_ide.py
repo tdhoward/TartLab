@@ -415,8 +415,9 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
             platform.capabilities["lvgl_ui"] = False
             ide.replGlobals = {"_GRID_PUZZLE_AUTOSTART": False, "open": device.open}
             writer = types.SimpleNamespace(responses=[])
-            for marker in ("First edit", "Fresh edit"):
+            for marker, points in (("First edit", 37), ("Fresh edit", 73)):
                 edited = source.replace('return "(%s,%s) %s"', 'return "' + marker + ' (%s,%s) %s"')
+                edited = edited.replace("state.score += DIAMOND_SCORE", "state.score += %s" % points)
                 request = types.SimpleNamespace(path="/files/user/my_puzzle.py",
                     body=json.dumps({"content": edited}).encode())
                 with redirect_stdout(io.StringIO()):
@@ -428,6 +429,9 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
                 definition = ide.replGlobals["validate_level"](room_data)
                 state = ide.replGlobals["create_state"](definition)
                 self.assertTrue(inspector(state, state.player.cell).startswith(marker))
+                state.objects[state.player.cell + 1] = ide.replGlobals["DIAMOND"]
+                ide.replGlobals["step"](state, ide.replGlobals["EAST"])
+                self.assertEqual(state.score, points)
 
     def test_file_execution_wakes_the_modern_backlight_controller(self):
         with tempfile.TemporaryDirectory() as temp:

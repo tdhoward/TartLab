@@ -1,16 +1,22 @@
 <h1>Grid puzzle: rooms and editable Python</h1>
 <p>This project targets the modern TartLab platform (<code>lvgl-modern</code>) only.</p>
-<p><strong>Phase 1 preview.</strong> The current Python example is an interactive
-room, layout, and input probe. Movement, scoring, enemies, original artwork, and
-the teaching campaign are upcoming phases. Direction controls move an inspector
-cursor; they do not move the player. Reset rebuilds the preview state, Pause
-toggles hidden-feature labels, and Back returns display ownership to the UI.
-Tap a cell to inspect it in the console. All gameplay rules below are the
-version-1 contract for those later phases, not a claim of completed gameplay.</p>
+<p><strong>First playable room.</strong> Move the white <code>P</code>, push the
+<code>O</code> boulder into blue water to make a crossing, collect the required
+<code>K</code> key, and reach <code>E</code>. The exit turns green when unlocked.
+The <code>*</code> diamond is optional. The HUD shows keys (K), score (S), remaining
+bonus (B), and play status. This is Phase 2; dirt, false walls, teleportation,
+messages, hazards, original sprite artwork, and the teaching campaign are upcoming.</p>
+<p>Hold a direction to repeat; release to stop. Reset restarts the current room,
+Pause/Play freezes/resumes it, and Back returns to the UI. After completion, Next
+advances if another room is loaded; Done means the pack is finished. Reset also
+works when paused or after completion. Release all controls before pressing again
+after launch, restart, pause/resume, or completion. Tap a cell to inspect it in
+the console. The built-in First Crossing room introduces the supported rules;
+push toward the water from its left, then explore the other side for the key.</p>
 
 <h2>Make independent copies</h2>
 <ol>
-  <li>Open <strong>Grid puzzle: layout probe</strong> in Help. Save as
+  <li>Open <strong>Grid puzzle: First Crossing</strong> in Help. Save as
   <code>my_puzzle.py</code>. Help files can be saved without first changing them.</li>
   <li>Run the saved Python copy. It initially uses the bundled rooms through
   <code>LEVEL_FILE = "/files/help/grid_puzzle_levels.json"</code>.</li>
@@ -81,14 +87,28 @@ comments or trailing commas in JSON. Unknown fields, including
 There is no imposed pack byte/room limit yet; device heap measurements will
 determine whether one is needed. Structural validation does not prove a solution.</p>
 
-<h2>Gameplay contract for the next phases</h2>
+<h2>Playable rules and upcoming mechanics</h2>
 <p>A move is one cardinal step. A failed attempt consumes its movement interval.
 Pushing moves one boulder atomically; chains, pulling, and pushing into actors,
 dirt, collectibles, exits, or pads are blocked. Water consumes a pushed boulder
-and becomes floor. Dirt and false walls clear when the player enters. All keys
+and becomes floor. All keys
 are required; zero-key rooms start with an active exit. A diamond scores 100,
 and the bonus falls by one per second of unpaused simulation, stopping at zero.
-Room score is banked only on completion, so restart cannot farm points.</p>
+Room score and the remaining bonus are banked only on completion. Restarting a
+completed room rolls back its award; earlier completed rooms remain banked.</p>
+<p>A fresh press moves on the next eligible 10 ms simulation tick. Held movement
+attempts are 110 ms apart by default, including failed pushes. Changing direction
+does not reset this cooldown. After waiting past a deadline, the next press
+starts a fresh interval. Most recently pressed direction wins; releasing it
+restores another held direction if there is one. Touch is processed before named
+button events in a poll, so a simultaneous button press wins. New input takes
+effect after the elapsed simulation batch, avoiding movement before the press
+was observed. Rendering uses a fixed 50 ms period; this is a proposed device
+setting, not a measured frame-rate guarantee.</p>
+<p>The loader validates every token in the table, but starting play currently
+rejects rooms with dirt, false walls, pads, messages, or enemies with a clear
+Phase 3/4 diagnostic. Those mechanics have not been implemented yet. Their
+planned rules follow: dirt and false walls clear when the player enters.</p>
 <p>Player and spiders teleport once per entry, preserving direction and timers.
 A blocked twin leaves the actor on the entered pad until it leaves and reenters.
 False walls match wall pixels; pads match floor in normal play. Snakes attack
@@ -106,17 +126,23 @@ the player is idle; death takes precedence over reaching an exit.</p>
 <h2>Find and change the Python</h2>
 <p>The source has eight numbered sections: settings, symbols, loading/state,
 player interactions, hazards, simulation order, drawing, and input/main.
-Sections 4–6 are reserved for upcoming implementations. The maintained file is
+Sections 4 and 6 now contain movement and simulation; Section 5 reserves hazards.
+The maintained file is
 the same file you copy: it is not generated from hidden engine modules.</p>
-<p>Try editing the return text in <code>inspect_cell</code>, then save and rerun.
-Touching a cell should print your new wording. Try changing a room name or wall
-token independently in JSON. Later lessons will trace actual movement and
-collision code and deliberately change scoring, snake cover, and spider turns.
-Defaults in Python apply only when the room or supported actor omits its override.</p>
+<p>Follow a move through <code>Controls.poll</code>, <code>run</code>,
+<code>Session.advance</code>, <code>step</code>, <code>move_player</code>,
+<code>collect_player_object</code>, and <code>draw_game</code>. The collision
+checks are <code>can_player_enter</code> and <code>accepts_boulder</code>.</p>
+<p>Change <code>DIAMOND_SCORE</code> to 37, save and rerun, and collect the diamond
+to see the score change. Or edit the addition in <code>collect_player_object</code>
+itself: your copy executes that actual implementation. Change <code>PLAYER_MS</code>
+to 220 for slower movement. Defaults apply only when the room or supported actor
+omits its override; the supplied room omits timers. Try changing the room name
+or a wall token independently in JSON. Later lessons add snake cover and spider turns.</p>
 
 <h2>Restart, rerun, and restore</h2>
 <ul>
-  <li><strong>Restart Level</strong> (Reset in this probe) reconstructs in-memory
+  <li><strong>Restart Level</strong> (the Reset control) reconstructs in-memory
   state using the currently loaded definition. It does not undo code edits or
   reload saved files.</li>
   <li><strong>Save and rerun</strong> executes the saved Python source again and
@@ -138,7 +164,7 @@ interrupt a blocked interpreter. Fix or replace the saved copy, then save and
 rerun. Reopening Help restores the currently installed baseline.</p>
 
 <h2>Layout expectations</h2>
-<p>The probe reserves the whole 256×192 room, a HUD, and 32-pixel touch targets.
+<p>The game reserves the whole 256×192 room, a HUD, and 32-pixel touch targets.
 It tries both orientations and chooses the largest integer tile scale, favoring
 a side panel. Smaller incompatible screens produce a clear error. Button-only
 input requires the names up, right, down, left, restart, pause, and back;

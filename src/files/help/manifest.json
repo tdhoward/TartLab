@@ -30,8 +30,8 @@
 			"folder name": "Examples",
 			"entries": [
 				{
-					"title": "Grid puzzle: layout probe",
-					"subtitle": "Phase 1: inspect the editable room and controls",
+					"title": "Grid puzzle: First Crossing",
+					"subtitle": "Push a crossing, collect the key, and reach the exit",
 					"file": "grid_puzzle.py"
 				},
 				{

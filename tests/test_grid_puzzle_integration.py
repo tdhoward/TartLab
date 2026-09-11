@@ -11,6 +11,7 @@ from unittest import mock
 import makedist
 from tests.grid_puzzle_support import DEFAULT_ENGINE, DEFAULT_LEVELS, load_engine, pack, room
 from tests.test_grid_puzzle_rendering import RecordingCanvas
+from tests.test_timing import FakeTime, make_clock
 from tools.check_grid_puzzle_levels import check
 
 
@@ -18,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def device_modules(g):
-    """Adapters only: all game definitions, state, probe and drawing remain real."""
+    """Adapters only: all game rules, clock scheduling and drawing remain real."""
     canvas = RecordingCanvas()
     platform = types.SimpleNamespace(width=480, height=222,
         capabilities={"direct_rgb565": True, "touch": True}, buttons=None,
@@ -44,8 +45,11 @@ def device_modules(g):
     app.game_surface = acquire
     boundary = types.ModuleType("tartlabutils.platform")
     boundary.get_platform = lambda: platform
+    timing = types.ModuleType("tartlabutils.timing")
+    platform.fake_time = FakeTime()
+    timing.FrameClock = lambda **kwargs: make_clock(platform.fake_time, **kwargs)
     return platform, canvas, {"tartlabutils": package, "tartlabutils.app": app,
-                              "tartlabutils.platform": boundary}
+                              "tartlabutils.platform": boundary, "tartlabutils.timing": timing}
 
 
 class GridPuzzleIntegrationTests(unittest.TestCase):
@@ -86,7 +90,7 @@ class GridPuzzleIntegrationTests(unittest.TestCase):
                 if failure == "drawing":
                     self.assertTrue(canvas.closed)
 
-    def test_probe_requires_release_and_accepts_all_direction_restart_and_pause_controls(self):
+    def test_play_loop_requires_release_after_start_restart_pause_and_resume(self):
         g = load_engine()
         platform, canvas, modules = device_modules(g)
         layout = g.choose_layout(platform.width, platform.height)
@@ -96,21 +100,49 @@ class GridPuzzleIntegrationTests(unittest.TestCase):
             x, y, _, _ = dict(layout.controls)[action]
             return x + 16, y + 16
         sequence = iter(touch(action) for action in (
-            "east", "east", None, "east", "east", None, "west", None,
-            "south", None, "north", None, "restart", "restart", None, "pause", None, "back"))
+            "east", None, "east", "east", None, "east", "east", None, "restart",
+            "east", None, "pause", None, "pause", "east", None, "south", "south", None, "back"))
         platform.read_game_touch = lambda: next(sequence)
         observations = []
-        def draw(canvas, state, layout, selected, action, debug):
-            observations.append((selected, action, debug))
-        with mock.patch.object(g, "draw_probe", draw), \
+        def draw(canvas, session, layout, action, debug):
+            observations.append((session.state.player.cell, action, session.state.paused, session.state.elapsed_ms))
+        with mock.patch.object(g, "draw_game", draw), mock.patch.dict(sys.modules, modules), \
                 mock.patch.object(g, "create_state", wraps=g.create_state) as create, \
                 mock.patch("time.sleep_ms", create=True), redirect_stdout(io.StringIO()):
-            g.run_probe(g.validate_level_pack(pack(room())), platform, canvas, layout)
-        actions = [(cell, action) for cell, action, _ in observations if action]
-        self.assertEqual(actions, [(1, "east"), (0, "west"), (16, "south"),
-                                   (0, "north"), (0, "restart"), (0, "pause")])
+            result = g.run(g.validate_level_pack(pack(room())), platform, canvas, layout)
+        self.assertEqual([row[0] for row in observations[:7]], [0, 0, 0, 1, 1, 1, 2])
+        self.assertEqual(observations[8][:3], (0, "restart", False))
+        self.assertEqual([row[0] for row in observations[9:17]], [0] * 8)
+        self.assertEqual(observations[11][2:], (True, 100))
+        self.assertEqual(observations[12][2:], (True, 100))
+        self.assertEqual(observations[13][2:], (False, 100))
+        self.assertEqual(result.state.player.cell, 16)
         self.assertEqual(create.call_count, 2)
-        self.assertTrue(observations[-1][2])
+
+    def test_new_press_does_not_move_player_retroactively_during_stall(self):
+        g = load_engine()
+        platform, canvas, modules = device_modules(g)
+        layout = g.choose_layout(platform.width, platform.height)
+        actions = iter((None, "east", "east", "east", "back"))
+        def touch():
+            action = next(actions)
+            if action is None:
+                return None
+            if platform.fake_time.absolute_ms == 50:
+                platform.fake_time.advance(450)
+            x, y, _, _ = dict(layout.controls)[action]
+            return x + 16, y + 16
+        platform.read_game_touch = touch
+        # Back needs a fresh press, so use an independent named button edge.
+        polls = []
+        platform.read_button_events = lambda: [("back", True)] if len(polls) == 4 else ()
+        def draw(canvas, session, layout, action, debug):
+            polls.append((session.state.elapsed_ms, session.state.player.cell))
+        output = io.StringIO()
+        with mock.patch.object(g, "draw_game", draw), mock.patch.dict(sys.modules, modules), redirect_stdout(output):
+            g.run(g.validate_level_pack(pack()), platform, canvas, layout)
+        self.assertEqual(polls, [(0, 0), (100, 0), (100, 0), (150, 1)])
+        self.assertIn("dropped_update_ms=400", output.getvalue())
 
     def test_renamed_source_runs_its_own_function_and_reloads_selected_json(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -176,14 +208,27 @@ class GridPuzzleIntegrationTests(unittest.TestCase):
                 finally:
                     sys.modules.pop(engine.stem, None)
 
-    def test_check_report_hashes_selected_sources_and_does_not_claim_replay(self):
+    def test_renamed_student_source_changes_actual_collection_rule(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "my_engine.py"
+            path.write_text(DEFAULT_ENGINE.read_text(encoding="utf-8").replace(
+                "state.score += DIAMOND_SCORE", "state.score += 37"), encoding="utf-8")
+            g = load_engine(path)
+            state = g.create_state(g.validate_level(room({(1, 0): "D."})))
+            g.step(state, g.EAST)
+            self.assertEqual(state.score, 37)
+
+    def test_check_report_hashes_selected_sources_and_replays_bundled_room(self):
         report = check()
         self.assertEqual(report["status"], "passed")
         self.assertEqual(report["schema_version"], 1)
         self.assertEqual(report["rooms"][0]["keys"], 1)
         self.assertEqual(len(report["engine_sha256"]), 64)
         self.assertEqual(len(report["levels_sha256"]), 64)
-        self.assertIn("pending", report["solution_replay"])
+        self.assertEqual(report["solution_replay"], "passed")
+        self.assertEqual(report["replays"][0]["actual"],
+                         {"status": "completed", "score": 100, "bonus": 498, "elapsed_ms": 2540})
+        self.assertEqual(report["engine_sha256"], report["replays"][0]["engine_sha256"])
         report = check(levels_path=ROOT / "build/grid_puzzle/no_such_rooms.json")
         self.assertEqual(report["status"], "failed")
         self.assertTrue(report["errors"])

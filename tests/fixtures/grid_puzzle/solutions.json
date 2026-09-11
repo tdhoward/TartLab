@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "schema_version": 1,
+  "solutions": [{
+    "room": 0,
+    "end_ms": 3000,
+    "events": [
+      {"at_ms": 0, "action": "press", "direction": "south"},
+      {"at_ms": 220, "action": "press", "direction": "east"},
+      {"at_ms": 1210, "action": "press", "direction": "south"},
+      {"at_ms": 1760, "action": "press", "direction": "north"},
+      {"at_ms": 2310, "action": "press", "direction": "east"},
+      {"at_ms": 2640, "action": "release"},
+      {"at_ms": 3000, "action": "wait"}
+    ],
+    "expected": {"status": "completed", "score": 100, "bonus": 498, "elapsed_ms": 2540}
+  }]
+}
