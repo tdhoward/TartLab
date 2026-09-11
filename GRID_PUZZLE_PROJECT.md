@@ -1,9 +1,16 @@
 # Grid puzzle/action example: architecture and development plan
 
-Status: planning only; implementation has not started.
+Status (2026-09-11): Phase 1 software foundation implemented. The editable
+single-file source, strict JSON loader/state model, browser JSON support, Help
+entries, editing guide, and interactive layout/input probe are in place. Host,
+frontend, MicroPython 1.23, and initial packaging checks pass; this is still a
+probe, not a playable game. See [Phase 1 evidence](tests/GRID_PUZZLE_PHASE1.md).
 
-Implementation entry point: start with Phase 1 in
+Next implementation entry point: Phase 2 in
 [Development phases and exit criteria](#development-phases-and-exit-criteria).
+The unfinished Phase 1 acceptance gate is actual browser/device observation of
+copy/edit/recovery, full-room readability, and input comfort. The exact pending
+checks are recorded in the evidence document; no physical pass is inferred.
 Keep this status current as phases finish; record the next unfinished gate and
 link to its evidence instead of repeating completed investigations.
 
@@ -26,8 +33,12 @@ introductory room set, a student editing guide, and optional debug overlays.
 The early playable milestone implements a smaller subset; it is not the full
 completion target.
 
-Target `lvgl-modern` first, using the existing direct canvas and touch platform
-APIs. Legacy support, a graphical level editor, scrolling maps, procedural room
+Target **`lvgl-modern` only**, using the existing direct canvas and touch platform
+APIs. Legacy support is outside this project, including future phases. Runtime
+compatibility and physical qualification target the modern platform's firmware;
+compatibility with `legacy-mp123` is not an acceptance requirement. Checks involving
+legacy packaging only verify that the game is excluded from those distributions.
+A graphical level editor, scrolling maps, procedural room
 generation, multiplayer, sound, undo, and persistent campaigns are outside this
 first version. Students edit arrays of strings in a separate JSON level file and
 inspect, change, and deliberately break the engine in a single Python file.
@@ -62,7 +73,9 @@ reported dimensions, rotation, input availability, and surface capabilities.
 
 ### Proposed source layout
 
-All paths below are proposed additions, except the existing manifest.
+The Phase 1 Python/JSON/guide, host validator, and contract tests now exist.
+Art, hazard tests, solution traces, benchmarking, and physical qualification
+deliverables below remain scheduled for their later phases.
 
 ```text
 src/files/help/
@@ -798,9 +811,12 @@ Automate campaign validation and solution replay with one short host command:
 python tools/check_grid_puzzle_levels.py
 ```
 
-This is a planned command, not an existing tool. It should load the bundled JSON
-and single Python engine by default, validate all rooms, replay checked-in timed
-solutions, print a short pass/fail summary, and put detailed failures in artifacts.
+This command now loads the bundled JSON and single Python source by default,
+validates all rooms and constructs their state, prints a short structural
+pass/fail summary, and writes detailed results to `build/grid_puzzle/validation.json`.
+Timed solution replay remains pending the simulation implementation; the tool
+reports that explicitly and does not claim solvability. Extend it to replay
+checked-in timed solutions as the gameplay phases land.
 Accept explicit `--engine` and `--levels` paths for a trusted local experiment;
 report both selected paths. Replay records include engine-source and room-data
 hashes, schema version, timed press/release/wait events, and expected completion/
@@ -839,8 +855,8 @@ When preparing a modern release, start with
 [RELEASE_QUALIFICATION.md](RELEASE_QUALIFICATION.md) and
 [tools/qualification_session.py](tools/qualification_session.py). An app-only
 change can use the existing release-impact process; any necessary shared
-platform/input change expands the affected checks. This planning task creates
-neither a release candidate nor qualification evidence.
+platform/input change expands the affected checks. The Phase 1 development build
+is not a release candidate or physical qualification evidence.
 
 ## Decisions to revisit with evidence
 

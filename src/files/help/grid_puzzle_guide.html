@@ -1,0 +1,147 @@
+<h1>Grid puzzle: rooms and editable Python</h1>
+<p>This project targets the modern TartLab platform (<code>lvgl-modern</code>) only.</p>
+<p><strong>Phase 1 preview.</strong> The current Python example is an interactive
+room, layout, and input probe. Movement, scoring, enemies, original artwork, and
+the teaching campaign are upcoming phases. Direction controls move an inspector
+cursor; they do not move the player. Reset rebuilds the preview state, Pause
+toggles hidden-feature labels, and Back returns display ownership to the UI.
+Tap a cell to inspect it in the console. All gameplay rules below are the
+version-1 contract for those later phases, not a claim of completed gameplay.</p>
+
+<h2>Make independent copies</h2>
+<ol>
+  <li>Open <strong>Grid puzzle: layout probe</strong> in Help. Save as
+  <code>my_puzzle.py</code>. Help files can be saved without first changing them.</li>
+  <li>Run the saved Python copy. It initially uses the bundled rooms through
+  <code>LEVEL_FILE = "/files/help/grid_puzzle_levels.json"</code>.</li>
+  <li>Open <strong>Grid puzzle: room data</strong> in Help. Save as
+  <code>my_rooms.json</code>. JSON opens in the text editor; Save is available,
+  while Run and Set as App apply only to Python files.</li>
+  <li>Change your Python copy to
+  <code>LEVEL_FILE = "/files/user/my_rooms.json"</code>, save, and run again.</li>
+</ol>
+<p>Renaming Python does not change its data paths. The example prints the selected
+path and any JSON error in the console; an invalid custom file never falls back
+to the bundled rooms. Python names and folder names use letters, digits, and
+underscores. Both Python and JSON remain ordinary editable files.</p>
+
+<h2>Room format</h2>
+<p>The root is an object with <code>"version": 1</code> and a nonempty
+<code>"levels"</code> array. Each room requires a nonempty <code>name</code> and
+<code>map</code>. A map has exactly 12 strings, each containing 16 two-character
+tokens separated by spaces. Extra whitespace is allowed; token case matters.
+Coordinates start at column 0, row 0 in the upper left. Every room has exactly
+one player and one exit. Outer walls are optional; outside the room is blocked.</p>
+<table>
+  <tr><th>Tokens</th><th>Meaning</th></tr>
+  <tr><td><code>.. P. E.</code></td><td>Floor, player, exit</td></tr>
+  <tr><td><code>#0</code>–<code>#9</code></td><td>Wall art variants</td></tr>
+  <tr><td><code>K. D. O.</code></td><td>Required key, optional diamond, boulder</td></tr>
+  <tr><td><code>W0</code>–<code>W8</code></td><td>Water; W9 is invalid</td></tr>
+  <tr><td><code>d0</code>–<code>d9</code></td><td>Dirt art variants</td></tr>
+  <tr><td><code>F0</code>–<code>F9</code></td><td>False wall matching the numbered wall</td></tr>
+  <tr><td><code>S.</code></td><td>Stationary horizontal snake</td></tr>
+  <tr><td><code>RN RE RS RW</code></td><td>Spear emitter heading north, east, south, west</td></tr>
+  <tr><td><code>Xn Xe Xs Xw</code></td><td>Spider heading north, east, south, west; follows left</td></tr>
+  <tr><td><code>XN XE XS XW</code></td><td>Same headings; follows right</td></tr>
+  <tr><td><code>T0</code>–<code>T9</code></td><td>Paired pads; each used label occurs exactly twice in a room</td></tr>
+</table>
+<p>For example, <code>Xe</code> and <code>XE</code> both start facing east, but
+follow different walls. <code>XL</code>, <code>XR</code>, <code>T.</code>, lowercase
+<code>x</code>, and omitted headings are invalid. Pads are symmetric; neither
+twin is a designated source. Pad links and spider settings come entirely from
+the map. Each token defines its own terrain and occupancy, so layers cannot be
+stacked by adding metadata.</p>
+<p>Water variants form a 3×3 atlas: W0/W1/W2 are the top row, W3/W4/W5 the middle,
+and W6/W7/W8 the bottom. W4 is all water; the others show banks. All nine block a
+full logical cell. Art variants do not change collision rules.</p>
+<p>Optional room fields:</p>
+<ul>
+  <li><code>bonusStart</code>: nonnegative integer, default 500.</li>
+  <li><code>timers</code>: object with optional <code>player_ms</code> (110),
+  <code>spider_ms</code> (150), and <code>projectile_ms</code> (40). Every interval
+  must be an integer at least 10 ms. Nonmultiples of 10 are serviced on the next
+  simulation boundary, with deadlines advanced from the previous due time.</li>
+  <li><code>actors</code>: at most 192 annotations such as
+  <code>{"x": 12, "y": 7, "step_ms": 40}</code>. Only an existing spear emitter
+  can be annotated. A location may occur once; headings cannot be overridden.</li>
+  <li><code>messages</code>: at most 192 records such as
+  <code>{"loc_x": 3, "loc_y": 2, "text": "Look at the crossing."}</code>.
+  One message per cell; locations must be player-enterable terrain without a
+  stationary enemy. Dirt, false walls, and pads may carry messages. Messages
+  pause gameplay and trigger once per attempt, including at the player start.</li>
+  <li><code>rules</code>: <code>explosion_destructible</code> is an array containing
+  any nonduplicated subset of <code>"BOULDER"</code> and <code>"DIRT"</code>
+  (both by default). <code>explosion_diamonds</code> and
+  <code>explosion_hurts_player</code> are booleans, both defaulting to true.</li>
+</ul>
+<p>Use double quotes, lowercase <code>true</code>/<code>false</code>, and no
+comments or trailing commas in JSON. Unknown fields, including
+<code>teleporters</code>, are errors. Booleans are never accepted as numbers.
+There is no imposed pack byte/room limit yet; device heap measurements will
+determine whether one is needed. Structural validation does not prove a solution.</p>
+
+<h2>Gameplay contract for the next phases</h2>
+<p>A move is one cardinal step. A failed attempt consumes its movement interval.
+Pushing moves one boulder atomically; chains, pulling, and pushing into actors,
+dirt, collectibles, exits, or pads are blocked. Water consumes a pushed boulder
+and becomes floor. Dirt and false walls clear when the player enters. All keys
+are required; zero-key rooms start with an active exit. A diamond scores 100,
+and the bonus falls by one per second of unpaused simulation, stopping at zero.
+Room score is banked only on completion, so restart cannot farm points.</p>
+<p>Player and spiders teleport once per entry, preserving direction and timers.
+A blocked twin leaves the actor on the entered pad until it leaves and reenters.
+False walls match wall pixels; pads match floor in normal play. Snakes attack
+horizontally. Walls, dirt, collectibles, boulders, locked exits, actors, and spears
+provide cover. Spiders choose left/forward/right/backward or its right-following
+mirror. Due spiders move in source-map order. A trapped set is determined before
+removing any member.</p>
+<p>Explosions cover the center plus its four cardinal neighbors, clipped at room
+edges. They cannot destroy keys, walls, false walls, exits, pads, other actors,
+or spears. Drops occupy only newly cleared empty floor or an empty blast center.
+Spear traps detect along their map heading, then grow one cell per deadline;
+stopped shafts are solid and harmless and never rearm. Hazards continue while
+the player is idle; death takes precedence over reaching an exit.</p>
+
+<h2>Find and change the Python</h2>
+<p>The source has eight numbered sections: settings, symbols, loading/state,
+player interactions, hazards, simulation order, drawing, and input/main.
+Sections 4–6 are reserved for upcoming implementations. The maintained file is
+the same file you copy: it is not generated from hidden engine modules.</p>
+<p>Try editing the return text in <code>inspect_cell</code>, then save and rerun.
+Touching a cell should print your new wording. Try changing a room name or wall
+token independently in JSON. Later lessons will trace actual movement and
+collision code and deliberately change scoring, snake cover, and spider turns.
+Defaults in Python apply only when the room or supported actor omits its override.</p>
+
+<h2>Restart, rerun, and restore</h2>
+<ul>
+  <li><strong>Restart Level</strong> (Reset in this probe) reconstructs in-memory
+  state using the currently loaded definition. It does not undo code edits or
+  reload saved files.</li>
+  <li><strong>Save and rerun</strong> executes the saved Python source again and
+  reloads the selected JSON. The IDE Run action reads the file and executes it;
+  it does not import a cached copy of your engine. Selected-app startup imports
+  the saved module after a device reset. Reset before relaunching a selected app
+  after editing it.</li>
+  <li><strong>Restore the example</strong>: close your copy's tab, reopen the
+  original Help entry, and save a new user copy. Restore Python and JSON
+  independently; keep experiments under distinct names.</li>
+</ul>
+<p>Help originals are update-managed. Download copies to preserve a particular
+version. Neither restart nor game launch writes Python or JSON. Syntax and runtime
+errors remain visible in the console. If a loop prevents the IDE from responding,
+interrupt from the device console with Ctrl-C, or reset the device and use its
+existing IDE/launcher startup route to avoid autorunning the broken app. Console
+Reset clears pseudo-REPL globals when the IDE is responsive; it is not a way to
+interrupt a blocked interpreter. Fix or replace the saved copy, then save and
+rerun. Reopening Help restores the currently installed baseline.</p>
+
+<h2>Layout expectations</h2>
+<p>The probe reserves the whole 256×192 room, a HUD, and 32-pixel touch targets.
+It tries both orientations and chooses the largest integer tile scale, favoring
+a side panel. Smaller incompatible screens produce a clear error. Button-only
+input requires the names up, right, down, left, restart, pause, and back;
+two-button navigation is outside this version. The console reports the chosen
+rotation, scale, and level path. Physical readability, control comfort, heap use,
+and frame rate still require device observations.</p>

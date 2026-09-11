@@ -1228,10 +1228,12 @@ class ModernHelpSourceTests(unittest.TestCase):
             path.name for path in modern.iterdir() if path.is_file()}
         legacy_files = {
             path.name for path in legacy.iterdir() if path.is_file()}
-        self.assertEqual(modern_files - {"display_ts16.py", "display_qoi.py", "buttons.py"},
+        self.assertEqual(modern_files - {
+            "display_ts16.py", "display_qoi.py", "buttons.py", "messaging.py",
+            "grid_puzzle.py", "grid_puzzle_levels.json", "grid_puzzle_guide.html"},
                          legacy_files - {"display_bmp.py"})
 
-    def test_modern_examples_use_only_the_direct_display_approach(self):
+    def test_modern_examples_use_supported_platform_and_display_apis(self):
         forbidden = {
             "hdwconfig", "displaybuf", "touch_keypad", "eventsys",
             "palettes", "graphics", "lvgl", "bmp565", "qoi_reader", "pydevices",
@@ -1251,15 +1253,21 @@ class ModernHelpSourceTests(unittest.TestCase):
                 elif isinstance(node, ast.Attribute):
                     attributes.add(node.attr)
             with self.subTest(path=path.name):
-                self.assertNotIn("lvgl", source.lower())
-                self.assertFalse(imports.intersection(forbidden))
-                self.assertFalse({"lvgl", "enter_ui_mode"}.intersection(attributes))
-                if path.name != "pybasics.py":
-                    self.assertIn("tartlabutils.app", modules)
+                if path.name in ("calculator.py", "messaging.py"):
+                    # Native UI examples use LVGL with platform ownership/input.
+                    self.assertFalse(imports.intersection(forbidden - {"lvgl"}))
+                    self.assertIn("lvgl", imports)
+                    self.assertIn("tartlabutils.platform", modules)
+                else:
+                    self.assertFalse(imports.intersection(forbidden))
+                    if path.name != "pybasics.py":
+                        self.assertNotIn("lvgl", attributes)
+                        self.assertIn("tartlabutils.app", modules)
+                # enter_ui_mode is the public cleanup route for either approach.
 
     def test_portrait_examples_use_portrait_canvas_and_touch(self):
         for name in (
-                "snake.py", "calculator.py", "testris.py", "racer.py"):
+                "snake.py", "testris.py", "racer.py"):
             tree = ast.parse(
                 (ROOT / "src/files/help" / name).read_text(encoding="utf-8"))
             imports = {

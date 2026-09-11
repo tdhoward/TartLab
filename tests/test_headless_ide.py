@@ -387,6 +387,48 @@ class HeadlessIDEInitializationTests(unittest.TestCase):
             self.assertEqual(
                 platform.ide_view.events[-1], ("brightness", 0.75))
 
+    def test_grid_puzzle_json_user_copy_round_trip_and_set_as_app_rejection(self):
+        with tempfile.TemporaryDirectory() as temp:
+            device, _, _, ide, _, _ = self.prepare(Path(temp) / "device")
+            original = (ROOT / "src/files/help/grid_puzzle_levels.json").read_text(encoding="utf-8")
+            copied = original.replace("First Crossing", "Edited Crossing")
+            writer = types.SimpleNamespace(responses=[])
+            request = types.SimpleNamespace(path="/files/user/my_rooms.json",
+                body=json.dumps({"content": copied}).encode())
+            with redirect_stdout(io.StringIO()):
+                asyncio.run(ide.store_user_file(None, writer, request))
+            self.assertEqual(writer.responses[0][0], 200)
+            with device.open("/files/user/my_rooms.json") as stream:
+                self.assertEqual(json.load(stream)["levels"][0]["name"], "Edited Crossing")
+            self.assertEqual((ROOT / "src/files/help/grid_puzzle_levels.json").read_text(encoding="utf-8"), original)
+            writer.responses = []
+            request = types.SimpleNamespace(path="/api/setasapp",
+                body=json.dumps({"filename": "my_rooms.json"}).encode())
+            asyncio.run(ide.api_setasapp(None, writer, request))
+            self.assertEqual(writer.responses[0][0], 400)
+
+    def test_grid_puzzle_ide_run_rereads_edited_engine_in_existing_repl(self):
+        with tempfile.TemporaryDirectory() as temp:
+            device, _, platform, ide, _, _ = self.prepare(Path(temp) / "device")
+            source = (ROOT / "src/files/help/grid_puzzle.py").read_text(encoding="utf-8")
+            ide.os = types.SimpleNamespace(dupterm=lambda stream: None)
+            platform.capabilities["lvgl_ui"] = False
+            ide.replGlobals = {"_GRID_PUZZLE_AUTOSTART": False, "open": device.open}
+            writer = types.SimpleNamespace(responses=[])
+            for marker in ("First edit", "Fresh edit"):
+                edited = source.replace('return "(%s,%s) %s"', 'return "' + marker + ' (%s,%s) %s"')
+                request = types.SimpleNamespace(path="/files/user/my_puzzle.py",
+                    body=json.dumps({"content": edited}).encode())
+                with redirect_stdout(io.StringIO()):
+                    asyncio.run(ide.store_user_file(None, writer, request))
+                self.assertEqual(writer.responses[-1][0], 200)
+                ide.pseudoREPL("exec(open('/files/user/my_puzzle.py').read())", "my_puzzle.py")
+                inspector = ide.replGlobals["inspect_cell"]
+                room_data = json.loads((ROOT / "src/files/help/grid_puzzle_levels.json").read_text())["levels"][0]
+                definition = ide.replGlobals["validate_level"](room_data)
+                state = ide.replGlobals["create_state"](definition)
+                self.assertTrue(inspector(state, state.player.cell).startswith(marker))
+
     def test_file_execution_wakes_the_modern_backlight_controller(self):
         with tempfile.TemporaryDirectory() as temp:
             unused_device, unused_state, platform, ide, unused_logs, \

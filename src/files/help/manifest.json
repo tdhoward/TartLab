@@ -30,6 +30,21 @@
 			"folder name": "Examples",
 			"entries": [
 				{
+					"title": "Grid puzzle: layout probe",
+					"subtitle": "Phase 1: inspect the editable room and controls",
+					"file": "grid_puzzle.py"
+				},
+				{
+					"title": "Grid puzzle: room data",
+					"subtitle": "Editable JSON rooms for the grid puzzle project",
+					"file": "grid_puzzle_levels.json"
+				},
+				{
+					"title": "Grid puzzle: editing guide",
+					"subtitle": "Room format, Python copies, and recovery",
+					"file": "grid_puzzle_guide.html"
+				},
+				{
 					"title": "Nearby Chat",
 					"subtitle": "ESP-NOW groups with passwords and a touch keyboard",
 					"file": "messaging.py"

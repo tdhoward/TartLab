@@ -141,9 +141,11 @@ function saveFile() {
   if (!validatePythonPath(activeTab.filename)) return;
 
   const filename = encodeURIComponent(activeTab.filename); // URI encode the filename
-  const content = editors[activeTab.filename].editor.state.doc.toString();
+  const savedEditor = editors[activeTab.filename].editor;
+  const savedDoc = savedEditor.state.doc;
+  const content = savedDoc.toString();
   showSpinners(true);
-  fetch(`${baseUrl}/files/user/${filename}`, {
+  return fetch(`${baseUrl}/files/user/${filename}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
@@ -159,7 +161,8 @@ function saveFile() {
     })
     .then((data) => {
       showToast("File saved successfully!", "info");
-      editors[activeTab.filename].editor.isDirty = false; // Mark editor as not dirty after saving
+      // The user may have switched tabs or kept typing during the request.
+      if (savedEditor.state.doc === savedDoc) savedEditor.isDirty = false;
       updateSaveButton();
       updatePlayButtonVisibility();
       buildFilesPanelContent(); // update file list
