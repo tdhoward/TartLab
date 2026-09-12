@@ -1,8 +1,9 @@
-"""Grid puzzle: Phase 2 first playable room.
+"""Grid puzzle: Phase 3 terrain, teleportation, messages and original art.
 
 Copy this file to /files/user/my_puzzle.py to edit the actual implementation.
 Move, collect keys, push boulders into water, and reach the exit.
-Dirt, teleportation, hazards, and original sprite art arrive in later phases.
+Dig dirt, reveal false walls and discover paired hidden passages.
+Autonomous enemies and traps arrive in Phase 4.
 
 CODE MAP (search these numbered headings):
 1. Settings   2. Symbols   3. Loading and state   4. Player interactions
@@ -11,7 +12,7 @@ CODE MAP (search these numbered headings):
 
 # 1. Settings ---------------------------------------------------------------
 LEVEL_FILE = "/files/help/grid_puzzle_levels.json"
-ASSET_FILE = "/files/assets/grid_puzzle.ts16"  # Artwork arrives in Phase 3.
+ASSET_FILE = "/files/assets/grid_puzzle.ts16"
 DEBUG = False
 
 COLS, ROWS, TILE_SIZE = 16, 12, 16
@@ -41,6 +42,7 @@ OBJECT_NAMES = ("empty", "key", "diamond", "boulder")
 ACTOR_NAMES = ("player", "snake", "spider", "spear emitter")
 MOVED, COLLECTED, TERRAIN_CHANGED, OBJECT_CHANGED = 1, 2, 4, 8
 DIED, FINISHED = 16, 32
+TELEPORTED = 64
 ACTION_DIRECTIONS = {"north": NORTH, "east": EAST, "south": SOUTH, "west": WEST}
 
 
@@ -312,6 +314,7 @@ class LevelState:
         self.bonus = definition["bonusStart"]
         self.message_seen = bytearray(len(definition["messages"]))
         self.active_message = -1
+        self.pending_messages = []  # Each validated message can enter once.
         for i, message in enumerate(definition["messages"]):
             if message[0] == self.player.cell:
                 self.active_message = i
@@ -342,15 +345,38 @@ def accepts_boulder(state, cell):
 
 
 def can_player_enter(state, cell):
-    """Ordinary entry; boulder pushing has its own transaction below.
+    """Legal entry may be lethal; collision is resolved after the transaction."""
+    if not 0 <= cell < CELL_COUNT:
+        return False
+    actor_id, spear_id = state.actor_at[cell], state.spear_at[cell]
+    return ((state.terrain[cell] in (FLOOR, DIRT, FALSE_WALL) or
+             (state.terrain[cell] == EXIT and state.exit_active))
+            and state.objects[cell] != BOULDER
+            and (actor_id == -1 or state.actors[actor_id].kind != EMITTER)
+            and (spear_id == -1 or state.actors[spear_id].trap_state == EXTENDING))
 
-    Phase 3 adds digging/revealing; Phase 4 replaces actor blocking with contact
-    hazards. The device rejects rooms needing those unimplemented mechanics.
-    """
-    return (0 <= cell < CELL_COUNT and (state.terrain[cell] == FLOOR or
-            (state.terrain[cell] == EXIT and state.exit_active))
-            and state.objects[cell] != BOULDER and state.actor_at[cell] == -1
-            and state.spear_at[cell] == -1)
+
+def can_spider_enter(state, cell, actor):
+    """Shared entry query for teleport previews and the Phase 4 spider mover."""
+    if not 0 <= cell < CELL_COUNT:
+        return False
+    occupant = state.actor_at[cell]
+    return (state.terrain[cell] == FLOOR and state.objects[cell] == EMPTY
+            and state.spear_at[cell] == -1
+            and (occupant in (-1, actor.id) or occupant == state.player.id))
+
+
+def place_actor(state, actor, destination, event=MOVED):
+    origin = actor.cell
+    if state.actor_at[origin] == actor.id:
+        state.actor_at[origin] = -1
+    # On lethal contact retain the enemy in the lookup. The player also has an
+    # explicit position, so neither actor disappears from collision queries.
+    if actor.kind != PLAYER or state.actor_at[destination] == -1:
+        state.actor_at[destination] = actor.id
+    actor.cell = destination
+    mark_changed(state, origin, event)
+    mark_changed(state, destination, event)
 
 
 def move_player(state, heading):
@@ -373,11 +399,11 @@ def move_player(state, heading):
             mark_changed(state, target, OBJECT_CHANGED)
     elif not can_player_enter(state, destination):
         return False
-    origin = player.cell
-    state.actor_at[origin], state.actor_at[destination] = -1, player.id
-    player.cell, player.heading = destination, heading
-    mark_changed(state, origin, MOVED)
-    mark_changed(state, destination, MOVED)
+    if state.terrain[destination] in (DIRT, FALSE_WALL):
+        state.terrain[destination], state.variants[destination] = FLOOR, 0
+        mark_changed(state, destination, TERRAIN_CHANGED)
+    place_actor(state, player, destination)
+    player.heading = heading
     return True
 
 
@@ -392,15 +418,115 @@ def collect_player_object(state):
             state.score += DIAMOND_SCORE
         mark_changed(state, cell, COLLECTED)
 
+
+def teleport_destination(state, actor, entered_cell):
+    """Pure one-hop query; a blocked arrival returns the entered pad itself.
+
+    Call only on entry. Standing on a pad never bounces or retries, and the same
+    query can preview a spider's complete move without changing any occupancy.
+    """
+    if not 0 <= entered_cell < CELL_COUNT:
+        return -1
+    twin = state.definition["twins"][entered_cell]
+    if twin != -1:
+        allowed = (can_player_enter(state, twin) if actor.kind == PLAYER else
+                   can_spider_enter(state, twin, actor))
+        if allowed:
+            return twin
+    return entered_cell
+
+
+def teleport_actor(state, actor):
+    # Entering an occupied source pad cannot provide an escape from contact.
+    resolve_contact(state)
+    if actor.kind == PLAYER and state.status != PLAYING:
+        return False
+    destination = teleport_destination(state, actor, actor.cell)
+    if destination == actor.cell:
+        return False
+    place_actor(state, actor, destination, TELEPORTED)
+    # Direction, movement deadline and interval deliberately remain unchanged.
+    resolve_immediate_hazards(state)
+    return True
+
+
+def trigger_message(state, cell):
+    if state.status != PLAYING:
+        return
+    for index, message in enumerate(state.definition["messages"]):
+        if message[0] == cell and not state.message_seen[index]:
+            state.message_seen[index] = 1
+            if state.active_message == -1:
+                state.active_message = index
+            else:
+                state.pending_messages.append(index)
+            state.paused = True
+
+
+def dismiss_message(state):
+    """Acknowledge explicitly; all messages triggered by a hop remain readable."""
+    if state.active_message == -1:
+        return False
+    state.active_message = state.pending_messages.pop(0) if state.pending_messages else -1
+    state.paused = state.active_message != -1
+    return True
+
 # 5. Snakes, spiders, traps, explosions --------------------------------------
-# Phase 4 implements the documented predicates and hazard rules here.
+# Immediate contact/ray queries are needed for Phase 3 arrival safety. Phase 4
+# supplies autonomous movement, trap lifecycles and environmental explosions.
+def kill_player(state):
+    if state.status == PLAYING and state.player.alive:
+        state.player.alive = False
+        state.status = DEAD
+        state.step_events |= DIED
+        mark_changed(state, state.player.cell, DIED)
+
+
+def blocks_snake_ray(state, cell):
+    if not 0 <= cell < CELL_COUNT:
+        return True
+    return (state.terrain[cell] in (WALL, FALSE_WALL, DIRT)
+            or (state.terrain[cell] == EXIT and not state.exit_active)
+            or state.objects[cell] != EMPTY or state.actor_at[cell] != -1
+            or state.spear_at[cell] != -1)
+
+
+def resolve_contact(state):
+    cell = state.player.cell
+    occupant, spear = state.actor_at[cell], state.spear_at[cell]
+    if ((occupant != -1 and state.actors[occupant].kind in (SNAKE, SPIDER))
+            or (spear != -1 and state.actors[spear].trap_state == EXTENDING)):
+        kill_player(state)
+
+
+def resolve_immediate_hazards(state):
+    resolve_contact(state)
+    cell = state.player.cell
+    for actor in state.actors:
+        if actor.kind != SNAKE or not actor.alive:
+            continue
+        heading = EAST if cell % COLS >= actor.cell % COLS else WEST
+        if actor.heading != heading:
+            actor.heading = heading
+            mark_changed(state, actor.cell, MOVED)
+        if actor.cell // COLS != cell // COLS:
+            continue
+        target = neighbor(actor.cell, heading)
+        while target != -1:
+            # Player contact takes precedence over blockers at that location.
+            if target == cell:
+                kill_player(state)
+                break
+            if blocks_snake_ray(state, target):
+                break
+            target = neighbor(target, heading)
 
 # 6. Explicit simulation order ---------------------------------------------
 def step(state, direction=None, dt_ms=UPDATE_MS):
     """One pure simulation quantum. None releases input; no clocks or I/O here.
 
     Event buffers describe only this quantum, including when it is frozen.
-    Renderers must accumulate them before the next call (Phase 2 redraws fully).
+    Renderers must accumulate them before the next call (currently full redraw).
     """
     if type(dt_ms) is not int or dt_ms != UPDATE_MS:
         raise ValueError("step requires one %s ms quantum" % UPDATE_MS)
@@ -421,13 +547,17 @@ def step(state, direction=None, dt_ms=UPDATE_MS):
         if player.next_due_ms <= state.elapsed_ms - dt_ms:
             player.next_due_ms = state.elapsed_ms
         player.next_due_ms += player.interval_ms
-        # 2. Movement transaction (Phase 3 adds digging and revealing).
+        # 2. Atomic movement transaction, including digging and revealing.
         moved = move_player(state, direction)
     # 3. Collect once on entry.
     if moved:
         collect_player_object(state)
-    # 4. Player teleportation: Phase 3.
-    # 5. Immediate contact and snake exposure: Phase 4.
+    entered = player.cell if moved else -1
+    # 4. Player teleportation, exactly once for this successful entry.
+    if moved:
+        teleport_actor(state, player)
+    # 5. Immediate contact and snake exposure, including arrival occupancy.
+    resolve_immediate_hazards(state)
     # 6. Due enemy movement and teleportation: Phase 4.
     # 7. Enemy/player collisions: Phase 4.
     # 8. Snapshot trapped spiders and queue explosions: Phase 4.
@@ -446,6 +576,12 @@ def step(state, direction=None, dt_ms=UPDATE_MS):
     if state.status == PLAYING and player.alive and state.exit_active and player.cell == state.definition["exit"]:
         state.status = COMPLETED
         state.step_events |= FINISHED
+    # Panels freeze subsequent quanta, never interrupt a committed transaction
+    # or protect the player from hazards on this entry. Source-pad hint first.
+    if moved:
+        trigger_message(state, entered)
+        if entered != player.cell:
+            trigger_message(state, player.cell)
 
 
 class Session:
@@ -454,6 +590,8 @@ class Session:
         self.pack, self.room_index = pack, start_level
         self.banked_score, self.room_award = 0, 0
         self.direction = None
+        self.art = None
+        self.message_page = 0
         self.state = create_state(pack["levels"][start_level])
 
     def advance(self, updates):
@@ -468,6 +606,7 @@ class Session:
         self.banked_score -= self.room_award
         self.room_award = 0
         self.direction = None
+        self.message_page = 0
         self.state = create_state(self.pack["levels"][self.room_index])
 
     def next_room(self):
@@ -476,6 +615,7 @@ class Session:
         self.room_index += 1
         self.room_award = 0
         self.direction = None
+        self.message_page = 0
         self.state = create_state(self.pack["levels"][self.room_index])
         return True
 
@@ -486,14 +626,82 @@ class Session:
 def validate_playable_pack(pack):
     """Keep future schema support without silently running incomplete rules."""
     for definition in pack["levels"]:
-        if (any(t in (DIRT, FALSE_WALL) for t in definition["terrain"])
-                or any(t != -1 for t in definition["twins"])
-                or definition["messages"]
-                or any(a[0] != PLAYER for a in definition["actors"])):
-            raise ValueError('Room "%s" uses terrain, pads, messages or hazards pending Phases 3/4' % definition["name"])
+        if any(a[0] != PLAYER for a in definition["actors"]):
+            raise ValueError('Room "%s" uses autonomous hazards pending Phase 4' % definition["name"])
 
 # 7. Art preparation, layout, rendering, debug -------------------------------
 HUD_HEIGHT, PANEL_WIDTH, PANEL_HEIGHT, CONTROL_SIZE = 24, 112, 112, 32
+# Atlas indices are app data: an 8x8 sheet of original 16x16 cells. False walls
+# intentionally use the SAME sprite as their matching wall, with no overlay.
+ART_FLOOR, ART_WALL, ART_DIRT = 0, 1, 11
+ART_KEY, ART_DIAMOND, ART_BOULDER = 21, 22, 23
+ART_EXIT_LOCKED, ART_EXIT_OPEN, ART_PLAYER = 24, 25, 26
+ART_SNAKE_WEST, ART_SNAKE_EAST, ART_SPIDER, ART_EMITTER = 30, 31, 32, 36
+ART_WATER = (40, 41, 42, 48, 49, 50, 56, 57, 58)
+ART_SPEAR_TIP, ART_PAD, ART_SHAFT, ART_BLAST = 43, 47, 51, 53
+
+
+def terrain_art(terrain, variant, exit_active):
+    if terrain in (WALL, FALSE_WALL):
+        return ART_WALL + variant
+    if terrain == DIRT:
+        return ART_DIRT + variant
+    if terrain == WATER:
+        return ART_WATER[variant]
+    if terrain == EXIT:
+        return ART_EXIT_OPEN if exit_active else ART_EXIT_LOCKED
+    return ART_FLOOR
+
+
+class PuzzleArt:
+    """Prepare only the active room's sprites in one decoder pass, then release it.
+
+    Restart reuses this cache. Room changes replace it rather than accumulating
+    every room's prepared spans. No second board framebuffer is allocated.
+    """
+    def __init__(self, path, scale):
+        self.path, self.scale = path, scale
+        self.sprites = {}
+
+    def prepare(self, definition):
+        needed = {ART_FLOOR, ART_EXIT_LOCKED, ART_EXIT_OPEN}
+        for terrain, variant in zip(definition["terrain"], definition["variants"]):
+            needed.add(terrain_art(terrain, variant, False))
+        for obj in definition["objects"]:
+            if obj != EMPTY:
+                needed.add(ART_KEY + obj - 1)
+        for kind, cell, heading, follow, interval in definition["actors"]:
+            if kind == PLAYER:
+                needed.update(range(ART_PLAYER, ART_PLAYER + 4))
+            elif kind == SNAKE:
+                needed.update((ART_SNAKE_WEST, ART_SNAKE_EAST))
+            elif kind == SPIDER:
+                needed.update(range(ART_SPIDER, ART_SPIDER + 4))
+            elif kind == EMITTER:
+                needed.add(ART_EMITTER + heading)
+        if needed == set(self.sprites):
+            return
+        self.close()
+        from tartlabutils.sprites import SpriteSheet
+        try:
+            sheet = SpriteSheet(self.path)
+            if (sheet.width, sheet.height) != (128, 128):
+                raise ValueError("expected an 8x8 atlas of 16x16 cells")
+            indices = sorted(needed)
+            crops = [(index % 8 * TILE_SIZE, index // 8 * TILE_SIZE,
+                      TILE_SIZE, TILE_SIZE) for index in indices]
+            prepared = sheet.sprites(crops, scale=self.scale)
+            self.sprites = dict(zip(indices, prepared))
+            # SpriteSheet owns an in-memory decoder; its extraction closes the
+            # row iterator. Keep only prepared spans, not the decoder or file.
+        except (OSError, ValueError) as error:
+            raise ValueError("Asset file %s: %s" % (self.path, error))
+
+    def draw(self, canvas, index, x, y, clip):
+        self.sprites[index].draw(canvas, x, y, clip)
+
+    def close(self):
+        self.sprites.clear()
 
 
 class Layout:
@@ -588,8 +796,71 @@ def inspect_cell(state, cell):
     return "(%s,%s) %s" % (cell % COLS, cell // COLS, description)
 
 
+def draw_board(canvas, state, layout, art, debug=False):
+    """Full reference renderer: terrain, objects, actors, then inspection marks."""
+    bx, by, unused_w, unused_h = layout.board
+    size = layout.tile_size
+    for cell in range(CELL_COUNT):
+        x, y = bx + (cell % COLS) * size, by + (cell // COLS) * size
+        terrain = state.terrain[cell]
+        if terrain == EXIT:
+            art.draw(canvas, ART_FLOOR, x, y, layout.board)
+        art.draw(canvas, terrain_art(terrain, state.variants[cell], state.exit_active), x, y, layout.board)
+    for cell in range(CELL_COUNT):
+        obj = state.objects[cell]
+        if obj != EMPTY:
+            x, y = bx + (cell % COLS) * size, by + (cell // COLS) * size
+            art.draw(canvas, ART_KEY + obj - 1, x, y, layout.board)
+    for actor in state.actors:
+        if not actor.alive and actor.kind != PLAYER:
+            continue
+        if actor.kind == SNAKE:
+            index = ART_SNAKE_EAST if actor.heading == EAST else ART_SNAKE_WEST
+        else:
+            base = ART_PLAYER if actor.kind == PLAYER else (ART_SPIDER if actor.kind == SPIDER else ART_EMITTER)
+            index = base + actor.heading
+        x, y = bx + (actor.cell % COLS) * size, by + (actor.cell // COLS) * size
+        art.draw(canvas, index, x, y, layout.board)
+    if debug:
+        for cell in range(CELL_COUNT):
+            if state.terrain[cell] == FALSE_WALL or state.definition["labels"][cell] != -1:
+                x, y = bx + (cell % COLS) * size, by + (cell // COLS) * size
+                canvas.text(state.definition["tokens"][cell], x, y, 0xFFE0)
+
+
+def message_lines(text, columns):
+    """Wrap all text, including long words, without losing later hint pages."""
+    lines, line = [], ""
+    for word in text.split():
+        if line and len(line) + len(word) + 1 > columns:
+            lines.append(line)
+            line = ""
+        while len(word) > columns:
+            lines.append(word[:columns])
+            word = word[columns:]
+        if word:
+            line = line + " " + word if line else word
+    if line:
+        lines.append(line)
+    return lines
+
+
+def message_content(state, layout):
+    text = state.definition["messages"][state.active_message][1]
+    return message_lines(text, (layout.board[2] - 24) // 8), (layout.board[3] - 52) // 12
+
+
+def acknowledge_message(session, layout):
+    lines, count = message_content(session.state, layout)
+    if (session.message_page + 1) * count < len(lines):
+        session.message_page += 1
+    else:
+        dismiss_message(session.state)
+        session.message_page = 0
+
+
 def draw_game(canvas, session, layout, last_action=None, debug=False):
-    """Primitive full redraw of live layers; no reference to initial occupancy."""
+    """Render live state with the prepared atlas, then present exactly once."""
     state = session.state
     canvas.fill(0)
     title = "%s/%s %s" % (session.room_index + 1, len(session.pack["levels"]), state.definition["name"])
@@ -597,29 +868,22 @@ def draw_game(canvas, session, layout, last_action=None, debug=False):
     status = "PAUSED" if state.paused else ("PLAY", "DEAD", "DONE")[state.status]
     hud = "K%s S%s B%s %s" % (state.remaining_keys, session.total_score(), state.bonus, status)
     canvas.text(hud[:layout.width // 8], 0, 12, 0xFFFF)
-    bx, by, unused_w, unused_h = layout.board
-    size = layout.tile_size
-    colors = (0x1082, 0x632C, 0x8200, 0x025F, 0x632C, 0x7800)
-    for cell in range(CELL_COUNT):
-        x, y = bx + (cell % COLS) * size, by + (cell // COLS) * size
-        terrain = state.terrain[cell]
-        color = 0x0400 if terrain == EXIT and state.exit_active else colors[terrain]
-        canvas.rect(x, y, size, size, color, True)
-        canvas.rect(x, y, size, size, 0x4208)
-        glyph = "E" if terrain == EXIT else ""
-        obj = state.objects[cell]
-        if obj != EMPTY:
-            glyph = ("", "K", "*", "O")[obj]
-        actor_id = state.actor_at[cell]
-        if actor_id != -1:
-            glyph = ("P", "S", "X", "R")[state.actors[actor_id].kind]
-        if glyph:
-            canvas.text(glyph, x + (size - 8) // 2, y + (size - 8) // 2, 0xFFFF)
-        if debug and (terrain == FALSE_WALL or state.definition["labels"][cell] != -1):
-            canvas.text(state.definition["tokens"][cell], x, y, 0xFFE0)
+    draw_board(canvas, state, layout, session.art, debug)
     rx, ry = layout.readout
     canvas.text("Exit open" if state.exit_active else "Exit locked", rx, ry, 0xFFFF)
     pause_label = "Play" if state.paused else "Pause"
+    if state.active_message != -1:
+        lines, count = message_content(state, layout)
+        first = session.message_page * count
+        pause_label = "More" if first + count < len(lines) else "OK"
+        bx, by, bw, bh = layout.board
+        canvas.rect(bx + 4, by + 4, bw - 8, bh - 8, 0, True)
+        canvas.rect(bx + 4, by + 4, bw - 8, bh - 8, 0xFFFF)
+        caption = "HINT %s/%s (PAUSED)" % (session.message_page + 1, (len(lines) + count - 1) // count)
+        canvas.text(caption, bx + 12, by + 12, 0xFFE0)
+        for row, line in enumerate(lines[first:first + count]):
+            canvas.text(line, bx + 12, by + 30 + row * 12, 0xFFFF)
+        canvas.text("Pause button: " + pause_label, bx + 12, by + bh - 18, 0xFFFF)
     if state.status == COMPLETED:
         pause_label = "Next" if session.room_index + 1 < len(session.pack["levels"]) else "Done"
     labels = {"north": "^", "east": ">", "south": "v", "west": "<",
@@ -698,11 +962,14 @@ def run(pack, platform, canvas, layout, debug=False, clock_factory=None):
         clock_factory = lambda: FrameClock(frame_ms=FRAME_MS, update_ms=UPDATE_MS, max_updates=10)
     validate_playable_pack(pack)
     session, controls = Session(pack), Controls()
-    clock = clock_factory()
+    session.art = PuzzleArt(ASSET_FILE, layout.scale)
+    clock = None
     missed, dropped, wake_polls = 0, 0, 0
     print("Directions move; Reset restarts; Pause/Play freezes/resumes; Next advances; Back returns to UI.")
     print(inspect_cell(session.state, session.state.player.cell))
     try:
+        session.art.prepare(session.state.definition)
+        clock = clock_factory()  # Loading art is startup, not elapsed play time.
         while True:
             point = None
             if layout.touch:
@@ -724,9 +991,13 @@ def run(pack, platform, canvas, layout, debug=False, clock_factory=None):
                 if session.state.status == COMPLETED:
                     rebase = session.next_room()
                 elif session.state.status == PLAYING:
-                    session.state.paused = not session.state.paused
+                    if session.state.active_message != -1:
+                        acknowledge_message(session, layout)
+                    else:
+                        session.state.paused = not session.state.paused
                     rebase = True
             if rebase:
+                session.art.prepare(session.state.definition)
                 controls.reset()
                 session.direction = None
                 missed += clock.missed_deadlines
@@ -737,8 +1008,10 @@ def run(pack, platform, canvas, layout, debug=False, clock_factory=None):
                 # it for the next quantum, never apply a newly polled edge to
                 # already elapsed catch-up steps.
                 was_playing = session.state.status == PLAYING
+                was_paused = session.state.paused
                 session.advance(updates)
-                if was_playing and session.state.status != PLAYING:
+                if ((was_playing and session.state.status != PLAYING)
+                        or (not was_paused and session.state.paused)):
                     controls.reset()
                 session.direction = controls.direction() if not session.state.paused else None
             if controls.fresh_touch and point is not None:
@@ -748,8 +1021,10 @@ def run(pack, platform, canvas, layout, debug=False, clock_factory=None):
             draw_game(canvas, session, layout, action, debug)
             clock.pace()
     finally:
-        print("Grid puzzle timing: missed=%s dropped_update_ms=%s" %
-              (missed + clock.missed_deadlines, dropped + clock.dropped_update_ms))
+        session.art.close()
+        if clock is not None:
+            print("Grid puzzle timing: missed=%s dropped_update_ms=%s" %
+                  (missed + clock.missed_deadlines, dropped + clock.dropped_update_ms))
 
 
 def main():

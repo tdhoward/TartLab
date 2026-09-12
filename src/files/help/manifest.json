@@ -31,7 +31,7 @@
 			"entries": [
 				{
 					"title": "Grid puzzle: First Crossing",
-					"subtitle": "Push a crossing, collect the key, and reach the exit",
+					"subtitle": "Two rooms: water crossings, hidden passages, and editable rules",
 					"file": "grid_puzzle.py"
 				},
 				{

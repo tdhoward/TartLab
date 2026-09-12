@@ -93,7 +93,7 @@ class GridPuzzleClockIntegrationTests(unittest.TestCase):
             def step(state, direction):
                 original(state, direction)
                 trace.append((state.elapsed_ms, state.player.cell, state.player.next_due_ms, state.bonus))
-            with mock.patch.object(engine, "step", step), redirect_stdout(io.StringIO()):
+            with mock.patch.object(engine, "step", step), mock.patch.dict("sys.modules", modules), redirect_stdout(io.StringIO()):
                 result = engine.run(engine.validate_level_pack(pack()), platform, canvas,
                     engine.choose_layout(480, 222), clock_factory=lambda: make_clock(
                         fake, frame_ms=frame_ms, update_ms=10, max_updates=10))

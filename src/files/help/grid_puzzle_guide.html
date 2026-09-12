@@ -1,18 +1,22 @@
 <h1>Grid puzzle: rooms and editable Python</h1>
 <p>This project targets the modern TartLab platform (<code>lvgl-modern</code>) only.</p>
-<p><strong>First playable room.</strong> Move the white <code>P</code>, push the
-<code>O</code> boulder into blue water to make a crossing, collect the required
-<code>K</code> key, and reach <code>E</code>. The exit turns green when unlocked.
-The <code>*</code> diamond is optional. The HUD shows keys (K), score (S), remaining
-bonus (B), and play status. This is Phase 2; dirt, false walls, teleportation,
-messages, hazards, original sprite artwork, and the teaching campaign are upcoming.</p>
+<p><strong>Two playable rooms with original pixel art.</strong> Move the gardener
+in the orange coat, push a grey boulder into water to make a crossing, collect
+the gold key, and reach the doorway. The doorway turns turquoise when unlocked.
+Cyan diamonds are optional. The HUD shows keys (K), score (S), remaining bonus
+(B), and play status. This is Phase 3: dirt, false walls, hidden teleporters,
+and paused hints now work. Autonomous hazards and the full teaching campaign
+arrive in later phases.</p>
 <p>Hold a direction to repeat; release to stop. Reset restarts the current room,
 Pause/Play freezes/resumes it, and Back returns to the UI. After completion, Next
 advances if another room is loaded; Done means the pack is finished. Reset also
 works when paused or after completion. Release all controls before pressing again
 after launch, restart, pause/resume, or completion. Tap a cell to inspect it in
 the console. The built-in First Crossing room introduces the supported rules;
-push toward the water from its left, then explore the other side for the key.</p>
+push toward the water from its left, then explore the other side for the key.
+In Veiled Walk, move east through dirt and try the wall beyond it to discover
+a hidden passage. Hints pause play. The Pause control becomes More for another
+page or OK to acknowledge; on physical controls use the named pause button.</p>
 
 <h2>Make independent copies</h2>
 <ol>
@@ -105,13 +109,27 @@ button events in a poll, so a simultaneous button press wins. New input takes
 effect after the elapsed simulation batch, avoiding movement before the press
 was observed. Rendering uses a fixed 50 ms period; this is a proposed device
 setting, not a measured frame-rate guarantee.</p>
-<p>The loader validates every token in the table, but starting play currently
-rejects rooms with dirt, false walls, pads, messages, or enemies with a clear
-Phase 3/4 diagnostic. Those mechanics have not been implemented yet. Their
-planned rules follow: dirt and false walls clear when the player enters.</p>
-<p>Player and spiders teleport once per entry, preserving direction and timers.
+<p>Dirt and false walls turn permanently into floor when the player enters,
+in the same move. A failed boulder push cannot dig or reveal its destination.
+Restart restores the original variants. False walls use exactly the same pixels
+as their matching walls; all pads look exactly like floor in normal play.</p>
+<p>Teleportation operates once per entry, preserving direction and timers.
 A blocked twin leaves the actor on the entered pad until it leaves and reenters.
-False walls match wall pixels; pads match floor in normal play. Snakes attack
+Standing still never bounces or retries. Labels are local to each room; each
+used label must appear exactly twice. Pads reject boulders. Set <code>DEBUG = True</code>
+in your Python copy to reveal pad labels and false-wall tokens. Full debug
+links, rays, trails and stepping are planned for Phase 5.</p>
+<p>Messages trigger once per attempt on entry, including the player start.
+When both ends of a teleport have messages, the entered pad's hint comes first,
+then the arrival hint. Every page must be acknowledged before play resumes.
+Restart resets the messages. Hazards and completion resolve before entry hints;
+a hint cannot prevent death or hold a completed room open. Input must be released
+after opening or acknowledging a hint.</p>
+<p>The loader validates all hazard tokens, but launching a room containing
+enemies currently reports that Phase 4 is pending. Immediate contact and snake
+ray checks, and player/spider teleport arrival queries, already have host tests;
+enemy movement, explosions and trap lifecycles are still upcoming. Planned
+hazard rules follow: snakes attack
 horizontally. Walls, dirt, collectibles, boulders, locked exits, actors, and spears
 provide cover. Spiders choose left/forward/right/backward or its right-following
 mirror. Due spiders move in source-map order. A trapped set is determined before
@@ -126,19 +144,28 @@ the player is idle; death takes precedence over reaching an exit.</p>
 <h2>Find and change the Python</h2>
 <p>The source has eight numbered sections: settings, symbols, loading/state,
 player interactions, hazards, simulation order, drawing, and input/main.
-Sections 4 and 6 now contain movement and simulation; Section 5 reserves hazards.
+Sections 4 and 6 contain movement, teleportation, messages and simulation;
+Section 5 contains immediate contact/ray checks and reserves autonomous hazards.
 The maintained file is
 the same file you copy: it is not generated from hidden engine modules.</p>
 <p>Follow a move through <code>Controls.poll</code>, <code>run</code>,
 <code>Session.advance</code>, <code>step</code>, <code>move_player</code>,
-<code>collect_player_object</code>, and <code>draw_game</code>. The collision
-checks are <code>can_player_enter</code> and <code>accepts_boulder</code>.</p>
+<code>collect_player_object</code>, <code>teleport_actor</code>, and
+<code>draw_game</code>/<code>draw_board</code>. The collision checks are
+<code>can_player_enter</code>, <code>accepts_boulder</code>, and
+<code>teleport_destination</code>. <code>PuzzleArt</code> prepares only the
+current room's needed sprites and reuses them on restart. The explicit
+<code>ASSET_FILE</code> path lets a renamed Python copy use the bundled art.</p>
 <p>Change <code>DIAMOND_SCORE</code> to 37, save and rerun, and collect the diamond
 to see the score change. Or edit the addition in <code>collect_player_object</code>
 itself: your copy executes that actual implementation. Change <code>PLAYER_MS</code>
 to 220 for slower movement. Defaults apply only when the room or supported actor
 omits its override; the supplied room omits timers. Try changing the room name
-or a wall token independently in JSON. Later lessons add snake cover and spider turns.</p>
+or a wall token independently in JSON. Change an <code>F3</code> to <code>#3</code>
+and see how identical pixels can have different entry rules. Change both
+<code>T0</code> tokens to <code>T7</code>, then change just one to observe the
+pair-validation error. Add a message to the revealed wall. Later lessons add
+snake cover and spider turns.</p>
 
 <h2>Restart, rerun, and restore</h2>
 <ul>

@@ -31,10 +31,11 @@ def load_engine(path=DEFAULT_ENGINE):
 
 
 def replay(engine, definition, recording):
-    """Replay timed press/release/wait edges through the actual pure step().
+    """Replay timed press/release/wait/dismiss edges through the pure engine.
 
-    at_ms is elapsed time before the next quantum. A press replaces the held
-    direction. No wall-clock reads or rendering cadence affect this trace.
+    at_ms is script time before the next quantum, including paused panels. A
+    press replaces the held direction; dismiss acknowledges one whole message
+    (UI pagination is tested separately) and releases held input like the app.
     """
     engine._fields(recording, ("room", "end_ms", "events", "expected"),
                    ("room", "end_ms", "events", "expected"), "solution")
@@ -54,8 +55,8 @@ def replay(engine, definition, recording):
         if event["action"] == "press":
             if event.get("direction") not in engine.ACTION_DIRECTIONS:
                 raise ValueError("press requires a cardinal direction name")
-        elif event["action"] not in ("release", "wait") or "direction" in event:
-            raise ValueError("expected press/direction, release, or wait event")
+        elif event["action"] not in ("release", "wait", "dismiss") or "direction" in event:
+            raise ValueError("expected press/direction, release, wait, or dismiss event")
     expected = recording["expected"]
     fields = ("status", "score", "bonus", "elapsed_ms")
     engine._fields(expected, fields, fields, "solution.expected")
@@ -71,6 +72,10 @@ def replay(engine, definition, recording):
             if event["action"] == "press":
                 direction = engine.ACTION_DIRECTIONS[event["direction"]]
             elif event["action"] == "release":
+                direction = None
+            elif event["action"] == "dismiss":
+                if not engine.dismiss_message(state):
+                    raise ValueError("dismiss requires an active message at %s ms" % elapsed)
                 direction = None
             index += 1
         engine.step(state, direction)

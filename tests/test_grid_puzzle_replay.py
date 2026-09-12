@@ -9,6 +9,17 @@ from tools.check_grid_puzzle_levels import DEFAULT_SOLUTIONS, check, replay
 
 
 class GridPuzzleReplayTests(unittest.TestCase):
+    def test_dismiss_is_explicit_and_cannot_silently_skip_an_absent_message(self):
+        trace = {"room": 0, "end_ms": 1000, "events": [
+            {"at_ms": 0, "action": "dismiss"},
+            {"at_ms": 0, "action": "press", "direction": "east"}],
+            "expected": {"status": "completed", "score": 0, "bonus": 500, "elapsed_ms": 10}}
+        cells = {(1, 0): "E.", (15, 11): ".."}
+        definition = g.validate_level(room(cells, messages=[{"loc_x": 0, "loc_y": 0, "text": "Welcome"}]))
+        self.assertEqual(replay(g, definition, trace)["status"], "passed")
+        with self.assertRaisesRegex(ValueError, "requires an active message"):
+            replay(g, g.validate_level(room(cells)), trace)
+
     def test_custom_rooms_without_solutions_do_not_claim_solvability(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "custom.json"

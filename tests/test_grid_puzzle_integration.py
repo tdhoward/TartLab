@@ -13,6 +13,7 @@ from tests.grid_puzzle_support import DEFAULT_ENGINE, DEFAULT_LEVELS, load_engin
 from tests.test_grid_puzzle_rendering import RecordingCanvas
 from tests.test_timing import FakeTime, make_clock
 from tools.check_grid_puzzle_levels import check
+from tests.image_support import IMAGE_MODULES, sprites
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,11 +49,57 @@ def device_modules(g):
     timing = types.ModuleType("tartlabutils.timing")
     platform.fake_time = FakeTime()
     timing.FrameClock = lambda **kwargs: make_clock(platform.fake_time, **kwargs)
-    return platform, canvas, {"tartlabutils": package, "tartlabutils.app": app,
+    sprite_module = types.ModuleType("tartlabutils.sprites")
+    sprite_module.SpriteSheet = lambda path: sprites.SpriteSheet(
+        str(ROOT / "src/files/assets/grid_puzzle.ts16") if path == "/files/assets/grid_puzzle.ts16" else path)
+    return platform, canvas, {**IMAGE_MODULES, "tartlabutils": package, "tartlabutils.app": app,
+                              "tartlabutils.sprites": sprite_module,
                               "tartlabutils.platform": boundary, "tartlabutils.timing": timing}
 
 
 class GridPuzzleIntegrationTests(unittest.TestCase):
+    def test_asset_loading_time_is_excluded_from_simulation_and_dropped_time(self):
+        g = load_engine()
+        platform, canvas, modules = device_modules(g)
+        layout = g.choose_layout(platform.width, platform.height)
+        x, y, unused_w, unused_h = dict(layout.controls)["back"]
+        touches = iter((None, None, (x + 16, y + 16)))
+        platform.read_game_touch = lambda: next(touches)
+        original = g.PuzzleArt.prepare
+        def prepare(art, definition):
+            original(art, definition)
+            platform.fake_time.absolute_ms += 1000
+        output = io.StringIO()
+        with mock.patch.dict(sys.modules, modules), mock.patch.object(g.PuzzleArt, "prepare", prepare), redirect_stdout(output):
+            result = g.run(g.validate_level_pack(pack()), platform, canvas, layout)
+        self.assertEqual(result.state.elapsed_ms, 50)
+        self.assertIn("dropped_update_ms=0", output.getvalue())
+
+    def test_hint_open_and_acknowledgement_require_fresh_direction_input(self):
+        g = load_engine()
+        platform, canvas, modules = device_modules(g)
+        layout = g.choose_layout(platform.width, platform.height)
+        sequence = iter((None, "east", "east", "east", None, "pause", "east", None, "east", "east", None, "back"))
+        def touch():
+            action = next(sequence)
+            if action is None:
+                return None
+            x, y, unused_w, unused_h = dict(layout.controls)[action]
+            return x + 16, y + 16
+        platform.read_game_touch = touch
+        definition = g.validate_level(room(messages=[{"loc_x": 1, "loc_y": 0, "text": "Stop and look"}]))
+        observations = []
+        def draw(canvas, session, layout, action, debug):
+            observations.append((session.state.player.cell, session.state.paused, session.state.elapsed_ms))
+        with mock.patch.dict(sys.modules, modules), mock.patch.object(g, "draw_game", draw), redirect_stdout(io.StringIO()):
+            result = g.run({"levels": [definition]}, platform, canvas, layout)
+        self.assertEqual([item[:2] for item in observations], [
+            (0, False), (0, False), (1, True), (1, True), (1, True),
+            (1, False), (1, False), (1, False), (1, False), (2, False), (2, False)])
+        self.assertEqual(observations[2][2], observations[5][2])
+        self.assertEqual(result.state.player.cell, 2)
+        self.assertEqual(result.art.sprites, {})
+
     def test_main_acquires_once_and_releases_canvas_and_ui_on_return(self):
         g = load_engine()
         g.LEVEL_FILE = str(DEFAULT_LEVELS)
@@ -66,7 +113,7 @@ class GridPuzzleIntegrationTests(unittest.TestCase):
         self.assertIn(str(DEFAULT_LEVELS), output.getvalue())
 
     def test_failures_before_and_after_acquisition_keep_resource_ownership_clear(self):
-        for failure in ("json", "layout", "allocation", "drawing", "close"):
+        for failure in ("json", "layout", "allocation", "art", "drawing", "close"):
             with self.subTest(failure=failure):
                 g = load_engine()
                 g.LEVEL_FILE = str(DEFAULT_LEVELS)
@@ -77,6 +124,8 @@ class GridPuzzleIntegrationTests(unittest.TestCase):
                     platform.width, platform.height = 170, 320
                 elif failure == "allocation":
                     modules["tartlabutils.app"].DirectCanvas = mock.Mock(side_effect=MemoryError("canvas"))
+                elif failure == "art":
+                    g.ASSET_FILE = str(ROOT / "build/grid_puzzle/no_such_art.ts16")
                 elif failure == "drawing":
                     canvas.show = mock.Mock(side_effect=RuntimeError("transfer failed"))
                 elif failure == "close":
@@ -87,7 +136,7 @@ class GridPuzzleIntegrationTests(unittest.TestCase):
                 acquired = failure not in ("json", "layout")
                 self.assertEqual(platform.acquisitions, int(acquired))
                 self.assertEqual(platform.ui_calls, int(acquired))
-                if failure == "drawing":
+                if failure in ("art", "drawing"):
                     self.assertTrue(canvas.closed)
 
     def test_play_loop_requires_release_after_start_restart_pause_and_resume(self):
@@ -245,11 +294,17 @@ class GridPuzzleIntegrationTests(unittest.TestCase):
             (source / "ide/www/dist/index.html").write_text("<html></html>", encoding="utf-8")
             for name in ("help", "help-legacy"):
                 makedist.copy_tree(ROOT / "src/files" / name, source / "files" / name, False)
+            (source / "files/assets/grid_puzzle.ts16").write_bytes(
+                (ROOT / "src/files/assets/grid_puzzle.ts16").read_bytes())
             for profile in ("lvgl-modern", "legacy-mp123"):
                 output = temporary / profile
                 makedist.build_distribution(source, output, runtime_profile=profile,
                                             minify_python=True, build_web=False, epoch=0)
                 expected = profile == "lvgl-modern"
+                asset = output / "files/assets/grid_puzzle.ts16"
+                self.assertEqual(asset.exists(), expected)
+                if expected:
+                    self.assertEqual(asset.read_bytes(), (ROOT / "src/files/assets/grid_puzzle.ts16").read_bytes())
                 for name in ("grid_puzzle.py", "grid_puzzle_levels.json", "grid_puzzle_guide.html"):
                     target = output / "files/help" / name
                     self.assertEqual(target.exists(), expected)

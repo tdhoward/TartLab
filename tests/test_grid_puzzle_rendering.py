@@ -1,6 +1,6 @@
 import unittest
 
-from tests.grid_puzzle_support import ENGINE as g, room
+from tests.grid_puzzle_support import ENGINE as g, room, prepare_art
 
 
 class RecordingCanvas:
@@ -16,6 +16,9 @@ class RecordingCanvas:
 
     def text(self, *args):
         self.commands.append(("text", args))
+
+    def hline(self, *args):
+        self.commands.append(("hline", args))
 
     def show(self):
         self.commands.append(("show", ()))
@@ -78,6 +81,8 @@ class GridPuzzleLayoutTests(unittest.TestCase):
         layout = g.choose_layout(480, 320)
         hidden = g.Session({"levels": [g.validate_level(room({(3, 3): "F4", (4, 3): "T0", (5, 3): "T0"}))]})
         visible = g.Session({"levels": [g.validate_level(room({(3, 3): "#4"}))]})
+        prepare_art(hidden)
+        prepare_art(visible)
         first, second, debug = RecordingCanvas(), RecordingCanvas(), RecordingCanvas()
         g.draw_game(first, hidden, layout)
         g.draw_game(second, visible, layout)
@@ -89,22 +94,25 @@ class GridPuzzleLayoutTests(unittest.TestCase):
         import copy
         definition = g.validate_level(room({(1, 0): "D.", (2, 0): "O.", (3, 0): "W4"}))
         session = g.Session({"levels": (definition,)})
+        prepare_art(session)
         layout = g.choose_layout(480, 222)
         before, after = RecordingCanvas(), RecordingCanvas()
         g.draw_game(before, session, layout)
         session.direction = g.EAST
         session.advance(12)
         snapshot = copy.deepcopy(session.state.__dict__)
-        g.draw_game(after, session, layout)
+        from unittest.mock import patch
+        with patch.object(session.art, "draw", wraps=session.art.draw) as draw:
+            g.draw_game(after, session, layout)
+        drawn = [call.args[1] for call in draw.call_args_list]
         self.assertEqual(session.state.terrain, snapshot["terrain"])
         self.assertEqual(session.state.objects, snapshot["objects"])
         self.assertEqual(session.state.player.cell, snapshot["player"].cell)
         self.assertNotEqual(before.commands, after.commands)
         # Neither the collected diamond nor the consumed boulder is still drawn.
-        glyphs = [args[0] for name, args in after.commands if name == "text"]
-        self.assertNotIn("*", glyphs)
-        self.assertNotIn("O", glyphs)
-        self.assertEqual(glyphs.count("P"), 1)
+        self.assertNotIn(g.ART_DIAMOND, drawn)
+        self.assertNotIn(g.ART_BOULDER, drawn)
+        self.assertEqual(drawn.count(g.ART_PLAYER + g.EAST), 1)
         self.assertEqual(sum(name == "show" for name, _ in after.commands), 1)
         self.assertEqual(after.commands[0], ("fill", (0,)))
 

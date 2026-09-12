@@ -19,5 +19,26 @@
       "#0 .. .. .. .. .. .. #1 .. .. .. .. .. .. .. #0",
       "#0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0"
     ]
+  }, {
+    "name": "Veiled Walk",
+    "messages": [
+      {"loc_x": 2, "loc_y": 2, "text": "Walk east through the dirt. Try the wall beyond it: some walls hide a passage. Hints pause play; use OK to continue."},
+      {"loc_x": 5, "loc_y": 2, "text": "This hidden floor pad has a twin. Entering either one takes you to the other. You keep your direction."},
+      {"loc_x": 10, "loc_y": 7, "text": "You arrived at its twin. Standing here will not send you back. Leave and re-enter to return, or go east for the diamond, key and exit."}
+    ],
+    "map": [
+      "#3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3",
+      "#3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3",
+      "#3 #3 P. d2 F3 T0 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3",
+      "#3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3",
+      "#3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3",
+      "#3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3",
+      "#3 #3 W0 W1 W2 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3",
+      "#3 #3 W3 W4 W5 #3 #3 #3 #3 #3 T0 D. K. E. #3 #3",
+      "#3 #3 W6 W7 W8 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3",
+      "#3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3",
+      "#3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3",
+      "#3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3 #3"
+    ]
   }]
 }

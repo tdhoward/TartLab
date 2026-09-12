@@ -1,18 +1,23 @@
 # Grid puzzle/action example: architecture and development plan
 
-Status (2026-09-11): Phase 2 software milestone implemented. The editable
-single-file example now plays First Crossing with timed movement, atomic pushing,
-water filling, keys/diamonds, exit completion, scoring, pause, and restart. The
-host validator replays its checked-in solution and records source/data hashes.
-See [Phase 2 evidence](tests/GRID_PUZZLE_PHASE2.md) and the earlier
+Status (2026-09-11): Phase 3 software milestone implemented. The editable
+single-file example now includes dirt, false walls, symmetric one-hop teleporters,
+arrival contact/ray checks, paused paged messages, and original TS16 sprites.
+First Crossing and Veiled Walk have checked-in timed solutions; the validator
+records source/data hashes and explicit message acknowledgements. The atlas has
+a deterministic rebuild/check command and retained source art.
+See [Phase 3 evidence](tests/GRID_PUZZLE_PHASE3.md),
+[Phase 2 evidence](tests/GRID_PUZZLE_PHASE2.md), and
 [Phase 1 foundation evidence](tests/GRID_PUZZLE_PHASE1.md).
 
-Next implementation entry point: Phase 3 in
+Next implementation entry point: Phase 4 in
 [Development phases and exit criteria](#development-phases-and-exit-criteria).
 The unfinished acceptance gate is actual browser/device observation of
 copy/edit/recovery, full-room readability, input comfort, and playable controls.
-The current operator checklist is in the Phase 2 evidence document; no physical
-pass or frame-rate qualification is inferred from host tests.
+The current operator checklist is in the Phase 3 evidence document, including
+art, hidden features, and hint controls. No physical pass or frame-rate
+qualification is inferred from host tests. Rooms with autonomous hazards still
+fail clearly at launch until Phase 4 supplies movement, traps, and explosions.
 Keep this status current as phases finish; record the next unfinished gate and
 link to its evidence instead of repeating completed investigations.
 
@@ -75,9 +80,9 @@ reported dimensions, rotation, input availability, and surface capabilities.
 
 ### Proposed source layout
 
-The Python/JSON/guide, host validator, movement tests, and first solution trace exist.
-Art, hazard tests, campaign traces, benchmarking, and physical qualification
-deliverables below remain scheduled for their later phases.
+The Python/JSON/guide, host validator, terrain/teleport/message tests, original
+art and builder, and two solution traces exist. Complete hazard tests, the full
+campaign, benchmarking, and physical qualification remain for later phases.
 
 ```text
 src/files/help/
@@ -97,6 +102,8 @@ tools/
 tests/
     test_grid_puzzle_levels.py
     test_grid_puzzle_engine.py
+    test_grid_puzzle_terrain.py
+    test_grid_puzzle_sprites.py
     test_grid_puzzle_hazards.py
     test_grid_puzzle_rendering.py
     test_grid_puzzle_integration.py
@@ -817,13 +824,28 @@ validates every room, and replays `tests/fixtures/grid_puzzle/solutions.json`.
 It requires a successful timed solution for each bundled room and writes detailed
 results to `build/grid_puzzle/validation.json`. The Phase 2 trace completes First
 Crossing in 2540 ms of simulation with 100 collected points and 498 bonus points.
+Veiled Walk completes in 560 ms of simulation with 100 collected points and 500
+bonus points; its trace explicitly acknowledges the start and both pad messages.
 These are scripted results, not a physical playtest or fairness assessment.
 Accept explicit `--engine`, `--levels`, and `--solutions` paths for a trusted
 local experiment; report selected paths. Custom rooms without `--solutions` get
 structural checks only and explicitly report replay pending. Replay records include engine-source and room-data
-hashes, schema version, timed press/release/wait events, and expected completion/
-score. Hash and validate these mechanically. Running the command again must not
+hashes, schema version, timed press/release/wait/dismiss events, and expected
+completion/score. Event times use the script timeline, including paused panels;
+reported elapsed time counts simulation only. Dismiss requires an active message
+and releases held direction, matching the app. Hash and validate these mechanically.
+Running the command again must not
 require an agent to reread every room or transcript.
+
+Rebuild/check the original art without an image-generation call:
+
+```powershell
+python tools/build_grid_puzzle_sprites.py --check
+```
+
+Omit `--check` to rebuild from the canonical PNG. See the
+[atlas README](tools/assets/grid_puzzle/README.md) for provenance, palette,
+coordinates, source import, and runtime cache ownership.
 
 During implementation run the relevant new `unittest` modules and existing
 timing/canvas/sprite/profile checks when those integration points change. Check

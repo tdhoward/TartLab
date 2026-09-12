@@ -45,6 +45,9 @@ for recording in recordings:
                 session.direction = namespace["ACTION_DIRECTIONS"][event["direction"]]
             elif event["action"] == "release":
                 session.direction = None
+            elif event["action"] == "dismiss":
+                assert namespace["dismiss_message"](session.state)
+                session.direction = None
             index += 1
         session.advance(1)
     state = session.state
@@ -66,4 +69,19 @@ assert controls.direction() == namespace["EAST"]
 controls.reset()
 controls.poll(None, (("right", False),), layout)
 assert controls.direction() is None
-print("PASS: definitions, all symbols, layouts, timed solutions, score rollback and controls")
+# Load only the real image/sprite package. The normal top-level package imports
+# device updater/network services that do not belong in this Unix host check.
+sys.path.insert(0, root + "/tests/fixtures/grid_puzzle/host_lib")
+import tartlabutils
+tartlabutils.__path__ = root + "/src/lib/tartlabutils"
+for scale in (1, 2):
+    art = namespace["PuzzleArt"](root + "/src/files/assets/grid_puzzle.ts16", scale)
+    for definition in pack["levels"]:
+        art.prepare(definition)
+        assert art.sprites[namespace["ART_PLAYER"]].width == 16 * scale
+        cached = art.sprites[namespace["ART_PLAYER"]]
+        art.prepare(definition)
+        assert art.sprites[namespace["ART_PLAYER"]] is cached
+    art.close()
+    assert not art.sprites
+print("PASS: definitions, all symbols, layouts, timed solutions, score rollback, controls and 1x/2x art")

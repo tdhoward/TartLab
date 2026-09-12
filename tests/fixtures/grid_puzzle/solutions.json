@@ -14,5 +14,18 @@
       {"at_ms": 3000, "action": "wait"}
     ],
     "expected": {"status": "completed", "score": 100, "bonus": 498, "elapsed_ms": 2540}
+  }, {
+    "room": 1,
+    "end_ms": 2000,
+    "events": [
+      {"at_ms": 0, "action": "dismiss"},
+      {"at_ms": 0, "action": "press", "direction": "east"},
+      {"at_ms": 230, "action": "release"},
+      {"at_ms": 300, "action": "dismiss"},
+      {"at_ms": 500, "action": "dismiss"},
+      {"at_ms": 600, "action": "press", "direction": "east"},
+      {"at_ms": 1000, "action": "release"}
+    ],
+    "expected": {"status": "completed", "score": 100, "bonus": 500, "elapsed_ms": 560}
   }]
 }
