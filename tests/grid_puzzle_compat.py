@@ -69,6 +69,20 @@ assert controls.direction() == namespace["EAST"]
 controls.reset()
 controls.poll(None, (("right", False),), layout)
 assert controls.direction() is None
+# Exercise real autonomous steps and generated sprites on the same interpreter.
+hazards = load(root + "/tests/fixtures/grid_puzzle/hazards.json")
+for definition, duration, status, diamonds in zip(hazards["levels"],
+        (150, 10, 130, 60, 10), ("DEAD", "PLAYING", "DEAD", "PLAYING", "DEAD"), (0, 4, 0, 0, 1)):
+    state = create(definition)
+    for elapsed in range(0, duration, namespace["UPDATE_MS"]):
+        namespace["step"](state, namespace["EAST"] if definition["name"] == "Exit blast" else None)
+    assert state.elapsed_ms == duration
+    assert state.status == namespace[status]
+    assert sum(obj == namespace["DIAMOND"] for obj in state.objects) == diamonds
+    fresh = create(definition)
+    assert all(actor.alive for actor in fresh.actors)
+    assert not any(fresh.blast_until)
+    assert not any(cell != -1 for cell in fresh.spear_at)
 # Load only the real image/sprite package. The normal top-level package imports
 # device updater/network services that do not belong in this Unix host check.
 sys.path.insert(0, root + "/tests/fixtures/grid_puzzle/host_lib")
@@ -76,7 +90,7 @@ import tartlabutils
 tartlabutils.__path__ = root + "/src/lib/tartlabutils"
 for scale in (1, 2):
     art = namespace["PuzzleArt"](root + "/src/files/assets/grid_puzzle.ts16", scale)
-    for definition in pack["levels"]:
+    for definition in pack["levels"] + hazards["levels"]:
         art.prepare(definition)
         assert art.sprites[namespace["ART_PLAYER"]].width == 16 * scale
         cached = art.sprites[namespace["ART_PLAYER"]]
@@ -84,4 +98,4 @@ for scale in (1, 2):
         assert art.sprites[namespace["ART_PLAYER"]] is cached
     art.close()
     assert not art.sprites
-print("PASS: definitions, all symbols, layouts, timed solutions, score rollback, controls and 1x/2x art")
+print("PASS: definitions, all symbols, layouts, solutions, rollback, controls, autonomous hazards and 1x/2x art")

@@ -1,23 +1,26 @@
 # Grid puzzle/action example: architecture and development plan
 
-Status (2026-09-11): Phase 3 software milestone implemented. The editable
-single-file example now includes dirt, false walls, symmetric one-hop teleporters,
-arrival contact/ray checks, paused paged messages, and original TS16 sprites.
-First Crossing and Veiled Walk have checked-in timed solutions; the validator
-records source/data hashes and explicit message acknowledgements. The atlas has
-a deterministic rebuild/check command and retained source art.
-See [Phase 3 evidence](tests/GRID_PUZZLE_PHASE3.md),
+Status (2026-09-11): Phase 4 software milestone implemented. The editable
+single-file example now runs stationary snakes, all eight wall-following spider
+variants, simultaneous trapped-spider explosions and diamond drops, and all four
+one-shot spear directions through the full fourteen-stage update order. The
+reference renderer includes growing/stopped shafts and short blast frames.
+First Crossing and Veiled Walk retain their checked-in timed solutions; focused
+hazard rooms and deterministic tests cover the new interactions.
+See [Phase 4 evidence](tests/GRID_PUZZLE_PHASE4.md),
+[Phase 3 evidence](tests/GRID_PUZZLE_PHASE3.md),
 [Phase 2 evidence](tests/GRID_PUZZLE_PHASE2.md), and
 [Phase 1 foundation evidence](tests/GRID_PUZZLE_PHASE1.md).
 
-Next implementation entry point: Phase 4 in
+Next implementation entry point: Phase 5 in
 [Development phases and exit criteria](#development-phases-and-exit-criteria).
 The unfinished acceptance gate is actual browser/device observation of
 copy/edit/recovery, full-room readability, input comfort, and playable controls.
-The current operator checklist is in the Phase 3 evidence document, including
-art, hidden features, and hint controls. No physical pass or frame-rate
-qualification is inferred from host tests. Rooms with autonomous hazards still
-fail clearly at launch until Phase 4 supplies movement, traps, and explosions.
+The current operator checklist is in the Phase 4 evidence document, including
+the carried-forward art, hidden-feature, hint, and editing observations. No
+physical pass or frame-rate qualification is inferred from host tests. All
+validated version-1 hazard rooms can now launch. Dirty rendering, full debug
+inspection, the teaching campaign, and release qualification remain unfinished.
 Keep this status current as phases finish; record the next unfinished gate and
 link to its evidence instead of repeating completed investigations.
 
@@ -80,9 +83,10 @@ reported dimensions, rotation, input availability, and surface capabilities.
 
 ### Proposed source layout
 
-The Python/JSON/guide, host validator, terrain/teleport/message tests, original
-art and builder, and two solution traces exist. Complete hazard tests, the full
-campaign, benchmarking, and physical qualification remain for later phases.
+The Python/JSON/guide, host validator, terrain/teleport/message/hazard tests,
+original art and builder, and two solution traces exist. Dirty rendering, full
+debug inspection, the full campaign, benchmarking, and physical qualification
+remain for later phases.
 
 ```text
 src/files/help/

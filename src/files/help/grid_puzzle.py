@@ -1,9 +1,9 @@
-"""Grid puzzle: Phase 3 terrain, teleportation, messages and original art.
+"""Grid puzzle: editable movement, terrain, teleportation and hazard engine.
 
 Copy this file to /files/user/my_puzzle.py to edit the actual implementation.
 Move, collect keys, push boulders into water, and reach the exit.
 Dig dirt, reveal false walls and discover paired hidden passages.
-Autonomous enemies and traps arrive in Phase 4.
+Watch snake cover, wall-following spiders and one-shot extending spears.
 
 CODE MAP (search these numbered headings):
 1. Settings   2. Symbols   3. Loading and state   4. Player interactions
@@ -21,6 +21,7 @@ UPDATE_MS = 10
 FRAME_MS = 50  # Proposed, not yet a measured device performance claim.
 PLAYER_MS, SPIDER_MS, PROJECTILE_MS = 110, 150, 40
 DIAMOND_SCORE, BONUS_START = 100, 500
+BLAST_MS = 180  # Visual only: damage resolves once, before these frames appear.
 
 # Names are logical button events, never GPIOs or board identities.
 BUTTON_ACTIONS = {
@@ -43,6 +44,7 @@ ACTOR_NAMES = ("player", "snake", "spider", "spear emitter")
 MOVED, COLLECTED, TERRAIN_CHANGED, OBJECT_CHANGED = 1, 2, 4, 8
 DIED, FINISHED = 16, 32
 TELEPORTED = 64
+EFFECT_CHANGED = 128
 ACTION_DIRECTIONS = {"north": NORTH, "east": EAST, "south": SOUTH, "west": WEST}
 
 
@@ -320,11 +322,14 @@ class LevelState:
                 self.active_message = i
                 self.message_seen[i] = 1
         self.paused = self.active_message != -1
-        # Reused, room-bounded flags for the later simulation/rendering phases.
+        # Reused room-bounded buffers; explosions never grow an event list.
         self.changed_cells = bytearray(CELL_COUNT)
         self.events = bytearray(CELL_COUNT)  # Per-cell event bits; reused each step.
         self.step_events = 0
         self.pending_explosions = bytearray(CELL_COUNT)
+        self.blast_cells = bytearray(CELL_COUNT)
+        self.blast_drops = bytearray(CELL_COUNT)
+        self.blast_until = [0] * CELL_COUNT
 
 
 def create_state(definition):
@@ -357,7 +362,7 @@ def can_player_enter(state, cell):
 
 
 def can_spider_enter(state, cell, actor):
-    """Shared entry query for teleport previews and the Phase 4 spider mover."""
+    """Shared entry query for teleport previews and autonomous spider moves."""
     if not 0 <= cell < CELL_COUNT:
         return False
     occupant = state.actor_at[cell]
@@ -472,8 +477,6 @@ def dismiss_message(state):
     return True
 
 # 5. Snakes, spiders, traps, explosions --------------------------------------
-# Immediate contact/ray queries are needed for Phase 3 arrival safety. Phase 4
-# supplies autonomous movement, trap lifecycles and environmental explosions.
 def kill_player(state):
     if state.status == PLAYING and state.player.alive:
         state.player.alive = False
@@ -521,6 +524,178 @@ def resolve_immediate_hazards(state):
                 break
             target = neighbor(target, heading)
 
+
+def spider_destination(state, actor, heading):
+    """Preview the whole entry, including a blocked twin or a return to self.
+
+    A blocked twin still permits entry onto the source pad. Even a hop back to
+    the current cell is a legal move; it must not falsely trap the spider.
+    """
+    entered = neighbor(actor.cell, heading)
+    if not can_spider_enter(state, entered, actor):
+        return -1
+    return teleport_destination(state, actor, entered)
+
+
+def next_spider_heading(state, actor):
+    """Pure one-move preview; the mover and trapped-set test share this query."""
+    side = -1 if actor.follow == FOLLOW_LEFT else 1
+    for turn in (side, 0, -side, 2):
+        heading = (actor.heading + turn) % 4
+        if spider_destination(state, actor, heading) != -1:
+            return heading
+    return None
+
+
+def move_spiders(state):
+    for actor in state.actors:  # Stable source-map IDs; later moves see earlier ones.
+        if actor.kind != SPIDER or not actor.alive or state.elapsed_ms < actor.next_due_ms:
+            continue
+        actor.next_due_ms += actor.interval_ms
+        heading = next_spider_heading(state, actor)
+        if heading is not None:
+            actor.heading = heading
+            place_actor(state, actor, neighbor(actor.cell, heading))
+            # Contact at the entered pad is lethal even if its twin is clear.
+            teleport_actor(state, actor)
+            resolve_contact(state)
+
+
+def remove_trapped_spiders(state):
+    # First query every spider against ONE occupancy snapshot. Only then remove
+    # the trapped set, so an earlier removal cannot free a later spider.
+    for actor in state.actors:
+        if actor.kind == SPIDER and actor.alive and next_spider_heading(state, actor) is None:
+            state.pending_explosions[actor.cell] = 1
+    for actor in state.actors:
+        if actor.kind == SPIDER and actor.alive and state.pending_explosions[actor.cell]:
+            actor.alive = False
+            if state.actor_at[actor.cell] == actor.id:
+                state.actor_at[actor.cell] = -1
+            mark_changed(state, actor.cell, DIED)
+
+
+def blocks_spear_ray(state, cell):
+    # The shipped blocker sets match. Keep a separate rule entry point so a
+    # student's snake-cover experiment need not change projectile behavior.
+    if not 0 <= cell < CELL_COUNT:
+        return True
+    return (state.terrain[cell] in (WALL, FALSE_WALL, DIRT)
+            or (state.terrain[cell] == EXIT and not state.exit_active)
+            or state.objects[cell] != EMPTY or state.actor_at[cell] != -1
+            or state.spear_at[cell] != -1)
+
+
+def spear_sees_player(state, actor):
+    cell = neighbor(actor.cell, actor.heading)
+    while cell != -1:
+        if cell == state.player.cell:
+            return True
+        if blocks_spear_ray(state, cell):
+            return False
+        cell = neighbor(cell, actor.heading)
+    return False
+
+
+def spear_can_extend(state, cell):
+    # Test the player before occupancy, as for detection and snake rays.
+    return cell != -1 and (cell == state.player.cell or not blocks_spear_ray(state, cell))
+
+
+def stop_spear(state, actor):
+    actor.trap_state = STOPPED
+    mark_changed(state, actor.cell, EFFECT_CHANGED)
+    for cell in range(CELL_COUNT):
+        if state.spear_at[cell] == actor.id:
+            mark_changed(state, cell, EFFECT_CHANGED)
+
+
+def advance_spears(state):
+    for actor in state.actors:  # Stable trap IDs also settle crossing shafts.
+        if actor.kind != EMITTER or not actor.alive:
+            continue
+        if actor.trap_state == IDLE:
+            if state.player.alive and spear_sees_player(state, actor):
+                actor.trap_state = EXTENDING
+                actor.next_due_ms = state.elapsed_ms + actor.interval_ms
+                mark_changed(state, actor.cell, EFFECT_CHANGED)
+            continue  # Activation NEVER extends a cell in this quantum.
+        if actor.trap_state != EXTENDING or state.elapsed_ms < actor.next_due_ms:
+            continue
+        actor.next_due_ms += actor.interval_ms
+        target = neighbor(actor.tip, actor.heading)
+        if not spear_can_extend(state, target):
+            stop_spear(state, actor)
+            continue
+        mark_changed(state, actor.tip, EFFECT_CHANGED)
+        actor.tip = target
+        state.spear_at[target] = actor.id
+        mark_changed(state, target, EFFECT_CHANGED)
+        # Resolve contact before stopping; a tip hitting the player immediately
+        # before a wall still kills, though the resulting shaft is harmless.
+        resolve_contact(state)
+        if not spear_can_extend(state, neighbor(target, actor.heading)):
+            stop_spear(state, actor)
+
+
+def is_explosion_destructible(state, cell):
+    if not 0 <= cell < CELL_COUNT:
+        return False
+    types = state.definition["rules"]["explosion_destructible"]
+    return ((state.objects[cell] == BOULDER and "BOULDER" in types)
+            or (state.terrain[cell] == DIRT and "DIRT" in types))
+
+
+def resolve_explosions(state):
+    """One deduplicated cross-shaped batch: clear, damage, then eligible drops."""
+    for cell in range(CELL_COUNT):
+        state.blast_cells[cell] = state.blast_drops[cell] = 0
+    for center in range(CELL_COUNT):
+        if state.pending_explosions[center]:
+            state.blast_cells[center] = state.blast_drops[center] = 1
+            for heading in range(4):
+                cell = neighbor(center, heading)
+                if cell != -1:
+                    state.blast_cells[cell] = 1
+            state.pending_explosions[center] = 0
+    rules = state.definition["rules"]
+    for cell in range(CELL_COUNT):
+        if not state.blast_cells[cell]:
+            continue
+        if is_explosion_destructible(state, cell):
+            if state.objects[cell] == BOULDER and "BOULDER" in rules["explosion_destructible"]:
+                state.objects[cell] = EMPTY
+                mark_changed(state, cell, OBJECT_CHANGED)
+            if state.terrain[cell] == DIRT and "DIRT" in rules["explosion_destructible"]:
+                state.terrain[cell], state.variants[cell] = FLOOR, 0
+                mark_changed(state, cell, TERRAIN_CHANGED)
+            state.blast_drops[cell] = 1
+        state.blast_until[cell] = state.elapsed_ms + BLAST_MS
+        mark_changed(state, cell, EFFECT_CHANGED)
+    if rules["explosion_hurts_player"] and state.blast_cells[state.player.cell]:
+        kill_player(state)
+    if rules["explosion_diamonds"]:
+        for cell in range(CELL_COUNT):
+            if (state.blast_drops[cell] and state.terrain[cell] == FLOOR
+                    and state.objects[cell] == EMPTY and state.actor_at[cell] == -1
+                    and cell != state.player.cell and state.spear_at[cell] == -1
+                    and state.definition["twins"][cell] == -1):
+                state.objects[cell] = DIAMOND
+                mark_changed(state, cell, OBJECT_CHANGED)
+    resolve_immediate_hazards(state)
+
+
+def expire_blast_art(state):
+    # Three short visual frames; neither their pixels nor their lifetime collide.
+    for cell in range(CELL_COUNT):
+        until = state.blast_until[cell]
+        if until:
+            remaining = until - state.elapsed_ms
+            if remaining <= 0:
+                state.blast_until[cell] = 0
+            if remaining <= 0 or (remaining - 1) // 60 != (remaining + UPDATE_MS - 1) // 60:
+                mark_changed(state, cell, EFFECT_CHANGED)
+
 # 6. Explicit simulation order ---------------------------------------------
 def step(state, direction=None, dt_ms=UPDATE_MS):
     """One pure simulation quantum. None releases input; no clocks or I/O here.
@@ -538,10 +713,11 @@ def step(state, direction=None, dt_ms=UPDATE_MS):
     if state.paused or state.status != PLAYING:
         return
     state.elapsed_ms += dt_ms
+    expire_blast_art(state)
     player = state.player
     # 1. Eligible intent. Failed attempts also advance the same deadline.
     moved = False
-    if direction is not None and state.elapsed_ms >= player.next_due_ms:
+    if player.alive and direction is not None and state.elapsed_ms >= player.next_due_ms:
         # After idle time, start a fresh interval. While held, retain the prior
         # due time so nonmultiples of 10 do not accumulate rounding drift.
         if player.next_due_ms <= state.elapsed_ms - dt_ms:
@@ -558,12 +734,18 @@ def step(state, direction=None, dt_ms=UPDATE_MS):
         teleport_actor(state, player)
     # 5. Immediate contact and snake exposure, including arrival occupancy.
     resolve_immediate_hazards(state)
-    # 6. Due enemy movement and teleportation: Phase 4.
-    # 7. Enemy/player collisions: Phase 4.
-    # 8. Snapshot trapped spiders and queue explosions: Phase 4.
-    # 9. Recalculate snake exposure: Phase 4.
-    # 10. Activate/advance spear traps: Phase 4.
-    # 11. Resolve explosions and resulting hazards: Phase 4.
+    # 6. Due enemy movement and one-hop teleportation.
+    move_spiders(state)
+    # 7. Enemy/player collisions (also checked at each committed entry).
+    resolve_contact(state)
+    # 8. Snapshot trapped spiders, then remove together and queue explosions.
+    remove_trapped_spiders(state)
+    # 9. Recalculate snake exposure after enemy movement/removal.
+    resolve_immediate_hazards(state)
+    # 10. Activate/advance independently timed spear traps.
+    advance_spears(state)
+    # 11. Complete the explosion batch even after death; flush new exposure.
+    resolve_explosions(state)
     # 12. Reconcile keys from authoritative occupancy.
     state.remaining_keys = sum(1 for obj in state.objects if obj == KEY)
     # 13. Activate the exit in the same step as the final collection.
@@ -624,10 +806,12 @@ class Session:
 
 
 def validate_playable_pack(pack):
-    """Keep future schema support without silently running incomplete rules."""
-    for definition in pack["levels"]:
-        if any(a[0] != PLAYER for a in definition["actors"]):
-            raise ValueError('Room "%s" uses autonomous hazards pending Phase 4' % definition["name"])
+    """All version-1 validated room mechanics are now playable.
+
+    Retain this entry point for trusted tools and student copies. Structural
+    validation belongs to validate_level_pack, before state/art acquisition.
+    """
+    return pack
 
 # 7. Art preparation, layout, rendering, debug -------------------------------
 HUD_HEIGHT, PANEL_WIDTH, PANEL_HEIGHT, CONTROL_SIZE = 24, 112, 112, 32
@@ -677,8 +861,13 @@ class PuzzleArt:
                 needed.update((ART_SNAKE_WEST, ART_SNAKE_EAST))
             elif kind == SPIDER:
                 needed.update(range(ART_SPIDER, ART_SPIDER + 4))
+                needed.update(range(ART_BLAST, ART_BLAST + 3))
+                if definition["rules"]["explosion_diamonds"]:
+                    needed.add(ART_DIAMOND)
             elif kind == EMITTER:
                 needed.add(ART_EMITTER + heading)
+                needed.add(ART_SPEAR_TIP + heading)
+                needed.add(ART_SHAFT + heading % 2)
         if needed == set(self.sprites):
             return
         self.close()
@@ -797,7 +986,7 @@ def inspect_cell(state, cell):
 
 
 def draw_board(canvas, state, layout, art, debug=False):
-    """Full reference renderer: terrain, objects, actors, then inspection marks."""
+    """Full reference renderer: terrain, objects, actors, effects, inspection."""
     bx, by, unused_w, unused_h = layout.board
     size = layout.tile_size
     for cell in range(CELL_COUNT):
@@ -821,6 +1010,17 @@ def draw_board(canvas, state, layout, art, debug=False):
             index = base + actor.heading
         x, y = bx + (actor.cell % COLS) * size, by + (actor.cell // COLS) * size
         art.draw(canvas, index, x, y, layout.board)
+    for cell in range(CELL_COUNT):
+        x, y = bx + (cell % COLS) * size, by + (cell // COLS) * size
+        spear_id = state.spear_at[cell]
+        if spear_id != -1:
+            actor = state.actors[spear_id]
+            index = (ART_SPEAR_TIP + actor.heading if cell == actor.tip else
+                     ART_SHAFT + actor.heading % 2)
+            art.draw(canvas, index, x, y, layout.board)
+        if state.blast_until[cell] > state.elapsed_ms:
+            frame = min(2, (BLAST_MS - (state.blast_until[cell] - state.elapsed_ms)) // 60)
+            art.draw(canvas, ART_BLAST + frame, x, y, layout.board)
     if debug:
         for cell in range(CELL_COUNT):
             if state.terrain[cell] == FALSE_WALL or state.definition["labels"][cell] != -1:

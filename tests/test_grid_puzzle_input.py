@@ -4,7 +4,7 @@ import sys
 import unittest
 from unittest import mock
 
-from tests.grid_puzzle_support import ENGINE as g, load_engine, pack
+from tests.grid_puzzle_support import ENGINE as g, load_engine, pack, room
 from tests.test_grid_puzzle_integration import device_modules
 from tests.test_timing import FakeTime, make_clock
 
@@ -79,6 +79,37 @@ class GridPuzzleControlsTests(unittest.TestCase):
 
 
 class GridPuzzleClockIntegrationTests(unittest.TestCase):
+    def test_hazards_and_input_match_at_both_frame_periods_with_real_scheduler(self):
+        traces = []
+        for frame_ms in (50, 60):
+            engine = load_engine()
+            platform, canvas, modules = device_modules(engine)
+            fake = FakeTime(modulus=1024)
+            platform.read_game_touch = lambda: None
+            schedule = {300: (("right", True),), 600: (("right", False), ("down", True)),
+                        900: (("down", False),)}
+            platform.read_button_events = lambda: (("back", True),) if fake.absolute_ms > 1200 else schedule.get(fake.absolute_ms, ())
+            definition = engine.validate_level(room({(0, 2): "RE", (12, 6): "Xe", (15, 10): "S.",
+                (10, 8): "XW", (9, 8): "d0", (11, 8): "O.", (10, 7): "#0", (10, 9): "#0"}))
+            trace, original = [], engine.step
+            def step(state, direction):
+                original(state, direction)
+                trace.append((state.elapsed_ms, state.player.cell, state.status,
+                              bytes(state.objects), tuple(state.spear_at), tuple(state.blast_until),
+                              tuple((a.cell, a.heading, a.next_due_ms, a.alive) for a in state.actors)))
+            output = io.StringIO()
+            with mock.patch.object(engine, "step", step), mock.patch.dict("sys.modules", modules), redirect_stdout(output):
+                result = engine.run({"levels": [definition]}, platform, canvas,
+                    engine.choose_layout(480, 222), clock_factory=lambda: make_clock(
+                        fake, frame_ms=frame_ms, update_ms=10, max_updates=10))
+            self.assertEqual((result.state.elapsed_ms, result.state.status), (1200, engine.PLAYING))
+            self.assertEqual(result.state.player.cell, 51)
+            self.assertTrue(any(i >= 0 for i in result.state.spear_at))
+            self.assertEqual(sum(obj == engine.DIAMOND for obj in result.state.objects), 3)
+            self.assertIn("dropped_update_ms=0", output.getvalue())
+            traces.append(trace)
+        self.assertEqual(traces[0], traces[1])
+
     def test_50_and_60_ms_frames_have_identical_simulation_traces_across_tick_wrap(self):
         traces = []
         for frame_ms in (50, 60):

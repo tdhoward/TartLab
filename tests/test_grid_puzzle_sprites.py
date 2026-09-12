@@ -139,6 +139,51 @@ class GridPuzzleSpriteTests(unittest.TestCase):
         art.close()
         self.assertEqual(art.sprites, {})
 
+    def test_hazard_art_prepares_generated_drops_and_all_blast_frames_before_play(self):
+        from tests.test_grid_puzzle_hazards import fixture, advance
+        session = g.Session({"levels": [fixture("Trapped neighbors").definition]})
+        art = prepare_art(session)
+        layout = g.choose_layout(480, 222)
+        canvas = PixelCanvas(layout.width, layout.height)
+        self.assertIn(g.ART_DIAMOND, art.sprites)  # No diamond was authored.
+        g.step(session.state)
+        for frame in range(3):
+            with patch.object(art, "draw", wraps=art.draw) as draw:
+                g.draw_board(canvas, session.state, layout, art)
+            indices = [call.args[1] for call in draw.call_args_list]
+            self.assertIn(g.ART_DIAMOND, indices)
+            self.assertEqual(indices.count(g.ART_BLAST + frame), 8)
+            self.assertFalse(any(g.ART_SPIDER <= i < g.ART_SPIDER + 4 for i in indices))
+            advance(session.state, 60)
+        g.draw_board(canvas, session.state, layout, art)
+        clean = PixelCanvas(layout.width, layout.height)
+        g.draw_board(clean, session.state, layout, art)
+        self.assertEqual(canvas.pixels, clean.pixels)  # No stale blast pixels.
+
+    def test_spear_tips_and_shafts_render_at_both_scales_without_state_mutation(self):
+        from tests.test_grid_puzzle_hazards import fixture, advance
+        for dimensions in ((480, 222), (800, 480)):
+            layout = g.choose_layout(*dimensions)
+            session = g.Session({"levels": [fixture("Spear lane").definition]})
+            art = prepare_art(session, layout.scale)
+            g.step(session.state)
+            g.step(session.state, g.NORTH)
+            advance(session.state, 70)
+            shaft = list(session.state.spear_at)
+            canvas = PixelCanvas(layout.width, layout.height)
+            with patch.object(art, "draw", wraps=art.draw) as draw:
+                g.draw_board(canvas, session.state, layout, art)
+            indices = [call.args[1] for call in draw.call_args_list]
+            self.assertEqual(indices.count(g.ART_SHAFT + 1), 1)
+            self.assertEqual(indices.count(g.ART_SPEAR_TIP + g.EAST), 1)
+            self.assertEqual(session.state.spear_at, shaft)
+            advance(session.state, 40)
+            with patch.object(art, "draw", wraps=art.draw) as draw:
+                g.draw_board(canvas, session.state, layout, art)
+            indices = [call.args[1] for call in draw.call_args_list]
+            self.assertEqual(indices.count(g.ART_SHAFT + 1), 2)
+            self.assertEqual(indices.count(g.ART_SPEAR_TIP + g.EAST), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

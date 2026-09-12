@@ -55,8 +55,10 @@ result; rerun `--check` after changing Pillow or conversion tooling.
 False walls reuse the exact wall sprite. Teleporters draw ordinary floor during
 normal play; the ring is reserved for inspection/experiments. Visual variants
 do not change rules. All nine water tiles occupy full impassable cells, including
-the parts drawn as banks. Future hazard frames are supplied now; hazard gameplay
-remains gated until Phase 4.
+the parts drawn as banks. Hazard gameplay now uses directional spiders, spear
+tips/shafts, and three short explosion frames. Rooms with spiders prepare blast
+art and any generated diamond art before play; emitters prepare their heading's
+tip and shaft. All asset decoding remains outside the running loop.
 
 `PuzzleArt` in the editable game contains the runtime atlas coordinates and
 batch-prepares only the active room's required tiles through `SpriteSheet`.

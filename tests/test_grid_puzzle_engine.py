@@ -277,11 +277,10 @@ class GridPuzzleSessionTests(unittest.TestCase):
         session.restart()
         self.assertEqual(session.banked_score, 600)
 
-    def test_future_mechanics_fail_clearly_at_play_time(self):
-        for token in ("Xn", "S.", "RE"):
+    def test_all_hazard_families_are_playable(self):
+        for token in ("Xn", "XN", "Xe", "XE", "Xs", "XS", "Xw", "XW", "S.", "RN", "RE", "RS", "RW"):
             definition = g.validate_level(room({(1, 0): token}))
-            with self.assertRaisesRegex(ValueError, "Phase 4"):
-                g.validate_playable_pack({"levels": (definition,)})
+            g.validate_playable_pack({"levels": (definition,)})
 
     def test_terrain_pads_and_messages_are_playable(self):
         definition = g.validate_level(room({(1, 0): "d0", (2, 0): "F0", (3, 0): "T0", (4, 0): "T0"},
