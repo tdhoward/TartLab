@@ -52,12 +52,12 @@ one player and one exit. Outer walls are optional; outside the room is blocked.<
   <tr><td><code>F0</code>–<code>F9</code></td><td>False wall matching the numbered wall</td></tr>
   <tr><td><code>S.</code></td><td>Stationary horizontal snake</td></tr>
   <tr><td><code>RN RE RS RW</code></td><td>Spear emitter heading north, east, south, west</td></tr>
-  <tr><td><code>Xn Xe Xs Xw</code></td><td>Spider heading north, east, south, west; follows left</td></tr>
-  <tr><td><code>XN XE XS XW</code></td><td>Same headings; follows right</td></tr>
+  <tr><td><code>Xn Xe Xs Xw</code></td><td>Spider heading north, east, south, west; prefers left when blocked</td></tr>
+  <tr><td><code>XN XE XS XW</code></td><td>Same headings; prefers right when blocked</td></tr>
   <tr><td><code>T0</code>–<code>T9</code></td><td>Paired pads; each used label occurs exactly twice in a room</td></tr>
 </table>
 <p>For example, <code>Xe</code> and <code>XE</code> both start facing east, but
-follow different walls. <code>XL</code>, <code>XR</code>, <code>T.</code>, lowercase
+prefer different turns when blocked. <code>XL</code>, <code>XR</code>, <code>T.</code>, lowercase
 <code>x</code>, and omitted headings are invalid. Pads are symmetric; neither
 twin is a designated source. Pad links and spider settings come entirely from
 the map. Each token defines its own terrain and occupancy, so layers cannot be
@@ -131,11 +131,26 @@ exits, actors, and spears provide cover; water and active exits do not. Removing
 a key or diamond, a spider moving away, or a blast clearing a boulder can expose
 a stationary player in the same tick. Direct snake or spider contact kills,
 including at either end of a teleport.</p>
-<p>Spiders choose left/forward/right/backward or its right-following mirror.
+<p>Left-following spiders keep obstacles on their left; right-following spiders
+keep them on their right. A left-following spider turns left when the cell to
+its left is clear and the diagonal cell behind-left is blocked: this rounds an
+obstacle's outside corner. Otherwise it tries forward, right, backward, then
+left. A right-following spider mirrors those directions. All movement blockers,
+including room boundaries, count as obstacles. Without a corner to follow,
+spiders travel straight until they find a wall. They check current surroundings
+every move, so removing an obstacle or teleporting into open space naturally
+makes them seek a wall again; they need no setup phase or remembered mode.
 Turning and moving take one action. Each uses its own deadline (150 ms by
 default); simultaneously due spiders move in source-map order and see earlier
 moves. They cannot overlap, swap, push objects, enter dirt, or use either kind
-of exit. They can enter the player's cell. Teleports preserve heading and
+of exit. They can enter the player's cell. Every successful spider move checks
+its departure cell, entered cell, and teleport arrival: the player dies when
+sharing that cell or any of its four orthogonal neighbors. Passing beside the
+player is lethal; diagonal proximity is safe. Adjacent source-pad contact still
+kills when the spider immediately teleports away. Adjacency alone does not kill
+between spider moves, and a trapped spider that cannot move uses its explosion
+rules. Spider death checks win over reaching an exit in the same tick.
+Teleports preserve heading and
 deadlines and use the same one-hop rule as the player. After movement, every
 spider with no legal move explodes, even if its timer was not due. The entire
 trapped set is determined before removing any member.</p>
@@ -191,12 +206,16 @@ pair-validation error. Add a message to the revealed wall.</p>
 <p>To experiment with hazards, add <code>S.</code> with a diamond between it and
 the player. Change <code>blocks_snake_ray</code> so diamonds no longer provide
 cover; <code>blocks_spear_ray</code> remains independently editable. Add
-<code>Xe</code> or <code>XE</code> to an open area and compare the first turn.
+<code>Xe</code> or <code>XE</code> to an open area: both move east until blocked.
+Place a wall ahead: <code>Xe</code> turns right to keep it on its left, while
+<code>XE</code> turns left to keep it on its right. Try an isolated block of walls
+to see each spider round its outside corners, then remove that block.
 Edit the order in <code>next_spider_heading</code> to change that behavior.
-The same pure preview supplies movement and trapped-spider checks.
+The same pure preview supplies movement, debug overlays and trapped-spider checks.
+<code>resolve_moving_spider_contact</code> checks the player's distance at each
+position occupied during a spider move.
 <code>advance_spears</code> and <code>resolve_explosions</code> expose the actual
-projectile and blast implementations. Full path/ray overlays and pause/step
-inspection are still Phase 5 work.</p>
+projectile and blast implementations. Use DBG and pause/step to inspect them.</p>
 
 <h2>Restart, rerun, and restore</h2>
 <ul>
@@ -222,6 +241,31 @@ interrupt a blocked interpreter. Fix or replace the saved copy, then save and
 rerun. Reopening Help restores the currently installed baseline.</p>
 
 <h2>Layout expectations</h2>
+<p><strong>Debug controls:</strong> Tap <strong>DBG</strong> in the center of
+the direction pad to toggle inspection. Normal play keeps pads hidden and false
+walls identical to walls. Inspection adds grid coordinates, false-wall outlines,
+labelled teleporter pairs, enemy arrows and L/R follow markers, twelve-cell
+recent spider trails, green next-move boxes, and red ray/first-blocker markers.
+These previews use the same queries as the rules; they predict one move only.</p>
+<p>Tap a board cell to select it. Pause to read its type, selected JSON path,
+collision queries, actor deadline, missed frames and dropped simulation time.
+Tap the selected cell again for more pages. While paused, tap a direction and
+then <strong>Step</strong> to advance exactly 10 ms using that direction; press
+Step repeatedly until the player's movement deadline arrives. A newly opened
+inspector uses idle steps until a direction is chosen. Hints must be acknowledged
+before stepping. Resume and restart require all controls to release first.</p>
+<p><code>Renderer.capture</code> accumulates cell changes after every simulation
+quantum. Sparse drawing rebuilds every contributing layer in those cells;
+<code>draw_full_game</code> remains the reference image. Dense changes and debug
+overlays use full-board composition. <code>PuzzleArt.prepare</code> prepares native
+sprites once per compatible room using the canvas transparency key. Source
+experiments that change occupancy must call <code>mark_changed</code>, which also
+invalidates the trapped-spider snapshot. Trails and prepared art are released
+when their owner closes.</p>
+<p>Device measurements and pending observations live in the repository's
+<code>tests/GRID_PUZZLE_HARDWARE.md</code>. Dense custom rooms and continuous debug
+redraws are still performance work in progress; no universal frame-rate guarantee
+is implied by the 50 ms presentation target.</p>
 <p>The game reserves the whole 256×192 room, a HUD, and 32-pixel touch targets.
 It tries both orientations and chooses the largest integer tile scale, favoring
 a side panel. Smaller incompatible screens produce a clear error. Button-only

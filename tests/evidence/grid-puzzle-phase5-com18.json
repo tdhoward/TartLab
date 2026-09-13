@@ -1,0 +1,1186 @@
+{
+  "binding": "80fbfd4b4e14a00478be87829bd0a3bbdd54ac1519ee259a00168af8c9248934",
+  "device": {
+    "app_override_sha256": "004d9cc19d35eed47eb696807dd478d21cf3baf202184aa6e9cab95d1fd2a167",
+    "board": {
+      "board_id": "elecrow_dle06235b",
+      "schema": 1
+    },
+    "capabilities": {
+      "backlight": true,
+      "button_navigation": false,
+      "buttons": false,
+      "direct_rgb565": true,
+      "display": true,
+      "exclusive_display_ownership": true,
+      "frame_sync": true,
+      "ide_button": false,
+      "lvgl_ui": true,
+      "network": true,
+      "touch": true
+    },
+    "firmware": "3.4.0; MicroPython 78ff170de9-dirty on 2026-09-05",
+    "implementation": "(name='micropython', version=(1, 27, 0, ''), _machine='Generic ESP32S3 module with Octal-SPIRAM with ESP32S3', _mpy=11014, _build='ESP32_GENERIC_S3-SPIRAM_OCT', _thread='GIL')",
+    "layout": {
+      "height": 320,
+      "placement": "side",
+      "rotation": 90,
+      "scale": 1,
+      "width": 480
+    },
+    "runtime_sha256": {
+      "app": "6d738d687cf9041aeeb9031e4eb089879456efbec0ba1778d454a10b6840e14a",
+      "damage": "4ef452e8ff20b185135a8d119f77a324687c1bfdfeb54ec7e507c29fe19758ac",
+      "platform": "d21ac6d1e802cd62be27a798319ab90e6395a7748ee2ba0fefaabe9d82fcb761",
+      "sprites": "7fe0a64200baeaf72bd1451f7bf9db116913efbdb02a4e607fb6b0b05e889d1b",
+      "timing": "1d93a564113f7115ebd76d259e5db36672faa33864b3cc9f663c00c7bd2c7e3e"
+    },
+    "startup": {
+      "before_compile_heap": 7802464,
+      "compile": {
+        "heap_free": 7771568,
+        "us": 843958
+      },
+      "pack": {
+        "heap_free": 7750768,
+        "us": 508458
+      }
+    }
+  },
+  "expected_results": 22,
+  "inputs": {
+    "app.py": "004d9cc19d35eed47eb696807dd478d21cf3baf202184aa6e9cab95d1fd2a167",
+    "art.ts16": "a95c7fbe293a80b94f304cf644ddb068f8b9bd00530d3376d5addbc6d892e34d",
+    "bundled.json": "2a372de820d121b4ba4a7ceeb5c2ade9c64447f30bd897ca69a74bc846adbb5d",
+    "engine.py": "b15953e4fd4ff22e8e8ad0525987eed2d3cb78e43b81f499882e263be419e62c",
+    "frame_ms": 50,
+    "levels.json": "1c774d9c23f764c019b3a6dfc32c47389c13ecef2117649b228c9a34da28993f",
+    "samples": 40,
+    "tool": "126fe2e3330ae10819d8a78a8a2adf6d4adcd3673156d2b01dd0341d014ad2c1"
+  },
+  "performance": "failed",
+  "results": {
+    "00-debug": {
+      "art_start": {
+        "heap_free": 7314432,
+        "us": 374424
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 65419
+      },
+      "debug": true,
+      "dirty_cells": {
+        "max": 2,
+        "p50": 0,
+        "p95": 2
+      },
+      "drawing_us": {
+        "max": 150273,
+        "p50": 66884,
+        "p95": 83119
+      },
+      "dropped_update_ms": 810,
+      "first_frame_us": 280804,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 198505,
+        "p50": 114306,
+        "p95": 160956
+      },
+      "frozen_frames": 0,
+      "heap_after_30_restarts": 7305488,
+      "heap_before_30_restarts": 7305488,
+      "missed_deadlines": 95,
+      "playing_frames": 40,
+      "restart_transition_us": {
+        "max": 152885,
+        "p50": 152885,
+        "p95": 152885
+      },
+      "room": "First Crossing",
+      "samples": 40,
+      "simulation_us": {
+        "max": 20516,
+        "p50": 10274,
+        "p95": 15245
+      },
+      "transfer_us": {
+        "max": 68127,
+        "p50": 36731,
+        "p95": 39734
+      }
+    },
+    "00-normal": {
+      "art_start": {
+        "heap_free": 7316160,
+        "us": 1161456
+      },
+      "canvas_start": {
+        "heap_free": 7341712,
+        "us": 57467
+      },
+      "debug": false,
+      "dirty_cells": {
+        "max": 2,
+        "p50": 0,
+        "p95": 2
+      },
+      "drawing_us": {
+        "max": 5364,
+        "p50": 1213,
+        "p95": 5220
+      },
+      "dropped_update_ms": 0,
+      "first_frame_us": 252409,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 13363,
+        "p50": 6366,
+        "p95": 12857
+      },
+      "frozen_frames": 0,
+      "heap_after_30_restarts": 7305552,
+      "heap_before_30_restarts": 7305568,
+      "missed_deadlines": 0,
+      "playing_frames": 40,
+      "restart_transition_us": {
+        "max": 82954,
+        "p50": 82954,
+        "p95": 82954
+      },
+      "room": "First Crossing",
+      "samples": 40,
+      "simulation_us": {
+        "max": 6989,
+        "p50": 4929,
+        "p95": 5680
+      },
+      "transfer_us": {
+        "max": 2098,
+        "p50": 7,
+        "p95": 2075
+      }
+    },
+    "01-debug": {
+      "art_start": {
+        "heap_free": 7304048,
+        "us": 446614
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 65510
+      },
+      "debug": true,
+      "dirty_cells": {
+        "max": 3,
+        "p50": 0,
+        "p95": 2
+      },
+      "drawing_us": {
+        "max": 183667,
+        "p50": 81969,
+        "p95": 114311
+      },
+      "dropped_update_ms": 1270,
+      "first_frame_us": 281323,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 228864,
+        "p50": 134758,
+        "p95": 176967
+      },
+      "frozen_frames": 17,
+      "heap_after_30_restarts": 7295104,
+      "heap_before_30_restarts": 7295104,
+      "missed_deadlines": 104,
+      "playing_frames": 23,
+      "restart_transition_us": {
+        "max": 155805,
+        "p50": 155805,
+        "p95": 155805
+      },
+      "room": "Veiled Walk",
+      "samples": 40,
+      "simulation_us": {
+        "max": 20344,
+        "p50": 10042,
+        "p95": 11809
+      },
+      "transfer_us": {
+        "max": 68648,
+        "p50": 36748,
+        "p95": 39944
+      }
+    },
+    "01-normal": {
+      "art_start": {
+        "heap_free": 7304048,
+        "us": 445964
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 65608
+      },
+      "debug": false,
+      "dirty_cells": {
+        "max": 3,
+        "p50": 0,
+        "p95": 2
+      },
+      "drawing_us": {
+        "max": 85844,
+        "p50": 1209,
+        "p95": 5197
+      },
+      "dropped_update_ms": 50,
+      "first_frame_us": 251720,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 158801,
+        "p50": 6144,
+        "p95": 12830
+      },
+      "frozen_frames": 15,
+      "heap_after_30_restarts": 7295168,
+      "heap_before_30_restarts": 7295184,
+      "missed_deadlines": 3,
+      "playing_frames": 25,
+      "restart_transition_us": {
+        "max": 126013,
+        "p50": 126013,
+        "p95": 126013
+      },
+      "room": "Veiled Walk",
+      "samples": 40,
+      "simulation_us": {
+        "max": 5446,
+        "p50": 4714,
+        "p95": 5329
+      },
+      "transfer_us": {
+        "max": 68312,
+        "p50": 7,
+        "p95": 2038
+      }
+    },
+    "02-debug": {
+      "art_start": {
+        "heap_free": 7311376,
+        "us": 386888
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 63530
+      },
+      "debug": true,
+      "dirty_cells": {
+        "max": 4,
+        "p50": 0,
+        "p95": 2
+      },
+      "drawing_us": {
+        "max": 92547,
+        "p50": 69223,
+        "p95": 85817
+      },
+      "dropped_update_ms": 550,
+      "first_frame_us": 280989,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 168021,
+        "p50": 108281,
+        "p95": 137304
+      },
+      "frozen_frames": 36,
+      "heap_after_30_restarts": 7302368,
+      "heap_before_30_restarts": 7302384,
+      "missed_deadlines": 88,
+      "playing_frames": 4,
+      "restart_transition_us": {
+        "max": 249507,
+        "p50": 249507,
+        "p95": 249507
+      },
+      "room": "Moving cover",
+      "samples": 40,
+      "simulation_us": {
+        "max": 19663,
+        "p50": 1939,
+        "p95": 13715
+      },
+      "transfer_us": {
+        "max": 67965,
+        "p50": 36778,
+        "p95": 42513
+      }
+    },
+    "02-normal": {
+      "art_start": {
+        "heap_free": 7311376,
+        "us": 386676
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 65728
+      },
+      "debug": false,
+      "dirty_cells": {
+        "max": 4,
+        "p50": 0,
+        "p95": 2
+      },
+      "drawing_us": {
+        "max": 22931,
+        "p50": 1218,
+        "p95": 5267
+      },
+      "dropped_update_ms": 0,
+      "first_frame_us": 251822,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 68548,
+        "p50": 2284,
+        "p95": 15279
+      },
+      "frozen_frames": 34,
+      "heap_after_30_restarts": 7302496,
+      "heap_before_30_restarts": 7302480,
+      "missed_deadlines": 2,
+      "playing_frames": 6,
+      "restart_transition_us": {
+        "max": 128754,
+        "p50": 128754,
+        "p95": 128754
+      },
+      "room": "Moving cover",
+      "samples": 40,
+      "simulation_us": {
+        "max": 8290,
+        "p50": 853,
+        "p95": 7631
+      },
+      "transfer_us": {
+        "max": 37019,
+        "p50": 7,
+        "p95": 2126
+      }
+    },
+    "03-debug": {
+      "art_start": {
+        "heap_free": 7309776,
+        "us": 398098
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 65265
+      },
+      "debug": true,
+      "dirty_cells": {
+        "max": 10,
+        "p50": 0,
+        "p95": 8
+      },
+      "drawing_us": {
+        "max": 150572,
+        "p50": 67505,
+        "p95": 83739
+      },
+      "dropped_update_ms": 890,
+      "first_frame_us": 282872,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 188039,
+        "p50": 115093,
+        "p95": 160616
+      },
+      "frozen_frames": 0,
+      "heap_after_30_restarts": 7300752,
+      "heap_before_30_restarts": 7300752,
+      "missed_deadlines": 96,
+      "playing_frames": 40,
+      "restart_transition_us": {
+        "max": 155859,
+        "p50": 155859,
+        "p95": 155859
+      },
+      "room": "Trapped neighbors",
+      "samples": 40,
+      "simulation_us": {
+        "max": 26382,
+        "p50": 10717,
+        "p95": 21409
+      },
+      "transfer_us": {
+        "max": 68283,
+        "p50": 36779,
+        "p95": 42547
+      }
+    },
+    "03-normal": {
+      "art_start": {
+        "heap_free": 7309776,
+        "us": 398088
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 63471
+      },
+      "debug": false,
+      "dirty_cells": {
+        "max": 10,
+        "p50": 0,
+        "p95": 8
+      },
+      "drawing_us": {
+        "max": 10182,
+        "p50": 1265,
+        "p95": 8881
+      },
+      "dropped_update_ms": 0,
+      "first_frame_us": 253422,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 30815,
+        "p50": 6670,
+        "p95": 27028
+      },
+      "frozen_frames": 0,
+      "heap_after_30_restarts": 7300912,
+      "heap_before_30_restarts": 7300912,
+      "missed_deadlines": 0,
+      "playing_frames": 40,
+      "restart_transition_us": {
+        "max": 80937,
+        "p50": 80937,
+        "p95": 80937
+      },
+      "room": "Trapped neighbors",
+      "samples": 40,
+      "simulation_us": {
+        "max": 12291,
+        "p50": 5068,
+        "p95": 9062
+      },
+      "transfer_us": {
+        "max": 8457,
+        "p50": 7,
+        "p95": 6486
+      }
+    },
+    "04-debug": {
+      "art_start": {
+        "heap_free": 7317264,
+        "us": 295998
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 65225
+      },
+      "debug": true,
+      "dirty_cells": {
+        "max": 4,
+        "p50": 0,
+        "p95": 3
+      },
+      "drawing_us": {
+        "max": 164845,
+        "p50": 68012,
+        "p95": 82216
+      },
+      "dropped_update_ms": 530,
+      "first_frame_us": 281455,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 246320,
+        "p50": 107205,
+        "p95": 124701
+      },
+      "frozen_frames": 37,
+      "heap_after_30_restarts": 7308304,
+      "heap_before_30_restarts": 7308224,
+      "missed_deadlines": 88,
+      "playing_frames": 3,
+      "restart_transition_us": {
+        "max": 153621,
+        "p50": 153621,
+        "p95": 153621
+      },
+      "room": "Spear lane",
+      "samples": 40,
+      "simulation_us": {
+        "max": 16345,
+        "p50": 1833,
+        "p95": 7666
+      },
+      "transfer_us": {
+        "max": 70768,
+        "p50": 36839,
+        "p95": 39773
+      }
+    },
+    "04-normal": {
+      "art_start": {
+        "heap_free": 7317264,
+        "us": 295683
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 63481
+      },
+      "debug": false,
+      "dirty_cells": {
+        "max": 4,
+        "p50": 0,
+        "p95": 2
+      },
+      "drawing_us": {
+        "max": 22152,
+        "p50": 1217,
+        "p95": 6188
+      },
+      "dropped_update_ms": 0,
+      "first_frame_us": 251696,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 61929,
+        "p50": 2265,
+        "p95": 15230
+      },
+      "frozen_frames": 35,
+      "heap_after_30_restarts": 7308384,
+      "heap_before_30_restarts": 7303472,
+      "missed_deadlines": 2,
+      "playing_frames": 5,
+      "restart_transition_us": {
+        "max": 139840,
+        "p50": 139840,
+        "p95": 139840
+      },
+      "room": "Spear lane",
+      "samples": 40,
+      "simulation_us": {
+        "max": 6189,
+        "p50": 851,
+        "p95": 5232
+      },
+      "transfer_us": {
+        "max": 34499,
+        "p50": 7,
+        "p95": 2552
+      }
+    },
+    "05-debug": {
+      "art_start": {
+        "heap_free": 7309312,
+        "us": 398550
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 63291
+      },
+      "debug": true,
+      "dirty_cells": {
+        "max": 10,
+        "p50": 0,
+        "p95": 9
+      },
+      "drawing_us": {
+        "max": 152308,
+        "p50": 69281,
+        "p95": 87012
+      },
+      "dropped_update_ms": 670,
+      "first_frame_us": 281295,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 190202,
+        "p50": 108942,
+        "p95": 159123
+      },
+      "frozen_frames": 33,
+      "heap_after_30_restarts": 7300304,
+      "heap_before_30_restarts": 7300320,
+      "missed_deadlines": 92,
+      "playing_frames": 7,
+      "restart_transition_us": {
+        "max": 155743,
+        "p50": 155743,
+        "p95": 155743
+      },
+      "room": "Blast reveals trap",
+      "samples": 40,
+      "simulation_us": {
+        "max": 27855,
+        "p50": 1925,
+        "p95": 16991
+      },
+      "transfer_us": {
+        "max": 68309,
+        "p50": 36821,
+        "p95": 39957
+      }
+    },
+    "05-normal": {
+      "art_start": {
+        "heap_free": 7309296,
+        "us": 398699
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 63534
+      },
+      "debug": false,
+      "dirty_cells": {
+        "max": 8,
+        "p50": 0,
+        "p95": 8
+      },
+      "drawing_us": {
+        "max": 21360,
+        "p50": 1231,
+        "p95": 8872
+      },
+      "dropped_update_ms": 0,
+      "first_frame_us": 252102,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 61312,
+        "p50": 2323,
+        "p95": 29085
+      },
+      "frozen_frames": 27,
+      "heap_after_30_restarts": 7300416,
+      "heap_before_30_restarts": 7300432,
+      "missed_deadlines": 2,
+      "playing_frames": 13,
+      "restart_transition_us": {
+        "max": 128243,
+        "p50": 128243,
+        "p95": 128243
+      },
+      "room": "Blast reveals trap",
+      "samples": 40,
+      "simulation_us": {
+        "max": 11202,
+        "p50": 890,
+        "p95": 9021
+      },
+      "transfer_us": {
+        "max": 34045,
+        "p50": 7,
+        "p95": 9493
+      }
+    },
+    "06-debug": {
+      "art_start": {
+        "heap_free": 6775408,
+        "us": 383007
+      },
+      "canvas_start": {
+        "heap_free": 6797808,
+        "us": 22775
+      },
+      "debug": true,
+      "dirty_cells": {
+        "max": 7,
+        "p50": 0,
+        "p95": 6
+      },
+      "drawing_us": {
+        "max": 156963,
+        "p50": 67354,
+        "p95": 84466
+      },
+      "dropped_update_ms": 660,
+      "first_frame_us": 281627,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 205428,
+        "p50": 113407,
+        "p95": 163399
+      },
+      "frozen_frames": 19,
+      "heap_after_30_restarts": 6766400,
+      "heap_before_30_restarts": 6766416,
+      "missed_deadlines": 92,
+      "playing_frames": 21,
+      "restart_transition_us": {
+        "max": 154587,
+        "p50": 154587,
+        "p95": 154587
+      },
+      "room": "Exit blast",
+      "samples": 40,
+      "simulation_us": {
+        "max": 20238,
+        "p50": 10141,
+        "p95": 16246
+      },
+      "transfer_us": {
+        "max": 68319,
+        "p50": 36813,
+        "p95": 39985
+      }
+    },
+    "06-normal": {
+      "art_start": {
+        "heap_free": 6775392,
+        "us": 383665
+      },
+      "canvas_start": {
+        "heap_free": 6797824,
+        "us": 104374
+      },
+      "debug": false,
+      "dirty_cells": {
+        "max": 7,
+        "p50": 0,
+        "p95": 6
+      },
+      "drawing_us": {
+        "max": 24058,
+        "p50": 1218,
+        "p95": 7975
+      },
+      "dropped_update_ms": 0,
+      "first_frame_us": 251986,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 67286,
+        "p50": 6102,
+        "p95": 24432
+      },
+      "frozen_frames": 19,
+      "heap_after_30_restarts": 6766336,
+      "heap_before_30_restarts": 6766528,
+      "missed_deadlines": 1,
+      "playing_frames": 21,
+      "restart_transition_us": {
+        "max": 134491,
+        "p50": 134491,
+        "p95": 134491
+      },
+      "room": "Exit blast",
+      "samples": 40,
+      "simulation_us": {
+        "max": 11239,
+        "p50": 4755,
+        "p95": 8279
+      },
+      "transfer_us": {
+        "max": 37653,
+        "p50": 7,
+        "p95": 5988
+      }
+    },
+    "07-debug": {
+      "art_start": {
+        "heap_free": 7303600,
+        "us": 397050
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 64777
+      },
+      "debug": true,
+      "dirty_cells": {
+        "max": 157,
+        "p50": 101,
+        "p95": 150
+      },
+      "drawing_us": {
+        "max": 269115,
+        "p50": 174546,
+        "p95": 263588
+      },
+      "dropped_update_ms": 9430,
+      "first_frame_us": 397114,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 550767,
+        "p50": 337769,
+        "p95": 463089
+      },
+      "frozen_frames": 0,
+      "heap_after_30_restarts": 7291312,
+      "heap_before_30_restarts": 7291280,
+      "missed_deadlines": 271,
+      "playing_frames": 40,
+      "restart_transition_us": {
+        "max": 268990,
+        "p50": 268990,
+        "p95": 268990
+      },
+      "room": "Stress moving spiders",
+      "samples": 40,
+      "simulation_us": {
+        "max": 260351,
+        "p50": 95958,
+        "p95": 195097
+      },
+      "transfer_us": {
+        "max": 68184,
+        "p50": 38020,
+        "p95": 42678
+      }
+    },
+    "07-normal": {
+      "art_start": {
+        "heap_free": 7303568,
+        "us": 397023
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 69362
+      },
+      "debug": false,
+      "dirty_cells": {
+        "max": 157,
+        "p50": 101,
+        "p95": 150
+      },
+      "drawing_us": {
+        "max": 66094,
+        "p50": 51522,
+        "p95": 54630
+      },
+      "dropped_update_ms": 1660,
+      "first_frame_us": 272968,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 233960,
+        "p50": 142011,
+        "p95": 210703
+      },
+      "frozen_frames": 0,
+      "heap_after_30_restarts": 7294720,
+      "heap_before_30_restarts": 7294736,
+      "missed_deadlines": 92,
+      "playing_frames": 40,
+      "restart_transition_us": {
+        "max": 145210,
+        "p50": 145210,
+        "p95": 145210
+      },
+      "room": "Stress moving spiders",
+      "samples": 40,
+      "simulation_us": {
+        "max": 144748,
+        "p50": 57165,
+        "p95": 140386
+      },
+      "transfer_us": {
+        "max": 48138,
+        "p50": 36596,
+        "p95": 39681
+      }
+    },
+    "08-debug": {
+      "art_start": {
+        "heap_free": 7293344,
+        "us": 379995
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 65398
+      },
+      "debug": true,
+      "dirty_cells": {
+        "max": 192,
+        "p50": 0,
+        "p95": 191
+      },
+      "drawing_us": {
+        "max": 596752,
+        "p50": 128597,
+        "p95": 395654
+      },
+      "dropped_update_ms": 5460,
+      "first_frame_us": 569252,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 652248,
+        "p50": 181998,
+        "p95": 499754
+      },
+      "frozen_frames": 37,
+      "heap_after_30_restarts": 7276512,
+      "heap_before_30_restarts": 7276496,
+      "missed_deadlines": 190,
+      "playing_frames": 3,
+      "restart_transition_us": {
+        "max": 441896,
+        "p50": 441896,
+        "p95": 441896
+      },
+      "room": "Stress dense explosions",
+      "samples": 40,
+      "simulation_us": {
+        "max": 375026,
+        "p50": 16059,
+        "p95": 54593
+      },
+      "transfer_us": {
+        "max": 68266,
+        "p50": 37087,
+        "p95": 41264
+      }
+    },
+    "08-normal": {
+      "art_start": {
+        "heap_free": 7293344,
+        "us": 379964
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 63710
+      },
+      "debug": false,
+      "dirty_cells": {
+        "max": 192,
+        "p50": 0,
+        "p95": 191
+      },
+      "drawing_us": {
+        "max": 123187,
+        "p50": 1212,
+        "p95": 91936
+      },
+      "dropped_update_ms": 720,
+      "first_frame_us": 341036,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 469181,
+        "p50": 2247,
+        "p95": 231101
+      },
+      "frozen_frames": 37,
+      "heap_after_30_restarts": 7284480,
+      "heap_before_30_restarts": 7284480,
+      "missed_deadlines": 20,
+      "playing_frames": 3,
+      "restart_transition_us": {
+        "max": 178745,
+        "p50": 178745,
+        "p95": 178745
+      },
+      "room": "Stress dense explosions",
+      "samples": 40,
+      "simulation_us": {
+        "max": 277286,
+        "p50": 829,
+        "p95": 52563
+      },
+      "transfer_us": {
+        "max": 68222,
+        "p50": 7,
+        "p95": 36677
+      }
+    },
+    "09-debug": {
+      "art_start": {
+        "heap_free": 7312016,
+        "us": 381944
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 63655
+      },
+      "debug": true,
+      "dirty_cells": {
+        "max": 21,
+        "p50": 0,
+        "p95": 16
+      },
+      "drawing_us": {
+        "max": 159917,
+        "p50": 72355,
+        "p95": 90502
+      },
+      "dropped_update_ms": 1140,
+      "first_frame_us": 294612,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 208243,
+        "p50": 122328,
+        "p95": 167108
+      },
+      "frozen_frames": 0,
+      "heap_after_30_restarts": 7303056,
+      "heap_before_30_restarts": 7303072,
+      "missed_deadlines": 102,
+      "playing_frames": 40,
+      "restart_transition_us": {
+        "max": 182339,
+        "p50": 182339,
+        "p95": 182339
+      },
+      "room": "Stress long spears (triggered)",
+      "samples": 40,
+      "simulation_us": {
+        "max": 20892,
+        "p50": 10851,
+        "p95": 16244
+      },
+      "transfer_us": {
+        "max": 68279,
+        "p50": 36938,
+        "p95": 41240
+      }
+    },
+    "09-normal": {
+      "art_start": {
+        "heap_free": 7312016,
+        "us": 381707
+      },
+      "canvas_start": {
+        "heap_free": 7334592,
+        "us": 63365
+      },
+      "debug": false,
+      "dirty_cells": {
+        "max": 17,
+        "p50": 0,
+        "p95": 13
+      },
+      "drawing_us": {
+        "max": 15030,
+        "p50": 1289,
+        "p95": 10705
+      },
+      "dropped_update_ms": 0,
+      "first_frame_us": 253332,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 37012,
+        "p50": 7259,
+        "p95": 26671
+      },
+      "frozen_frames": 0,
+      "heap_after_30_restarts": 7303152,
+      "heap_before_30_restarts": 7303152,
+      "missed_deadlines": 0,
+      "playing_frames": 40,
+      "restart_transition_us": {
+        "max": 80256,
+        "p50": 80256,
+        "p95": 80256
+      },
+      "room": "Stress long spears (triggered)",
+      "samples": 40,
+      "simulation_us": {
+        "max": 9055,
+        "p50": 5712,
+        "p95": 7979
+      },
+      "transfer_us": {
+        "max": 12144,
+        "p50": 7,
+        "p95": 9887
+      }
+    },
+    "10-debug": {
+      "art_start": {
+        "heap_free": 6771872,
+        "us": 383630
+      },
+      "canvas_start": {
+        "heap_free": 6797808,
+        "us": 22729
+      },
+      "debug": true,
+      "dirty_cells": {
+        "max": 2,
+        "p50": 0,
+        "p95": 2
+      },
+      "drawing_us": {
+        "max": 157407,
+        "p50": 67715,
+        "p95": 84187
+      },
+      "dropped_update_ms": 820,
+      "first_frame_us": 282315,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 205317,
+        "p50": 115215,
+        "p95": 163598
+      },
+      "frozen_frames": 0,
+      "heap_after_30_restarts": 6762928,
+      "heap_before_30_restarts": 6762928,
+      "missed_deadlines": 96,
+      "playing_frames": 40,
+      "restart_transition_us": {
+        "max": 154891,
+        "p50": 154891,
+        "p95": 154891
+      },
+      "room": "Water variants (static)",
+      "samples": 40,
+      "simulation_us": {
+        "max": 20590,
+        "p50": 10446,
+        "p95": 15276
+      },
+      "transfer_us": {
+        "max": 68235,
+        "p50": 36832,
+        "p95": 39922
+      }
+    },
+    "10-normal": {
+      "art_start": {
+        "heap_free": 6771872,
+        "us": 385676
+      },
+      "canvas_start": {
+        "heap_free": 6797824,
+        "us": 102670
+      },
+      "debug": false,
+      "dirty_cells": {
+        "max": 2,
+        "p50": 0,
+        "p95": 2
+      },
+      "drawing_us": {
+        "max": 6067,
+        "p50": 1240,
+        "p95": 5314
+      },
+      "dropped_update_ms": 0,
+      "first_frame_us": 253402,
+      "frame_ms": 50,
+      "frame_work_us": {
+        "max": 15020,
+        "p50": 6482,
+        "p95": 13175
+      },
+      "frozen_frames": 0,
+      "heap_after_30_restarts": 6762944,
+      "heap_before_30_restarts": 6763008,
+      "missed_deadlines": 0,
+      "playing_frames": 40,
+      "restart_transition_us": {
+        "max": 81225,
+        "p50": 81225,
+        "p95": 81225
+      },
+      "room": "Water variants (static)",
+      "samples": 40,
+      "simulation_us": {
+        "max": 6602,
+        "p50": 4941,
+        "p95": 5640
+      },
+      "transfer_us": {
+        "max": 3414,
+        "p50": 7,
+        "p95": 2164
+      }
+    }
+  }
+}

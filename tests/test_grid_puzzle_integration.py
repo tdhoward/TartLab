@@ -40,7 +40,7 @@ def device_modules(g):
     platform.keep_touch_awake = lambda: None
     platform.enter_ui_mode = ui
     package = types.ModuleType("tartlabutils")
-    package.__path__ = []
+    package.__path__ = [str(ROOT / "src/lib/tartlabutils")]
     app = types.ModuleType("tartlabutils.app")
     app.DirectCanvas = lambda *args, **kwargs: canvas
     app.game_surface = acquire
@@ -66,8 +66,8 @@ class GridPuzzleIntegrationTests(unittest.TestCase):
         touches = iter((None, None, (x + 16, y + 16)))
         platform.read_game_touch = lambda: next(touches)
         original = g.PuzzleArt.prepare
-        def prepare(art, definition):
-            original(art, definition)
+        def prepare(art, definition, canvas=None):
+            original(art, definition, canvas)
             platform.fake_time.absolute_ms += 1000
         output = io.StringIO()
         with mock.patch.dict(sys.modules, modules), mock.patch.object(g.PuzzleArt, "prepare", prepare), redirect_stdout(output):

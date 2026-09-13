@@ -19,6 +19,7 @@ COLS, ROWS, TILE_SIZE = 16, 12, 16
 CELL_COUNT = COLS * ROWS
 UPDATE_MS = 10
 FRAME_MS = 50  # Proposed, not yet a measured device performance claim.
+CANVAS_TRANSFER_ROWS = 64  # Amortize surface transactions; measured by the benchmark.
 PLAYER_MS, SPIDER_MS, PROJECTILE_MS = 110, 150, 40
 DIAMOND_SCORE, BONUS_START = 100, 500
 BLAST_MS = 180  # Visual only: damage resolves once, before these frames appear.
@@ -32,6 +33,7 @@ BUTTON_ACTIONS = {
 # 2. Symbols and interaction vocabulary -------------------------------------
 FLOOR, WALL, DIRT, WATER, FALSE_WALL, EXIT = range(6)
 EMPTY, KEY, DIAMOND, BOULDER = range(4)
+KEY_BYTE = bytes((KEY,))
 PLAYER, SNAKE, SPIDER, EMITTER = range(4)
 NORTH, EAST, SOUTH, WEST = range(4)
 FOLLOW_LEFT, FOLLOW_RIGHT = 0, 1
@@ -300,6 +302,10 @@ class LevelState:
         self.variants = bytearray(definition["variants"])
         self.objects = bytearray(definition["objects"])
         self.actors = [Actor(i, record) for i, record in enumerate(definition["actors"])]
+        self.snakes = [actor for actor in self.actors if actor.kind == SNAKE]
+        self.spiders = [actor for actor in self.actors if actor.kind == SPIDER]
+        self.emitters = [actor for actor in self.actors if actor.kind == EMITTER]
+        self.occupancy_version, self.trapped_version = 0, -1
         self.actor_at = [-1] * CELL_COUNT
         self.spear_at = [-1] * CELL_COUNT
         for actor in self.actors:
@@ -310,7 +316,7 @@ class LevelState:
             if actor.kind == SNAKE:
                 actor.heading = EAST if self.player.cell % COLS >= actor.cell % COLS else WEST
         # MicroPython bytearray.count expects bytes, not CPython's integer form.
-        self.remaining_keys = sum(1 for obj in self.objects if obj == KEY)
+        self.remaining_keys = self.objects.count(KEY_BYTE)  # Bytes works on both interpreters.
         self.exit_active = self.remaining_keys == 0
         self.status, self.elapsed_ms, self.score = PLAYING, 0, 0
         self.bonus = definition["bonusStart"]
@@ -324,6 +330,7 @@ class LevelState:
         self.paused = self.active_message != -1
         # Reused room-bounded buffers; explosions never grow an event list.
         self.changed_cells = bytearray(CELL_COUNT)
+        self.clear_cells = bytes(CELL_COUNT)
         self.events = bytearray(CELL_COUNT)  # Per-cell event bits; reused each step.
         self.step_events = 0
         self.pending_explosions = bytearray(CELL_COUNT)
@@ -340,6 +347,7 @@ def create_state(definition):
 def mark_changed(state, cell, event):
     state.changed_cells[cell] = 1
     state.events[cell] |= event
+    state.occupancy_version += 1
 
 
 def accepts_boulder(state, cell):
@@ -505,8 +513,8 @@ def resolve_contact(state):
 def resolve_immediate_hazards(state):
     resolve_contact(state)
     cell = state.player.cell
-    for actor in state.actors:
-        if actor.kind != SNAKE or not actor.alive:
+    for actor in state.snakes:
+        if not actor.alive:
             continue
         heading = EAST if cell % COLS >= actor.cell % COLS else WEST
         if actor.heading != heading:
@@ -538,37 +546,70 @@ def spider_destination(state, actor, heading):
 
 
 def next_spider_heading(state, actor):
-    """Pure one-move preview; the mover and trapped-set test share this query."""
+    """Round supported corners; otherwise seek a wall by moving straight.
+
+    A blocked back-side diagonal supports a turn toward the following side.
+    Without it, turn away from a wall ahead to put that wall on the correct
+    side. Recheck current occupancy every time, including after teleporting
+    or losing an obstacle; no remembered wall or movement mode is needed.
+    The mover, debug preview and trapped-set test share this pure query.
+    """
     side = -1 if actor.follow == FOLLOW_LEFT else 1
-    for turn in (side, 0, -side, 2):
+    side_heading = (actor.heading + side) % 4
+    behind = neighbor(actor.cell, (actor.heading + 2) % 4)
+    back_side = neighbor(behind, side_heading)
+    if not can_spider_enter(state, back_side, actor):
+        if spider_destination(state, actor, side_heading) != -1:
+            return side_heading
+    for turn in (0, -side, 2, side):
         heading = (actor.heading + turn) % 4
         if spider_destination(state, actor, heading) != -1:
             return heading
     return None
 
 
+def resolve_moving_spider_contact(state, actor):
+    """A moving spider reaches its own cell and four orthogonal neighbors.
+
+    Check each occupied position in the move, including departure, entered pad
+    and teleport arrival. Diagonal cells and opposite row edges are not adjacent.
+    A stationary spider retains the ordinary same-cell contact rule.
+    """
+    player = state.player.cell
+    distance = abs(actor.cell % COLS - player % COLS) + abs(actor.cell // COLS - player // COLS)
+    if actor.alive and distance <= 1:
+        kill_player(state)
+
+
 def move_spiders(state):
-    for actor in state.actors:  # Stable source-map IDs; later moves see earlier ones.
-        if actor.kind != SPIDER or not actor.alive or state.elapsed_ms < actor.next_due_ms:
+    for actor in state.spiders:  # Stable source-map IDs; later moves see earlier ones.
+        if not actor.alive or state.elapsed_ms < actor.next_due_ms:
             continue
         actor.next_due_ms += actor.interval_ms
         heading = next_spider_heading(state, actor)
         if heading is not None:
+            resolve_moving_spider_contact(state, actor)
             actor.heading = heading
             place_actor(state, actor, neighbor(actor.cell, heading))
-            # Contact at the entered pad is lethal even if its twin is clear.
+            resolve_moving_spider_contact(state, actor)
+            # Proximity at the entered pad is lethal even if its twin is clear.
             teleport_actor(state, actor)
-            resolve_contact(state)
+            resolve_moving_spider_contact(state, actor)
 
 
 def remove_trapped_spiders(state):
+    # A trapped set cannot change without an occupancy change. Late spear or
+    # explosion mutations increment the version and are checked next quantum.
+    if state.trapped_version == state.occupancy_version:
+        return
+    state.trapped_version = state.occupancy_version
     # First query every spider against ONE occupancy snapshot. Only then remove
     # the trapped set, so an earlier removal cannot free a later spider.
-    for actor in state.actors:
-        if actor.kind == SPIDER and actor.alive and next_spider_heading(state, actor) is None:
+    for actor in state.spiders:
+        if actor.alive and next_spider_heading(state, actor) is None:
             state.pending_explosions[actor.cell] = 1
-    for actor in state.actors:
-        if actor.kind == SPIDER and actor.alive and state.pending_explosions[actor.cell]:
+    for actor in state.spiders:
+        if actor.alive and state.pending_explosions[actor.cell]:
             actor.alive = False
             if state.actor_at[actor.cell] == actor.id:
                 state.actor_at[actor.cell] = -1
@@ -611,8 +652,8 @@ def stop_spear(state, actor):
 
 
 def advance_spears(state):
-    for actor in state.actors:  # Stable trap IDs also settle crossing shafts.
-        if actor.kind != EMITTER or not actor.alive:
+    for actor in state.emitters:  # Stable trap IDs also settle crossing shafts.
+        if not actor.alive:
             continue
         if actor.trap_state == IDLE:
             if state.player.alive and spear_sees_player(state, actor):
@@ -648,8 +689,10 @@ def is_explosion_destructible(state, cell):
 
 def resolve_explosions(state):
     """One deduplicated cross-shaped batch: clear, damage, then eligible drops."""
-    for cell in range(CELL_COUNT):
-        state.blast_cells[cell] = state.blast_drops[cell] = 0
+    state.blast_cells[:] = state.clear_cells
+    state.blast_drops[:] = state.clear_cells
+    if not any(state.pending_explosions):
+        return  # No environment changed; no additional snake query is needed.
     for center in range(CELL_COUNT):
         if state.pending_explosions[center]:
             state.blast_cells[center] = state.blast_drops[center] = 1
@@ -687,6 +730,8 @@ def resolve_explosions(state):
 
 def expire_blast_art(state):
     # Three short visual frames; neither their pixels nor their lifetime collide.
+    if not any(state.blast_until):
+        return
     for cell in range(CELL_COUNT):
         until = state.blast_until[cell]
         if until:
@@ -701,15 +746,15 @@ def step(state, direction=None, dt_ms=UPDATE_MS):
     """One pure simulation quantum. None releases input; no clocks or I/O here.
 
     Event buffers describe only this quantum, including when it is frozen.
-    Renderers must accumulate them before the next call (currently full redraw).
+    Renderers must accumulate them before the next call.
     """
     if type(dt_ms) is not int or dt_ms != UPDATE_MS:
         raise ValueError("step requires one %s ms quantum" % UPDATE_MS)
     if direction is not None and (type(direction) is not int or direction not in range(4)):
         raise ValueError("direction must be one cardinal integer or None")
     state.step_events = 0
-    for cell in range(CELL_COUNT):
-        state.changed_cells[cell] = state.events[cell] = 0
+    state.changed_cells[:] = state.clear_cells
+    state.events[:] = state.clear_cells
     if state.paused or state.status != PLAYING:
         return
     state.elapsed_ms += dt_ms
@@ -747,7 +792,7 @@ def step(state, direction=None, dt_ms=UPDATE_MS):
     # 11. Complete the explosion batch even after death; flush new exposure.
     resolve_explosions(state)
     # 12. Reconcile keys from authoritative occupancy.
-    state.remaining_keys = sum(1 for obj in state.objects if obj == KEY)
+    state.remaining_keys = state.objects.count(KEY_BYTE)
     # 13. Activate the exit in the same step as the final collection.
     active = state.remaining_keys == 0
     if active != state.exit_active:
@@ -773,12 +818,15 @@ class Session:
         self.banked_score, self.room_award = 0, 0
         self.direction = None
         self.art = None
+        self.renderer = None
         self.message_page = 0
         self.state = create_state(pack["levels"][start_level])
 
     def advance(self, updates):
         for unused in range(updates):
             step(self.state, self.direction)
+            if self.renderer is not None:
+                self.renderer.capture(self.state)
             if self.state.step_events & FINISHED:
                 self.room_award = self.state.score + self.state.bonus
                 self.banked_score += self.room_award
@@ -846,8 +894,11 @@ class PuzzleArt:
     def __init__(self, path, scale):
         self.path, self.scale = path, scale
         self.sprites = {}
+        self.prepared = {}
+        self.canvas = None
+        self.key = 0
 
-    def prepare(self, definition):
+    def prepare(self, definition, canvas=None):
         needed = {ART_FLOOR, ART_EXIT_LOCKED, ART_EXIT_OPEN}
         for terrain, variant in zip(definition["terrain"], definition["variants"]):
             needed.add(terrain_art(terrain, variant, False))
@@ -868,7 +919,7 @@ class PuzzleArt:
                 needed.add(ART_EMITTER + heading)
                 needed.add(ART_SPEAR_TIP + heading)
                 needed.add(ART_SHAFT + heading % 2)
-        if needed == set(self.sprites):
+        if needed == set(self.sprites) and canvas is self.canvas:
             return
         self.close()
         from tartlabutils.sprites import SpriteSheet
@@ -881,16 +932,40 @@ class PuzzleArt:
                       TILE_SIZE, TILE_SIZE) for index in indices]
             prepared = sheet.sprites(crops, scale=self.scale)
             self.sprites = dict(zip(indices, prepared))
+            if canvas is not None and hasattr(canvas, "prepare_sprite"):
+                # One native blit per tile replaces hundreds of Python span
+                # calls. Keep transparent pixels; never bake floor under actors.
+                from framebuf import FrameBuffer, RGB565
+                colors = {sprite.spans[i] for sprite in prepared
+                          for i in range(3, len(sprite.spans), 4)}
+                self.key = 0
+                while self.key in colors:
+                    self.key += 1
+                for index, sprite in zip(indices, prepared):
+                    buffer = bytearray(sprite.width * sprite.height * 2)
+                    tile = FrameBuffer(buffer, sprite.width, sprite.height, RGB565)
+                    tile.fill(self.key)
+                    sprite.draw(tile, 0, 0, (0, 0, sprite.width, sprite.height))
+                    self.prepared[index] = canvas.prepare_sprite(tile, sprite.width, sprite.height)
+            self.canvas = canvas
             # SpriteSheet owns an in-memory decoder; its extraction closes the
             # row iterator. Keep only prepared spans, not the decoder or file.
         except (OSError, ValueError) as error:
             raise ValueError("Asset file %s: %s" % (self.path, error))
 
     def draw(self, canvas, index, x, y, clip):
+        if canvas is self.canvas and index in self.prepared:
+            left, top, width, height = clip
+            size = TILE_SIZE * self.scale
+            if left <= x and top <= y and x + size <= left + width and y + size <= top + height:
+                canvas.draw_sprite(self.prepared[index], x, y, self.key)
+                return
         self.sprites[index].draw(canvas, x, y, clip)
 
     def close(self):
         self.sprites.clear()
+        self.prepared.clear()
+        self.canvas = None
 
 
 class Layout:
@@ -923,9 +998,12 @@ class Layout:
                                  ("east", 2, 1), ("south", 1, 2)):
             self.controls.append((action, (pad_x + col * CONTROL_SIZE,
                                           pad_y + row * CONTROL_SIZE, CONTROL_SIZE, CONTROL_SIZE)))
+        self.controls.append(("debug", (pad_x + CONTROL_SIZE, pad_y + CONTROL_SIZE,
+                                        CONTROL_SIZE, CONTROL_SIZE)))
         self.controls.extend((("restart", (action_x, action_y, 56, 32)),
                               ("pause", (action_x + 56, action_y, 56, 32)),
-                              ("back", (action_x, action_y + 36, 112, 32))))
+                              ("back", (action_x, action_y + 36, 56, 32)),
+                              ("step", (action_x + 56, action_y + 36, 56, 32))))
 
     def logical_point(self, point, native_height):
         # The same rotation passed to DirectCanvas: logical x = H - 1 - y.
@@ -985,22 +1063,28 @@ def inspect_cell(state, cell):
     return "(%s,%s) %s" % (cell % COLS, cell // COLS, description)
 
 
-def draw_board(canvas, state, layout, art, debug=False):
+def draw_board(canvas, state, layout, art, debug=False, cells=None):
     """Full reference renderer: terrain, objects, actors, effects, inspection."""
     bx, by, unused_w, unused_h = layout.board
     size = layout.tile_size
     for cell in range(CELL_COUNT):
+        if cells is not None and not cells[cell]:
+            continue
         x, y = bx + (cell % COLS) * size, by + (cell // COLS) * size
         terrain = state.terrain[cell]
         if terrain == EXIT:
             art.draw(canvas, ART_FLOOR, x, y, layout.board)
         art.draw(canvas, terrain_art(terrain, state.variants[cell], state.exit_active), x, y, layout.board)
     for cell in range(CELL_COUNT):
+        if cells is not None and not cells[cell]:
+            continue
         obj = state.objects[cell]
         if obj != EMPTY:
             x, y = bx + (cell % COLS) * size, by + (cell // COLS) * size
             art.draw(canvas, ART_KEY + obj - 1, x, y, layout.board)
     for actor in state.actors:
+        if cells is not None and not cells[actor.cell]:
+            continue
         if not actor.alive and actor.kind != PLAYER:
             continue
         if actor.kind == SNAKE:
@@ -1011,6 +1095,8 @@ def draw_board(canvas, state, layout, art, debug=False):
         x, y = bx + (actor.cell % COLS) * size, by + (actor.cell // COLS) * size
         art.draw(canvas, index, x, y, layout.board)
     for cell in range(CELL_COUNT):
+        if cells is not None and not cells[cell]:
+            continue
         x, y = bx + (cell % COLS) * size, by + (cell // COLS) * size
         spear_id = state.spear_at[cell]
         if spear_id != -1:
@@ -1022,10 +1108,8 @@ def draw_board(canvas, state, layout, art, debug=False):
             frame = min(2, (BLAST_MS - (state.blast_until[cell] - state.elapsed_ms)) // 60)
             art.draw(canvas, ART_BLAST + frame, x, y, layout.board)
     if debug:
-        for cell in range(CELL_COUNT):
-            if state.terrain[cell] == FALSE_WALL or state.definition["labels"][cell] != -1:
-                x, y = bx + (cell % COLS) * size, by + (cell // COLS) * size
-                canvas.text(state.definition["tokens"][cell], x, y, 0xFFE0)
+        inspector = debug if isinstance(debug, Inspector) else Inspector(state)
+        inspector.draw(canvas, state, layout)
 
 
 def message_lines(text, columns):
@@ -1060,15 +1144,28 @@ def acknowledge_message(session, layout):
 
 
 def draw_game(canvas, session, layout, last_action=None, debug=False):
-    """Render live state with the prepared atlas, then present exactly once."""
-    state = session.state
+    """The loop's presentation entry point; tools can call draw_full_game too."""
+    if session.renderer is not None:
+        session.renderer.present(session, last_action)
+    else:
+        draw_full_game(canvas, session, layout, last_action, debug)
+
+
+def draw_full_game(canvas, session, layout, last_action=None, debug=False):
+    """Reference image; dirty rendering must produce these same pixels."""
     canvas.fill(0)
+    draw_board(canvas, session.state, layout, session.art, debug)
+    draw_ui(canvas, session, layout, last_action, debug)
+    canvas.show()
+
+
+def draw_ui(canvas, session, layout, last_action=None, debug=False):
+    state = session.state
     title = "%s/%s %s" % (session.room_index + 1, len(session.pack["levels"]), state.definition["name"])
     canvas.text(title[:layout.width // 8], 0, 0, 0xFFFF)
     status = "PAUSED" if state.paused else ("PLAY", "DEAD", "DONE")[state.status]
     hud = "K%s S%s B%s %s" % (state.remaining_keys, session.total_score(), state.bonus, status)
     canvas.text(hud[:layout.width // 8], 0, 12, 0xFFFF)
-    draw_board(canvas, state, layout, session.art, debug)
     rx, ry = layout.readout
     canvas.text("Exit open" if state.exit_active else "Exit locked", rx, ry, 0xFFFF)
     pause_label = "Play" if state.paused else "Pause"
@@ -1087,13 +1184,259 @@ def draw_game(canvas, session, layout, last_action=None, debug=False):
     if state.status == COMPLETED:
         pause_label = "Next" if session.room_index + 1 < len(session.pack["levels"]) else "Done"
     labels = {"north": "^", "east": ">", "south": "v", "west": "<",
-              "restart": "Reset", "pause": pause_label, "back": "Back"}
+              "restart": "Reset", "pause": pause_label, "back": "Back",
+              "debug": "DBG", "step": "Step" if debug and state.paused else "-"}
     for action, (x, y, width, height) in layout.controls:
         canvas.rect(x, y, width, height, 0xFFFF)
         if action == last_action:
             canvas.rect(x + 2, y + 2, width - 4, height - 4, 0xFFFF)
         canvas.text(labels[action], x + 4, y + 12, 0xFFFF)
-    canvas.show()  # Exactly one presentation coordinator.
+
+
+def ray_preview(state, actor):
+    """Read the hazard's actual blocker query, testing the player before cover."""
+    if actor.kind == EMITTER and actor.trap_state == STOPPED:
+        return (), -1
+    blocks = blocks_snake_ray if actor.kind == SNAKE else blocks_spear_ray
+    origin = actor.tip if actor.kind == EMITTER and actor.trap_state == EXTENDING else actor.cell
+    cell, cells = neighbor(origin, actor.heading), []
+    while cell != -1:
+        if cell == state.player.cell:
+            cells.append(cell)
+            return cells, cell
+        if blocks(state, cell):
+            return cells, cell
+        cells.append(cell)
+        cell = neighbor(cell, actor.heading)
+    return cells, -1
+
+
+class Inspector:
+    """Optional bounded trails. Tap a paused cell again to page its readout."""
+    TRAIL_LENGTH = 12
+
+    def __init__(self, state):
+        self.selected, self.page = state.player.cell, 0
+        self.direction = None
+        self.missed, self.dropped = 0, 0
+        self.trails = {actor.id: [actor.cell] for actor in state.actors if actor.kind == SPIDER}
+
+    def observe(self, state):
+        for actor in state.actors:
+            trail = self.trails.get(actor.id)
+            if trail is not None and actor.alive and trail[-1] != actor.cell:
+                if len(trail) == self.TRAIL_LENGTH:
+                    del trail[0]
+                trail.append(actor.cell)
+
+    def select(self, cell):
+        self.page = self.page + 1 if cell == self.selected else 0
+        self.selected = cell
+
+    def lines(self, state, columns):
+        cell = self.selected
+        details = [inspect_cell(state, cell), "Step direction: " +
+                   ("idle" if self.direction is None else "NESW"[self.direction]),
+                   "Level file: " + LEVEL_FILE,
+                   "Keys %s missed %s dropped %sms" %
+                   (state.remaining_keys, self.missed, self.dropped),
+                   "Player enter %s; boulder %s" %
+                   (can_player_enter(state, cell), accepts_boulder(state, cell)),
+                   "Snake block %s; spear block %s" %
+                   (blocks_snake_ray(state, cell), blocks_spear_ray(state, cell))]
+        for actor in state.actors:
+            if actor.cell == cell or state.spear_at[cell] == actor.id:
+                details.append("%s #%s %s due %s now %s" %
+                               (ACTOR_NAMES[actor.kind], actor.id, "NESW"[actor.heading],
+                                actor.next_due_ms, state.elapsed_ms))
+                if actor.kind == SPIDER:
+                    heading = next_spider_heading(state, actor) if actor.alive else None
+                    details.append("Follow %s next %s" %
+                                   ("L" if actor.follow == FOLLOW_LEFT else "R",
+                                    "trapped" if heading is None else "NESW"[heading]))
+        lines = []
+        for detail in details:
+            lines.extend(message_lines(detail, columns))
+        return lines
+
+    def draw(self, canvas, state, layout):
+        bx, by, bw, bh = layout.board
+        size = layout.tile_size
+        def center(cell):
+            return bx + cell % COLS * size + size // 2, by + cell // COLS * size + size // 2
+        for x in range(COLS):
+            canvas.line(bx + x * size, by, bx + x * size, by + bh - 1, 0x4208)
+            canvas.text(str(x), bx + x * size, by, 0xFFFF)
+        for y in range(ROWS):
+            canvas.line(bx, by + y * size, bx + bw - 1, by + y * size, 0x4208)
+            canvas.text(str(y), bx, by + y * size, 0xFFFF)
+        for cell in range(CELL_COUNT):
+            x, y = bx + cell % COLS * size, by + cell // COLS * size
+            if state.terrain[cell] == FALSE_WALL:
+                canvas.rect(x + 1, y + 1, size - 2, size - 2, 0xFFE0)
+            twin = state.definition["twins"][cell]
+            if twin != -1:
+                if cell < twin:  # One undirected line per pair.
+                    x1, y1 = center(cell)
+                    x2, y2 = center(twin)
+                    canvas.line(x1, y1, x2, y2, 0x07FF)
+                canvas.text("T%s" % state.definition["labels"][cell], x, y, 0x07FF)
+        for actor in state.actors:
+            if not actor.alive or actor.kind == PLAYER:
+                continue
+            x, y = center(actor.cell)
+            dx, dy = DIRECTIONS[actor.heading]
+            ex, ey = x + dx * (size // 2 - 2), y + dy * (size // 2 - 2)
+            canvas.line(x, y, ex, ey, 0xFFFF)
+            canvas.line(ex, ey, ex - dx * 3 + dy * 2, ey - dy * 3 - dx * 2, 0xFFFF)
+            canvas.line(ex, ey, ex - dx * 3 - dy * 2, ey - dy * 3 + dx * 2, 0xFFFF)
+            if actor.kind == SPIDER:
+                canvas.text("L" if actor.follow == FOLLOW_LEFT else "R", x - size // 2, y, 0xFFE0)
+                for visited in self.trails.get(actor.id, ()):
+                    vx, vy = center(visited)
+                    canvas.rect(vx - 1, vy - 1, 3, 3, 0x07FF, True)
+                heading = next_spider_heading(state, actor)
+                if heading is not None:
+                    destination = spider_destination(state, actor, heading)
+                    tx, ty = center(destination)
+                    canvas.rect(tx - 3, ty - 3, 7, 7, 0x07E0)
+            elif actor.kind in (SNAKE, EMITTER):
+                cells, blocker = ray_preview(state, actor)
+                for target in cells:
+                    tx, ty = center(target)
+                    canvas.rect(tx - 1, ty - 1, 3, 3, 0xF800, True)
+                if blocker != -1:
+                    tx, ty = center(blocker)
+                    canvas.rect(tx - 4, ty - 4, 9, 9, 0xF800)
+        x, y = center(self.selected)
+        canvas.rect(x - size // 2, y - size // 2, size, size, 0xFFFF)
+        if state.paused and state.active_message == -1:
+            lines = self.lines(state, (bw - 16) // 8)
+            count = 5
+            pages = (len(lines) + count - 1) // count
+            page = self.page % pages
+            top = by + bh - 84
+            canvas.rect(bx + 2, top, bw - 4, 82, 0, True)
+            canvas.text("CELL %s,%s %s/%s (tap again)" %
+                        (self.selected % COLS, self.selected // COLS, page + 1, pages),
+                        bx + 8, top + 4, 0xFFE0)
+            for row, line in enumerate(lines[page * count:(page + 1) * count]):
+                canvas.text(line, bx + 8, top + 18 + row * 12, 0xFFFF)
+
+
+def debug_step(session, direction=None):
+    """Advance exactly one normal quantum, retaining an explicit user pause."""
+    state = session.state
+    if not state.paused or state.status != PLAYING or state.active_message != -1:
+        return False
+    state.paused = False
+    session.direction = direction
+    try:
+        session.advance(1)
+    finally:
+        state.paused = True
+        session.direction = None
+    return True
+
+
+class Renderer:
+    """Accumulate every quantum; compose layers before one flush coordinator.
+
+    Sparse frames rebuild changed cells. Debug uses the full reference because
+    rays, links and trails cross clean cells. Dense damage and panel transitions
+    also use it. No board framebuffer or sprite cache is duplicated.
+    """
+    def __init__(self, canvas, layout, debug=False):
+        from tartlabutils.damage import DamageTracker
+        import time
+        self.canvas, self.layout = canvas, layout
+        self.damage = DamageTracker((0, 0, layout.width, layout.height))
+        rx, ry = layout.readout
+        self.ui_regions = [(0, 0, layout.width, HUD_HEIGHT),
+                           (rx, ry, min(112, layout.width - rx), 8)]
+        self.ui_regions.extend(area for action, area in layout.controls)
+        self.cells = bytearray(CELL_COUNT)
+        self.state, self.ui_key = None, None
+        self.debug, self.inspector = debug, None
+        self.full = True
+        self.ticks = getattr(time, "ticks_us", None)
+        if self.ticks is None:
+            self.ticks = lambda: int(time.monotonic() * 1000000)
+        self.diff = getattr(time, "ticks_diff", lambda new, old: new - old)
+        self.draw_us, self.transfer_us, self.dirty_count = 0, 0, 0
+
+    def bind(self, state):
+        if state is not self.state:
+            self.state, self.full = state, True
+            self.inspector = Inspector(state) if self.debug else None
+            for cell in range(CELL_COUNT):
+                self.cells[cell] = 0
+
+    def toggle_debug(self, state):
+        self.debug = not self.debug
+        self.inspector = Inspector(state) if self.debug else None
+        self.full = True
+
+    def capture(self, state):
+        self.bind(state)
+        cell = state.changed_cells.find(b"\x01")
+        while cell != -1:
+            self.cells[cell] = 1
+            cell = state.changed_cells.find(b"\x01", cell + 1)
+        if self.inspector is not None:
+            self.inspector.observe(state)
+
+    def present(self, session, last_action=None):
+        started = self.ticks()
+        state, layout, canvas = session.state, self.layout, self.canvas
+        self.bind(state)
+        self.damage.clear()
+        self.dirty_count = sum(self.cells)
+        ui_key = (state.remaining_keys, session.total_score(), state.bonus,
+                  state.status, state.paused, state.active_message,
+                  session.message_page, last_action, self.debug)
+        panel_changed = self.ui_key is not None and ui_key[5:7] != self.ui_key[5:7]
+        full = self.full or self.debug or panel_changed or self.dirty_count >= CELL_COUNT // 3
+        if full:
+            if self.ui_key is None:
+                canvas.fill(0)
+            draw_board(canvas, state, layout, session.art, self.inspector or False)
+            if ui_key != self.ui_key:
+                for area in self.ui_regions:
+                    canvas.rect(area[0], area[1], area[2], area[3], 0, True)
+            if ui_key != self.ui_key or state.active_message != -1:
+                draw_ui(canvas, session, layout, last_action, self.debug)
+            if self.ui_key is None:
+                self.damage.mark(0, 0, layout.width, layout.height)
+            else:
+                self.damage.add(layout.board)
+                if ui_key != self.ui_key:
+                    for area in self.ui_regions:
+                        self.damage.add(area)
+        else:
+            if self.dirty_count:
+                draw_board(canvas, state, layout, session.art, cells=self.cells)
+            bx, by, bw, bh = layout.board
+            size = layout.tile_size
+            for cell in range(CELL_COUNT):
+                if self.cells[cell]:
+                    self.damage.mark(bx + cell % COLS * size, by + cell // COLS * size, size, size)
+            if ui_key != self.ui_key:
+                for area in self.ui_regions:
+                    canvas.rect(area[0], area[1], area[2], area[3], 0, True)
+                    self.damage.add(area)
+                draw_ui(canvas, session, layout, last_action, False)
+        self.draw_us = self.diff(self.ticks(), started)
+        started = self.ticks()
+        for index in range(self.damage.count):
+            canvas.show(self.damage.area(index))
+        self.transfer_us = self.diff(self.ticks(), started)
+        self.full, self.ui_key = False, ui_key
+        self.cells[:] = state.clear_cells
+
+    def close(self):
+        self.inspector = self.state = None
+        self.damage.clear()
 
 
 # 8. Input handling, session, resource cleanup, main -------------------------
@@ -1138,7 +1481,7 @@ class Controls:
                 action = touch_action
         self.touch_direction = direction
         for name, pressed in button_events:
-            mapped = BUTTON_ACTIONS.get(name)
+            mapped = name if name in ("debug", "step") else BUTTON_ACTIONS.get(name)
             if mapped is None:
                 continue
             previous = self.buttons_down.get(name, False)
@@ -1168,7 +1511,10 @@ def run(pack, platform, canvas, layout, debug=False, clock_factory=None):
     print("Directions move; Reset restarts; Pause/Play freezes/resumes; Next advances; Back returns to UI.")
     print(inspect_cell(session.state, session.state.player.cell))
     try:
-        session.art.prepare(session.state.definition)
+        session.art.prepare(session.state.definition, canvas)
+        session.renderer = Renderer(canvas, layout, debug)
+        session.renderer.bind(session.state)
+        session.renderer.present(session)
         clock = clock_factory()  # Loading art is startup, not elapsed play time.
         while True:
             point = None
@@ -1187,6 +1533,10 @@ def run(pack, platform, canvas, layout, debug=False, clock_factory=None):
             if action == "restart":
                 session.restart()
                 rebase = True
+            elif action == "debug":
+                session.renderer.toggle_debug(session.state)
+            elif action == "step" and session.renderer.debug:
+                rebase = debug_step(session, session.renderer.inspector.direction)
             elif action == "pause":
                 if session.state.status == COMPLETED:
                     rebase = session.next_room()
@@ -1197,7 +1547,7 @@ def run(pack, platform, canvas, layout, debug=False, clock_factory=None):
                         session.state.paused = not session.state.paused
                     rebase = True
             if rebase:
-                session.art.prepare(session.state.definition)
+                session.art.prepare(session.state.definition, canvas)
                 controls.reset()
                 session.direction = None
                 missed += clock.missed_deadlines
@@ -1218,10 +1568,22 @@ def run(pack, platform, canvas, layout, debug=False, clock_factory=None):
                 selected = layout.cell_from_point(*point)
                 if selected != -1:
                     print(inspect_cell(session.state, selected))
-            draw_game(canvas, session, layout, action, debug)
+                    if session.renderer.inspector is not None:
+                        session.renderer.inspector.select(selected)
+            inspector = session.renderer.inspector
+            if inspector is not None:
+                if session.state.paused and controls.direction() is not None:
+                    inspector.direction = controls.direction()
+                inspector.missed = missed + clock.missed_deadlines
+                inspector.dropped = dropped + clock.dropped_update_ms
+            draw_game(canvas, session, layout, action, session.renderer.debug)
+            if rebase:
+                clock = clock_factory()  # Restart/hint transition drawing is paused time.
             clock.pace()
     finally:
         session.art.close()
+        if session.renderer is not None:
+            session.renderer.close()
         if clock is not None:
             print("Grid puzzle timing: missed=%s dropped_update_ms=%s" %
                   (missed + clock.missed_deadlines, dropped + clock.dropped_update_ms))
@@ -1245,7 +1607,8 @@ def main():
     from tartlabutils.app import DirectCanvas, game_surface
     canvas = None
     try:
-        canvas = DirectCanvas(game_surface(), rotation=layout.rotation)
+        canvas = DirectCanvas(game_surface(), rotation=layout.rotation,
+                              transfer_rows=CANVAS_TRANSFER_ROWS)
         run(pack, platform, canvas, layout, DEBUG)
     finally:
         try:

@@ -1,26 +1,46 @@
 # Grid puzzle/action example: architecture and development plan
 
-Status (2026-09-11): Phase 4 software milestone implemented. The editable
-single-file example now runs stationary snakes, all eight wall-following spider
-variants, simultaneous trapped-spider explosions and diamond drops, and all four
-one-shot spear directions through the full fourteen-stage update order. The
-reference renderer includes growing/stopped shafts and short blast frames.
-First Crossing and Veiled Walk retain their checked-in timed solutions; focused
-hazard rooms and deterministic tests cover the new interactions.
-See [Phase 4 evidence](tests/GRID_PUZZLE_PHASE4.md),
+Status (2026-09-12): Phase 5 rendering/debug implementation and the first complete
+device measurement matrix are recorded. Dirty rendering matches the full
+reference, native prepared sprites preserve transparency, and inspection now
+includes the requested overlays, cell pages and paused single-step controls.
+The development payload is installed on the modern Elecrow on COM18.
+Operator follow-up confirms copying/running a user Python copy and toggling
+debug. Opening JSON exposed an omitted IDE update; the development installer now
+includes the rebuilt JSON-capable browser assets. Post-update JSON save/reopen
+and the remaining physical observations are still pending.
+Subsequent play feedback changes spiders to keep obstacles on their selected
+side, round outside corners using a blocked back-side diagonal, and travel
+straight when detached. Current surroundings determine every move, including
+after obstacle removal or teleportation. A moving spider kills a player in its
+cell or an orthogonally adjacent cell at departure, entry or teleport arrival.
+The earlier timing matrix is historical evidence for its recorded source hash;
+these revised rules require fresh performance measurements before qualification.
+The example and existing user engine on COM18 now contain the new rules; the
+user's JSON path and custom room bytes were preserved. Both copies passed all
+eight portable wall-following scenarios on the device, and 137 grid-puzzle host
+tests pass. Earlier contact-rule device checks remain recorded in Phase 5 evidence.
+**Phase 5 is not complete: its performance exit gate failed.** The complete
+22-case matrix includes every bundled/fixture room and dense spider, explosion,
+long-spear and water workloads, in normal and debug modes. Dense room play,
+continuous debug redraws and some transition frames miss the target; no fixed
+15-20 fps support claim is established. Coverage has not been reduced.
+See [Phase 5 evidence](tests/GRID_PUZZLE_PHASE5.md),
+[device/operator workflow](tests/GRID_PUZZLE_HARDWARE.md),
+[Phase 4 evidence](tests/GRID_PUZZLE_PHASE4.md),
 [Phase 3 evidence](tests/GRID_PUZZLE_PHASE3.md),
 [Phase 2 evidence](tests/GRID_PUZZLE_PHASE2.md), and
 [Phase 1 foundation evidence](tests/GRID_PUZZLE_PHASE1.md).
 
-Next implementation entry point: Phase 5 in
-[Development phases and exit criteria](#development-phases-and-exit-criteria).
-The unfinished acceptance gate is actual browser/device observation of
+Next implementation entry point: finish Phase 5's measured performance failures;
+see [Development phases and exit criteria](#development-phases-and-exit-criteria).
+The additional unfinished acceptance gate is actual browser/device observation of
 copy/edit/recovery, full-room readability, input comfort, and playable controls.
-The current operator checklist is in the Phase 4 evidence document, including
+The generated operator form is described in the hardware workflow, including
 the carried-forward art, hidden-feature, hint, and editing observations. No
-physical pass or frame-rate qualification is inferred from host tests. All
-validated version-1 hazard rooms can now launch. Dirty rendering, full debug
-inspection, the teaching campaign, and release qualification remain unfinished.
+physical pass or frame-rate qualification is inferred from host tests or serial
+measurements. All validated version-1 hazard rooms can launch. The teaching
+campaign and release qualification follow the unfinished Phase 5 gate.
 Keep this status current as phases finish; record the next unfinished gate and
 link to its evidence instead of repeating completed investigations.
 
@@ -37,7 +57,7 @@ room has exactly one player start, exactly one exit, and zero or more required
 keys. Optional diamonds and a remaining-time bonus contribute to score.
 
 The finished first version includes every requested mechanic: boulders, dirt,
-water filling, false walls, teleporters, snakes, wall-following spiders and their
+water filling, false walls, teleporters, snakes, directional spiders and their
 explosions, and extending spear traps. It also includes restart, an original
 introductory room set, a student editing guide, and optional debug overlays.
 The early playable milestone implements a smaller subset; it is not the full
@@ -83,10 +103,10 @@ reported dimensions, rotation, input availability, and surface capabilities.
 
 ### Proposed source layout
 
-The Python/JSON/guide, host validator, terrain/teleport/message/hazard tests,
-original art and builder, and two solution traces exist. Dirty rendering, full
-debug inspection, the full campaign, benchmarking, and physical qualification
-remain for later phases.
+The Python/JSON/guide, host validator, terrain/teleport/message/hazard/rendering
+tests, original art and builder, two solution traces, debug inspection and device
+benchmark exist. Performance remediation, the full campaign and physical
+qualification remain unfinished.
 
 ```text
 src/files/help/
@@ -367,7 +387,7 @@ removes a protecting boulder. Keys and diamonds are cover until collected.
 
 ### Spiders
 
-Each spider's starting cell, heading, and wall-following mode come entirely from
+Each spider's starting cell, heading, and following side come entirely from
 its map token: `Xn`, `Xe`, `Xs`, `Xw` mean `followLeft`; `XN`, `XE`, `XS`, `XW`
 mean `followRight`. The second character gives the initial cardinal heading;
 there is no omitted/default heading. The first character is always uppercase `X`.
@@ -376,14 +396,30 @@ each spider its own deadline. Spider metadata entries and per-spider overrides
 are not part of this format. Runtime movement may change heading; restart restores
 the heading and following mode from the map.
 
-For left-following movement, try left, forward, right, then backward relative to
-the current heading. Right-following reverses the side preferences. Choose the
-first legal direction, move one cell, and adopt that heading. Turns do not consume
-a separate interval. An open room therefore still has deterministic behavior.
+On every move, `followLeft` first turns left if left is enterable and the
+diagonal behind-left cell is blocked. That diagonal supports rounding an
+obstacle's outside corner. Otherwise it tries forward, right, backward, then
+left, taking the first legal direction. `followRight` mirrors left/right:
+round a supported right corner, otherwise try forward, left, backward, right.
+All existing spider entry blockers, including room boundaries, support corners;
+inspect the adjacent diagonal itself, not a teleporter's remote destination.
+Choose one legal direction, move one cell, and adopt that heading. Turns do not
+consume a separate interval. Open space has no supported corner, so spiders
+travel straight until they meet an obstacle and turn to keep it on the correct
+side. Current occupancy is checked every move; removed obstacles and teleport
+arrivals naturally resume seeking/following without remembered modes or setup.
 
 Process simultaneously due spiders in stable source-map/actor-ID order, updating
 occupancy after each move. Later spiders see earlier moves; they never overlap,
 swap through each other, or push objects. They continue while the player is idle.
+For each successful move, check proximity at its departure cell, entered cell,
+and teleporter arrival cell. A player at Manhattan distance zero or one dies
+immediately, including when the spider passes beside the player or teleports
+away from an adjacent source pad. Diagonal cells are not adjacent, and room
+edges never wrap. Before a spider's move is due, adjacency alone does not attack;
+same-cell contact remains lethal. A trapped spider that does not move follows
+the explosion rules. Movement-triggered death latches and takes precedence over
+exit completion in the same quantum.
 
 After eligible enemy moves, check every live spider for any legal direction,
 even if its own timer was not due. A spider with no legal move is removed and

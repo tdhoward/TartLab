@@ -20,8 +20,11 @@ class RecordingCanvas:
     def hline(self, *args):
         self.commands.append(("hline", args))
 
-    def show(self):
-        self.commands.append(("show", ()))
+    def line(self, *args):
+        self.commands.append(("line", args))
+
+    def show(self, *args):
+        self.commands.append(("show", args))
 
     def close(self):
         self.closed = True

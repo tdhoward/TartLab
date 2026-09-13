@@ -1060,6 +1060,20 @@ class ModernAppDrawingTests(unittest.TestCase):
         self.assertEqual(
             canvas._canvas.blits, [(sprite.framebuffer, 0, 0)])
 
+    def test_prepared_sprite_transparency_preserves_background_at_all_rotations(self):
+        module = load_app(types.SimpleNamespace(), fake_lvgl())
+        for rotation in (0, 90, 180, 270):
+            canvas = module.DirectCanvas(FakeSurface(width=8, height=7), rotation=rotation)
+            canvas.fill(1234)
+            source = FakeFrameBuffer(bytearray(8), 2, 2, 1)
+            source.fill(19)
+            source.pixel(1, 0, 5678)
+            sprite = canvas.prepare_sprite(source, 2, 2)
+            canvas.draw_sprite(sprite, 1, 2, key=19)
+            self.assertEqual(canvas.pixel(1, 2), 1234)
+            self.assertEqual(canvas.pixel(2, 2), 5678)
+            self.assertEqual(canvas.pixel(2, 3), 1234)
+
     def test_portrait_canvas_uses_compiled_rotation_for_tight_sprite(self):
         surface = FakeSurface(width=4, height=3)
         lvgl = fake_lvgl()

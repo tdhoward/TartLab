@@ -85,7 +85,7 @@ class SpiderTests(unittest.TestCase):
             spider = actor_of(level, g.SPIDER)
             heading = "nesw".index(token[1].lower())
             follow = g.FOLLOW_LEFT if token[1].islower() else g.FOLLOW_RIGHT
-            expected = (heading + (-1 if follow == g.FOLLOW_LEFT else 1)) % 4
+            expected = heading
             advance(level, 140)
             self.assertEqual(spider.cell, g.cell_at(5, 5))
             g.step(level)
@@ -95,8 +95,8 @@ class SpiderTests(unittest.TestCase):
             self.assertEqual((fresh.heading, fresh.follow, fresh.next_due_ms), (heading, follow, 150))
 
     def test_both_turn_orders_including_dead_end_reverse(self):
-        for token, order in (("Xe", (g.NORTH, g.EAST, g.SOUTH, g.WEST)),
-                             ("XE", (g.SOUTH, g.EAST, g.NORTH, g.WEST))):
+        for token, order in (("Xe", (g.EAST, g.SOUTH, g.WEST, g.NORTH)),
+                             ("XE", (g.EAST, g.NORTH, g.WEST, g.SOUTH))):
             for blocked in range(4):
                 cells = {(5, 5): token}
                 for heading in order[:blocked]:
@@ -107,6 +107,69 @@ class SpiderTests(unittest.TestCase):
                 spider = actor_of(level, g.SPIDER)
                 self.assertEqual((spider.heading, spider.cell),
                                  (order[blocked], g.neighbor(g.cell_at(5, 5), order[blocked])))
+
+    def test_open_area_continues_straight_for_both_types_and_all_headings(self):
+        for token in ("Xn", "Xe", "Xs", "Xw", "XN", "XE", "XS", "XW"):
+            level = state({(6, 5): token})
+            spider = actor_of(level, g.SPIDER)
+            heading = spider.heading
+            dx, dy = g.DIRECTIONS[heading]
+            for moves in range(1, 5):
+                advance(level, 150)
+                self.assertEqual((spider.cell, spider.heading),
+                                 (g.cell_at(6 + moves * dx, 5 + moves * dy), heading), token)
+            self.assertEqual(level.status, g.PLAYING)
+
+    def test_move_into_any_orthogonal_neighbor_kills_idle_player(self):
+        for token, x, y in (("Xe", 3, 5), ("Xw", 7, 5), ("Xs", 5, 3), ("Xn", 5, 7)):
+            level = state({(0, 0): "..", (5, 5): "P.", (x, y): token})
+            advance(level, 140)
+            self.assertEqual(level.status, g.PLAYING)
+            g.step(level)
+            self.assertEqual((level.status, level.elapsed_ms, level.step_events),
+                             (g.DEAD, 150, g.DIED), token)
+            snapshot = [(a.cell, a.next_due_ms) for a in level.actors]
+            g.step(level)
+            self.assertEqual([(a.cell, a.next_due_ms) for a in level.actors], snapshot)
+            self.assertEqual(level.step_events, 0)
+
+    def test_diagonal_and_row_wrapped_cells_are_not_adjacent(self):
+        for player, spider, token in (((5, 5), (3, 4), "Xe"),
+                                      ((0, 6), (15, 4), "Xs"),
+                                      ((5, 5), (1, 5), "Xe")):
+            level = state({(0, 0): "..", player: "P.", spider: token})
+            advance(level, 150)
+            self.assertEqual(level.status, g.PLAYING, (player, spider))
+
+    def test_adjacent_spider_waits_for_move_then_kills_even_on_departure(self):
+        level = state({(0, 0): "..", (5, 5): "P.", (6, 5): "XE"})
+        advance(level, 140)
+        self.assertEqual(level.status, g.PLAYING)
+        g.step(level)
+        self.assertEqual((level.status, actor_of(level, g.SPIDER).cell),
+                         (g.DEAD, g.cell_at(7, 5)))
+        # A spider that cannot move does not apply the movement-contact rule.
+        level = fixture("Exit blast")
+        level.definition["rules"]["explosion_hurts_player"] = False
+        g.step(level, g.EAST)
+        self.assertEqual(level.status, g.COMPLETED)
+
+    def test_teleport_entry_and_arrival_both_check_orthogonal_neighbors(self):
+        for player in ((9, 7), (2, 2)):
+            level = state({(0, 0): "..", (8, 8): "Xe", (9, 8): "T0", (2, 3): "T0", player: "P."})
+            advance(level, 150)
+            self.assertEqual(level.status, g.DEAD, player)
+            spider = actor_of(level, g.SPIDER)
+            self.assertEqual((spider.cell, spider.heading, spider.next_due_ms),
+                             (g.cell_at(2, 3), g.EAST, 300))
+
+    def test_adjacent_spider_move_wins_over_exit_completion(self):
+        level = state({(0, 0): "..", (15, 11): "..", (5, 5): "P.",
+                       (6, 5): "E.", (8, 5): "Xw"}, timers={"spider_ms": 10})
+        g.step(level, g.EAST)
+        self.assertTrue(level.exit_active)
+        self.assertEqual(level.player.cell, level.definition["exit"])
+        self.assertEqual((level.status, level.step_events), (g.DEAD, g.DIED))
 
     def test_blockers_reject_moves_and_active_exit_is_always_blocked(self):
         for token in ("#0", "F0", "d0", "W0", "K.", "D.", "O.", "E.", "S.", "RE", "Xn"):
@@ -163,16 +226,16 @@ class SpiderTests(unittest.TestCase):
                           timers={"spider_ms": 10})
             g.step(level, direction)
             self.assertEqual((level.status, level.step_events), (g.DEAD, g.DIED))
-        # Moving into the just-vacated player cell is safe: the player moves first.
+        # The player moves first, but the pursuing spider finishes adjacent.
         level = state({(0, 0): "..", (4, 5): "P.", (5, 5): "Xw", (5, 6): "#0"},
                       timers={"spider_ms": 10})
         g.step(level, g.NORTH)
-        self.assertEqual(level.status, g.PLAYING)
+        self.assertEqual(level.status, g.DEAD)
         self.assertEqual(actor_of(level, g.SPIDER).cell, g.cell_at(4, 5))
 
     def test_committed_spider_hop_matches_preview_and_preserves_deadline(self):
         for blocked in (False, True):
-            cells = {(5, 5): "Xe", (5, 4): "T0", (10, 7): "T0", (12, 8): "RE"}
+            cells = {(5, 5): "Xn", (5, 4): "T0", (10, 7): "T0", (12, 8): "RE"}
             level = state(cells)
             spider, emitter = actor_of(level, g.SPIDER), actor_of(level, g.EMITTER)
             if blocked:
@@ -187,7 +250,7 @@ class SpiderTests(unittest.TestCase):
             self.assertEqual(spider.cell, destination)  # No bounce/retry while stationary.
 
     def test_spider_teleport_arrival_on_player_kills_and_own_twin_is_legal(self):
-        level = state({(5, 5): "Xe", (5, 4): "T0", (10, 7): "T0"})
+        level = state({(5, 5): "Xn", (5, 4): "T0", (10, 7): "T0"})
         g.place_actor(level, level.player, g.cell_at(10, 7))
         advance(level, 150)
         self.assertEqual((level.status, actor_of(level, g.SPIDER).cell), (g.DEAD, level.player.cell))
