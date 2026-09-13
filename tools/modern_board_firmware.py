@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
 import shutil
 import subprocess
+import struct
 import sys
 from typing import Any, Sequence
 
@@ -111,8 +113,14 @@ def _validate_build(lock: dict[str, Any]) -> None:
             "display_width", "display_height"):
         _require(isinstance(target.get(field), int) and target[field] > 0,
                  f"target.{field} must be positive")
-    _require(target["repl"] == "USB_SERIAL_JTAG",
-             "modern board firmware must expose native USB Serial/JTAG")
+    _require(target["repl"] in ("USB_SERIAL_JTAG", "UART0"),
+             "modern board firmware must declare a supported console")
+    uart = target["repl"] == "UART0"
+    expected_repl = [
+        "--enable-uart-repl=" + ("y" if uart else "n"),
+        "--enable-cdc-repl=n",
+        "--enable-jtag-repl=" + ("n" if uart else "y"),
+    ]
 
     toolchain = lock.get("toolchain")
     _require(isinstance(toolchain, dict), "toolchain must be an object")
@@ -149,9 +157,7 @@ def _validate_build(lock: dict[str, Any]) -> None:
         f'BOARD_VARIANT={target["board_variant"]}',
         f'--flash-size={target["flash_size_bytes"] // (1024 * 1024)}',
         f'--partition-size={target["application_partition_size"]}',
-        "--enable-uart-repl=n",
-        "--enable-cdc-repl=n",
-        "--enable-jtag-repl=y",
+        *expected_repl,
         "clean",
     }
     _require(required.issubset(command),
@@ -159,11 +165,8 @@ def _validate_build(lock: dict[str, Any]) -> None:
     repl_arguments = [
         item for item in command
         if item.startswith("--enable-") and "-repl=" in item]
-    _require(repl_arguments == [
-        "--enable-uart-repl=n",
-        "--enable-cdc-repl=n",
-        "--enable-jtag-repl=y",
-    ], "build must enable only the native USB Serial/JTAG REPL")
+    _require(repl_arguments == expected_repl,
+             "build must enable only the declared REPL transport")
     _require("deploy" not in command
              and not any(item.startswith("PORT=") for item in command),
              "board firmware builds must never flash a device")
@@ -197,7 +200,13 @@ def _validate_build(lock: dict[str, Any]) -> None:
         manifest_args[0].split("=", 1)[1],
         build.get("container_wrapper"),
     }
-    _require(selected_paths.issubset(by_container_path),
+    # Upstream driver names are bound by the source commit. Local overrides
+    # still require an explicit content hash; paths cannot bypass that check.
+    upstream_drivers = {
+        arg.split("=", 1)[1] for arg in display_args + indev_args
+        if re.fullmatch(r"[a-z][a-z0-9_]*", arg.split("=", 1)[1])
+    }
+    _require((selected_paths - upstream_drivers).issubset(by_container_path),
              "selected build modules are not all hash-bound inputs")
 
     frozen = build.get("frozen_modules")
@@ -279,6 +288,63 @@ def check_lock(path: Path) -> dict[str, Any]:
     return validate_lock(load_json(path))
 
 
+def inspect_image(lock: dict[str, Any], path: Path) -> dict[str, Any]:
+    """Check an ESP32-S3 combined image against the declared flash budget."""
+    from esptool.bin_image import LoadFirmwareImage
+
+    data = path.read_bytes()
+    flash_size = lock["target"]["flash_size_bytes"]
+    _require(0x10000 < len(data) <= flash_size, "image exceeds flash or is incomplete")
+    table = data[0x8000:0x9000]
+    partitions = []
+    verified_table = False
+    for offset in range(0, len(table), 32):
+        entry = table[offset:offset + 32]
+        magic = struct.unpack_from("<H", entry)[0]
+        if magic == 0xEBEB:
+            _require(hashlib.md5(table[:offset]).digest() == entry[16:],
+                     "partition table checksum differs")
+            verified_table = True
+            break
+        _require(magic == 0x50AA, "invalid partition table entry")
+        _, kind, subtype, start, size, label, flags = struct.unpack("<HBBII16sI", entry)
+        _require(size > 0 and start >= 0x9000 and start + size <= flash_size,
+                 "partition extends beyond physical flash or overlaps boot area")
+        _require(not flags, "encrypted partitions are not supported by this inspector")
+        partitions.append({"name": label.rstrip(b"\0").decode("ascii"),
+                           "type": kind, "subtype": subtype, "offset": start, "size": size})
+    _require(verified_table, "partition table lacks a verified checksum")
+    ordered = sorted(partitions, key=lambda item: item["offset"])
+    for left, right in zip(ordered, ordered[1:]):
+        _require(left["offset"] + left["size"] <= right["offset"], "partitions overlap")
+    apps = [item for item in partitions if item["type"] == 0]
+    _require(len(apps) == 1 and apps[0]["offset"] == 0x10000,
+             "expected one application at 0x10000")
+    _require(apps[0]["size"] == lock["target"]["application_partition_size"],
+             "application partition differs from lock")
+    image_sizes = []
+    for offset in (0, apps[0]["offset"]):
+        image = LoadFirmwareImage("esp32s3", data[offset:])
+        _require(image.chip_id == 9, "image is not for ESP32-S3")
+        _require(image.checksum == image.calculate_checksum(), "ESP image checksum differs")
+        _require(image.append_digest and image.stored_digest == image.calc_digest,
+                 "ESP image SHA-256 differs")
+        declared_flash = (1 << (image.flash_size_freq >> 4)) * 1024 * 1024
+        _require(declared_flash == flash_size, "ESP image flash header differs from lock")
+        image_sizes.append(image.data_length + 32)
+    _require(image_sizes[0] <= 0x8000, "bootloader overlaps partition table")
+    _require(image_sizes[1] <= apps[0]["size"], "application exceeds its partition")
+    _require(len(data) <= apps[0]["offset"] + apps[0]["size"],
+             "combined firmware unexpectedly contains filesystem data")
+    return {
+        "board_id": lock["board_id"], "inspection": "passed",
+        "size": len(data), "sha256": hashlib.sha256(data).hexdigest(),
+        "flash_size": flash_size, "application_size": image_sizes[1],
+        "application_headroom": apps[0]["size"] - image_sizes[1],
+        "partitions": partitions,
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--lock", type=Path, required=True)
@@ -292,12 +358,17 @@ def _parser() -> argparse.ArgumentParser:
     build = actions.add_parser("build")
     build.add_argument("--source", type=Path, required=True)
     build.add_argument("--copy-to", type=Path)
+    inspect = actions.add_parser("inspect", help="validate combined image before flashing")
+    inspect.add_argument("--image", type=Path, required=True)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     lock = check_lock(args.lock)
+    if args.action == "inspect":
+        print(json.dumps(inspect_image(lock, args.image), indent=2))
+        return 0
     if args.action == "check":
         if args.source is not None:
             verify_source(lock, args.source)
@@ -327,6 +398,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (OSError, ValueError, subprocess.CalledProcessError) as exc:
+    except (ImportError, OSError, ValueError, subprocess.CalledProcessError) as exc:
         print(exc, file=sys.stderr)
         raise SystemExit(1) from exc

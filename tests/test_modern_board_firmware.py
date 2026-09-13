@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import copy
+import importlib.util
 import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 
 
@@ -11,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from modern_board_firmware import (  # noqa: E402
-    check_lock, docker_command, validate_lock,
+    check_lock, docker_command, inspect_image, validate_lock,
 )
 
 
@@ -19,6 +21,49 @@ LOCK_PATH = ROOT / "firmware/lvgl-modern/elecrow_dle06235b.lock.json"
 
 
 class ModernBoardFirmwareTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("esptool"), "optional esptool hardware tooling")
+    def test_combined_image_checks_application_and_flash_budget(self):
+        lock = check_lock(LOCK_PATH)
+        result = inspect_image(lock, ROOT / lock["result"]["artifact"])
+        self.assertEqual(result["application_size"], lock["result"]["application_size"])
+        self.assertGreater(result["application_headroom"], 0)
+        too_small = copy.deepcopy(lock)
+        too_small["target"]["flash_size_bytes"] = 4 * 1024 * 1024
+        with self.assertRaisesRegex(ValueError, "beyond physical flash"):
+            inspect_image(too_small, ROOT / lock["result"]["artifact"])
+
+    @unittest.skipUnless(importlib.util.find_spec("esptool"), "optional esptool hardware tooling")
+    def test_combined_image_rejects_corruption(self):
+        lock = check_lock(LOCK_PATH)
+        data = (ROOT / lock["result"]["artifact"]).read_bytes()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "corrupt.bin"
+            for offset in (0x8020 + 16, 0x10000 + 128):
+                damaged = bytearray(data)
+                damaged[offset] ^= 1
+                path.write_bytes(damaged)
+                with self.subTest(offset=offset), self.assertRaisesRegex(ValueError, "checksum differs|SHA-256 differs"):
+                    inspect_image(lock, path)
+
+    def test_uart_candidate_uses_pinned_upstream_drivers(self):
+        lock = check_lock(ROOT / "firmware/lvgl-modern/elecrow_dis08070h.lock.json")
+        self.assertEqual(lock["target"]["repl"], "UART0")
+        self.assertEqual(lock["status"], "build-candidate")
+        self.assertIn("--enable-uart-repl=y", lock["build"]["command"])
+        self.assertIn("--enable-jtag-repl=n", lock["build"]["command"])
+        invalid = copy.deepcopy(lock)
+        invalid["target"]["repl"] = "USB_SERIAL_JTAG"
+        with self.assertRaisesRegex(ValueError, "declared target"):
+            validate_lock(invalid)
+
+    def test_driver_path_cannot_bypass_local_input_hash(self):
+        invalid = copy.deepcopy(check_lock(LOCK_PATH))
+        command = invalid["build"]["command"]
+        index = next(i for i, arg in enumerate(command) if arg.startswith("DISPLAY="))
+        command[index] = "DISPLAY=../unbound.py"
+        with self.assertRaisesRegex(ValueError, "hash-bound"):
+            validate_lock(invalid)
+
     def test_candidate_pins_board_target_and_all_frozen_modules(self):
         lock = check_lock(LOCK_PATH)
 

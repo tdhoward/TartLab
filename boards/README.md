@@ -23,6 +23,7 @@ factory dumps here.
 | LilyGO T-Display-S3 Pro | `qualified` | [`lilygo_t_display_s3_pro`](lilygo_t_display_s3_pro) |
 | Elecrow DLE06235B | `qualified` | [`elecrow_dle06235b`](elecrow_dle06235b) |
 | LilyGO T-Display-S3 (non-touch) | `bringup` | [`lilygo_t_display_s3`](lilygo_t_display_s3) |
+| Elecrow CrowPanel Basic 7-inch | `bringup` | [`elecrow_dis08070h`](elecrow_dis08070h) |
 
 Vendor-level research covering more than one board lives in a vendor directory,
 such as [`elecrow`](elecrow). Board-specific results and qualification records

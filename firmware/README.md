@@ -44,6 +44,13 @@ selection-aware multi-board alpha.
 
 ## Historical and comparison artifacts
 
+- `lvgl-modern/elecrow_dis08070h.lock.json` is the experimental CrowPanel
+  Basic 7-inch recipe: 4 MiB flash, 3 MiB application, UART0 REPL, RGB/GT911,
+  and an SD-root bootstrap. It is not a release firmware selection. See the
+  [board bring-up plan](../boards/elecrow_dis08070h/BRINGUP_PLAN.md).
+  `modern_board_firmware.py ... inspect --image <combined.bin>` verifies its
+  flash budget, partitions, and checksums before bench flashing (esptool required).
+
 - `lvgl-modern/1.27.0` is an older experimental build with incomplete
   provenance. Its binary hash identifies the artifact, but it is not accepted
   by the modern release manifest.

@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "id": "elecrow_dis08070h",
+  "name": "Elecrow CrowPanel Basic 7-inch (DIS08070H)",
+  "vendor": "Elecrow",
+  "runtime_profile": "lvgl-modern",
+  "support_status": "bringup",
+  "hardware": {
+    "revisions": ["V3.0"],
+    "mcu": "ESP32-S3",
+    "flash_size_bytes": 4194304,
+    "psram_size_bytes": 8388608,
+    "display": {
+      "width": 800,
+      "height": 480,
+      "orientation": "landscape",
+      "transport": "RGB (16-bit parallel)",
+      "controller": "EK9716BD3 + EK73002ACGB"
+    },
+    "touch": {"present": true, "controller": "GT911"},
+    "console": "USB-to-UART0 bridge",
+    "power": "USB-C 5 V / 2 A specified; battery operation untested"
+  },
+  "selector": {
+    "module": "elecrow_dis08070h_modern",
+    "source": "boards/elecrow_dis08070h/runtime/elecrow_dis08070h_modern.py",
+    "protected_path": "/device/hdwconfig.py"
+  },
+  "runtime": {
+    "source": "boards/elecrow_dis08070h/runtime",
+    "target": "/board/elecrow_dis08070h"
+  },
+  "firmware": null,
+  "qualification": null,
+  "documentation": [
+    "boards/elecrow_dis08070h/README.md",
+    "boards/elecrow_dis08070h/BRINGUP_PLAN.md",
+    "boards/elecrow_dis08070h/BRINGUP_RESULTS.md"
+  ]
+}
