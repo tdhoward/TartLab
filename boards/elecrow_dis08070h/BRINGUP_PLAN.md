@@ -80,9 +80,10 @@ root**, including `/boot.py`, `/main.py`, `/lib`, `/ide`, `/files`, `/defaults`,
 Internal flash contains the declarative selector as `/hdwconfig.py` and the
 small [experimental launcher](../../tools/device/sd_root_main.py) as `/main.py`.
 The reusable [external_root helper](../../firmware/lvgl-modern/drivers/external_root.py)
-is selected for freezing into the experimental firmware. The first built image
-has an earlier helper; the corrected source is currently installed as an
-internal `/external_root.py` override and still needs a rebuild. It:
+is frozen into the revised experimental firmware. The first image needed an
+internal `/external_root.py` override; that file is now retained as
+`/flash/external_root.previous.py` so startup uses the corrected frozen module.
+The helper:
 
 1. Opens native SPI `machine.SDCard` using the payload's pins and a conservative
    clock. The pinned LVGL fork replaces stock MicroPython's constructor:
@@ -113,7 +114,7 @@ this board unchanged.
 - [x] Read full original flash and record SHA-256 privately.
 - [x] Owner confirmed PCB V3.0; module topology also agrees with the ROM probe.
 - [x] Build and inspect the dedicated combined image and partitions.
-- [ ] Flash the new image; verify UART REPL, LVGL/driver imports, large heap,
+- [x] Flash the new image; verify UART REPL, LVGL/driver imports, large heap,
   persistent file writes, and repeated soft/hard reset recovery.
 - [x] Exercise Wi-Fi scan without recording credentials (14 networks detected).
 - [ ] Exercise AP start/stop and simultaneous display/network load.
@@ -131,24 +132,56 @@ this board unchanged.
   though the MicroPython USB REPL is off; verify touch and cold-start behavior.
 - [x] Root switching with a RAM FAT volume: external `/` read, internal `/flash`
   access, and restoration of the original internal `/` all passed. Actual SD
-  I/O remains untested.
+  I/O subsequently passed with the physical card on September 13.
 - [x] Installed missing-card launcher returns to usable REPL after hard reset;
   three missing-card retries with garbage collection also pass.
 
 ### 3. Card insertion and SD-root proof
 
-**Deferred by the owner: no microSD card available.** Resume this phase when
-the owner supplies a card; continue independent display/touch work meanwhile.
+**Active since 2026-09-13:** the owner inserted a 32 GB microSD card. Read-only
+inspection found an existing FAT32 partition; no formatting was needed.
 
-- [ ] Insert a known FAT32 card while powered off. Do not silently format an
-  unknown card; record capacity and current format first.
-- [ ] Mount/read/write/hash a test file; sync, hard reset, cold boot, and verify
-  persistence. Raise SPI clock only after reliable 1 MHz baseline results.
+- [x] Record card capacity and existing format without formatting. Power state
+  during insertion was not observed; do not infer that it was powered off.
+- [x] Mount/read/write/hash files; sync, hard reset, and verify persistence at
+  1 MHz. Sizes 0, 511, 513, 8,193, and 1,048,576 bytes passed host-derived hashes.
+- [x] Prove physical SD at `/`, internal storage at `/flash`, and root restoration.
+- [x] Physical cold boot and persistence verification. Keep SPI at 1 MHz until
+  combined display/storage/network and repeatability checks pass.
 - [ ] Test absent, unformatted, incomplete, and unreadable card startup paths.
 - [ ] Install a built, board-selected distribution at card root. Verify imports,
   asset/help access, `/state` writes, `/files/user` saves, and internal rescue
   access. Copying `src/` alone is not a complete packaged installation.
-- [ ] Prove boot/main run once and selector precedence holds across soft reset.
+- [x] Prove diagnostic boot/main run once and selector precedence holds across
+  soft reset. The revised native firmware passed three cycles, with counters
+  19 -> 20 -> 21 -> 22 and soft-reset cause each time. The initial firmware
+  failed SPI reconstruction; the repair also resets RGB and LVGL resources.
+
+The diagnostic installation now contains a hash-verified packaged payload with
+separate bench entry points. Its first hard-reset startup ran boot/main once,
+selected `/device/hdwconfig.py`, imported TartLab from `/lib`, accessed assets
+and help, and wrote state/user files while preserving `/flash`. A 1 MiB SD
+copy/readback with RGB refresh and repeated GC also passed. Normal TartLab
+entry points and full application behavior remain unchecked above. Diagnostic
+soft reset now passes on the revised image; normal TartLab ownership and reset
+behavior still require phase 4.
+The owner subsequently confirmed a full power cycle and the correctly aligned
+diagnostic's return. All 91 installed/test/output files reverified afterward;
+boot/main counters each increased exactly once, from 1 to 2.
+
+Use `tools/sd_bringup.py` for the baseline. The first write attempt exposed a
+pinned native SD finalizer bug: closing one card object, opening another, and
+collecting the first makes the second stop reading. The corrected helper keeps
+one native card and bus per host until reset, releases initialization via
+`ioctl(2, 0)`, and rejects concurrent leases or changed wiring/clock settings.
+The revised firmware freezes this helper and also repairs the native lifetime
+and reset behavior; see [NATIVE_RESET.md](NATIVE_RESET.md).
+
+`tools/stage_sd_bench.py` stages a built board-selected payload with resumable
+hash verification and preserves unrelated card files. Bench `/boot.py` and
+`/main.py` exercise startup and standalone RGB; original packaged entry points
+are retained at `/.tartlab-bench/packaged-boot.py` and `packaged-main.py`.
+This is a diagnostic installation. Normal TartLab startup awaits phase 4.
 
 ### 4. TartLab runtime integration
 
@@ -178,6 +211,63 @@ Commands below use `COMx` as an explicit operator-supplied port; no default
 fixture is stored in the catalog. Python, esptool 5.x, and mpremote are already
 available in the repository venv.
 
+For SD checks, use one session name for write, reset, verify, and root. Inspect
+first; write refuses an existing test directory. A failed partial test is
+preserved and a fresh session name starts another attempt. Baseline actions
+expect the internal root and no other mounts. After diagnostic startup has
+made SD the root, use `status` instead of reopening the active card.
+
+```powershell
+.venv/Scripts/python.exe tools/sd_bringup.py inspect --port COMx --session hardware_test_artifacts/sd-session
+.venv/Scripts/python.exe tools/sd_bringup.py write --port COMx --session hardware_test_artifacts/sd-session
+.venv/Scripts/python.exe tools/sd_bringup.py reset --port COMx --session hardware_test_artifacts/sd-session
+.venv/Scripts/python.exe tools/sd_bringup.py verify --port COMx --session hardware_test_artifacts/sd-session
+.venv/Scripts/python.exe tools/sd_bringup.py root --port COMx --session hardware_test_artifacts/sd-session
+.venv/Scripts/python.exe makedist.py --output build/sd-dist --skip-web-build --board elecrow_dis08070h
+.venv/Scripts/python.exe tools/stage_sd_bench.py --port COMx --board elecrow_dis08070h --distribution build/sd-dist --session hardware_test_artifacts/sd-session
+```
+
+The staging tool verifies the board, checks all collisions before writing,
+and installs the selector last. Rerun the same command to resume the same
+payload. Local journals, serial logs, and operator observation forms stay in
+the session directory. Existing complete or partial files outside the journal
+are never overwritten merely to make an installation proceed.
+New sessions also place an installation marker on the card; resumption can
+replace only an unfinished file owned by the matching session, never a file
+changed after a verified transfer.
+
+After the card's diagnostic has booted and displayed `SD root OK`, run
+`tools/sd_bringup.py load --port COMx --session hardware_test_artifacts/sd-session`
+using the same session name as the baseline write. This copies and verifies
+its 1 MiB pattern while RGB refreshes, then displays `SD load PASS` after sync.
+Only then request physical power removal/reconnection and record the operator's
+observations; serial completion alone does not certify alignment or flicker.
+
+For an installed diagnostic, use the successful baseline write's session name
+and the staging journal (which may live in its parent directory):
+
+```powershell
+.venv/Scripts/python.exe tools/sd_bringup.py status --port COMx --session hardware_test_artifacts/sd-session --inventory hardware_test_artifacts/sd-session/sd-stage.json
+.venv/Scripts/python.exe tools/sd_bringup.py soak --port COMx --session hardware_test_artifacts/sd-session --cycles 8 --wifi
+.venv/Scripts/python.exe tools/sd_bringup.py status --port COMx --session hardware_test_artifacts/sd-session --inventory hardware_test_artifacts/sd-session/sd-stage.json --load-evidence PATH-TO-SOAK.json
+```
+
+`soak` keeps a separate 1 MiB output for every cycle, refuses collisions, and
+saves verified progress after each cycle. `--wifi` exercises AP start/stop and
+station scans, with RGB and AP active during copy/readback; it does not measure
+network throughput. Both interfaces must initially be inactive. Generated AP
+credentials stay in RAM; logs contain only network counts. An interrupted run
+can continue with `soak --resume PATH-TO-SOAK.json` plus the same port/session.
+It checks earlier outputs, retains partial files, and writes a new continuation
+journal; completed cycles are not rewritten. Physical observations remain in
+the operator form and never follow automatically from a hash pass.
+
+`soft-reset --cycles 3` captures startup and checks that boot/main each advance
+exactly once with the protected selector. The revised binary passes this check.
+After a failure, use `reset` to recover, then `status` to verify SD persistence.
+`reset` captures startup but does not itself certify file integrity. Use explicit
+reset capture for evidence and `mpremote resume` for commands within a boot.
+
 ```powershell
 .venv/Scripts/python.exe tools/check_board_catalog.py
 .venv/Scripts/python.exe tools/modern_board_firmware.py --lock firmware/lvgl-modern/elecrow_dis08070h.lock.json check
@@ -190,12 +280,15 @@ After inspecting the image and entering ROM bootloader:
 
 ```powershell
 .venv/Scripts/python.exe -m esptool --chip esp32s3 --port COMx flash-id
-.venv/Scripts/python.exe -m esptool --chip esp32s3 --port COMx erase-flash
-.venv/Scripts/python.exe -m esptool --chip esp32s3 --port COMx --baud 460800 write-flash 0x0 build/crowpanel-firmware.bin
+.venv/Scripts/python.exe -m esptool --chip esp32s3 --port COMx --baud 115200 write-flash 0x0 build/crowpanel-firmware.bin
 .venv/Scripts/mpremote.exe connect COMx fs cp boards/elecrow_dis08070h/runtime/elecrow_dis08070h_modern.py :hdwconfig.py
 .venv/Scripts/mpremote.exe connect COMx run tools/device/board_probe.py
 .venv/Scripts/mpremote.exe connect COMx resume run tools/device/rgb_smoke.py
 ```
+
+For firmware replacement, preserve the existing internal filesystem and rescue
+launcher; do not erase the whole flash. The measured replacement write verified
+at 115200 baud. Retain a current full-flash backup before a new experiment.
 
 Use a hard reset before repeating the display fixture. Run the probe before
 the fixture on the same boot to perform touch reset. Save stdout to an ignored

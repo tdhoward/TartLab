@@ -67,15 +67,18 @@ class ExternalRootTests(unittest.TestCase):
             self.module.activate(object())
         self.assertEqual(self.operations, [])
 
-    def test_missing_card_releases_native_device(self):
+    def test_missing_card_releases_initialization_and_reuses_native_device(self):
         class Card:
             closed = False
 
             def ioctl(self, operation, argument):
+                if operation == 2:
+                    self.closed = True
+                    return 0
                 return -1
 
             def deinit(self):
-                self.closed = True
+                raise AssertionError("unsafe native deinit must not be called")
 
         card = Card()
         buses = []
@@ -98,17 +101,57 @@ class ExternalRootTests(unittest.TestCase):
                     self.module.open_sd(board)
         self.assertTrue(card.closed)
         self.assertEqual(len(buses), 1)
+        self.assertIs(self.module._sd_buses[1]["card"], card)
 
     def test_owned_card_retains_bus_and_propagates_io_failure(self):
         bus = object()
         card = types.SimpleNamespace(readblocks=lambda block, buffer: False,
                                      writeblocks=lambda block, buffer: False,
                                      ioctl=lambda operation, argument: -1)
-        owned = self.module._OwnedCard(bus, card)
+        owned = self.module._OwnedCard({"bus": bus, "card": card, "active": True})
         self.assertIs(owned.bus, bus)
         self.assertIs(owned.readblocks(0, bytearray(512)), False)
         self.assertIs(owned.writeblocks(0, bytearray(512)), False)
         self.assertEqual(owned.ioctl(1, 0), -1)
+
+    def test_closed_lease_cannot_access_a_reopened_native_card(self):
+        native = types.SimpleNamespace(ioctl=lambda operation, argument: 0)
+        entry = {"bus": object(), "card": native, "active": True}
+        old = self.module._OwnedCard(entry)
+        old.deinit()
+        self.assertFalse(entry["active"])
+        reopened = self.module._OwnedCard(entry)
+        entry["active"] = True
+        old.deinit()
+        self.assertTrue(entry["active"])
+        with self.assertRaisesRegex(OSError, "closed"):
+            old.readblocks(0, bytearray(512))
+        self.assertEqual(reopened.ioctl(1, 0), 0)
+
+    def test_double_open_and_configuration_changes_are_rejected(self):
+        board = {"pins": [{"type": "SD_" + name, "number": index}
+                          for index, name in enumerate(("SCK", "MOSI", "MISO", "CS"))],
+                 "storage": {"host": 1, "frequency": 1000000}}
+        created = []
+        def native_card(**kwargs):
+            card = types.SimpleNamespace(ioctl=lambda operation, argument: 0)
+            created.append(card)
+            return card
+        machine = types.SimpleNamespace(SPI=types.SimpleNamespace(Bus=lambda **kwargs: object()),
+                                        SDCard=native_card)
+        with patch.dict(sys.modules, {"machine": machine}):
+            first = self.module.open_sd(board)
+            with self.assertRaisesRegex(ValueError, "already open"):
+                self.module.open_sd(board)
+            first.deinit()
+            second = self.module.open_sd(board)
+            self.assertIsNot(first, second)
+            self.assertIs(first.entry["card"], second.card)
+            self.assertEqual(len(created), 1)
+            second.deinit()
+            board["storage"]["frequency"] *= 2
+            with self.assertRaisesRegex(ValueError, "configuration changed"):
+                self.module.open_sd(board)
 
 
 if __name__ == "__main__":

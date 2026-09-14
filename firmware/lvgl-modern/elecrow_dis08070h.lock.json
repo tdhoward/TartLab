@@ -113,7 +113,7 @@
       "clean"
     ],
     "artifact": "build/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-4.bin",
-    "container_wrapper": "/tartlab/firmware/lvgl-modern/container_prepare.py",
+    "container_wrapper": "/tartlab/firmware/lvgl-modern/container_prepare_storage.py",
     "frozen_modules": {
       "display": "rgb_display",
       "input": "gt911",
@@ -135,7 +135,12 @@
       {
         "path": "firmware/lvgl-modern/drivers/external_root.py",
         "container_path": "/tartlab/firmware/lvgl-modern/drivers/external_root.py",
-        "sha256": "9fe10c8734edd45447c019a3050df21e6c1667c2c076416d84060452b6108066"
+        "sha256": "049a2df40cd5ca7efe45b38595d2e557046fad9c6ee5b3f838602fcf1560de82"
+      },
+      {
+        "path": "firmware/lvgl-modern/container_prepare_storage.py",
+        "container_path": "/tartlab/firmware/lvgl-modern/container_prepare_storage.py",
+        "sha256": "1a56861f54a26c026e3af773b6706f2ed26d159c578e4ef7b12dcd483cce1b9e"
       }
     ]
   }

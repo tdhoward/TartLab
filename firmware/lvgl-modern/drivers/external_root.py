@@ -50,25 +50,38 @@ def activate(block_device, required=(), staging="/sd", internal="/flash"):
 
 
 class _OwnedCard:
-    """Keep the custom SPI bus alive for as long as its native SD device."""
+    """One active lease on a boot-lifetime native card and SPI bus."""
 
-    def __init__(self, bus, card):
-        self.bus = bus
-        self.card = card
+    def __init__(self, entry):
+        self.entry = entry
+        self.bus = entry["bus"]
+        self.card = entry["card"]
+
+    def _check_open(self):
+        if self.card is None:
+            raise OSError("SD card is closed")
 
     def readblocks(self, block, buffer):
+        self._check_open()
         return self.card.readblocks(block, buffer)
 
     def writeblocks(self, block, buffer):
+        self._check_open()
         return self.card.writeblocks(block, buffer)
 
     def ioctl(self, operation, argument):
+        self._check_open()
         return self.card.ioctl(operation, argument)
 
     def deinit(self):
         if self.card is not None:
-            self.card.deinit()
+            # Release card initialization, but retain the native SPI device.
+            # The pinned fork's deinit/finalizer can remove a reused slot twice.
+            # Its native card and bus therefore stay cached until hard reset.
+            if self.card.ioctl(2, 0) != 0:
+                raise OSError("SD card deinitialization failed")
             self.card = None
+            self.entry["active"] = False
 
 
 def open_sd(board):
@@ -77,18 +90,22 @@ def open_sd(board):
     pins = {pin["type"]: pin["number"] for pin in board["pins"]}
     config = board["storage"]
     host = config["host"]
-    wiring = (pins["SD_SCK"], pins["SD_MOSI"], pins["SD_MISO"])
+    wiring = (pins["SD_SCK"], pins["SD_MOSI"], pins["SD_MISO"],
+              pins["SD_CS"], config["frequency"])
     cached = _sd_buses.get(host)
     if cached is None:
         bus = SPI.Bus(host=host, sck=wiring[0], mosi=wiring[1], miso=wiring[2])
-        # The fork keeps a native bus registry. Retain the Python object even
-        # after missing-card cleanup so retries cannot reuse a collected bus.
-        _sd_buses[host] = (wiring, bus)
+        cached = {"wiring": wiring, "bus": bus, "card": None, "active": False}
+        _sd_buses[host] = cached
     else:
-        if cached[0] != wiring:
-            raise ValueError("SD SPI bus wiring changed; hard reset required")
-        bus = cached[1]
-    card = _OwnedCard(bus, SDCard(spi_bus=bus, cs=pins["SD_CS"], freq=config["frequency"]))
+        if cached["wiring"] != wiring:
+            raise ValueError("SD SPI configuration changed; hard reset required")
+    if cached["active"]:
+        raise ValueError("SD card already open")
+    if cached["card"] is None:
+        cached["card"] = SDCard(spi_bus=cached["bus"], cs=wiring[3], freq=wiring[4])
+    card = _OwnedCard(cached)
+    cached["active"] = True
     try:
         if card.ioctl(1, 0) != 0:
             raise OSError("SD card initialization failed (absent or unreadable)")
