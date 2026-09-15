@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from modern_board_firmware import (  # noqa: E402
-    check_lock, docker_command, inspect_image, validate_lock,
+    check_lock, docker_command, inspect_console_config, inspect_image, validate_lock,
 )
 
 
@@ -51,10 +51,40 @@ class ModernBoardFirmwareTests(unittest.TestCase):
         self.assertEqual(lock["status"], "build-candidate")
         self.assertIn("--enable-uart-repl=y", lock["build"]["command"])
         self.assertIn("--enable-jtag-repl=n", lock["build"]["command"])
+        self.assertIn("CONFIG_ESP_CONSOLE_SECONDARY_NONE=y", lock["build"]["command"])
+        self.assertIn("CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG=n", lock["build"]["command"])
         invalid = copy.deepcopy(lock)
         invalid["target"]["repl"] = "USB_SERIAL_JTAG"
         with self.assertRaisesRegex(ValueError, "declared target"):
             validate_lock(invalid)
+
+    def test_generated_uart_console_rejects_usb_secondary_or_missing_settings(self):
+        lock = {"board_id": "fixture", "target": {"repl": "UART0"}}
+        source = "\n".join((
+            "CONFIG_ESP_CONSOLE_UART_DEFAULT=y",
+            "CONFIG_ESP_CONSOLE_UART_NUM=0",
+            "CONFIG_ESP_CONSOLE_SECONDARY_NONE=y",
+            "# CONFIG_ESP_CONSOLE_USB_CDC is not set",
+            "# CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG is not set",
+            "# CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG is not set",
+            "# CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED is not set",
+        ))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sdkconfig"
+            path.write_text(source)
+            self.assertEqual(inspect_console_config(lock, path)["inspection"], "passed")
+            path.write_text(source.replace("# CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED is not set", ""))
+            result = inspect_console_config(lock, path)
+            self.assertEqual(result["omitted_disabled_symbols"], ["CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED"])
+            for invalid in (source.replace("CONFIG_ESP_CONSOLE_SECONDARY_NONE=y",
+                                           "# CONFIG_ESP_CONSOLE_SECONDARY_NONE is not set"),
+                            source.replace("# CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED is not set",
+                                           "CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED=y"),
+                            source.replace("CONFIG_ESP_CONSOLE_UART_NUM=0", ""),
+                            source + "\nCONFIG_ESP_CONSOLE_UART_NUM=0"):
+                path.write_text(invalid)
+                with self.assertRaises(ValueError):
+                    inspect_console_config(lock, path)
 
     def test_driver_path_cannot_bypass_local_input_hash(self):
         invalid = copy.deepcopy(check_lock(LOCK_PATH))

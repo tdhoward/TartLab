@@ -7,6 +7,8 @@ with AP lifecycle and Wi-Fi scans. Keep --session pointing to the original
 successful write session. Soak retains each output and saves progress per cycle.
 The older load action replaces only its designated diagnostic output.
 COM ports and wiring are not built in.
+The touch action inspects bus health and controller identity without SD or
+controller register writes; physical input remains an operator check.
 """
 
 import argparse
@@ -215,7 +217,7 @@ def runtime_checks(repl, args, destination, result):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("inspect", "write", "verify", "root", "reset", "load",
-                                         "status", "soft-reset", "soak", "native-lifecycle"))
+                                         "status", "soft-reset", "soak", "native-lifecycle", "touch"))
     parser.add_argument("--port", required=True)
     parser.add_argument("--session", type=Path, required=True)
     parser.add_argument("--cycles", type=int, default=8, help="soft-reset/soak cycles (default: 8)")
@@ -263,7 +265,12 @@ def main():
             result["reset_requested"] = True
         else:
             prefix = "SD_RESULT="
-            if args.action == "native-lifecycle":
+            if args.action == "touch":
+                prefix = "TOUCH_BUS_PROBE="
+                command = (ROOT / "tools/device/touch_bus_probe.py").read_text(encoding="utf-8")
+                command += ("\nimport json\nfrom hdwconfig import BOARD_CONFIG\n"
+                            "print(%r + json.dumps(touch_bus_probe(BOARD_CONFIG)))" % prefix)
+            elif args.action == "native-lifecycle":
                 prefix = "SD_NATIVE_LIFECYCLE="
                 command = (ROOT / "tools/device/sd_native_lifecycle.py").read_text(encoding="utf-8")
                 command += "\nprint(%r + json.dumps(sd_native_lifecycle(%d)))" % (prefix, args.cycles)

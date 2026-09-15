@@ -252,6 +252,28 @@ and the staging journal (which may live in its parent directory):
 .venv/Scripts/python.exe tools/sd_bringup.py status --port COMx --session hardware_test_artifacts/sd-session --inventory hardware_test_artifacts/sd-session/sd-stage.json --load-evidence PATH-TO-SOAK.json
 ```
 
+For touch fault isolation while SD remains mounted, use:
+
+```powershell
+.venv/Scripts/python.exe tools/sd_bringup.py touch --port COMx --session hardware_test_artifacts/touch-session
+```
+
+This bounded software-I2C inspection records released SDA/SCL levels and
+validates GT911 identity/geometry without controller register writes. Low
+lines and all-address acknowledgements fail before controller reads. A pass
+only establishes readable identity/geometry; physical input and coordinate
+checks remain separate. The older `board_probe.py` also rejects invalid buses
+before its reset-expander transactions. September 14 found SDA still low after
+nine recovery clocks and again after the owner's requested power cycle. The
+screen remained aligned/stable. On September 15, reseating P4 removed the
+released-line fault; releasing USB pad ownership restored controller identity
+reads. The board payload now uses hardware I2C host 0, which claims those pads
+during initialization. Visual captures then recorded 19 presses after reset
+and seven after a full power cycle. Touch communication and finger response
+now pass; integration and remaining qualification gates stay open. The `touch`
+action deliberately uses software I2C for its line-isolation check; reset the
+board before resuming a hardware-I2C visual fixture after this action.
+
 `soak` keeps a separate 1 MiB output for every cycle, refuses collisions, and
 saves verified progress after each cycle. `--wifi` exercises AP start/stop and
 station scans, with RGB and AP active during copy/readback; it does not measure
@@ -273,8 +295,16 @@ reset capture for evidence and `mpremote resume` for commands within a boot.
 .venv/Scripts/python.exe tools/modern_board_firmware.py --lock firmware/lvgl-modern/elecrow_dis08070h.lock.json check
 .venv/Scripts/python.exe tools/modern_board_firmware.py --lock firmware/lvgl-modern/elecrow_dis08070h.lock.json checkout --source build/crowpanel-source
 .venv/Scripts/python.exe tools/modern_board_firmware.py --lock firmware/lvgl-modern/elecrow_dis08070h.lock.json build --source build/crowpanel-source --copy-to build/crowpanel-firmware.bin
+.venv/Scripts/python.exe tools/modern_board_firmware.py --lock firmware/lvgl-modern/elecrow_dis08070h.lock.json inspect-console --sdkconfig build/crowpanel-source/lib/micropython/ports/esp32/build-ESP32_GENERIC_S3-SPIRAM_OCT/sdkconfig
 .venv/Scripts/python.exe tools/modern_board_firmware.py --lock firmware/lvgl-modern/elecrow_dis08070h.lock.json inspect --image build/crowpanel-firmware.bin
 ```
+
+The UART-only recipe explicitly selects `CONFIG_ESP_CONSOLE_SECONDARY_NONE=y`
+and disables the secondary USB Serial/JTAG console. MicroPython's REPL flags
+alone did not disable ESP-IDF's secondary console in the previous image.
+`inspect-console` checks the final generated sdkconfig, including the primary
+UART and disabled USB consoles; the intermediate `submodules/sdkconfig` is
+generated before the board overrides and is not the final build configuration.
 
 After inspecting the image and entering ROM bootloader:
 

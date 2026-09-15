@@ -32,6 +32,11 @@ if touch["i2c"]["host"] < 0:
 else:
     i2c = machine.I2C(touch["i2c"]["host"], sda=sda, scl=scl, freq=touch["i2c"]["frequency"])
 report["i2c_before"] = i2c.scan()
+if (not sda.value() or not scl.value() or
+        set(report["i2c_before"]) == set(range(0x08, 0x78))):
+    report["touch_error"] = "Invalid I2C bus; reset and controller transactions skipped"
+    print("BOARD_PROBE=" + json.dumps(report))
+    raise RuntimeError(report["touch_error"])
 expander = touch.get("reset_expander")
 if expander and expander["address"] in report["i2c_before"]:
     if expander["driver"] != "PCA9557":
@@ -51,6 +56,11 @@ if expander and expander["address"] in report["i2c_before"]:
     i2c.writeto_mem(address, 3, bytes([(direction & ~reset_mask) | interrupt_mask]))
     report["touch_reset"] = "PCA9557 sequence completed"
 report["i2c_after"] = i2c.scan()
+if (not sda.value() or not scl.value() or
+        set(report["i2c_after"]) == set(range(0x08, 0x78))):
+    report["touch_error"] = "Invalid I2C bus after reset; controller transactions skipped"
+    print("BOARD_PROBE=" + json.dumps(report))
+    raise RuntimeError(report["touch_error"])
 for address in touch["addresses"]:
     if address in report["i2c_after"]:
         report["touch_product"] = list(i2c.readfrom_mem(address, 0x8140, 4, addrsize=16))

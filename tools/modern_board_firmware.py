@@ -345,6 +345,41 @@ def inspect_image(lock: dict[str, Any], path: Path) -> dict[str, Any]:
     }
 
 
+def inspect_console_config(lock: dict[str, Any], path: Path) -> dict[str, Any]:
+    """Verify generated console settings, separately from MicroPython REPL flags."""
+    settings = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("CONFIG_") and "=" in line:
+            key, value = line.split("=", 1)
+        elif line.startswith("# CONFIG_") and line.endswith(" is not set"):
+            key, value = line[2:-11], "n"
+        else:
+            continue
+        _require(key not in settings, f"duplicate sdkconfig setting: {key}")
+        settings[key] = value
+    required = {"CONFIG_ESP_CONSOLE_USB_CDC": "n"}
+    if lock["target"]["repl"] == "UART0":
+        required.update({"CONFIG_ESP_CONSOLE_UART_DEFAULT": "y",
+                         "CONFIG_ESP_CONSOLE_UART_NUM": "0",
+                         "CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG": "n",
+                         "CONFIG_ESP_CONSOLE_SECONDARY_NONE": "y",
+                         "CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG": "n",
+                         "CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED": "n"})
+    else:
+        required["CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG"] = "y"
+    # Kconfig omits this derived, promptless symbol when neither USB console
+    # is selected. The visible primary/secondary choices must still be present.
+    omitted_disabled = {"CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED"}
+    for key, expected in required.items():
+        actual = settings.get(key, "n" if key in omitted_disabled else None)
+        _require(actual == expected,
+                 f"console setting {key}: expected {expected}, got {settings.get(key, 'missing')}")
+    return {"board_id": lock["board_id"], "inspection": "passed",
+            "console": lock["target"]["repl"], "settings": {key: settings.get(key, "n") for key in required},
+            "omitted_disabled_symbols": sorted(key for key in required if key not in settings),
+            "sdkconfig_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--lock", type=Path, required=True)
@@ -360,12 +395,17 @@ def _parser() -> argparse.ArgumentParser:
     build.add_argument("--copy-to", type=Path)
     inspect = actions.add_parser("inspect", help="validate combined image before flashing")
     inspect.add_argument("--image", type=Path, required=True)
+    console = actions.add_parser("inspect-console", help="validate generated IDF console configuration")
+    console.add_argument("--sdkconfig", type=Path, required=True)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     lock = check_lock(args.lock)
+    if args.action == "inspect-console":
+        print(json.dumps(inspect_console_config(lock, args.sdkconfig), indent=2))
+        return 0
     if args.action == "inspect":
         print(json.dumps(inspect_image(lock, args.image), indent=2))
         return 0

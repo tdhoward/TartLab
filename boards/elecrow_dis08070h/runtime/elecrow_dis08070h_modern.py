@@ -54,7 +54,7 @@ BOARD_CONFIG = {
     },
     "touch": {
         "driver": "gt911.GT911",
-        "i2c": {"host": -1, "frequency": 10_000},
+        "i2c": {"host": 0, "frequency": 10_000},
         "addresses": (0x5D, 0x14),
         "reset_expander": {
             "driver": "PCA9557", "address": 0x18,

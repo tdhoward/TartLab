@@ -107,6 +107,8 @@
       "--enable-uart-repl=y",
       "--enable-cdc-repl=n",
       "--enable-jtag-repl=n",
+      "CONFIG_ESP_CONSOLE_SECONDARY_NONE=y",
+      "CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG=n",
       "DISPLAY=rgb_display",
       "INDEV=gt911",
       "FROZEN_MANIFEST=/tartlab/firmware/lvgl-modern/external_root_manifest.py",

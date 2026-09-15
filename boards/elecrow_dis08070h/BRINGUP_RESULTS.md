@@ -1,9 +1,9 @@
-# CrowPanel 7-inch bench results — 2026-09-12–13
+# CrowPanel 7-inch bench results — 2026-09-12–14
 
 **Feasible flash budget; early runtime proof complete.** The board remains
 `bringup`. Physical SD storage and root switching now pass baseline checks.
 The revised native firmware also passes repeated diagnostic soft reset and
-the bounded SD/RGB/radio load. The device is ready for tonight's shutdown.
+the bounded SD/RGB/radio load. September 14 startup and integrity checks also pass.
 Normal TartLab startup still awaits RGB platform integration and working touch.
 Follow [BRINGUP_PLAN.md](BRINGUP_PLAN.md) for the remaining gates.
 
@@ -328,7 +328,7 @@ and `measurements.json` beside it. The exact firmware, recipe, source hashes,
 build/flash logs, and current backup are under `build/crowpanel7-soft-reset/`.
 The initial image and earlier bench evidence remain in their original locations.
 
-## Device left for continuation
+## September 13 handoff
 
 The final revised image is installed. SD is `/`, internal flash is `/flash`,
 and the board is at `SD root OK | TartLab runtime integration pending` with UART
@@ -348,3 +348,199 @@ touch recovery, normal TartLab RGB ownership integration, network throughput,
 absent/full/removed/corrupt-media recovery, and independent clean firmware
 reproduction. The earlier observed cold boot applied to the initial image.
 The successful bounded tests do not promote the board beyond `bringup`.
+
+## September 14 continuation
+
+The revised firmware completed a captured hard-reset diagnostic startup with
+boot/main and state/user counters all at `25`. All 98 installed, baseline, and
+previous soak-output hashes matched. This confirms persistence across the
+session boundary; a physical cold boot is not inferred from a software reset.
+
+Touch inspection reproduced the invalid all-address ACK condition. Explicit
+open-drain pin initialization with pull-ups left SDA reading `0` and SCL `1`.
+A hardware-I2C comparison reached its scan but then raised `AttributeError`
+because this pinned implementation has no `deinit()` method; it is not a
+completed hardware-I2C test. Reinitializing software I2C afterward still gave
+the same line levels and false scan.
+
+After that comparison, the USB Serial/JTAG CONF0 register was `0x200`, with
+USB_PAD_ENABLE already clear. Clearing that bit preserved the value and did
+not change the line levels or scan; the original register value was restored.
+The register address and bit were checked against ESP-IDF 5.5.1's
+[register base definitions](https://github.com/espressif/esp-idf/blob/v5.5.1/components/soc/esp32s3/register/soc/reg_base.h)
+and [USB register definitions](https://github.com/espressif/esp-idf/blob/v5.5.1/components/soc/esp32s3/register/soc/usb_serial_jtag_reg.h).
+The generated sdkconfig still enables the secondary USB console. This test
+does not establish its behavior before pin initialization or on cold boot.
+
+Nine open-drain recovery clocks and a STOP did not release SDA. Every sampled
+high clock read SDA `0`, SCL `1`. These are GPIO samples, not oscilloscope
+measurements or proof of a wiring fault. No controller reset writes were
+attempted on this invalid bus.
+
+The new `sd_bringup.py touch` action records released line levels, uses a
+software-I2C diagnostic scan only on an idle bus, and requires a GT911 product
+ID plus nonzero geometry. It fails on a low line, all-address ACK, missing
+controller, zero identity/geometry, or read error. It does not reset the
+controller, reopen the active SD mount, or qualify touch coordinates. The
+older `board_probe.py` now stops before expander/controller transactions on
+an invalid bus, including a fault appearing after reset. Six focused touch
+tests and all ten SD bringup tests passed.
+
+Evidence is in `hardware_test_artifacts/crowpanel7-20260914/`, with the full
+integrity result at
+`hardware_test_artifacts/crowpanel7-20260913/baseline/20260914-123929-95b6da54-status.json`.
+No firmware or installed payload was replaced. In response to the requested
+full power cycle, the owner reported: "Yes, it's still aligned and stable."
+The subsequent state capture reports power-on reset (`1`), with boot/main and
+state/user counters all advancing once to `26`. The new `touch` check still
+records SDA `0`, SCL `1` and correctly fails before controller transactions.
+This confirms the fault persists after that restart. Visual behavior during
+combined SD/display/network load remains unobserved.
+All 98 hashes passed again after that power cycle; the result is
+`hardware_test_artifacts/crowpanel7-20260913/baseline/20260914-124656-2b922787-status.json`.
+The board remains at `SD root OK`, with UART REPL available. The continuation
+summary and exact operator response are retained in the September 14 session.
+
+Next isolate the bus with physical line/pull-up/panel-connection checks and
+the outstanding console configuration audit. No electrical fault or controller
+failure has yet been established. Keep invalid-bus guards in place before
+further expander writes. Normal TartLab RGB ownership integration and the
+remaining recovery/qualification gates are unchanged.
+
+## UART-only console comparison — September 14
+
+The previous firmware's generated sdkconfig selected a secondary USB
+Serial/JTAG console despite disabling that MicroPython REPL. A raw soft reset
+that skipped `main.py` reproduced SDA `0`, SCL `1` with only the internal
+filesystem mounted and no RGB display running. USB CONF0 before pin
+initialization was `0x4200`. A subsequent comparison actually cleared
+USB_PAD_ENABLE (`0x4200` to `0x200`), but SDA remained low; the register was
+restored afterward. The earlier bit-clear comparison had started at `0x200`.
+
+The recipe now explicitly disables the secondary USB console. A fresh build
+from the same pinned sources passed image and final sdkconfig inspection.
+The seven patched native/binding source files match the previous build's
+files byte for byte. `modern_board_firmware.py inspect-console` rejects the
+previous configuration and accepts the new one; it distinguishes an omitted,
+disabled derived Kconfig symbol from missing primary/secondary choices.
+All 13 firmware-tool tests passed.
+
+| UART-only image measurement | Result |
+| --- | --- |
+| Combined image | 2,981,216 bytes |
+| SHA-256 | `1201fbc10c7347cc2cb9fbc28639c7aebfe0060e00654caca0064d2cafca49f9` |
+| Application | 2,915,680 bytes |
+| Application headroom | 230,048 bytes |
+| Partitions | Unchanged from the previous image |
+
+A current 4 MiB backup was retained before flashing. Its bootloader, table,
+and application match the previous image; runtime NVS contents differ from
+the combined image's blank padding. Separate writes of the bootloader/table
+and application preserved NVS, PHY data, and the internal filesystem. Both
+writes completed with hash verification. The new image completed captured
+diagnostic startup, but its initial touch check still reports SDA `0`, SCL `1`.
+
+The image, exact recipe, backup, generated sdkconfig, build/flash logs, and
+inspection results are under `build/crowpanel7-uart-only/`. Hardware comparison
+evidence is under `hardware_test_artifacts/crowpanel7-20260914/console-audit/`.
+All three full diagnostic soft resets passed, with boot/main counters advancing
+`31 -> 32 -> 33 -> 34` and 6,739,168 free Python heap bytes after each cycle.
+The owner reported: "There were no display problems, but touch was unresponsive."
+This applies to the observed diagnostic restarts, not combined SD/radio load.
+All 98 installed/baseline/previous-load hashes passed afterward, at counters
+`34`. The results are indexed in `console-audit/summary.json`; the full integrity
+evidence is
+`hardware_test_artifacts/crowpanel7-20260913/baseline/20260914-174546-d3e9e32a-status.json`.
+The owner then confirmed a full power cycle and reported that touch still
+did not respond. The device recorded power-on reset (`1`), with boot/main and
+state/user counters all `35`. All 98 hashes passed again in
+`hardware_test_artifacts/crowpanel7-20260913/baseline/20260914-174915-8db7dac9-status.json`.
+The touch probe still reports SDA `0`, SCL `1`. Removing the secondary console
+therefore did not repair touch, including after a physical cold boot.
+
+With the board at `SD root OK`, the owner measured **SCL 3.2 V** and
+**SDA 0.6 V** to board ground at the I2C connector. The meter confirms an
+electrically low SDA line; this is not just a false GPIO reading. It does not
+identify which component or connection is responsible.
+
+For the next comparison, both MCU touch pins were set to input-only with
+pull-ups and USB pad ownership was cleared (`0x4200` to `0x200`). GPIO samples
+remain SDA `0`, SCL `1`; no I2C transactions or controller writes were issued.
+The owner confirmed unchanged meter readings (SCL 3.2 V, SDA 0.6 V) and no
+external device connected to the I2C port.
+
+### P4 touch-ribbon isolation
+
+After disconnecting P4 with power removed and powering the board again, the
+owner noted that its ZIF latch appeared previously not to have been fully
+closed. The touch probe now reads SDA `1`, SCL `1`, both before and after its
+10 kHz scan. It finds no addresses, so neither a GT911 nor the onboard expander
+has been verified in this state. The probe's overall touch result remains
+false because no valid controller identity or geometry is available with the
+touch ribbon disconnected.
+
+This result was repeated after the owner's September 15 confirmation that P4
+was disconnected and power was on. Evidence files in `console-audit/` are
+`20260914-180527-da3b5401-touch.json` and
+`20260915-074631-f22c817f-touch.json`. Releasing SDA by disconnecting P4 points
+to the ribbon connection or panel side of that connection, but does not yet
+identify a failed component.
+
+### P4 reseated and USB pad ownership — September 15
+
+The owner confirmed P4 was properly inserted but saw no touch feedback.
+The initial probe still found no addresses, with SDA/SCL both high. Clearing
+USB pad ownership (`0x4200` to `0x200`) then produced addresses `0x14` and
+`0x18`, valid GT911 product bytes `911\0`, and geometry 800 x 480. Evidence:
+`console-audit/20260915-074850-778d0ada-touch.json`. The loose connection and
+pad ownership observations are distinct; neither alone proves a failed part.
+
+The owner performed the requested taps/drag during a 60-second raw capture.
+That capture recorded zero single-touch coordinates and three release samples;
+finger response therefore did not pass that check. Evidence:
+`console-audit/20260915-075055-reseated-touch-samples.json`.
+
+An explicit hardware-I2C comparison changed USB CONF0 from `0x4200` to `0x200`
+without a direct bit-clear command during initialization. Its scan found both
+addresses; a subsequent read returned valid GT911 identity and geometry.
+Evidence: `20260915-075232-hardware-touch-compare.json` and
+`20260915-075300-hardware-touch-compare.json` under `console-audit/`.
+The standalone GPIO sample after hardware I2C initialization read SDA `0`
+even while controller reads succeeded; it is not used to claim an electrical
+fault in that peripheral-owned state.
+
+The declarative board payload now selects hardware I2C host 0 at the same
+10 kHz frequency. Only that host field was changed in the installed SD payload;
+the previous bytes were backed up, the replacement hash was verified, and its
+configuration was checked against the repository payload. The original staging
+inventory remains intact. Subsequent integrity checks must use
+`console-audit/sd-stage-hardware-i2c.json`, which records the changed expected
+hash. The firmware and internal rescue files were unchanged.
+
+The hardware-I2C diagnostic restart initialized the GT911 and reached
+`SD_BENCH_READY`, with boot/main counters both 41. Its 45-second fixture logged
+no press events, but the owner reported possibly starting too late, so this
+does not establish a failed physical touch test. All 98 file hashes passed
+using the derived inventory in
+`baseline/20260915-075546-76292a93-status.json`.
+
+The two-minute replay displayed a countdown and press count. The owner
+confirmed: "Yes, it works!" Serial evidence recorded 19 press events, all
+within the 800 x 480 geometry, including points near each corner and the center.
+Evidence: `console-audit/20260915-075947-touch-visual-replay.json`. This verifies
+finger response through the initialized GT911/LVGL fixture. Exact coordinate
+calibration and a renewed explicit display-alignment observation were not
+established by that response.
+
+The owner then confirmed the requested full power cycle was complete. The
+device reported power-on reset (`1`), hardware I2C host 0, USB CONF0 `0x200`,
+valid GT911 identity and geometry, and **seven additional press events**, all
+within the panel bounds. Boot/main and persisted state/user counters all read
+42. SD remained the FAT root, the internal rescue filesystem remained at
+`/flash`, and the installed board payload hash matched the derived inventory.
+Evidence: `console-audit/20260915-080109-hardware-i2c-cold-boot.json`.
+This cold-boot check verifies runtime state, touch response, and the changed
+payload; the full 98-file integrity pass was immediately before this power
+cycle. Touch communication and finger response now pass warm and cold startup.
+Shared TartLab RGB ownership integration and remaining qualification gates
+are still open; the board remains in bringup status.
