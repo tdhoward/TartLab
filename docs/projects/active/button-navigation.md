@@ -2,7 +2,7 @@
 
 [Project index](../README.md)
 
-Status: Experimental integration implemented; physical validation in progress.
+Status: Candidate integration implemented; physical validation in progress.
 The standalone pinned-modern display and physical-button bench results are recorded in
 [T-Display-S3 bring-up results](../../../boards/lilygo_t_display_s3/BRINGUP_RESULTS.md).
 The shared configuration, I80 transport, optional touch, button input, launcher,
@@ -19,10 +19,13 @@ later follow-up establishes one configured-station association; it supersedes
 the earlier AP-only checkpoint. Native probes also completed 100 UI/direct
 ownership cycles. These observations do not establish release qualification.
 
-Still open: explicit counter increment/restart observations; final PCB revision
-recording in the board descriptor; authenticated firmware/candidate binding;
-power/held-button/reset and sustained resource checks; provisioning, OTA and
+The owner confirmed on 2026-09-23 that three physical A releases advanced the
+counter to 3 and B returned to the launcher. Still open: authenticated
+firmware/candidate binding;
+held-button/reset and sustained resource checks; provisioning, OTA and
 recovery qualification; and fresh physical regressions on affected touch boards.
+Three unplugged power cycles reached the IDE on the development installation;
+the exact release candidate still needs its full physical power checks.
 Racer adaptation remains optional and does not block the core milestone.
 
 ## Objective and scope

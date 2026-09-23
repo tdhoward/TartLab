@@ -1,6 +1,7 @@
 # Buttons-only development integration
 
-Date: 2026-09-09. Status: experimental `bringup`, not a qualified release.
+Date: 2026-09-09. Status: experimental integration; candidate on 2026-09-23,
+not a qualified release.
 
 This continues the [initial bench results](BRINGUP_RESULTS.md). The fixture now
 runs the shared modern platform and TartLab filesystem with a protected
@@ -54,8 +55,9 @@ full-frame shortcut. No new board-specific native overlay is needed so far.
 The modern profile's current-source adapter hashes include the new shared
 button/navigation modules. These source integrity checks do not establish new
 physical qualification. Published firmware/release evidence was not changed.
-The board's firmware/qualification descriptor fields remain null pending the
-candidate contract and applicable full qualification; it stays `bringup`.
+The 2026-09-23 descriptor binds this board to the same byte-verified reference
+firmware and source lock already used in development. Its qualification field
+remains null pending applicable full qualification; it is a `candidate`.
 
 ## Evidence established
 
@@ -110,9 +112,9 @@ navigation present. The normal IDE server was restarted after inspection.
 No saved station network was present; AP/browser evidence must not be reported
 as configured-station qualification. The owner subsequently confirmed the
 button-only navigation, brightness save, WiFi page and three-minute dim/wake
-behavior described above. Counter increments and the app's restart action have
-not yet been explicitly confirmed. The earlier physical button and color
-results are preserved separately.
+behavior described above. On 2026-09-23 the owner confirmed that three
+physical A releases showed count 3 and B returned to the launcher. The earlier
+physical button and color results are preserved separately.
 
 The owner reported that the enlarged text-labelled Settings entry crowded the
 status text. Restored the original 36 x 32 gear-icon entry while retaining its
@@ -185,10 +187,24 @@ profile integrity check passed. After installation on COM5, native file and
 console failure/success sequences confirmed both widgets clear while connection
 labels remain intact. The IDE resumed healthy with no test error displayed.
 
-Still required before support/promotion: PCB revision identification;
-authenticated candidate/firmware binding; power-cycle and held-button/reset
+Still required before support/promotion: authenticated candidate/firmware
+binding; power-cycle and held-button/reset
 campaigns; sustained heap/radio/rendering checks; provisioning interruptions,
 OTA/recovery and protected-state qualification; and fresh physical regressions
 on existing touch boards affected by shared runtime/UI changes. No such tests
 are claimed by host passes. Touch checks are inapplicable because touch is
 absent; actual button-navigation evidence must substitute in qualification.
+
+The owner reported PCB marking `v1.2` on the attached non-Pro unit on
+2026-09-23. The descriptor now accepts revision `1.2` for candidate tests.
+COM5 reported the protected non-Pro board ID, 16 MiB flash, released A/B
+levels high, a 320 x 170 display, and absent touch. A pre-existing recovery
+condition had accumulated repeated boot failures; a normal recovery retry
+returned to a healthy IDE boot after Wi-Fi startup. These diagnostic reads
+do not establish the remaining release gates.
+
+The owner then disconnected USB power for five seconds and reconnected with
+both buttons released, three times. Each cycle reached the launcher and IDE
+without a recovery page, error, unreadable text, or unintended app launch.
+This was the development installation, before an authenticated release
+candidate was provisioned.

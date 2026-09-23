@@ -63,6 +63,33 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("items need attention", captured.getvalue())
 
+    def test_non_touch_form_requires_operator_confirmation_and_button_result(self):
+        _, release = self.fixture.build("non-touch", touch_absent_boards=("board_alpha",))
+        form_path = session.prepare(release, self.root / "non-touch-session")
+        form = session.parser()
+        form.read(form_path, encoding="utf-8")
+        self.assertIn("input:board_alpha", form)
+        self.assertIn("input-buttons:board_alpha", form)
+        form["operator"] = {"name": "Fixture operator", "tested_at_utc": "2026-09-11T18:30:00Z",
+                            "evidence_url": "https://example.test/non-touch-qualification.json"}
+        (form_path.parent / "results.txt").write_text("Observed buttons and absent touch\n", encoding="utf-8")
+        form["artifact:results"] = {"path": "results.txt", "url": "https://example.test/results.txt"}
+        for name in form.sections():
+            if name.startswith("board:"):
+                form[name].update(pcb_revision="fixture", chip_revision="fixture-chip", confirmed="yes")
+            if name.startswith(("check:", "gate:", "input-buttons:")):
+                form[name]["status"] = "passed"
+        with form_path.open("w", encoding="utf-8") as stream:
+            form.write(stream)
+        _, _, issues = session.inspect(release, form_path)
+        self.assertTrue(any("confirm touch is physically absent" in issue for issue in issues))
+        form["input:board_alpha"] = {
+            "touch_absent_confirmed": "yes", "touch_reason": "This physical unit has no touch sensor"}
+        with form_path.open("w", encoding="utf-8") as stream:
+            form.write(stream)
+        _, _, issues = session.inspect(release, form_path)
+        self.assertEqual(issues, [])
+
     def test_export_hashes_actual_bytes_and_passes_existing_promotion_validator(self):
         self.complete()
         output = self.root / "export"

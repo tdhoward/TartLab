@@ -249,6 +249,11 @@ def check(release: Path, runtime_profile: str, firmware_sha256: str,
                 "psram_size_bytes": hardware["psram_size_bytes"],
                 "selector_module": descriptor["selector"]["module"],
             }
+            # Historical touch-board releases predate this capability field.
+            # A non-touch board must declare absence in both signed matrices.
+            if (not hardware["touch"]["present"] or
+                    "touch" in published_board or "touch" in manifest_board):
+                expected_board["touch"] = hardware["touch"]
             for key, value in expected_board.items():
                 if published_board.get(key) != value or \
                         manifest_board.get(key) != value:

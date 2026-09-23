@@ -96,11 +96,11 @@ class ModernProvisioningTests(unittest.TestCase):
     def test_release_matrix_includes_every_eligible_board(self):
         self.assertEqual(
             {descriptor["id"] for descriptor in release_boards()},
-            {"lilygo_t_display_s3_pro", "elecrow_dle06235b"},
+            {"lilygo_t_display_s3_pro", "lilygo_t_display_s3", "elecrow_dle06235b"},
         )
         checked = check_matrix(self.release, dist=self.dist)
         self.assertEqual(set(checked["boards"]), {
-            "lilygo_t_display_s3_pro", "elecrow_dle06235b",
+            "lilygo_t_display_s3_pro", "lilygo_t_display_s3", "elecrow_dle06235b",
         })
 
     def test_provisioning_accepts_exactly_one_bound_attestation_purpose(self):
@@ -152,6 +152,10 @@ class ModernProvisioningTests(unittest.TestCase):
         board.mkdir(parents=True)
         (board / "elecrow_dle06235b_modern.py").write_text(
             "BOARD_CONFIG = {}\n", encoding="utf-8")
+        board = cls.dist / "board/lilygo_t_display_s3"
+        board.mkdir(parents=True)
+        (board / "t_display_s3_modern.py").write_text(
+            "BOARD_CONFIG = {}\n", encoding="utf-8")
         packages = root / "packages.json"
         packages.write_text(json.dumps([
             {
@@ -188,7 +192,8 @@ class ModernProvisioningTests(unittest.TestCase):
         build_release(
             cls.dist, cls.release, "modern-v1.2.3",
             packages_path=packages, source_epoch=1234, allow_dirty=True,
-            board_ids=["lilygo_t_display_s3_pro", "elecrow_dle06235b"])
+            board_ids=["lilygo_t_display_s3_pro", "lilygo_t_display_s3",
+                       "elecrow_dle06235b"])
 
     @classmethod
     def tearDownClass(cls):

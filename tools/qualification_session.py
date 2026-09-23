@@ -29,6 +29,8 @@ def tasks(evidence):
     for name, result in evidence["checks"].items():
         yield "check:" + name, result
     for board, record in evidence["boards"].items():
+        if "input" in record and record["gates"]["hardware"]["mode"] == "fresh":
+            yield "input-buttons:" + board, record["input"]["buttons"]
         for gate, result in record["gates"].items():
             if result["mode"] == "fresh":
                 yield "gate:" + board + ":" + gate, result
@@ -46,6 +48,8 @@ def form_for(evidence):
         form["board:" + board] = {
             key: str(value) for key, value in record["board"].items()}
         form["board:" + board]["confirmed"] = "no"
+        if "input" in record:
+            form["input:" + board] = {"touch_absent_confirmed": "no", "touch_reason": ""}
     for name, _ in tasks(evidence):
         form[name] = {"status": "pending", "artifacts": "results"}
     return form
@@ -83,7 +87,7 @@ def prepare(release, output):
         "# Set each status to passed only after performing/reviewing that test.\n"
         "# pending and failed block finalization. Inherited gates need no entries.\n\n"
         + buffer.getvalue(), encoding="utf-8")
-    (output / "checklist.md").write_text(checklist(analysis), encoding="utf-8")
+    (output / "checklist.md").write_text(checklist(analysis, read_json(release / SNAPSHOT)), encoding="utf-8")
     return output / "operator.ini"
 
 
@@ -168,6 +172,14 @@ def inspect(release, path):
             if observed[key] != identity["name" if key == "model" else key]:
                 issues.append(name + ": " + key + " differs from candidate hardware")
         record["board"] = observed
+        if "input" in record:
+            input_form = form["input:" + board]
+            if input_form["touch_absent_confirmed"] != "yes":
+                issues.append("input:" + board + ": confirm touch is physically absent")
+            reason = input_form["touch_reason"].strip()
+            if not reason:
+                issues.append("input:" + board + ": explain why touch is inapplicable")
+            record["input"]["touch"]["reason"] = reason
     for name, result in tasks(evidence):
         result["status"] = form[name]["status"]
         if result["status"] != "passed":

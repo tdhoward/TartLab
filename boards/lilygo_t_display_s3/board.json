@@ -4,9 +4,9 @@
   "name": "LilyGO T-Display-S3 (non-touch)",
   "vendor": "LilyGO",
   "runtime_profile": "lvgl-modern",
-  "support_status": "bringup",
+  "support_status": "candidate",
   "hardware": {
-    "revisions": ["unverified"],
+    "revisions": ["1.2"],
     "mcu": "ESP32-S3",
     "flash_size_bytes": 16777216,
     "psram_size_bytes": 8388608,
@@ -30,7 +30,14 @@
     "source": "boards/lilygo_t_display_s3/runtime",
     "target": "/board/lilygo_t_display_s3"
   },
-  "firmware": null,
+  "firmware": {
+    "artifact": "firmware/lvgl-modern/reference/lvgl_micropy_ESP32_GENERIC_S3-SPIRAM_OCT-16-phase5-reference.bin",
+    "sha256": "187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab",
+    "image_format": "combined-esp-image",
+    "flash_offset": "0x0",
+    "lock": "firmware/lvgl-modern/reference.lock.json",
+    "provenance": "firmware/lvgl-modern/reference/provenance.json"
+  },
   "qualification": null,
   "documentation": [
     "boards/lilygo_t_display_s3/README.md",

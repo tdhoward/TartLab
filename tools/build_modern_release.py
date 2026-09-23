@@ -308,6 +308,7 @@ def build_release(
             "revisions": hardware["revisions"],
             "flash_size_bytes": hardware["flash_size_bytes"],
             "psram_size_bytes": hardware["psram_size_bytes"],
+            "touch": hardware["touch"],
             "selector_module": descriptor["selector"]["module"],
             "firmware": firmware,
         }

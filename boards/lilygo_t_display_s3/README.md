@@ -1,12 +1,13 @@
 # LilyGO T-Display-S3 (non-Pro, non-touch)
 
-Lifecycle: `bringup`. This is the initial buttons-only modern development
+Lifecycle: `candidate`. This is the initial buttons-only modern development
 target in [Button navigation](../../docs/projects/active/button-navigation.md).
 Initial physical observations are in [BRINGUP_RESULTS.md](BRINGUP_RESULTS.md).
 Shared runtime integration is tracked in [DEVELOPMENT_RESULTS.md](DEVELOPMENT_RESULTS.md).
-It is not a supported installation target. PCB revision is unverified; the
-descriptor's revision value is a research placeholder, not an accepted
-production revision policy.
+It is not a supported installation target. The owner read PCB marking `v1.2`
+on the attached non-Pro unit on 2026-09-23; the descriptor accepts revision
+`1.2` for candidate testing. This is one observed unit, not a broader revision
+policy.
 
 The owner identified the non-Pro, non-touch model and authorized erasing the
 bench device without a backup. Initial work started on 2026-09-09. The display
@@ -60,12 +61,13 @@ python makedist.py --output build/t-display-s3-dev --board lilygo_t_display_s3
 ```
 
 This does not create an authenticated release or provision a device. The
-descriptor retains `bringup`, with firmware and qualification null. The local
+descriptor is `candidate` with the pinned reference firmware and
+qualification null. The local
 development fixture uses the verified reference firmware and a protected
 identity/selector; no supported installer or update matrix includes this port.
 
 Remaining gates include full firmware/provisioning/recovery qualification,
-PCB revision identification, power cycles and held-button/reset behavior,
+power cycles and held-button/reset behavior,
 and fresh physical regressions on existing touch boards. Bench use of the
 reference image does not inherit another board's qualification.
 Raw logs, temporary scripts, USB mappings, and device identifiers belong in
