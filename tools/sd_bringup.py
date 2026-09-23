@@ -225,7 +225,11 @@ def main():
     parser.add_argument("--inventory", type=Path, help="status: verify an sd-stage.json inventory")
     parser.add_argument("--load-evidence", type=Path, help="status: also verify a completed soak's files")
     parser.add_argument("--resume", type=Path, help="soak: continue an existing journal, preserving partial files")
+    parser.add_argument("--raw-reset", action="store_true",
+                        help="native-lifecycle: reset to internal root before the test")
     args = parser.parse_args()
+    if args.raw_reset and args.action != "native-lifecycle":
+        parser.error("--raw-reset is only for native-lifecycle")
     if not 1 <= args.cycles <= 100:
         parser.error("cycles must be between 1 and 100")
     if args.resume and args.action != "soak":
@@ -256,6 +260,13 @@ def main():
     try:
         repl = RawRepl(args.port, timeout=20)
         repl.enter()
+        if args.raw_reset:
+            repl.exec("import os; os.sync()")
+            repl.serial.write(b"\x04")
+            reset_log = repl._read_until(b"raw REPL; CTRL-B to exit\r\n>", 30)
+            destination.with_suffix(".raw-reset.log").write_bytes(reset_log)
+            if b"MPY: soft reboot" not in reset_log or b"ESP-ROM:" in reset_log:
+                raise ValueError("native lifecycle preflight did not soft reset")
         if args.action in ("status", "soft-reset", "soak"):
             runtime_checks(repl, args, destination, result)
             result["pass"] = True

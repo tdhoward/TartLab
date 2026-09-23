@@ -3,7 +3,7 @@
 Recorded 2026-09-11. The **first playable room software milestone is implemented**.
 Actual browser/device acceptance remains pending. Next implementation: **Phase 3,
 terrain, teleportation, messages, and original TS16 artwork**, in
-[the project plan](../GRID_PUZZLE_PROJECT.md).
+[the project plan](../docs/projects/active/grid-puzzle.md).
 
 ## Implemented behavior
 

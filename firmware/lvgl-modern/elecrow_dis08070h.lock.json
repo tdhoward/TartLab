@@ -142,7 +142,7 @@
       {
         "path": "firmware/lvgl-modern/container_prepare_storage.py",
         "container_path": "/tartlab/firmware/lvgl-modern/container_prepare_storage.py",
-        "sha256": "1a56861f54a26c026e3af773b6706f2ed26d159c578e4ef7b12dcd483cce1b9e"
+        "sha256": "d8c5ba7beb801420a0afdb8c5c077e927443108b39cc48a03faed342cacf4db1"
       }
     ]
   }

@@ -81,7 +81,7 @@
     "inputs": [
       {
         "path": "src/lib/tartlabutils/board.py",
-        "sha256": "49d563cc4d84a5b367b9a14e511f69f87485acf0eed3882a3ec1058a95b71732"
+        "sha256": "50fbed05bfb6a5de2fad9cd7224ba47b0d264b3c2b421a1c64f1b5aae41cc385"
       },
       {
         "path": "src/lib/tartlabutils/runtime.py",
@@ -89,7 +89,7 @@
       },
       {
         "path": "src/lib/tartlabutils/factory.py",
-        "sha256": "1f4909a99c7a3f019c6130fafbac43f55105530f91ce52052fa90e95a1a0a296"
+        "sha256": "fdf2810b207e2f11972d3709ed0d294ff84313d536d165cac61a0e240e0c61bf"
       },
       {
         "path": "src/lib/tartlabdrivers/display/st7796.py",

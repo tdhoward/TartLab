@@ -1,5 +1,7 @@
 # Grid puzzle/action example: architecture and development plan
 
+[Project index](../README.md)
+
 Status (2026-09-12): Phase 5 rendering/debug implementation and the first complete
 device measurement matrix are recorded. Dirty rendering matches the full
 reference, native prepared sprites preserve transparency, and inspection now
@@ -25,12 +27,12 @@ tests pass. Earlier contact-rule device checks remain recorded in Phase 5 eviden
 long-spear and water workloads, in normal and debug modes. Dense room play,
 continuous debug redraws and some transition frames miss the target; no fixed
 15-20 fps support claim is established. Coverage has not been reduced.
-See [Phase 5 evidence](tests/GRID_PUZZLE_PHASE5.md),
-[device/operator workflow](tests/GRID_PUZZLE_HARDWARE.md),
-[Phase 4 evidence](tests/GRID_PUZZLE_PHASE4.md),
-[Phase 3 evidence](tests/GRID_PUZZLE_PHASE3.md),
-[Phase 2 evidence](tests/GRID_PUZZLE_PHASE2.md), and
-[Phase 1 foundation evidence](tests/GRID_PUZZLE_PHASE1.md).
+See [Phase 5 evidence](../../../tests/GRID_PUZZLE_PHASE5.md),
+[device/operator workflow](../../../tests/GRID_PUZZLE_HARDWARE.md),
+[Phase 4 evidence](../../../tests/GRID_PUZZLE_PHASE4.md),
+[Phase 3 evidence](../../../tests/GRID_PUZZLE_PHASE3.md),
+[Phase 2 evidence](../../../tests/GRID_PUZZLE_PHASE2.md), and
+[Phase 1 foundation evidence](../../../tests/GRID_PUZZLE_PHASE1.md).
 
 Next implementation entry point: finish Phase 5's measured performance failures;
 see [Development phases and exit criteria](#development-phases-and-exit-criteria).
@@ -83,13 +85,13 @@ These existing components establish the integration points:
 
 | Existing source | Use in this project |
 | --- | --- |
-| [Racer](src/files/help/racer.py) and [its architecture plan](SCROLLING_RACER_PROJECT.md) | Separate simulation, drawing, input, and presentation; reuse the testing approach rather than its pixel-based collision rules. |
-| [Testris](src/files/help/testris.py) | Example-app discoverability and restart/pause interaction conventions. |
-| [DirectCanvas](src/lib/tartlabutils/app.py) | Acquire `game_surface()`, choose rotation, draw to the framebuffer, and present changed rectangles. |
-| [FrameClock](src/lib/tartlabutils/timing.py) | Fixed simulation increments, absolute presentation deadlines, bounded catch-up, and overrun counters. |
-| [DamageTracker](src/lib/tartlabutils/damage.py) | Merge and bound display damage without growing a per-frame rectangle list. |
-| [SpriteSheet](src/lib/tartlabutils/sprites.py) and [image documentation](IMAGE_ASSETS.md) | Batch preparation, clipped sprite drawing, integer nearest-neighbor scaling, and the existing TS16 format. |
-| [Help manifest](src/files/help/manifest.json) and [distribution builder](makedist.py) | Register the Python example, JSON levels, and guide; ship them with assets in the modern payload. |
+| [Racer](../../../src/files/help/racer.py) and [its architecture plan](scrolling-racer.md) | Separate simulation, drawing, input, and presentation; reuse the testing approach rather than its pixel-based collision rules. |
+| [Testris](../../../src/files/help/testris.py) | Example-app discoverability and restart/pause interaction conventions. |
+| [DirectCanvas](../../../src/lib/tartlabutils/app.py) | Acquire `game_surface()`, choose rotation, draw to the framebuffer, and present changed rectangles. |
+| [FrameClock](../../../src/lib/tartlabutils/timing.py) | Fixed simulation increments, absolute presentation deadlines, bounded catch-up, and overrun counters. |
+| [DamageTracker](../../../src/lib/tartlabutils/damage.py) | Merge and bound display damage without growing a per-frame rectangle list. |
+| [SpriteSheet](../../../src/lib/tartlabutils/sprites.py) and [image documentation](../../reference/image-assets.md) | Batch preparation, clipped sprite drawing, integer nearest-neighbor scaling, and the existing TS16 format. |
+| [Help manifest](../../../src/files/help/manifest.json) and [distribution builder](../../../makedist.py) | Register the Python example, JSON levels, and guide; ship them with assets in the modern payload. |
 
 Keep the game engine, tile properties, rules, room geometry, input mappings,
 atlas coordinates, and debug policy inside the single example Python file. Nothing here
@@ -211,11 +213,11 @@ catch-all error handling that hides the traceback or silently restores rules.
 
 ### Browser and distribution integration
 
-The browser [tab implementation](src/ide/www/js/tabs.js) now routes `.json` to
+The browser [tab implementation](../../../src/ide/www/js/tabs.js) now routes `.json` to
 the existing text editor and supports normal save, while Run/Set as App remain
 unavailable for JSON. JSON syntax highlighting can follow later.
-The current [save flow](src/ide/www/js/main.js) and
-[user-file endpoint](src/ide/ide.py) already allow non-Python filenames; verify
+The current [save flow](../../../src/ide/www/js/main.js) and
+[user-file endpoint](../../../src/ide/ide.py) already allow non-Python filenames; verify
 the complete help-open/save-user-copy/reopen path instead of adding a new upload
 or project system. Register the room file in the help manifest for discoverability.
 
@@ -726,7 +728,7 @@ changes occupied cells, or supplies collision detection.
 
 Create original 16x16 top-down pixel art with a consistent palette and strong
 silhouettes. Keep source artwork and provenance with the host asset builder.
-Reuse [convert_ts16.py](tools/convert_ts16.py) for format encoding rather than
+Reuse [convert_ts16.py](../../../tools/convert_ts16.py) for format encoding rather than
 introducing another runtime image format. TS16 is a file format, not the tile
 size: its existing palette has fifteen opaque colors plus transparent index zero.
 
@@ -884,7 +886,7 @@ python tools/build_grid_puzzle_sprites.py --check
 ```
 
 Omit `--check` to rebuild from the canonical PNG. See the
-[atlas README](tools/assets/grid_puzzle/README.md) for provenance, palette,
+[atlas README](../../../tools/assets/grid_puzzle/README.md) for provenance, palette,
 coordinates, source import, and runtime cache ownership.
 
 During implementation run the relevant new `unittest` modules and existing
@@ -916,8 +918,8 @@ pending, and failing checks stay failed. Save full logs and a concise resumable
 status report instead of requiring repeated manual transcription.
 
 When preparing a modern release, start with
-[RELEASE_QUALIFICATION.md](RELEASE_QUALIFICATION.md) and
-[tools/qualification_session.py](tools/qualification_session.py). An app-only
+[RELEASE_QUALIFICATION.md](../../../RELEASE_QUALIFICATION.md) and
+[tools/qualification_session.py](../../../tools/qualification_session.py). An app-only
 change can use the existing release-impact process; any necessary shared
 platform/input change expands the affected checks. The Phase 1 development build
 is not a release candidate or physical qualification evidence.

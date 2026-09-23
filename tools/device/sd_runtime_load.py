@@ -12,7 +12,7 @@ import os
 import time
 
 
-def sd_runtime_load(source, destination, expected, wifi):
+def sd_runtime_load(source, destination, expected, wifi, refresh_callback=None):
     # Never replace an existing file, including a partial earlier attempt.
     try:
         os.stat(destination)
@@ -30,6 +30,12 @@ def sd_runtime_load(source, destination, expected, wifi):
 
     def refresh(message):
         nonlocal previous, refreshes
+        if refresh_callback is not None:
+            # A shared platform owns its LVGL ticks and task handler. Let the
+            # caller update its view without ticking LVGL a second time.
+            refresh_callback(message)
+            refreshes += 1
+            return
         now = time.ticks_ms()
         lv.tick_inc(time.ticks_diff(now, previous))
         previous = now

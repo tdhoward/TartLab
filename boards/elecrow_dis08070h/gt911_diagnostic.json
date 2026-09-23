@@ -1,0 +1,13 @@
+{
+  "board": "elecrow_dis08070h",
+  "reset_settle_ms": 50,
+  "reset_expected_address": 93,
+  "snapshot_registers": {
+    "gpio_in": 1610629180,
+    "gpio_enable": 1610629152,
+    "gpio19_out_sel": 1610630560,
+    "gpio20_out_sel": 1610630564,
+    "usb_serial_jtag_conf0": 1610842136
+  },
+  "register_source": "ESP-IDF v5.5.1 ESP32-S3 gpio_reg.h and usb_serial_jtag_reg.h; reads only"
+}

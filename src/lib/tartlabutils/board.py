@@ -6,7 +6,7 @@ def validate_board_config(board):
     if not isinstance(board, dict):
         raise ValueError("BOARD_CONFIG must be a dictionary")
     required = {"id", "pins", "display", "touch"}
-    allowed = required | {"reset", "navigation", "outputs"}
+    allowed = required | {"reset", "navigation", "outputs", "storage"}
     if not required.issubset(board) or not set(board).issubset(allowed):
         raise ValueError("BOARD_CONFIG has unexpected top-level fields")
     board_id = board["id"]

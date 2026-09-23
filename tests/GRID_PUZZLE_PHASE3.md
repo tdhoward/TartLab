@@ -3,7 +3,7 @@
 Recorded 2026-09-11. The **terrain, teleportation, messages, and original art
 software milestone is implemented**. Actual browser/device acceptance remains
 pending. Next implementation: **Phase 4, the complete hazard engine**, in
-[the project plan](../GRID_PUZZLE_PROJECT.md).
+[the project plan](../docs/projects/active/grid-puzzle.md).
 
 ## Implemented behavior
 

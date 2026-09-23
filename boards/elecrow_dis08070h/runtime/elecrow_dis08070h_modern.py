@@ -33,12 +33,15 @@ BOARD_CONFIG = {
     ),
     "display": {
         "driver": "rgb_display.RGBDisplay",
+        "adapter": "tartlabdrivers.display.rgb",
+        "backlight_state": "STATE_PWM",
         "native_size": (800, 480),
         "logical_size": (800, 480),
         "rotation": 0,
         "transfer_rows": 24,
+        "partial_y_end_exclusive": True,
         "rgb": {
-            "freq": 10_000_000,
+            "freq": 8_000_000,
             "hsync_front_porch": 40,
             "hsync_pulse_width": 48,
             "hsync_back_porch": 40,
@@ -54,6 +57,7 @@ BOARD_CONFIG = {
     },
     "touch": {
         "driver": "gt911.GT911",
+        "rotation": 0,
         "i2c": {"host": 0, "frequency": 10_000},
         "addresses": (0x5D, 0x14),
         "reset_expander": {

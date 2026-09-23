@@ -37,7 +37,7 @@ The qualification workflow also uploads a separate checklist and pending
 evidence form. Pending results do not pass promotion; the tooling does not
 invent physical observations or complete tests on an operator's behalf.
 
-## Establish the first baseline
+## Capture and select a baseline
 
 The checked-in plan remains in `platform` mode and now pins the authenticated
 `modern-v0.16.0` baseline in `profiles/baselines/modern-v0.16.0.json`. That
@@ -47,7 +47,7 @@ releases, including `modern-v0.15.4`, lack these signed snapshots and schema-3
 records. Their historical evidence is preserved, but it cannot be imported as
 an automatically reusable baseline by this tool.
 
-Build and qualify the first candidate with this tooling through the existing
+To replace the baseline, build and qualify a new candidate through the existing
 protected workflow. Complete the generated schema-3 form, publish the sanitized
 evidence at a durable HTTPS URL, and promote with the usual candidate checksum,
 evidence checksum, and evidence-reference inputs. After promotion, download the

@@ -2,7 +2,7 @@
 
 Recorded 2026-09-11. The **complete hazard engine software milestone is
 implemented**. Next implementation: **Phase 5, dirty rendering, debug inspection,
-and performance instrumentation**, in [the project plan](../GRID_PUZZLE_PROJECT.md).
+and performance instrumentation**, in [the project plan](../docs/projects/active/grid-puzzle.md).
 Actual browser/device acceptance remains pending.
 
 ## Implemented behavior

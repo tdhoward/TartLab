@@ -1,4 +1,4 @@
-# CrowPanel 7-inch bench results — 2026-09-12–14
+# CrowPanel 7-inch bench results — 2026-09-12–20
 
 **Feasible flash budget; early runtime proof complete.** The board remains
 `bringup`. Physical SD storage and root switching now pass baseline checks.
@@ -544,3 +544,410 @@ payload; the full 98-file integrity pass was immediately before this power
 cycle. Touch communication and finger response now pass warm and cold startup.
 Shared TartLab RGB ownership integration and remaining qualification gates
 are still open; the board remains in bringup status.
+
+## Shared RGB runtime integration — September 15–19
+
+The board now selects `tartlabdrivers.display.rgb` and hardware touch I2C through
+its declarative payload. The shared factory accepts RGB wiring and optional
+display reset, selects the responding touch address from the configured list,
+and accepts the existing external-storage declaration. The RGB adapter handles
+direct rectangles without panel command writes and retains TartLab's RGB565_BE
+buffer contract. With the native 16-bit RGB bus, byte swapping is implemented
+by swapping data lanes; caller buffers remain unchanged.
+
+The pinned native rotation-0 copy path uses inclusive row ends for full-width
+transfers but exclusive row ends for partial-width transfers. The board's
+`partial_y_end_exclusive` setting enables compensation in both direct and LVGL
+flushes. The adapter currently accepts native orientation and zero offsets.
+Its completion signal means the source buffer has been copied; presentation
+and VSYNC follow asynchronously. It does not advertise a frame-sync capability.
+
+The built runtime payload passed 94 host tests covering existing platforms,
+RGB rectangle edges, source preservation, touch address selection, and
+ownership handover. The board catalog remains bringup/qualification unchanged.
+The firmware binary was not changed for this integration.
+
+Hardware evidence under `hardware_test_artifacts/crowpanel7-20260915/runtime/`
+records successful shared-platform creation at 800 x 480 with touch, a
+bottom-right direct pixel write with source preservation, and a return to UI
+ownership. `20260915-081617-visual.json` records 144 direct writes and six
+ownership cycles, no pending transfer, and 5,930,576 free Python heap bytes.
+That run has no touch points or physical visual confirmation; its name does
+not imply a visual pass.
+
+Three same-interpreter teardown/recreation cycles subsequently passed,
+including idempotent teardown, new GT911 initialization, a direct pixel write,
+and UI restoration. Free heap was 5,934,448, 5,934,400, and 5,931,968 bytes.
+Evidence: `20260919-100133-recreate.log`.
+
+Normal built `/boot.py` and `/main.py` then replaced the diagnostic entry points.
+The original diagnostic bytes and each replaced runtime file are backed up in
+the artifact directory; writes were hash verified. The new inventory is
+`sd-stage-normal-startup.json`. Internal rescue files were preserved.
+`20260919-100256-hard-startup.log` records normal boot sequence 1, GT911 identity,
+and `Starting IDE`, with no captured exception/recovery marker. The owner
+reported: "Everything look normal." in response to observing the launcher,
+its countdown, the IDE/status screen, colors, edges, and flicker/tearing.
+
+The owner then reported: "Oops, now the horizontal offset has changed a couple
+times, shifting and wrapping around to the right." This supersedes any implied
+stability pass from the initially normal screen. The normal SD hash check had
+verified eight files before a batch containing several 1 MiB files exceeded
+its 90-second host timeout. It is incomplete, not a content-mismatch result.
+Reads were subsequently interrupted and files synced; the board remained
+responsive. Normal boot state had recorded sequence 1, healthy, IDE, and zero
+consecutive failures.
+
+The installed native RGB path uses two PSRAM frame buffers without bounce
+buffers; `CONFIG_LCD_RGB_RESTART_IN_VSYNC` is disabled. The
+[ESP-IDF 5.5.1 RGB guide](https://docs.espressif.com/projects/esp-idf/en/v5.5.1/esp32s3/api-reference/peripherals/lcd/rgb_lcd.html)
+documents persistent displacement after scanout bandwidth starvation. This is a working
+hypothesis, not a confirmed cause. Compare idle/load behavior and lower pixel
+clock before choosing a native-buffering change. Normal-startup soft-reset
+checks are paused while investigating display stability. The diagnostic
+`sd_bringup.py status` action assumes diagnostic globals/counters and is not
+the normal-startup health check. Recovery, sustained combined load, and release
+qualification remain separate gates.
+
+The next comparison changes only the installed board payload pixel clock from
+10 MHz to 8 MHz; its prior bytes are retained as `pre-8mhz-board.py`. Normal
+startup again reached a healthy IDE route, sequence 2. The comparison inventory
+is `runtime/sd-stage-8mhz.json`. Hash verification now journals each file
+individually with a separate timeout. All **99 file hashes passed** in
+`runtime/20260919-100909-8mhz-integrity.json`; normal boot state remained healthy,
+IDE, with zero consecutive failures. The owner reported: "It seems to be
+working fine now." after watching the restart and ensuing read load.
+This is a bounded observation, not sustained qualification. The repository
+payload now keeps 8 MHz, and its rebuilt minified bytes match the installed
+comparison payload exactly. Normal-runtime soft-reset checks have resumed.
+
+`runtime/20260919-101257-soft-startup.log` records `MPY: soft reboot`, exactly
+one normal boot-diagnostics record (sequence 3, reset cause 5), valid GT911
+initialization, and `Starting IDE`, without a captured exception/recovery marker.
+The owner then completed a physical power cycle at 8 MHz, tapped IDE in the
+launcher, and watched alignment for approximately one minute, reporting:
+"Yes, that works." `runtime/20260919-101621-normal-cold-boot.json` records
+power-on reset (`1`), normal sequence 4, healthy IDE route, zero consecutive
+failures, 8 MHz pixel clock, and touch I2C host 0. All six changed startup/runtime
+files matched their expected hashes. SD remained the FAT root and internal
+rescue storage remained at `/flash`.
+
+The board was restarted into normal TartLab after the serial checks. Shared
+RGB integration and bounded startup/read-load checks now pass at 8 MHz.
+This does not qualify sustained simultaneous rendering/network/storage,
+representative games, exact touch calibration, recovery, or promotion.
+
+### Combined runtime load continuation
+
+The combined test uses the shared RGB platform at 8 MHz and the existing SD
+copy/readback helper. The helper now accepts a progress callback so the platform
+can retain ownership of LVGL ticks. Each cycle copies and verifies a distinct
+1 MiB output, scans Wi-Fi, and keeps a temporary protected AP active during I/O;
+it measures radio coexistence, not network throughput. Existing active network
+interfaces are rejected before file creation, then explicitly stopped for this
+isolated test. Normal IDE startup restores its networking afterward.
+
+The first run completed two cycles, but the owner reported no visible screen.
+It was interrupted; its visual result is a failure, regardless of the verified
+file cycles. Inspection found backlight on, active screen matching, UI ownership,
+and no pending transfer. Explicit white text on a blue background plus a forced
+redraw became visible, confirmed by the owner. Styling versus refresh was not
+isolated. The replay uses explicit white text and a completed redraw for each
+progress update. Evidence and preserved partial outputs are indexed under
+`hardware_test_artifacts/crowpanel7-20260919/combined/`; the new eight-cycle run
+is in `visible-retry/`.
+
+The replay completed two file/radio cycles. The owner reported progress working
+but no touch coordinates. The test was stopped to investigate input polling;
+neither interrupted run counts as the requested eight-cycle combined pass.
+The periodic task was active and LVGL ticks advanced by 198 ms during a 200 ms
+sample, but the LVGL binding's nesting counter read 1. The pinned task handler
+skips its LVGL processing when that counter is nonzero. This identifies a
+possible polling obstruction, not its cause; do not force-clear the counter.
+The user then needed to step away, so interactive checks paused and the board
+was returned to normal 8 MHz startup. Next: instrument a fresh-reset fixture
+through creation and ownership handover, then repeat combined load only after
+visible touch feedback works. Retain all interrupted outputs and journals.
+
+On resuming, `combined/20260919-103808-probe.log` reproduced nesting 1
+immediately after platform creation and throughout ownership handover following
+a raw soft reset. A normal hard restart then reached the IDE without captured
+errors (`runtime/20260919-103900-hard-startup.log`). The next probe,
+`combined/20260919-104007-probe.log`, measured nesting 0 before soft reset,
+before platform creation, and throughout creation and ownership handover.
+This establishes hard restart as a successful recovery in this comparison;
+it does not yet establish what originally left the counter nonzero. The pinned
+binding generator increments the native static counter around Python callbacks
+without exception-unwind cleanup, so interruption during a callback remains a
+candidate cause. Do not manually clear this counter. The fresh load fixture
+requires nesting 0 and a two-minute touch preflight before creating load outputs.
+
+The fresh-restart fixture captured **43 presses** during that preflight. The
+owner initially reported a blank screen, then its appearance, and confirmed:
+"Okay, that seems to work perfectly." All **eight 1 MiB copy/readback cycles**
+then passed with AP activity, station scans, periodic GC, and normal scheduled
+LVGL refresh/input processing. Total measured cycle time was **454.806 s**;
+minimum sampled free Python heap after GC was **5,841,776 bytes**. Input captured
+**72 presses during load**, and nesting remained 0 at every cycle boundary.
+The owner reported: "That also seems to work very well." Evidence is in
+`combined/fresh-restart/load.json` and its operator observations. This passes
+the bounded shared-runtime coexistence check; network throughput, longer
+endurance, interruption recovery, and the original nesting failure remain
+separate investigations.
+
+After a normal hard restart, all **107 installed, baseline, and load-output
+file hashes matched** (`combined/fresh-restart/persistence.json`). The final
+restart reached `Starting IDE` without captured error markers; the board was
+left at normal 8 MHz TartLab startup. `combined/fresh-restart/finalize.json`
+indexes both restart captures and the persistence result.
+
+### Unattended endurance continuation
+
+The reusable `tools/sd_runtime_bench.py` runner replaces the one-off normal-runtime
+scripts. It binds resumption to the installation inventory and load contract,
+rehashes completed outputs, retains partial attempts, and restores normal IDE
+startup. A separate operator form cannot pass while observations are unanswered.
+The fixture counts actual LVGL timer callbacks, drains display transfers before
+sampling state, and exercises direct/UI ownership every cycle. Board parameters
+continue to come from `BOARD_CONFIG`.
+
+`hardware_test_artifacts/crowpanel7-20260919/endurance/runtime-bench.json` records
+**16 accepted 1 MiB SD copy/readback/radio cycles**, totaling **829.848 s**.
+Minimum sampled free Python heap after GC was **5,918,592 bytes**; settled heap
+was 5,924,144 bytes after the first cycle and 5,924,064 after the last. All accepted
+cycle boundaries had progressing LVGL callbacks and nesting zero. No physical
+presses were recorded; this unattended result does not certify touch or visuals.
+
+This was **12 uninterrupted accepted cycles plus four after resumption**, not
+a continuous 16-cycle pass. The next attempt after cycle 12 passed its file and
+radio checks but was rejected by an instantaneous pending-transfer check. That
+check had not waited for a normal asynchronous UI flush and did not preserve
+the rejected state, so it cannot establish a stalled transfer. The corrected
+fixture pauses new submissions, applies the controller's bounded completion
+wait, samples state, and resumes scheduling. It now preserves individual
+handover/scheduler snapshots before validation. All 99 installed/source/earlier
+output hashes passed before resumption. The rejected output remains preserved.
+
+Earlier setup attempts exposed three runner issues: checking health before IDE
+network initialization finished, unsupported MicroPython dictionary unpacking,
+and an IDE AP retained across raw soft reset. The runner now waits for the
+explicit healthy message, uses compatible device syntax, and explicitly stops
+native networking for its isolated load fixture. Those failed attempts remain
+in the journal and are not counted as load passes.
+
+Normal post-load hard startup and the first two soft-reset checks passed. The
+third soft reset reached healthy IDE state (sequence 24, reset cause 5), but
+subsequent REPL inspection measured **LVGL nesting 1**. The overall runner
+therefore remains **failed**, with only two accepted soft resets; the successful
+load cycles do not qualify reset recovery. The inspection includes Ctrl-C, so
+this observation alone does not determine whether the counter became stuck
+during startup or serial interruption.
+
+The isolated `tools/lvgl_callback_probe.py` then reproduced a specific native
+defect without SD or display activity: a deliberately raised and caught timer
+callback `ValueError` changed nesting **0 -> 1**, and raw soft reset retained
+**1**. Evidence: `endurance/callback/ee54376f-callback-probe.json` and adjacent
+logs. No counter was manually cleared. This demonstrates callback exception
+leakage and reset retention; it does not prove the trigger of every earlier stall.
+
+That probe's recovery hard boot captured a real **GT911 I2C ETIMEDOUT (116)**
+inside `pointer_framework._read` / `gt911._get_coords`, caught by the upstream
+task handler. IDE subsequently reported healthy, but the error correctly failed
+the startup check. This is a concrete application callback error path into the
+native defect. A clean hard restart and separate SD persistence verification
+follow; the failed recovery log remains retained. Next firmware work must
+address callback exception cleanup and native state on soft reset, then repeat
+fault recovery and normal-runtime checks. Merely resetting the counter in Python
+would not establish that LVGL's interrupted native operation is safe to resume.
+The upstream task handler also stops itself after a callback exception; its
+restart policy and touch transport error handling need qualification alongside
+the native repair.
+
+The separate `endurance/recovery-integrity.json` reverified **all 103 installed,
+source-pattern and accepted load-output hashes**. At entry, normal IDE state
+was healthy and nesting zero. Its final restart captured GT911 **ENODEV (19)**
+inside the input callback before IDE reported healthy; therefore that script's
+overall recovery result also remains failed despite every hash matching.
+
+#### Stopping point and prepared repair
+
+The owner requested a stopping point before firmware build/flash. The experimental
+`container_prepare_storage.py` now prepares balanced native callback scopes using
+MicroPython's NLR unwind callbacks, preserving exception propagation and return
+values. Its interpreter teardown hook clears callback state only after native
+resource shutdown. Both pinned generator transformations compile as Python, and
+the experimental lock's wrapper hash was updated and validated. The native
+regression covers normal/returning callbacks, nested exceptions, an inner caught
+exception, and teardown reset. Host tests passed with **two native C tests
+skipped** because no host C compiler was available. **No new firmware was built
+or flashed, and the repair has not passed native or device validation.**
+
+Next: run the native tests in the pinned container, build/inspect the experimental
+image, retain a current flash backup, then test it on the fixture. Run
+`lvgl_callback_probe.py --expect-clean` to require balanced nesting and a working
+timer after soft reset. Investigate the GT911 transport errors separately; do
+not suppress them or convert the existing failed reset/recovery gates to passes.
+`endurance/night-stop.json` records the final bounded startup-restoration attempt.
+Physical observations remain unanswered and can wait until the next session.
+The first night-stop restart failed the clean-startup check; the second reached
+`HEALTHY mode=IDE` without captured error markers. The board was left running
+that normal startup, with the serial connection closed. This bounded recovery
+does not clear the earlier reset/transport failures.
+
+### September 20: native callback repair on hardware
+
+All five native patch tests passed in the pinned ESP-IDF container, including
+ASan/UBSan callback-unwind and storage-lifecycle tests. A fresh pinned source
+checkout built the candidate in `build/crowpanel7-callback-20260920/`. Image and
+UART-only console inspections passed: combined image 2,981,968 bytes, application
+2,916,432 bytes, 229,296 bytes application headroom, unchanged partition layout.
+Firmware SHA-256:
+`3fa4f55f2efc4bdaaf99868b2767531e22d8308a6bd3abe0a286469e5482a0ae`.
+The write verified at 115200 baud, preserving NVS/PHY and internal filesystem.
+The owner requested no unnecessary backups: the attempted new dump was cancelled,
+no new dump retained, and the existing UART-only firmware remains the rollback image.
+
+`hardware_test_artifacts/crowpanel7-20260920/callback/47eafffe-callback-probe.json`
+records the corrected native behavior: intentional callback exception was caught,
+nesting stayed **0 -> 0**, soft reset retained **0**, and a fresh timer callback
+executed with nesting still zero. The isolated cleanup check passed. The initial
+normal boot captured another GT911 ETIMEDOUT during Wi-Fi startup, so the overall
+probe correctly failed its initial-startup gate; its final restart was clean.
+This repairs native counter leakage/reset retention, not touch transport errors
+or safe continuation of every interrupted LVGL operation in the same interpreter.
+
+Ten direct native SD lifecycle cycles passed, with 20 sector reads and ten
+closed-object guard checks. An earlier invocation failed its internal-root
+precondition after mpremote could not enter raw REPL; no SD regression was
+established by that setup failure. `sd_bringup.py native-lifecycle --raw-reset`
+now performs and captures its own explicit pre-test raw soft reset.
+
+The subsequent normal-runtime bench **passed all eight uninterrupted 1 MiB
+copy/readback/radio cycles, five soft resets, and 95 persistence hashes**.
+Measured load time was **423.528 s**, minimum sampled free Python heap after GC
+**5,918,720 bytes**. LVGL callbacks progressed and nesting stayed zero at accepted
+cycle boundaries; direct/UI handover passed each cycle. Normal boot sequences
+40 through 44 were healthy soft resets, each advancing once. The final normal
+startup was clean. Evidence: `runtime/runtime-bench.json` under the September 20
+artifact directory. No physical touch presses were recorded; this unattended run
+does not certify touch response or visual stability. The intermittent GT911
+transport fault remains open despite this successful bounded regression.
+
+`final-state.json` and `final-startup.log` in that directory record the final
+live timer/scheduler check and restoration. Physical cold-boot, alignment and
+touch observations are the remaining operator checks for this candidate; the
+board remains experimental and is not promoted to a supported target.
+The live check passed with **454 timer callbacks**, nesting zero before/after,
+an active task handler, and healthy IDE state at sequence 45. The final restart
+was clean; the serial port was closed with normal IDE startup running.
+
+### Brightness follow-up
+
+The owner confirmed tapping IDE, stable screen alignment, responsive touch and
+navigation into Settings. Physical power removal/reconnection was not explicitly
+confirmed. The owner also reported brightness adjustment had no visible effect,
+even after saving. Inspection found the board payload omitted `backlight_state`,
+so the shared factory selected digital `STATE_HIGH`: every nonzero brightness
+became fully on. The payload now selects the existing driver's `STATE_PWM` path;
+no shared runtime or firmware change was needed. The updated minified payload was
+hash-verified on SD; current inventory is
+`hardware_test_artifacts/crowpanel7-20260920/sd-stage-pwm.json`.
+
+The initial hardware duty check incorrectly required one-count precision on the
+16-bit API; LEDC quantizes duty at the driver's PWM frequency. Its following
+restart also captured the known GT911 ENODEV error. Both failures are retained
+in `brightness.json`; the subsequent measured verification is recorded separately
+in `brightness-verified.json`. Visual brightness change still needs the owner's
+confirmation. Six RGB tests and board-catalog validation pass with PWM selected.
+Measured duties for 10%, 50% and 100% were **6528, 32736 and 65535** respectively,
+within one percentage point of each request; measured PWM frequency was 38,023 Hz.
+The saved setting was **30%**, restored to duty 19648. This confirms the setting
+had persisted and PWM duty changes now reach the hardware; perceived brightness
+remains an operator observation.
+
+### Session concluded — handoff
+
+The owner confirmed the PWM brightness fix: "Yes, that worked great." Stable
+display, responsive touch, Settings navigation and brightness adjustment now
+have operator confirmation. A physical power cycle was not explicitly confirmed.
+The final PWM verification and normal IDE restart passed; no further device
+changes were made after the owner's confirmation.
+
+Next session: investigate intermittent **GT911 ETIMEDOUT (116) / ENODEV (19)**
+inside the LVGL input callback. The native nesting leak is repaired and tested,
+but an input exception can still stop the upstream task handler. Compare the
+standalone probe's declarative expander reset sequence with normal factory
+startup, which currently does not perform that sequence. This is an investigation
+lead, not an established cause; do not suppress transport errors or assume that
+healthy IDE boot state proves input polling works.
+
+Current firmware and build evidence: `build/crowpanel7-callback-20260920/`.
+Current SD inventory: `hardware_test_artifacts/crowpanel7-20260920/sd-stage-pwm.json`.
+Latest device result: `brightness-verified.json` in that same artifact directory.
+Use the existing rollback firmware; the owner explicitly requests no unnecessary
+backups. Keep physical observations until the end where practical. The board
+remains experimental, with qualification/recovery gates still open.
+
+### September 20: GT911 controlled comparison and startup investigation
+
+COM20 retained the callback-repaired firmware and the installed 10 kHz/PWM
+payload. No firmware or installed runtime changes were needed for these checks.
+Artifacts are under `hardware_test_artifacts/crowpanel7-20260920/gt911/`.
+
+`active-config/comparison.json` compares hardware I2C host 0 at 10 and 100 kHz,
+each with and without the declared PCA9557 reset sequence. Each case completed
+two 1 MiB SD copy/readback cycles with RGB refresh and Wi-Fi AP/scan activity.
+The active platform's frequency was checked, and GT911 polling was counted with
+exceptions recorded and re-raised. All eight cycles returned the expected
+1 MiB SHA-256; polling counts were **2,697 / 2,626 / 2,281 / 2,297** respectively,
+with **zero transport exceptions** and progressing LVGL callbacks. These bounded
+results do not demonstrate that reset or frequency changes fix the intermittent
+fault. Touch events are machine observations, not confirmed finger response.
+
+Earlier comparison setup attempts are retained but excluded: the first changed
+the internal rescue configuration rather than the active SD configuration; the
+second lacked the isolated board import path. The accepted runner configures
+the normal platform paths before importing and modifying the active payload.
+
+`baseline-startups/results.json` records 12 alternating hard/soft normal starts.
+All startup logs reached healthy IDE without captured transport errors, but the
+post-Ctrl-C timer check failed after **two of six soft resets** (sequences 65
+and 75): zero callbacks, nesting zero. The other ten checks passed. Because REPL
+entry interrupts execution and discards some serial bytes, these stalls cannot
+be attributed to GT911 or established as pre-interruption startup failures.
+
+The reusable `tools/touch_startup_probe.py` preserves those discarded bytes in
+`serial.log`, captures startup separately from post-interrupt scheduler state,
+and records active/running/scheduled handler fields. It journals every cycle,
+refuses to overwrite a session, and restores normal startup in `finally`.
+Six focused host tests passed, covering evidence retention and rejection of a
+dead scheduler despite healthy boot. Use a new session directory per run:
+
+```powershell
+python tools/touch_startup_probe.py --port COM20 --session hardware_test_artifacts/crowpanel7-touch-next --cycles 8
+```
+
+`captured-startups/touch-startup.json` passed all **eight** subsequent alternating
+hard/soft starts, including progressing callbacks, active handler, zero nesting,
+and healthy IDE state. The final normal restart also passed and COM20 was closed.
+The two earlier post-interrupt stalls did not recur under enhanced capture;
+their cause remains unclassified. No new operator observations were requested.
+The preserved transcript does capture one `KeyboardInterrupt` inside
+`task_handler._task_handler` during REPL entry (sequence 81); that particular
+check still passed. This confirms that interruption can reach the scheduler,
+but does not prove the trigger of the two earlier stalls. The enhanced transcript
+contains no `OSError` or uncaught-exception marker.
+
+The timeout remains unresolved; neither transport errors nor the earlier failed
+recovery gates are waived. Physical cold-power-on and touch/display confirmation
+remain separate from the unattended results.
+
+### September 20: research and next-test strategy
+
+Added [GT911_INVESTIGATION.md](GT911_INVESTIGATION.md) with primary sources,
+the command-mode discrepancy found in the pinned GT911 driver, same-board
+upstream timeout reports, and ordered experiments. The next step is passive
+transaction/heartbeat capture during real startup; command mode and complete
+reset timing then get separate A/B comparisons. Existing post-Ctrl-C checks do
+not provide that passive evidence. No hardware tests or device changes were
+performed for this research update; all new tests are explicitly planned.

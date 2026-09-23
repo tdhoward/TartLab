@@ -1,13 +1,37 @@
 # Scrolling racer architecture and performance project
 
-Status: Phase 4 implemented; Phase 5 not started
+[Project index](../README.md)
+
+Status: Phases 1–4 implemented; later sprite/gameplay work is recorded below.
+Phase 5 performance qualification and cleanup remain open.
+
+## Current implementation and next gate
+
+The current example adds prepared TS16 sprites, a larger car and cow, collectible
+coins, crossing capybaras and chickens, five difficulty levels, five road-speed
+stages, crash/restart behavior and a persistent high score. The object cap is
+four. Art rebuilding, gameplay tuning and the latest sampled workloads are in
+the [Racer asset notes](../../../tools/assets/racer/README.md).
+
+The latest documented animal-tuning sample on Elecrow DLE06235B used four
+objects, both animals and steering at 128 pixels/second. Over 24 samples it
+measured 76.6 ms mean work, 97.7 ms p95 and 100.4 ms maximum. These work times do
+not establish a supported frame rate or satisfy the original 50 ms target.
+The earlier [board qualification record](../../../boards/elecrow_dle06235b/BRINGUP_RESULTS.md#milestone-a-first-complete-tartlab-bench-boot)
+includes a passing 400-frame, 20 FPS representative matrix for its earlier
+workload; that result does not qualify the later sprite/animal revision.
+
+Next: finish Phase 5 with an explicit accepted workload and render cadence,
+allocation/GC measurements, full median/p95/max timing and missed-deadline
+coverage, and held visual checks on every supported profile under test. Keep
+the original workloads and subsequent evidence distinguishable.
 
 Related implementation:
 
-- [`src/files/help/racer.py`](src/files/help/racer.py)
-- [`src/lib/tartlabutils/app.py`](src/lib/tartlabutils/app.py)
-- [`PANEL_SCROLL_PRESENTATION_PROJECT.md`](PANEL_SCROLL_PRESENTATION_PROJECT.md)
-- [`tests/PANEL_SCROLL_HARDWARE.md`](tests/PANEL_SCROLL_HARDWARE.md)
+- [`src/files/help/racer.py`](../../../src/files/help/racer.py)
+- [`src/lib/tartlabutils/app.py`](../../../src/lib/tartlabutils/app.py)
+- [Panel-scroll presentation](../completed/panel-scroll-presentation.md)
+- [`tests/PANEL_SCROLL_HARDWARE.md`](../../../tests/PANEL_SCROLL_HARDWARE.md)
 
 ## Objective
 
@@ -40,15 +64,16 @@ entity-component system or a reusable game engine prematurely.
   practical so garbage collection does not introduce avoidable frame jitter.
 - Optimizations must preserve a correct portable rendering path.
 
-## Current implementation and measured problem
+## Original baseline and measured problem
 
-The current example already avoids rebuilding the entire scene in Python on
-every frame. It keeps a canonical RGB565 framebuffer, prepares the repeating
-road bands ahead of time, and calls `DirectCanvas.scroll_region()` so a capable
-surface can move panel scanout and upload only the newly exposed band.
+This section describes the pre-refactor baseline, not the current sprite game.
+The original example avoided rebuilding the entire scene in Python on every
+frame. It kept a canonical RGB565 framebuffer, prepared repeating road bands
+ahead of time, and called `DirectCanvas.scroll_region()` so a capable surface
+could move panel scanout and upload only the newly exposed band.
 
-That is an effective transfer optimization when panel scrolling is available,
-but the current loop has several limitations:
+That was an effective transfer optimization when panel scrolling was available,
+but the original loop had several limitations:
 
 - `FRAME_DELAY` is slept after all update, drawing, and transfer work. The
   actual frame interval is therefore work time plus 32 ms rather than a
@@ -75,7 +100,7 @@ but the current loop has several limitations:
   four. A variable scroll delta cannot reuse that table safely.
 
 The hardware evidence in
-[`tests/PANEL_SCROLL_HARDWARE.md`](tests/PANEL_SCROLL_HARDWARE.md) measured the
+[`tests/PANEL_SCROLL_HARDWARE.md`](../../../tests/PANEL_SCROLL_HARDWARE.md) measured the
 portrait racer's four-pixel fixed-header scroll at 38.39 ms with accelerated
 presentation and 110.10 ms with software presentation. The accelerated case
 transferred 1,776 bytes rather than 202,464 bytes, but both cases still moved
@@ -274,6 +299,11 @@ These smaller optimizations should then be measured:
   complex to add without evidence that they are still the limiting cost.
 
 ## Implementation plan
+
+The Phase 1–4 results below retain their checkpoint-era workloads, source
+identities and measurements. Their two-speed and primitive-rendering descriptions
+are historical; the current sprite game and its unfinished gate are summarized
+above. Phase 5 remains the acceptance plan.
 
 ### Phase 1: baseline and deterministic timing
 

@@ -10,6 +10,32 @@ import sys
 import container_prepare
 
 
+LV_CALLBACK_STATE = r'''
+static int _nesting = 0;
+
+static void mp_lv_callback_leave(void *unused) {
+    (void)unused;
+    --_nesting;
+}
+
+void mp_lv_reset_callback_state(void) {
+    // Called only during interpreter teardown, after native resources stop.
+    _nesting = 0;
+}
+'''
+
+LV_CALLBACK_ENTER = '''    nlr_jump_callback_node_t callback_cleanup;
+    _nesting++;
+    nlr_push_jump_callback(&callback_cleanup, mp_lv_callback_leave);'''
+LV_CALLBACK_LEAVE = '    nlr_pop_jump_callback(true);'
+
+
+def patch_lvgl_callbacks(value):
+    value = replace_once(value, 'static int _nesting = 0;', LV_CALLBACK_STATE.strip())
+    value = replace_once(value, '    _nesting++;', LV_CALLBACK_ENTER)
+    return replace_once(value, '    _nesting--;', LV_CALLBACK_LEAVE)
+
+
 def replace_once(value, old, new):
     if value.count(old) != 1:
         raise ValueError("unexpected pinned native source: " + old[:90])
@@ -207,6 +233,9 @@ def patch_builder(value):
     extern void mp_lcd_rgb_bus_deinit_all(void);
     mp_lcd_rgb_bus_deinit_all();
     #endif
+    // Unwound callbacks must not poison the next interpreter.
+    extern void mp_lv_reset_callback_state(void);
+    mp_lv_reset_callback_state();
     // Custom VM roots survive mp_init; clear both copies before the next VM.
     extern void *mp_lv_roots;
 """ + LV_ROOT_RESET + "\n    gc_sweep_all();") + ''')
@@ -239,8 +268,8 @@ def install(source):
             '        LCD_DEBUG_PRINT("rgb_bus_copy_task - STOPPED\\n")\n'
             '        self->copy_task_handle = NULL;\n        vTaskDelete(NULL);'),
         "builder/esp32.py": patch_builder,
-        "gen/lvgl_api_gen_mpy.py": patch_lvgl_roots,
-        "gen/python_api_gen_mpy.py": patch_lvgl_roots,
+        "gen/lvgl_api_gen_mpy.py": lambda value: patch_lvgl_callbacks(patch_lvgl_roots(value)),
+        "gen/python_api_gen_mpy.py": lambda value: patch_lvgl_callbacks(patch_lvgl_roots(value)),
     }
     # Validate every anchor first; mismatched source must not be partly patched.
     changes = {source / path: transform((source / path).read_text(encoding="utf-8"))

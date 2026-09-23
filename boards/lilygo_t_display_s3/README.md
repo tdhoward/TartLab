@@ -1,7 +1,7 @@
 # LilyGO T-Display-S3 (non-Pro, non-touch)
 
 Lifecycle: `bringup`. This is the initial buttons-only modern development
-target in [BUTTON_NAVIGATION_PROJECT.md](../../BUTTON_NAVIGATION_PROJECT.md).
+target in [Button navigation](../../docs/projects/active/button-navigation.md).
 Initial physical observations are in [BRINGUP_RESULTS.md](BRINGUP_RESULTS.md).
 Shared runtime integration is tracked in [DEVELOPMENT_RESULTS.md](DEVELOPMENT_RESULTS.md).
 It is not a supported installation target. PCB revision is unverified; the
@@ -10,8 +10,10 @@ production revision policy.
 
 The owner identified the non-Pro, non-touch model and authorized erasing the
 bench device without a backup. Initial work started on 2026-09-09. The display
-geometry in the descriptor is the intended landscape UI orientation; readable
-launcher and settings layouts still require physical validation.
+geometry in the descriptor is the tested landscape UI orientation. Subsequent
+owner checks confirmed button navigation, brightness/settings and dim/wake;
+the development results distinguish those observations from the remaining
+physical and release gates.
 
 ## Hardware reference
 

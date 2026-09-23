@@ -6,7 +6,7 @@ the pending operator checklist. The observations below remain unperformed.
 
 Recorded 2026-09-11. Software foundation implemented; physical acceptance remains
 pending. The next code phase is **Phase 2: first playable room** in
-[the project plan](../GRID_PUZZLE_PROJECT.md). The current app is an interactive
+[the project plan](../docs/projects/active/grid-puzzle.md). The current app is an interactive
 room/layout/input probe. It does not simulate movement, hazards, or completion.
 
 The project targets `lvgl-modern` only. Legacy packaging checks verify exclusion

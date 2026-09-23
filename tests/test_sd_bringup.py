@@ -87,6 +87,33 @@ class SDBringupTests(unittest.TestCase):
                 load("unused", str(path), expected_file(511), None)
             self.assertEqual(path.read_bytes(), b"original")
 
+    def test_platform_refresh_callback_does_not_tick_lvgl_again(self):
+        import hashlib
+        load = runpy.run_path(str(Path(__file__).resolve().parents[1] /
+                                 "tools/device/sd_runtime_load.py"))["sd_runtime_load"]
+        fake_time = types.SimpleNamespace(ticks_ms=lambda: 0, ticks_diff=lambda a, b: a - b)
+        fake_gc = types.SimpleNamespace(collect=lambda: None, mem_free=lambda: 100000)
+        callback = Mock()
+        lv = Mock()
+        with tempfile.TemporaryDirectory() as directory:
+            source, destination = Path(directory) / 'source', Path(directory) / 'output'
+            content = bytes(range(256)) * 20
+            source.write_bytes(content)
+            expected = {'bytes':len(content),'sha256':hashlib.sha256(content).hexdigest()}
+            with patch.dict(load.__globals__, {'time':fake_time,'gc':fake_gc,'lv':lv}), \
+                    patch('os.sync', create=True), \
+                    patch.dict(sys.modules, {'esp32':types.SimpleNamespace(idf_heap_info=lambda flags: []),
+                                             'lcd_bus':types.SimpleNamespace(MEMORY_INTERNAL=1,MEMORY_DMA=2)}):
+                result = load(str(source), str(destination), expected, None, callback)
+            self.assertEqual(destination.read_bytes(), content)
+            self.assertEqual(result['sha256'], expected['sha256'])
+            # The existing counter snapshots I/O progress before the final
+            # "cycle verified" display update.
+            self.assertEqual(callback.call_count, result['timer_iterations'] + 1)
+            self.assertGreater(callback.call_count, 0)
+            lv.tick_inc.assert_not_called()
+            lv.timer_handler.assert_not_called()
+
     def test_reset_recovery_cannot_hide_native_panic_or_hard_reboot(self):
         for prefix, expected in ((b"MPY: soft reboot\r\n", True),
                                  (b"MPY: soft reboot\r\nGuru Meditation Error\r\n", False),

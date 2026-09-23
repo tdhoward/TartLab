@@ -47,7 +47,7 @@ claims are inherited and which have fresh results for each included board.
 
 ## Experimental non-touch input coverage
 
-[`BUTTON_NAVIGATION_PROJECT.md`](../BUTTON_NAVIGATION_PROJECT.md) defines the
+[Button navigation](../docs/projects/active/button-navigation.md) defines the
 two-button navigation milestone and initial non-touch board port.
 It does not establish current support or qualification. Example-app adaptations,
 including Racer, are optional and do not gate the core milestone.
@@ -111,7 +111,8 @@ These cover QOI opcodes, bounded reads, borrowed strip buffers, alpha policy,
 invalid streams, TS16/QOI frame extraction, the alpha-128 cutoff, background
 compositing, one-pass batches, decoder extension, example execution, and profile-specific
 help/assets/vendor selection. `tests.test_image_conversion` additionally checks
-the host converter with Pillow installed. See `IMAGE_ASSETS.md` for conversion
+the host converter with Pillow installed. See the
+[image and sprite reference](../docs/reference/image-assets.md) for conversion
 commands and memory contracts. Run both profile builds when changing asset
 selection; modern releases must contain no PyDevices package or vendor lock.
 

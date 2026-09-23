@@ -5,6 +5,17 @@ Measured results and current device state: [BRINGUP_RESULTS.md](BRINGUP_RESULTS.
 This plan supersedes the 7-inch sequencing and storage investigation in the
 [earlier Elecrow research](../elecrow/ESP32_S3_BRINGUP_PLAN.md).
 
+September 20 status: native callback-unwind repair is installed and passes its
+isolated exception/reset test, ten SD lifecycle cycles, eight combined load
+cycles, five soft resets and 95 persistence hashes. Next investigate intermittent
+GT911 transport errors and obtain physical cold-boot/display/touch observations.
+Earlier failed reset gates remain historical evidence; this is not promotion.
+
+GT911 research and the next discriminating tests are tracked in
+[GT911_INVESTIGATION.md](GT911_INVESTIGATION.md). Start with passive capture of
+the first failed transaction, then independently compare command mode and reset
+timing. Further undifferentiated soak runs are not the next diagnostic step.
+
 ## Decision and scope
 
 Pursue a dedicated **4 MiB firmware plus SD-root installation**. SD provides
@@ -23,6 +34,10 @@ content. A private full-flash backup was nevertheless obtained. No SD card was
 present at the start. Unique identifiers, COM assignments, dumps, and full logs
 stay in ignored `hardware_test_artifacts/` and `build/` directories.
 
+September 20 operator preference: do not make unnecessary backups of this
+disposable fixture. Reuse the existing rollback firmware; a routine experiment
+does not require another full-flash dump.
+
 ## Hardware facts and unknowns
 
 - Order SKU DIS08070H001 corresponds to vendor DIS08070H / DIS08070H-1,
@@ -36,9 +51,13 @@ stay in ignored `hardware_test_artifacts/` and `build/` directories.
 - Reproduce the pinned factory timing first: 15 MHz pixel clock and its
   porch/pulse/polarity values. Do not substitute a similarly named CYD config.
   That baseline rendered correct colors but horizontally wrapped on the tested
-  unit. The current bring-up payload requests 10 MHz with the same porches;
-  the owner confirmed correct edges and labels. Sustained-load stability is
-  still pending. See the measured results for the comparison.
+  unit. A subsequent bring-up payload requested 10 MHz with the same porches;
+  the owner confirmed correct edges and labels. Normal runtime later showed
+  persistent drift at 10 MHz. The current payload requests 8 MHz, which passed
+  a 99-file read/hash comparison with no drift reported by the owner.
+  Eight shared-runtime SD/radio cycles subsequently passed with 72 touch
+  presses and normal display behavior reported by the owner. Longer endurance
+  remains pending. See the measured results.
 - The owner physically confirmed **V3.0** on 2026-09-12. V3 adds PCA9557 at I2C 0x18;
   its bit 0 resets touch and bit 1 controls the GT911 interrupt/address phase.
   The probe preserves unrelated expander outputs and runs the sequence only
@@ -185,14 +204,27 @@ This is a diagnostic installation. Normal TartLab startup awaits phase 4.
 
 ### 4. TartLab runtime integration
 
-- [ ] Add reusable RGB transport/ownership support selected by BOARD_CONFIG.
-  Keep board values out of the shared factory and app modules.
+- [x] Add reusable RGB transport/ownership support selected by BOARD_CONFIG.
+  The shared factory and RGB adapter now start the launcher and IDE on SD.
+  The adapter currently supports native orientation and zero offsets, with
+  the pinned partial-row endpoint compatibility selected in the board payload.
 - [ ] Establish completion semantics for RGB scanout versus SPI/I8080 transfers;
   qualify UI/direct-surface handover, dirty rectangles, color byte order,
   display teardown, and repeated soft/hard resets.
 - [ ] Measure launcher, IDE, representative games, network traffic, and SD I/O
   together at 800 x 480. Record frame time and free internal/PSRAM memory.
 - [ ] Validate touch coordinate transforms against labeled corner targets.
+
+September 19: direct writes, ownership handover, and three same-interpreter
+teardown/recreation cycles passed. The owner initially saw a normal launcher
+and IDE, then reported whole-picture rightward shifts/wrapping with a retained,
+growing offset approximately every 20 seconds. Display stability therefore
+fails at the 10 MHz baseline. An 8 MHz payload-only comparison passed all 99
+file hashes; the owner reported "It seems to be working fine now." The current
+payload keeps 8 MHz. A normal soft reset and physical cold boot reached the IDE;
+the owner confirmed the launcher IDE tap and stable cold-start alignment.
+Normal boot health and installed startup/runtime hashes passed. Do not treat
+healthy boot state or file hashes as a visual pass.
 
 ### 5. Provisioning, recovery, and promotion
 
@@ -206,6 +238,45 @@ This is a diagnostic installation. Normal TartLab startup awaits phase 4.
   `tools/qualification_session.py`; promote lifecycle only with complete evidence.
 
 ## Short bench entry points
+
+For **normal TartLab startup** (not diagnostic entry points), the reusable
+[`sd_runtime_bench.py`](../../tools/sd_runtime_bench.py) runner verifies the
+installed inventory, exercises SD/RGB/AP/scan load and direct/UI handover,
+checks scheduled LVGL timer progress, repeats normal soft resets, rehashes
+files, and restores normal IDE startup. It does not require touches during
+the automated run. Use the current installation inventory and existing
+1 MiB baseline; a diagnostic-era inventory will fail against normal startup.
+
+```powershell
+.venv/Scripts/python.exe tools/sd_runtime_bench.py --port COMx --session hardware_test_artifacts/runtime-endurance --inventory PATH-TO-CURRENT-INVENTORY.json --source /.tartlab-bench-baseline/1048576.bin
+```
+
+Defaults are 16 load cycles and three soft resets. Repeat the identical command
+with `--resume` after an interruption: earlier completed outputs are rehashed,
+partial files are retained, and new attempts use unique names. Startup waits
+for `HEALTHY mode=IDE`, since `Starting IDE` precedes network initialization.
+Machine evidence and a separate operator observation form remain in the
+session directory. Physical touch, visual quality and power-cycle observations
+remain separate; scheduler progress alone cannot certify them.
+After recording the operator's answers as JSON booleans, validate the form with
+`tools/sd_runtime_bench.py observations --session hardware_test_artifacts/runtime-endurance`.
+Unanswered fields are rejected; failed observations remain failures.
+
+The September 19 unattended continuation accepted 16 load cycles (12 plus four
+resumed), but failed its third soft-reset scheduler check. Next: repair native
+callback exception cleanup and soft-reset retention, using the isolated probe:
+
+```powershell
+.venv/Scripts/python.exe tools/lvgl_callback_probe.py --port COMx --session hardware_test_artifacts/callback-recovery --expect-clean
+```
+
+This intentionally raises inside LVGL, records nesting before/after and after
+raw soft reset, and attempts a normal hard restart in `finally`. Inspect its
+`restored_startup` result; a captured startup error remains a failure even if
+IDE later reports healthy. Do not force-clear the native counter. The current
+September 19 image reproduced 0 -> 1 -> 1 and later logged a GT911 timeout during
+recovery. The September 20 candidate passes 0 -> 0 -> 0 with a working timer
+after reset, while intermittent GT911 transport errors remain unresolved.
 
 Commands below use `COMx` as an explicit operator-supplied port; no default
 fixture is stored in the catalog. Python, esptool 5.x, and mpremote are already
@@ -318,7 +389,7 @@ After inspecting the image and entering ROM bootloader:
 
 For firmware replacement, preserve the existing internal filesystem and rescue
 launcher; do not erase the whole flash. The measured replacement write verified
-at 115200 baud. Retain a current full-flash backup before a new experiment.
+at 115200 baud. Use the existing rollback image; do not repeat routine backups.
 
 Use a hard reset before repeating the display fixture. Run the probe before
 the fixture on the same boot to perform touch reset. Save stdout to an ignored

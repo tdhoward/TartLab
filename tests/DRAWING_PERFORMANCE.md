@@ -1,7 +1,7 @@
 # Drawing performance
 
 The implementation plan is documented in
-[`MODERN_DISPLAY_CLASS_PROJECT.md`](../MODERN_DISPLAY_CLASS_PROJECT.md).
+[Modern display class project](../docs/projects/completed/modern-display-class.md).
 
 Median end-to-end time per frame on the connected modern and legacy test
 devices; lower is faster.

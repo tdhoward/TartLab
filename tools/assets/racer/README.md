@@ -1,5 +1,8 @@
 # Racer sprite sheet and difficulty
 
+Project status and remaining qualification:
+[Scrolling Racer](../../../docs/projects/active/scrolling-racer.md).
+
 `isometric-source.png` supplies the animals and objects; `car-topdown-source.png`
 supplies the revised car cell. Both were generated with the built-in imagegen
 tool. The car points directly away from the player with a higher camera angle,

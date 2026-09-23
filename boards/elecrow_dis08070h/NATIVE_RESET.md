@@ -32,6 +32,15 @@ The existing Python lease cache remains compatible and intentionally reserves
 the SD device for a boot's lifetime. The native regression bypasses it to test
 the repaired constructor/deinit/finalizer behavior directly.
 
+The September 20 candidate additionally balances the generated LVGL callback
+nesting counter using MicroPython NLR unwind callbacks. Normal return and
+exception propagation both release the callback scope; interpreter teardown
+also clears the counter after native resources stop. Exceptions still propagate.
+This does not promise safe continuation of an interrupted LVGL operation in the
+same interpreter: the task handler's failure policy and touch transport recovery
+remain separate concerns. The isolated callback probe requires a fresh timer to
+run after soft reset and never repairs state by writing the counter from Python.
+
 ## Verification
 
 [`test_native_storage_patch.py`](../../tests/test_native_storage_patch.py)
@@ -39,11 +48,15 @@ compiles the patch's actual registration/release functions with deterministic
 native-resource stubs. Run it in the pinned container to include AddressSanitizer
 and UndefinedBehaviorSanitizer. A host without a C compiler explicitly skips
 that test; a host-only run does not establish native test success.
+The callback regression also covers return values, nested exception unwinding,
+an exception caught inside an outer callback, and teardown reset. All five tests
+passed in the pinned container on September 20 with ASan and UBSan enabled.
 The reset-hook test also rejects duplicate application after an interrupted
 build. Start native builds from a fresh verified checkout.
 
-On the board, first retain the current flash backup and inspect the new image's
-partitions, physical bounds, checksums, and application headroom. Flash the
+On the board, retain the existing rollback image and inspect the new image's
+partitions, physical bounds, checksums, and application headroom. The owner
+has requested no unnecessary fresh backups of this disposable fixture. Flash the
 combined image without erasing the internal filesystem. Retain the original
 image and recipe separately for rollback and comparison.
 

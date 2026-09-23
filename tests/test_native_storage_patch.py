@@ -30,9 +30,42 @@ class NativeStoragePatchTests(unittest.TestCase):
         self.assertLess(value.index("mp_machine_hw_spi_bus_deinit_all();"), value.index("gc_sweep_all();"))
         self.assertLess(value.index("mp_lcd_rgb_bus_deinit_all();"), value.index("gc_sweep_all();"))
         self.assertLess(value.index(patch.LV_ROOT_RESET), value.index("gc_sweep_all();"))
+        self.assertLess(value.index("mp_lv_reset_callback_state();"), value.index("gc_sweep_all();"))
         namespace["read_file"] = lambda *args: value
         with self.assertRaisesRegex(ValueError, "unexpected pinned ESP32"):
             namespace["update_main"]()
+
+    def test_callback_scope_preserves_returns_and_rejects_repeat_patching(self):
+        original = ('static int _nesting = 0;\n    _nesting++;\n'
+                    '    mp_obj_t callback_result = invoke_python();\n'
+                    '    _nesting--;\n    return convert(callback_result);')
+        generated = patch.patch_lvgl_callbacks(original)
+        self.assertIn('mp_obj_t callback_result = invoke_python();', generated)
+        self.assertLess(generated.index('nlr_push_jump_callback(&callback_cleanup'),
+                        generated.index('invoke_python();'))
+        self.assertLess(generated.index('nlr_pop_jump_callback(true);'),
+                        generated.index('return convert(callback_result);'))
+        with self.assertRaises(ValueError):
+            patch.patch_lvgl_callbacks(generated)
+
+    def test_native_callback_unwinding_and_reset(self):
+        compiler = shutil.which('gcc') or shutil.which('clang') or shutil.which('cc')
+        if compiler is None:
+            self.skipTest('requires a C compiler; run in the pinned build container')
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            (work / 'lvgl_callback_under_test.h').write_text(
+                patch.LV_CALLBACK_STATE + '\nstatic void invoke(void (*call)(void)) {\n' +
+                patch.LV_CALLBACK_ENTER + '\n    call();\n' + patch.LV_CALLBACK_LEAVE + '\n}\n' +
+                'static int invoke_return(void) {\n' + patch.LV_CALLBACK_ENTER +
+                '\n    int result = 42;\n' + patch.LV_CALLBACK_LEAVE + '\n    return result;\n}\n')
+            binary = work / 'native-callback'
+            command = [compiler, '-std=c11', '-Wall', '-Wextra', '-Werror', '-g',
+                       '-fsanitize=address,undefined', '-I', str(work),
+                       str(ROOT / 'tests/fixtures/native_lvgl_callback.c'), '-o', str(binary)]
+            subprocess.run(command, check=True, capture_output=True, text=True)
+            result = subprocess.run([str(binary)], check=True, capture_output=True, text=True)
+            self.assertIn('native LVGL callback cleanup: passed', result.stdout)
 
     def test_native_slot_and_finalizer_lifecycle(self):
         compiler = shutil.which("gcc") or shutil.which("clang") or shutil.which("cc")

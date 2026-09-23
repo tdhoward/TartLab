@@ -1,8 +1,15 @@
 # Modern direct-display class improvement project
 
+[Project index](../README.md)
+
 Status: Complete, including ST7796 rotation-270 panel-scroll qualification
 
-Related evidence: [`tests/DRAWING_PERFORMANCE.md`](tests/DRAWING_PERFORMANCE.md)
+The original design, baseline and phase results are retained as project history.
+All four implementation phases are complete. The rotation-aware `DirectCanvas`
+and compatibility wrappers are implemented; future-tense design text below
+describes the original sequence, not an unfinished project.
+
+Related evidence: [`tests/DRAWING_PERFORMANCE.md`](../../../tests/DRAWING_PERFORMANCE.md)
 
 ## Objective
 
@@ -34,7 +41,7 @@ of the initial performance work.
 - Keep the implementation understandable enough that advanced students can read
   it, while isolating unavoidable low-level details in short private helpers.
 
-## Current interface and measured problem
+## Original interface and measured problem
 
 `DirectCanvas` owns a full RGB565 framebuffer and a small DMA-capable transfer
 buffer. Its drawing methods come from `framebuf.FrameBuffer`. `show()` currently

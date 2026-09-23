@@ -1,12 +1,29 @@
 # Button navigation and non-touch device support
 
+[Project index](../README.md)
+
 Status: Experimental integration implemented; physical validation in progress.
 The standalone pinned-modern display and physical-button bench results are recorded in
-[T-Display-S3 bring-up results](boards/lilygo_t_display_s3/BRINGUP_RESULTS.md).
+[T-Display-S3 bring-up results](../../../boards/lilygo_t_display_s3/BRINGUP_RESULTS.md).
 The shared configuration, I80 transport, optional touch, button input, launcher,
 chooser and settings focus paths are implemented. Follow-up integration evidence
-is in [DEVELOPMENT_RESULTS.md](boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md).
+is in [DEVELOPMENT_RESULTS.md](../../../boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md).
 No modern non-touch board is qualified by this document.
+
+## Current milestone and next gate
+
+The [development results](../../../boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md)
+record owner-confirmed button navigation, brightness save, Wi-Fi/settings access,
+three-minute dim/wake behavior, browser use and the adapted sprite example. The
+later follow-up establishes one configured-station association; it supersedes
+the earlier AP-only checkpoint. Native probes also completed 100 UI/direct
+ownership cycles. These observations do not establish release qualification.
+
+Still open: explicit counter increment/restart observations; final PCB revision
+recording in the board descriptor; authenticated firmware/candidate binding;
+power/held-button/reset and sustained resource checks; provisioning, OTA and
+recovery qualification; and fresh physical regressions on affected touch boards.
+Racer adaptation remains optional and does not block the core milestone.
 
 ## Objective and scope
 
@@ -94,8 +111,8 @@ manifest system or retrofit every example to accomplish this.
 ## Initial board investigation
 
 Treat the non-Pro T-Display-S3 as a separate modern port. The older
-[`src/configs/t_display_s3.py`](src/configs/t_display_s3.py) and
-[PyDevices board configuration](src/lib/pydevices/board_configs/t_display_s3/board_config.py)
+[`src/configs/t_display_s3.py`](../../../src/configs/t_display_s3.py) and
+[PyDevices board configuration](../../../src/lib/pydevices/board_configs/t_display_s3/board_config.py)
 are reference material, not modern support or qualification evidence. Modern
 distributions must continue to exclude the legacy PyDevices payload.
 
@@ -108,7 +125,7 @@ smaller display, including scrolled content and confirmation pages.
 
 Record concrete hardware values in the eventual board payload and board-local
 bring-up notes. Use the existing board lifecycle and firmware provenance process
-in [`BOARD_SUPPORT.md`](BOARD_SUPPORT.md); retain experimental status until the
+in [`BOARD_SUPPORT.md`](../../../BOARD_SUPPORT.md); retain experimental status until the
 required artifacts and evidence exist.
 
 ## Development sequence and completion evidence
@@ -137,7 +154,7 @@ required artifacts and evidence exist.
    startup, power, and display behavior. The experimental milestone alone does
    not establish supported-board status.
 
-Use [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md) to select the smallest test
+Use [`tests/TEST_TIERS.md`](../../../tests/TEST_TIERS.md) to select the smallest test
 environment that establishes each claim. Extend capability-specific tests and
 qualification tooling to represent absent touch explicitly; record touch-only
 checks as inapplicable with a reason and substitute actual button-navigation
