@@ -184,16 +184,25 @@ def template(release):
         result["boards"][board] = {
             "firmware_sha256": identity["firmware"]["sha256"], "board": observed,
             "gates": outcomes}
+        if identity.get("touch", {}).get("present") is False:
+            prior_input = prior.get("input") if prior else None
+            result["boards"][board]["input"] = (
+                prior_input if gates["hardware"]["mode"] == "inherited" and prior_input
+                else {"touch": {"status": "inapplicable", "reason": ""},
+                      "buttons": pending()})
     return result
 
 
-def checklist(analysis):
+def checklist(analysis, current=None):
     lines = ["# Qualification for " + analysis["version"], "",
              "Platform changed: " + str(analysis["platform_changed"]).lower(), ""]
     for name, description in analysis["checks"].items():
         lines.append("- [ ] %s: %s" % (name, description))
     for board, gates in analysis["boards"].items():
         lines.extend(("", "## " + board, ""))
+        if current and current["contract"]["compatibility"]["boards"][board].get(
+                "touch", {}).get("present") is False:
+            lines.append("- [ ] Confirm touch is absent with a reason; record fresh physical button-input evidence when hardware is fresh.")
         for name, decision in gates.items():
             if decision["mode"] == "fresh":
                 lines.append("- [ ] %s: %s" % (name, " ".join(decision["reasons"])))
@@ -238,9 +247,9 @@ def main(argv=None):
         if args.action == "template":
             write_json(args.output, template(args.release))
         else:
-            _, analysis = check_candidate(args.release)
+            current, analysis = check_candidate(args.release)
             args.output.parent.mkdir(parents=True, exist_ok=True)
-            args.output.write_text(checklist(analysis), encoding="utf-8")
+            args.output.write_text(checklist(analysis, current), encoding="utf-8")
         result = {"output": str(args.output)}
     print(json.dumps(result, indent=2))
     return 0

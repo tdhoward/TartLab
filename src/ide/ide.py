@@ -296,6 +296,12 @@ def show_update_progress(status, stepnum, steps):
         device_settings.show_update_progress(status, stepnum, steps)
 
 
+def hide_update_progress():
+    hide = getattr(ide_view, 'hide_update_progress', None)
+    if hide is not None:
+        hide()
+
+
 def save_display_settings(brightness, timeout):
     """Persist just the display preferences, preserving other device state."""
     global settings
@@ -363,6 +369,7 @@ async def install_device_updates():
         await main_update_routine(show_update_progress)
     finally:
         updates_in_progress = False
+        hide_update_progress()
 
 
 def create_device_settings():
@@ -735,6 +742,7 @@ async def api_do_updates(reader, writer, request):
         await main_update_routine(show_update_progress)
     finally:
         updates_in_progress = False
+        hide_update_progress()
 
 
 # get the disk usage

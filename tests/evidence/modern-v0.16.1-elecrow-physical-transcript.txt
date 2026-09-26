@@ -1,0 +1,75 @@
+TartLab modern-v0.16.1 Elecrow DLE06235B fixture qualification
+Session: 2026-09-26
+Operator: Tim, with Codex-operated USB probes
+Source tag: refs/tags/modern-v0.16.1
+Source commit: b6cd060b08fe53979271247c4160d41da3115fec
+Candidate checksums SHA-256: d635e6dfe56cfa3fa29c2dbb1adc9722840599f18949a63570c60d309ae0ba8b
+Board: elecrow_dle06235b, ESP32-S3 revision v0.2, 16 MiB flash,
+8 MiB PSRAM. Tim confirmed this is the same unit used for modern-v0.16.0
+qualification and found no printed PCB revision. The signed compatibility
+catalog uses observation identity observed-2026-08-29; this is not claimed
+as a printed revision. Tim authorized erasing this disposable fixture without
+backup. Raw logs, device identifiers, credentials and user-file contents
+remain outside this public record.
+
+The signed candidate and all 32 subjects are authenticated by protected
+qualification run 35935734637. Elecrow firmware SHA-256 is unchanged from
+modern-v0.16.0: 50d98625a1ef58eee6c5fbe55b5107968301ea4dc6b8954167cad9f0d65ee5a3.
+
+Update and machine hardware results
+-----------------------------------
+The fixture initially booted healthy IDE on modern-v0.16.0, with zero
+failures and no update marker. All 12 signed candidate update assets were
+authenticated and staged over USB. Applying modern-v0.16.1 through the
+installed updater left pending_health and retained the old committed
+version until first healthy boot. That boot reported modern-v0.16.1,
+zero failures and no update marker. Selected-app, /device and /files/user
+digests matched before and after. This exercises the installed v0.16.0
+updater with a locally staged candidate; it does not claim internet delivery.
+
+A device probe reported ST77922 display, ST77922Touch input, direct RGB565,
+frame synchronization and exclusive display ownership. Fifty UI/direct
+ownership cycles returned to UI ownership with no pending transfer. Five
+Wi-Fi scans ran alongside 150 display frames without scan errors; minimum
+free heap during that workload was 7,601,136 bytes and filesystem free space
+was 10,158,080 of 12,517,376 bytes. All 25 initialization/deinitialization
+cycles completed and returned to UI ownership. A ROM identification read
+confirmed ESP32-S3 revision v0.2 and reset the board into normal startup.
+
+Tim reported all three candidate observations passed: three power cycles
+reached a readable, correctly oriented launcher/IDE; touch worked across
+center, edges and corners along with chooser, Settings, Wi-Fi, brightness,
+Back/Cancel and app exit; and the browser IDE could create, edit, save,
+reopen, run and delete a small file and show update controls without
+installing an update.
+
+A one-bit-corrupted staged assetfiles.tar was rejected before installation;
+modern-v0.16.1 remained committed and no update marker appeared. During a
+recovery-install test, the helper emitted its serial power-loss signal
+before assetfiles.tar extraction and detected actual USB removal. Tim
+reconnected after five seconds and confirmed the expected blank LCD,
+working recovery Wi-Fi, Retry normal boot, Force IDE on next boot,
+Install latest corrective release, and Redacted diagnostic status without
+credentials or user-file contents.
+
+The device resumed the staged authenticated packages offline. First normal
+retry boot reported healthy IDE, zero failures, modern-v0.16.1 committed,
+and no update marker. The selected-app, /device and /files/user digests
+taken after Tim's browser checks and before recovery resume matched those
+after the healthy recovery boot. Tim did not explicitly report visually
+seeing the white LCD signal, so that observation is not claimed.
+
+The authenticated clean provisioner erased and installed the same signed
+candidate, with a live host subprocess deliberately terminated at final
+boot-file activation. Its receipt records completed_before_interrupt=false;
+it does not prove the subprocess had already written specific bytes. An
+authenticated resume completed the journal after a healthy boot. The
+installed managed inventory matched all 81 files in the signed prepared
+image, with none missing, extra or changed. A final hard reset was sent
+after the serial inventory check. Tim confirmed a normal readable
+launcher/IDE and working touch, without a recovery page or app error.
+
+The full modern-v0.16.0 Elecrow physical transcript remains applicable
+context for the unchanged firmware and recovery implementation. This
+candidate's fresh checks above cover the changed shared runtime and update
+path; unfinished gates are not claimed as passed.

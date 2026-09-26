@@ -41,7 +41,8 @@ class QualificationTests(unittest.TestCase):
         }
 
     def build(self, name, *, files=None, inputs=None, baseline=None, request=None,
-              board_names=("board_alpha",), epoch=123, version="modern-v1.0.0"):
+              board_names=("board_alpha",), touch_absent_boards=(),
+              epoch=123, version="modern-v1.0.0"):
         directory = self.root / name
         dist, release = directory / "dist", directory / "release"
         dist.mkdir(parents=True)
@@ -63,7 +64,9 @@ class QualificationTests(unittest.TestCase):
                     "compatibility": {"runtime_profile": qualification.PROFILE,
                         "boards": {b: {"name": "Fixture " + b, "revisions": ["fixture"],
                                        "flash_size_bytes": 1000000, "psram_size_bytes": 1000000,
-                                       "firmware": {"sha256": hashlib.sha256(b.encode()).hexdigest()}}
+                                       "firmware": {"sha256": hashlib.sha256(b.encode()).hexdigest()},
+                                       **({"touch": {"present": False, "controller": None}}
+                                          if b in touch_absent_boards else {})}
                                    for b in board_names}},
                     "packages": [{"name": "filesystem", "file_name": package.name,
                                   "target": "/", "clear_first": False, "ownership": "system",
@@ -97,6 +100,11 @@ class QualificationTests(unittest.TestCase):
                                                        for g in b["gates"].values() if g["mode"] == "fresh"]:
             item["status"] = "passed"
             item["evidence"] = [reference.copy()]
+        for board in evidence["boards"].values():
+            if "input" in board:
+                board["input"]["touch"]["reason"] = "No touch sensor on the observed fixture"
+                board["input"]["buttons"] = {
+                    "status": "passed", "evidence": [reference.copy()]}
         return evidence
 
     def qualified_baseline(self):
@@ -140,6 +148,24 @@ class QualificationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             qualification.validate_results(draft, analysis, current, sha256_file(release / "checksums.json"),
                                            sha256_file(release / qualification.REPORT))
+
+    def test_non_touch_board_requires_explicit_absence_and_button_evidence(self):
+        _, release = self.build("non-touch", touch_absent_boards=("board_alpha",))
+        current, analysis = qualification.check_candidate(release)
+        candidate_hash = sha256_file(release / "checksums.json")
+        report_hash = sha256_file(release / qualification.REPORT)
+        evidence = self.passed_evidence(release)
+        qualification.validate_results(evidence, analysis, current, candidate_hash, report_hash)
+        for change, message in (
+            (lambda value: value.pop("input"), "board result"),
+            (lambda value: value["input"]["touch"].update(reason=""), "explicit physical reason"),
+            (lambda value: value["input"]["buttons"].update(status="pending"), "button input evidence"),
+            (lambda value: value["input"]["buttons"].update(evidence=[]), "evidence references"),
+        ):
+            invalid = copy.deepcopy(evidence)
+            change(invalid["boards"]["board_alpha"])
+            with self.assertRaisesRegex(ValueError, message):
+                qualification.validate_results(invalid, analysis, current, candidate_hash, report_hash)
 
     def test_standalone_report_and_template_commands(self):
         _, release = self.build("cli")

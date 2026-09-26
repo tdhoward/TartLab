@@ -364,6 +364,7 @@ class IDEView:
         progress_width = max(1, (controller.surface.width * 7) // 8)
         self._progress.set_size(progress_width, 20)
         self._progress.align(lvgl.ALIGN.BOTTOM_MID, 0, -8)
+        self.hide_update_progress()
         lvgl.screen_load(self._screen)
 
     def _set_label(self, label, text, align, y):
@@ -388,6 +389,7 @@ class IDEView:
                         self._lv.ALIGN.CENTER, 28)
 
     def show_update_progress(self, status, step, steps):
+        self._progress.remove_flag(self._lv.obj.FLAG.HIDDEN)
         self._error.set_text('')
         if step > steps:
             steps = step
@@ -396,6 +398,10 @@ class IDEView:
             self._lv.ALIGN.BOTTOM_MID, -36)
         self._progress.set_range(0, steps + 1)
         self._progress.set_value(step, self._animation_off)
+
+    def hide_update_progress(self):
+        self._progress.add_flag(self._lv.obj.FLAG.HIDDEN)
+        self._status.set_text('')
 
     def show_app_error(self):
         if self._app_error_indicator is not None:

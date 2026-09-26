@@ -30,6 +30,26 @@
 			"folder name": "Examples",
 			"entries": [
 				{
+					"title": "Grid puzzle: First Crossing",
+					"subtitle": "Two rooms: water crossings, hidden passages, and editable rules",
+					"file": "grid_puzzle.py"
+				},
+				{
+					"title": "Grid puzzle: room data",
+					"subtitle": "Editable JSON rooms for the grid puzzle project",
+					"file": "grid_puzzle_levels.json"
+				},
+				{
+					"title": "Grid puzzle: editing guide",
+					"subtitle": "Room format, Python copies, and recovery",
+					"file": "grid_puzzle_guide.html"
+				},
+				{
+					"title": "Nearby Chat",
+					"subtitle": "ESP-NOW groups with passwords and a touch keyboard",
+					"file": "messaging.py"
+				},
+				{
 					"title": "Physical buttons",
 					"subtitle": "Count button presses and restart to the launcher",
 					"file": "buttons.py"

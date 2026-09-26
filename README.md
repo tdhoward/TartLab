@@ -19,6 +19,10 @@ Current features include Python syntax highlighting, a REPL-like console,
 Wi-Fi configuration, application selection, and browser-driven filesystem
 updates.
 
+Use the [documentation index](docs/README.md) for architecture, API references,
+and release procedures. The [project index](docs/projects/README.md) separates
+active work from completed project history and links each status to its evidence.
+
 ## Qualified hardware and profiles
 
 The qualified modern boards are listed in the machine-checked
@@ -29,11 +33,11 @@ distinguishes bring-up work from candidate and qualified support. The repeatable
 port layout and onboarding process are documented in
 [`BOARD_SUPPORT.md`](BOARD_SUPPORT.md).
 
-Basic support for displays without touch is planned in
-[`BUTTON_NAVIGATION_PROJECT.md`](BUTTON_NAVIGATION_PROJECT.md), starting with
-two-button navigation on the non-Pro LilyGO T-Display-S3. Launcher, settings,
-and browser programming are the priority; example-app adaptations are optional.
-This target is not yet a qualified modern board.
+Experimental support for displays without touch is implemented in the
+[button navigation project](docs/projects/active/button-navigation.md), using
+the non-Pro LilyGO T-Display-S3. Launcher, chooser, settings, browser access and
+dim/wake have bench evidence. Full board qualification remains open;
+example-app adaptations are optional.
 
 TartLab maintains two profiles:
 
@@ -88,7 +92,7 @@ Source-development and release-candidate commands are in
 - The legacy profile normally starts the TartLab IDE. Holding the application
   button during reset runs the selected student app; on the T-Display-S3 Pro
   this is GPIO 12.
-- Published `modern-v0.15.4` uses an LVGL touchscreen launcher for IDE,
+- The published modern profile uses an LVGL touchscreen launcher for IDE,
   selected-app, and local app-selection routes. See
   [`tests/MODERN_TOUCHSCREEN_QUALIFICATION.md`](tests/MODERN_TOUCHSCREEN_QUALIFICATION.md).
 

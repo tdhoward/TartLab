@@ -1,8 +1,14 @@
 # Capability-driven panel-scroll presentation
 
+[Project index](../README.md)
+
 Status: complete; ST7796 rotation 270 hardware-qualified
 
-Related plan: [`MODERN_DISPLAY_CLASS_PROJECT.md`](MODERN_DISPLAY_CLASS_PROJECT.md)
+This completed project record retains the API design and measured outcome.
+Its hardware qualification applies to the tested configuration; other boards
+and orientations use software fallback until separately qualified.
+
+Related plan: [Modern display class project](modern-display-class.md)
 
 ## Objective
 
@@ -103,7 +109,7 @@ Implemented on 2026-09-03/04:
   closure, and source-lock integration.
 - The COM3 raw-REPL diagnostic passed its automated checks. Full-width scrolling
   reduced transfers from 213,120 to 14,208 bytes and latency from about 102 ms
-  to 32 ms. See [`tests/PANEL_SCROLL_HARDWARE.md`](tests/PANEL_SCROLL_HARDWARE.md).
+  to 32 ms. See [`tests/PANEL_SCROLL_HARDWARE.md`](../../../tests/PANEL_SCROLL_HARDWARE.md).
 
 The final held comparison used explicit yellow and blue section markers. The
 owner confirmed that the hardware-scrolled and software-reference striped

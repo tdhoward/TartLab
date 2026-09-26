@@ -1060,6 +1060,20 @@ class ModernAppDrawingTests(unittest.TestCase):
         self.assertEqual(
             canvas._canvas.blits, [(sprite.framebuffer, 0, 0)])
 
+    def test_prepared_sprite_transparency_preserves_background_at_all_rotations(self):
+        module = load_app(types.SimpleNamespace(), fake_lvgl())
+        for rotation in (0, 90, 180, 270):
+            canvas = module.DirectCanvas(FakeSurface(width=8, height=7), rotation=rotation)
+            canvas.fill(1234)
+            source = FakeFrameBuffer(bytearray(8), 2, 2, 1)
+            source.fill(19)
+            source.pixel(1, 0, 5678)
+            sprite = canvas.prepare_sprite(source, 2, 2)
+            canvas.draw_sprite(sprite, 1, 2, key=19)
+            self.assertEqual(canvas.pixel(1, 2), 1234)
+            self.assertEqual(canvas.pixel(2, 2), 5678)
+            self.assertEqual(canvas.pixel(2, 3), 1234)
+
     def test_portrait_canvas_uses_compiled_rotation_for_tight_sprite(self):
         surface = FakeSurface(width=4, height=3)
         lvgl = fake_lvgl()
@@ -1228,10 +1242,12 @@ class ModernHelpSourceTests(unittest.TestCase):
             path.name for path in modern.iterdir() if path.is_file()}
         legacy_files = {
             path.name for path in legacy.iterdir() if path.is_file()}
-        self.assertEqual(modern_files - {"display_ts16.py", "display_qoi.py", "buttons.py"},
+        self.assertEqual(modern_files - {
+            "display_ts16.py", "display_qoi.py", "buttons.py", "messaging.py",
+            "grid_puzzle.py", "grid_puzzle_levels.json", "grid_puzzle_guide.html"},
                          legacy_files - {"display_bmp.py"})
 
-    def test_modern_examples_use_only_the_direct_display_approach(self):
+    def test_modern_examples_use_supported_platform_and_display_apis(self):
         forbidden = {
             "hdwconfig", "displaybuf", "touch_keypad", "eventsys",
             "palettes", "graphics", "lvgl", "bmp565", "qoi_reader", "pydevices",
@@ -1251,15 +1267,21 @@ class ModernHelpSourceTests(unittest.TestCase):
                 elif isinstance(node, ast.Attribute):
                     attributes.add(node.attr)
             with self.subTest(path=path.name):
-                self.assertNotIn("lvgl", source.lower())
-                self.assertFalse(imports.intersection(forbidden))
-                self.assertFalse({"lvgl", "enter_ui_mode"}.intersection(attributes))
-                if path.name != "pybasics.py":
-                    self.assertIn("tartlabutils.app", modules)
+                if path.name in ("calculator.py", "messaging.py"):
+                    # Native UI examples use LVGL with platform ownership/input.
+                    self.assertFalse(imports.intersection(forbidden - {"lvgl"}))
+                    self.assertIn("lvgl", imports)
+                    self.assertIn("tartlabutils.platform", modules)
+                else:
+                    self.assertFalse(imports.intersection(forbidden))
+                    if path.name != "pybasics.py":
+                        self.assertNotIn("lvgl", attributes)
+                        self.assertIn("tartlabutils.app", modules)
+                # enter_ui_mode is the public cleanup route for either approach.
 
     def test_portrait_examples_use_portrait_canvas_and_touch(self):
         for name in (
-                "snake.py", "calculator.py", "testris.py", "racer.py"):
+                "snake.py", "testris.py", "racer.py"):
             tree = ast.parse(
                 (ROOT / "src/files/help" / name).read_text(encoding="utf-8"))
             imports = {

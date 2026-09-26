@@ -42,7 +42,8 @@ class DriverPackageTests(unittest.TestCase):
                 self.assertTrue(Path(adapter.__file__).is_relative_to(
                     ROOT / "src/lib/tartlabdrivers/display"))
             self.assertEqual(references, {"tartlabdrivers.display.st7796",
-                                          "tartlabdrivers.display.st77922"})
+                                          "tartlabdrivers.display.st77922",
+                                          "tartlabdrivers.display.rgb"})
 
     def test_modern_package_owns_the_complete_driver_tree(self):
         packages = json.loads((ROOT / "modern_packages.json").read_text())

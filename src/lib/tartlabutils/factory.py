@@ -54,10 +54,19 @@ def _buffers(display, bus, lcd_bus):
 
 def _transport(board, machine, lcd_bus):
     display = board["display"]
-    if "i80" not in display:
-        return _spi(board, machine, lcd_bus)
-    if "spi" in display:
+    transports = [name for name in ("spi", "i80", "rgb") if name in display]
+    if len(transports) != 1:
         raise ValueError("display must select exactly one transport")
+    if transports[0] == "rgb":
+        options = dict(display["rgb"])
+        for index in range(16):
+            options["data" + str(index)] = pin_number(
+                board, "DISPLAY_DATA_" + str(index), True)
+        for signal in ("hsync", "vsync", "de", "pclk"):
+            options[signal] = pin_number(board, "DISPLAY_" + signal.upper(), True)
+        return None, lcd_bus.RGBBus(**options)
+    if transports[0] == "spi":
+        return _spi(board, machine, lcd_bus)
     config = display["i80"]
     options = {"freq": config["frequency"]}
     for argument, purpose in config["pin_arguments"].items():
@@ -89,12 +98,12 @@ def _panel(board, bus, buffers, lvgl):
         "display_height": native_height,
         "frame_buffer1": buffers[0],
         "frame_buffer2": buffers[1],
-        "reset_pin": pin_number(board, "DISPLAY_RESET", True),
+        "reset_pin": pin_number(board, "DISPLAY_RESET", "rgb" not in display),
         "reset_state": getattr(
             driver_module, display.get("reset_state", "STATE_LOW")),
         "backlight_pin": backlight["number"],
         "color_space": lvgl.COLOR_FORMAT.RGB565_SWAPPED,
-        "rgb565_byte_swap": False,
+        "rgb565_byte_swap": "rgb" in display,
     }
     if offset_x or offset_y:
         options["offset_x"] = offset_x
@@ -142,9 +151,19 @@ def _touch(board, lvgl):
         freq=bus_config["frequency"],
         use_locks=False,
     )
+    addresses = config.get("addresses")
+    if addresses is not None:
+        found = bus_addresses = i2c_bus.scan()
+        if set(bus_addresses) == set(range(0x08, 0x78)):
+            raise RuntimeError("invalid touch bus: all addresses acknowledge")
+        address = next((value for value in addresses if value in found), None)
+        if address is None:
+            raise RuntimeError("configured touch controller is unavailable")
+    else:
+        address = getattr(driver_module, config.get("address", "I2C_ADDR"))
     device = i2c.I2C.Device(
         bus=i2c_bus,
-        dev_id=getattr(driver_module, config.get("address", "I2C_ADDR")),
+        dev_id=address,
         reg_bits=getattr(driver_module, config.get("register_bits", "BITS")),
     )
     options = {"startup_rotation": _rotation(lvgl, config["rotation"])}

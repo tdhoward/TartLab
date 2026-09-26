@@ -83,7 +83,7 @@ Underlying frozen device drivers remain inputs of the firmware build recipes.
 The modern package map and provenance no longer include the legacy vendor lock.
 No migration or cleanup packages are needed for this pre-public-release change.
 Image formats, conversion, and memory contracts are documented in
-[`IMAGE_ASSETS.md`](IMAGE_ASSETS.md).
+[Image and sprite reference](docs/reference/image-assets.md).
 Release profile IDs, board selector names, firmware paths, and recorded
 qualification evidence retain their existing identities.
 
@@ -117,7 +117,7 @@ physical gates and their sanitized evidence is promoted.
 ## Runtime boundary
 
 Experimental support for displays without touch is tracked in
-[`BUTTON_NAVIGATION_PROJECT.md`](BUTTON_NAVIGATION_PROJECT.md). Set `touch` to
+[Button navigation](docs/projects/active/button-navigation.md). Set `touch` to
 `None` explicitly for absent touch. Multiple `BUTTON` entries must each have a
 unique `name`; single unnamed buttons retain the existing contract. A
 `navigation` object maps `next` and `activate` to distinct button names.

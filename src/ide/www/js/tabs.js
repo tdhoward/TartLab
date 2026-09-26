@@ -127,7 +127,8 @@ function updateSaveButton() {
     !activeTab ||
     (activeTab.contentType != "python" && activeTab.contentType != "txt") ||
     editors[activeTab.filename].editor.state.doc.toString() === "" ||
-    editors[activeTab.filename].editor.isDirty == false
+    (editors[activeTab.filename].editor.isDirty == false &&
+      activeTab.fullPath.startsWith("/files/user/"))
   ) {
     saveButton.disabled = true;
   } else {
@@ -162,7 +163,7 @@ function createTab(filename, fullPath, content, contentType, isNamed) {
     const ext = filename.toLowerCase().split(".").pop();
     if (ext == "py") contentType = "python";
     else if (ext == "htm" || ext == "html") contentType = "html";
-    else if (ext == "txt" || ext == "log") contentType = "txt";
+    else if (ext == "txt" || ext == "log" || ext == "json") contentType = "txt";
   }
 
   const pageDiv = document.createElement("div");
@@ -295,7 +296,7 @@ function createEditor(tab, content, isNamed, mode) {
 
 function renameTab(fromFilename, toFilename) {
   if (fromFilename == toFilename) return;
-  if (tabs[fromFilename].contentType == "python") {
+  if (editors[fromFilename]) {
     editors[toFilename] = editors[fromFilename];
     delete editors[fromFilename];
   }
@@ -317,7 +318,7 @@ function switchToTab(filename) {
   activeTab = tabs[filename];
   activeTab.pageDiv.classList.remove("hidden");
   activeTab.tabDiv.classList.add("active");
-  if (activeTab.contentType == "python" && editors[filename]) {
+  if (editors[filename]) {
     editors[filename].editor.focus(); // Ensure the editor gains keyboard focus
   }
   updateSaveButton();
@@ -329,7 +330,7 @@ function closeTab(event) {
   const filename = event.target.getAttribute("data-filename");
   const tab = tabs[filename];
   const isActive = activeTab && activeTab.filename === filename;
-  if (tab.contentType == "python" && editors[filename]) {
+  if (editors[filename]) {
     const editorObj = editors[filename];
 
     if (editorObj.editor.isDirty) {
@@ -340,6 +341,7 @@ function closeTab(event) {
         return; // Do not close the tab if the user cancels
       }
     }
+    editorObj.editor.destroy();
     delete editors[filename];
   }
   tab.pageDiv.remove();

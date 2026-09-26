@@ -1,5 +1,10 @@
 # Elecrow ESP32-S3 MicroPython, LVGL, and TartLab bring-up plan
 
+The 7-inch target now has an active [dedicated bring-up plan](../elecrow_dis08070h/BRINGUP_PLAN.md)
+(2026-09-12), covering its own 4 MiB UART firmware and an SD-root TartLab
+installation. Use that plan for current 7-inch work; the research below is
+retained as historical context.
+
 Status: research and execution plan. The DLE06235B stock-MicroPython gate and
 an experimental portrait LVGL/ST77922 bench proof were completed on 2026-08-29.
 Native 320 x 480 portrait is the selected TartLab mode. Driver integration and

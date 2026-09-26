@@ -396,19 +396,35 @@ def validate_results(evidence, analysis, current, candidate_hash, report_hash):
     exact(evidence["boards"], analysis["boards"], "qualification board set")
     identities = current["contract"]["compatibility"]["boards"]
     for board, result in evidence["boards"].items():
-        exact(result, ("firmware_sha256", "board", "gates"), "board result")
+        expected = identities[board]
+        absent_touch = expected.get("touch", {}).get("present") is False
+        fields = ("firmware_sha256", "board", "gates", "input") if absent_touch else (
+            "firmware_sha256", "board", "gates")
+        exact(result, fields, "board result")
         if result["firmware_sha256"] != identities[board]["firmware"]["sha256"]:
             raise ValueError("Qualification firmware mismatch")
         observed = result["board"]
         exact(observed, ("model", "pcb_revision", "chip_revision", "flash_size_bytes",
                          "psram_size_bytes"), "physical board observation")
-        expected = identities[board]
         if observed["model"] != expected["name"] or \
                 observed["pcb_revision"] not in expected["revisions"] or \
                 not isinstance(observed["chip_revision"], str) or not observed["chip_revision"].strip() or \
                 any(type(observed[k]) is not int or observed[k] != expected[k]
                     for k in ("flash_size_bytes", "psram_size_bytes")):
             raise ValueError("Physical board observation differs from compatible hardware")
+        if absent_touch:
+            input_result = result["input"]
+            exact(input_result, ("touch", "buttons"), "non-touch input result")
+            touch = input_result["touch"]
+            exact(touch, ("status", "reason"), "touch inapplicability")
+            if touch["status"] != "inapplicable" or not isinstance(touch["reason"], str) or \
+                    not touch["reason"].strip():
+                raise ValueError("Absent touch requires an explicit physical reason")
+            buttons = input_result["buttons"]
+            exact(buttons, ("status", "evidence"), "button input result")
+            if buttons["status"] != "passed":
+                raise ValueError("Non-touch board requires passed button input evidence")
+            _references(buttons["evidence"])
         exact(result["gates"], GATES, "board gates")
         for gate, outcome in result["gates"].items():
             mode = analysis["boards"][board][gate]["mode"]

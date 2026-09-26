@@ -64,6 +64,30 @@ Historical schemas cannot bypass those checks on new candidates. Follow
 [`RELEASE_TOOLING.md`](../RELEASE_TOOLING.md) to establish the first signed
 baseline, generate the evidence form, and complete the required results.
 
+## Modern v0.16.1 promotion
+
+`modern-v0.16.1` at source commit
+`b6cd060b08fe53979271247c4160d41da3115fec` was published by
+[protected promotion run 36272636208](https://github.com/tdhoward/TartLab/actions/runs/36272636208)
+after the `modern-release` environment review. The tested candidate checksum
+is `d635e6dfe56cfa3fa29c2dbb1adc9722840599f18949a63570c60d309ae0ba8b`;
+the [schema-3 qualification record](evidence/modern-v0.16.1-qualification.json)
+has SHA-256 `6a01dc4f76753052700cefee02be83eb52a735bbcd1bcb99c1bf1b4dacfb83b2`.
+The record binds fresh results for the new non-Pro LilyGO T-Display-S3 PCB 1.2,
+the existing Pro PCB 1.1, and the existing Elecrow DLE06235B. Their sanitized
+physical transcripts and automated summary are linked by hash in the record.
+
+The [published modern release](https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.16.1)
+contains 34 assets. The [postpromotion audit](evidence/modern-v0.16.1-promotion-audit.txt)
+records the downloaded-asset and feed checks. Its `checksums.json` is byte-identical to the tested
+candidate; all 31 listed subjects matched their expected hashes. Independent
+verification authenticated all 33 signed published subjects against the
+protected release signer and source tag. The postpromotion live feed audit
+selected modern-v0.16.1 and legacy v0.15 with no cross-profile assets.
+The captured baseline is `profiles/baselines/modern-v0.16.1.json`, pinned in
+the release plan with SHA-256
+`c8068aa038dfce9f91756bb7f09bf2385c2de156d46818d01d64b81558dfb823`.
+
 ## Modern v0.16.0 promotion
 
 `modern-v0.16.0` at source commit

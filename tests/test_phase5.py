@@ -837,6 +837,14 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         module = load_modern_rendering()
 
         class Widget:
+            FLAG = types.SimpleNamespace(HIDDEN=1)
+
+            def add_flag(self, flag):
+                self.hidden = True
+
+            def remove_flag(self, flag):
+                self.hidden = False
+
             def __init__(self, unused_parent=None):
                 self.size = None
                 self.alignment = None
@@ -908,7 +916,12 @@ class ModernRenderingAdapterTests(unittest.TestCase):
         view = module.IDEView(controller, lvgl)
         self.assertEqual(view._status.text, "")
         self.assertEqual(bar.size, (420, 20))
+        self.assertTrue(bar.hidden)
         view.show_update_progress("TEST", 1, 3)
+        self.assertFalse(bar.hidden)
+        view.hide_update_progress()
+        self.assertTrue(bar.hidden)
+        self.assertEqual(view._status.text, "")
         view.show_app_error()
         view.show_app_error()
 

@@ -317,13 +317,13 @@ class DirectCanvas(FrameBuffer):
                     framebuffer.pixel(source_x, source_y))
         return _PreparedSprite(rotated, width, height)
 
-    def draw_sprite(self, sprite, x, y):
-        """Copy a prepared opaque sprite using logical coordinates."""
+    def draw_sprite(self, sprite, x, y, key=-1):
+        """Copy a prepared sprite; optional RGB565 key preserves background."""
         if self._quarter_turns == 0:
-            return super().blit(sprite.framebuffer, x, y)
+            return super().blit(sprite.framebuffer, x, y, key)
         target_x, target_y, unused_width, unused_height = self._area(
             x, y, sprite.width, sprite.height)
-        return super().blit(sprite.framebuffer, target_x, target_y)
+        return super().blit(sprite.framebuffer, target_x, target_y, key)
 
     def _point(self, x, y):
         rotation = self._quarter_turns

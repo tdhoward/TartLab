@@ -1,5 +1,10 @@
 # Modern release qualification tooling
 
+For routine operation, start with the short
+[operator quick start](RELEASE_QUALIFICATION.md). Its generated text form and
+`qualification_session.py` report pending work, hash evidence files, validate
+results, and export promotion inputs without agent orchestration.
+
 The modern release pipeline implements the model in
 [`RELEASE_POLICY.md`](RELEASE_POLICY.md). One TartLab release contains a fixed
 platform, browser client, and app set. Maintainers select its qualification
@@ -32,17 +37,18 @@ The qualification workflow also uploads a separate checklist and pending
 evidence form. Pending results do not pass promotion; the tooling does not
 invent physical observations or complete tests on an operator's behalf.
 
-## Establish the first baseline
+## Capture and select a baseline
 
-The checked-in plan remains in `platform` mode and now pins the authenticated
-`modern-v0.16.0` baseline in `profiles/baselines/modern-v0.16.0.json`. That
-release established the first baseline with fresh evidence for all five gates
-on both included boards. Earlier published
-releases, including `modern-v0.15.4`, lack these signed snapshots and schema-3
+The checked-in plan remains in `platform` mode and pins the authenticated
+`modern-v0.16.1` baseline in `profiles/baselines/modern-v0.16.1.json`. The
+`modern-v0.16.0` release established the first baseline on two boards;
+`modern-v0.16.1` adds the non-Pro T-Display-S3 and fresh evidence for all
+three included boards. Releases before `modern-v0.16.0`, including
+`modern-v0.15.4`, lack these signed snapshots and schema-3
 records. Their historical evidence is preserved, but it cannot be imported as
 an automatically reusable baseline by this tool.
 
-Build and qualify the first candidate with this tooling through the existing
+To replace the baseline, build and qualify a new candidate through the existing
 protected workflow. Complete the generated schema-3 form, publish the sanitized
 evidence at a durable HTTPS URL, and promote with the usual candidate checksum,
 evidence checksum, and evidence-reference inputs. After promotion, download the

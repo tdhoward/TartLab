@@ -1,0 +1,84 @@
+TartLab modern-v0.16.1 LilyGO T-Display-S3 Pro fixture qualification
+Session: 2026-09-24 to 2026-09-26
+Operator: Tim, with Codex-operated USB probes
+Source tag: refs/tags/modern-v0.16.1
+Source commit: b6cd060b08fe53979271247c4160d41da3115fec
+Candidate checksums SHA-256: d635e6dfe56cfa3fa29c2dbb1adc9722840599f18949a63570c60d309ae0ba8b
+Board: lilygo_t_display_s3_pro, PCB v1.1, ESP32-S3 revision v0.2,
+16 MiB flash, 8 MiB PSRAM. Tim confirmed it is the same disposable Pro
+fixture used for modern-v0.16.0 qualification. No backup was requested.
+
+The signed candidate and the board firmware are authenticated by protected
+qualification run 35935734637. The Pro firmware binary hash is unchanged
+from modern-v0.16.0: 187a04dc9c74be161aa46d8b8f76ff64cb7eb4305b15c6d416e5fef471c7f2ab.
+Raw logs, device identifiers, credentials, user-file contents and the private
+provisioning journal are excluded from this public record.
+
+Normal OTA and candidate observations
+-------------------------------------
+The fixture initially ran modern-v0.16.0. All 12 signed candidate update
+assets were authenticated and staged over USB. Applying modern-v0.16.1 via
+the installed updater left pending_health and retained the committed old
+version until first healthy boot. That boot reported modern-v0.16.1, zero
+failures, and no marker. Selected-app, /device and /files/user digests were
+identical before and after this OTA. This exercises the installed v0.16.0
+updater with a locally staged candidate; it does not claim internet delivery.
+
+Tim reported all three short candidate checks passed: three power cycles
+reached a readable, correctly oriented launcher/IDE; touch and navigation
+worked across center, edges, corners, chooser, Settings, Wi-Fi, brightness,
+Back/Cancel and app exit; and the browser IDE could create, edit, save,
+reopen, run and delete a small file and show update controls without
+installing an update.
+
+The device probe reported ST7796, CST226 touch, direct RGB565 and exclusive
+display ownership. Fifty UI/direct ownership cycles ended in UI ownership
+with no pending transfer. Five Wi-Fi scans ran alongside 150 display frames
+without transfer or scan failure, with 10,387,456 of 12,517,376 filesystem
+bytes free at that point. Twenty-five initialization/deinitialization cycles
+all completed and returned to UI ownership. The probe reported 16 MiB
+physical flash and the pinned MicroPython 1.27.0 build.
+
+Recovery and protected state
+----------------------------
+A one-bit-corrupted staged assetfiles.tar was rejected before installation;
+the version remained modern-v0.16.1 and no update marker appeared. During
+a recovery-install test, the helper emitted its serial power-loss signal
+before assetfiles.tar extraction and detected actual USB removal. Tim
+reconnected after five seconds and confirmed the expected blank LCD and
+working recovery Wi-Fi. He confirmed Retry normal boot, Force IDE on next
+boot, Install latest corrective release, and Redacted diagnostic status were
+available, with no credentials or user-file contents exposed. He did not
+explicitly confirm seeing the white LCD signal, so that visual observation
+is not claimed.
+
+The device resumed all staged authenticated packages offline. A subsequent
+uninterrupted retry boot reported healthy IDE, zero failures, committed
+modern-v0.16.1 and no update marker. An early follow-up console probe had
+interrupted a preceding boot before health completion; that attempt was not
+counted as a pass. The successful retry waited 70 seconds before inspection.
+User-file digest after recovery differs from the pre-OTA digest, but the
+operator had edited user files in the intervening browser test. There is no
+pre-recovery digest after those edits, so this run cannot independently
+attribute that difference or assert recovery preserved exact user-file bytes.
+The earlier normal OTA did preserve its before/after protected digests.
+
+Clean provisioning and final state
+----------------------------------
+The authenticated clean provisioner erased and installed the same signed
+candidate, with a live host subprocess deliberately terminated at final
+boot-file activation. Its receipt records completed_before_interrupt=false;
+it does not prove the subprocess had already written specific bytes. An
+authenticated resume completed the journal after a healthy boot. The
+installed managed inventory matched all 81 files in the signed prepared
+image, with none missing, extra or changed. After the serial inventory probe,
+Tim saw only the TartLab version on the IDE screen. He pressed RESET with
+touch and buttons released, waited for boot, and confirmed the full IDE,
+settings control and touch returned. The partial display immediately after
+the raw serial probe is not counted as a normal boot observation.
+
+The full modern-v0.16.0 Pro physical transcript remains applicable context
+for the unchanged firmware and recovery implementation. This candidate's
+fresh checks above cover the changed shared runtime, browser, update and
+host provisioning path without claiming the older power-loss campaign was
+rerun in full.

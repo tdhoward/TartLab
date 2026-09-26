@@ -1,12 +1,28 @@
 # Button navigation and non-touch device support
 
-Status: Experimental integration implemented; physical validation in progress.
+[Project index](../README.md)
+
+Status: Core non-touch support qualified in modern-v0.16.1; optional
+navigation refinements and example adaptations remain open.
 The standalone pinned-modern display and physical-button bench results are recorded in
-[T-Display-S3 bring-up results](boards/lilygo_t_display_s3/BRINGUP_RESULTS.md).
+[T-Display-S3 bring-up results](../../../boards/lilygo_t_display_s3/BRINGUP_RESULTS.md).
 The shared configuration, I80 transport, optional touch, button input, launcher,
 chooser and settings focus paths are implemented. Follow-up integration evidence
-is in [DEVELOPMENT_RESULTS.md](boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md).
-No modern non-touch board is qualified by this document.
+is in [DEVELOPMENT_RESULTS.md](../../../boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md).
+The [promoted qualification record](../../../tests/evidence/modern-v0.16.1-qualification.json)
+and [non-Pro physical transcript](../../../tests/evidence/modern-v0.16.1-nonpro-physical-transcript.txt)
+establish supported status for the LilyGO T-Display-S3 PCB 1.2.
+
+## Qualified milestone
+
+The signed modern-v0.16.1 candidate completed clean provisioning and
+interruption/resume checks, held-button/reset and resource tests, browser
+programming and app navigation, OTA and recovery power-loss checks, and
+fresh Pro and Elecrow regressions. The protected promotion run published
+the exact tested candidate. Earlier
+[development results](../../../boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md)
+remain a record of the steps leading to qualification.
+Racer adaptation remains optional and does not block the core milestone.
 
 ## Objective and scope
 
@@ -94,8 +110,8 @@ manifest system or retrofit every example to accomplish this.
 ## Initial board investigation
 
 Treat the non-Pro T-Display-S3 as a separate modern port. The older
-[`src/configs/t_display_s3.py`](src/configs/t_display_s3.py) and
-[PyDevices board configuration](src/lib/pydevices/board_configs/t_display_s3/board_config.py)
+[`src/configs/t_display_s3.py`](../../../src/configs/t_display_s3.py) and
+[PyDevices board configuration](../../../src/lib/pydevices/board_configs/t_display_s3/board_config.py)
 are reference material, not modern support or qualification evidence. Modern
 distributions must continue to exclude the legacy PyDevices payload.
 
@@ -108,10 +124,13 @@ smaller display, including scrolled content and confirmation pages.
 
 Record concrete hardware values in the eventual board payload and board-local
 bring-up notes. Use the existing board lifecycle and firmware provenance process
-in [`BOARD_SUPPORT.md`](BOARD_SUPPORT.md); retain experimental status until the
+in [`BOARD_SUPPORT.md`](../../../BOARD_SUPPORT.md); retain experimental status until the
 required artifacts and evidence exist.
 
 ## Development sequence and completion evidence
+
+The five steps below were completed for the modern-v0.16.1 release. They
+remain the reference sequence for extending this support to another board.
 
 1. **Establish the board path.** Create a `bringup` catalog entry with verified
    hardware references. Determine the reproducible modern firmware/driver path
@@ -137,7 +156,7 @@ required artifacts and evidence exist.
    startup, power, and display behavior. The experimental milestone alone does
    not establish supported-board status.
 
-Use [`tests/TEST_TIERS.md`](tests/TEST_TIERS.md) to select the smallest test
+Use [`tests/TEST_TIERS.md`](../../../tests/TEST_TIERS.md) to select the smallest test
 environment that establishes each claim. Extend capability-specific tests and
 qualification tooling to represent absent touch explicitly; record touch-only
 checks as inapplicable with a reason and substitute actual button-navigation

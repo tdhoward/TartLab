@@ -1,5 +1,10 @@
 # CST226 upstream contribution recommendations
 
+[Project index](../README.md)
+
+Status: deferred, non-blocking upstream follow-up. The local tested workaround
+is in use; this document does not record an upstream submission or merge.
+
 Date: 2026-08-31
 
 This note preserves the recommended follow-up for
@@ -111,5 +116,5 @@ and qualified firmware lock remain unchanged. This preserves the qualified
 firmware identity while allowing TartLab to proceed independently of PR #575.
 
 The local choice and its physical evidence are recorded in
-[PROJECT_NOTES.md](PROJECT_NOTES.md) and the
-[modern touchscreen qualification notes](tests/MODERN_TOUCHSCREEN_QUALIFICATION.md).
+[PROJECT_NOTES.md](../../../PROJECT_NOTES.md) and the
+[modern touchscreen qualification notes](../../../tests/MODERN_TOUCHSCREEN_QUALIFICATION.md).

@@ -1,5 +1,12 @@
 # TartLab image assets
 
+[Documentation index](../README.md) ·
+[Completed pipeline project](../projects/completed/image-sprite-pipeline.md)
+
+This is the current usage and format reference. Project completion and the
+original device smoke are recorded separately; commands run from the repository
+root.
+
 Modern builds ship `src/files/assets` to `/files/assets`. Legacy builds ship
 `src/files/assets-legacy` to that same device path; the legacy directory contains
 only the original `warrior.bmp`. Help files are selected in the same way from
