@@ -2,6 +2,10 @@
 
 Date: 2026-09-09. Lifecycle: `bringup`; no release qualification claimed.
 
+This is a historical checkpoint. The board was later qualified in
+[`modern-v0.16.1`](https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.16.1);
+see its [qualification record](../../tests/evidence/modern-v0.16.1-qualification.json).
+
 The owner identified a non-Pro, non-touch T-Display-S3 and authorized erasing
 it without backup. Initial hardware checks and a standalone display/button
 diagnostic passed on stock MicroPython and TartLab's pinned modern reference

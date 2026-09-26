@@ -13,8 +13,8 @@ Every included board still needs applicable candidate-bound evidence. Follow
 [`RELEASE_TOOLING.md`](RELEASE_TOOLING.md) for the release plan, commands,
 schema-3 evidence, and conservative classification rules.
 
-The checked-in plan pins the signed `modern-v0.16.0` baseline. Earlier
-published candidates lack the signed snapshot and schema-3 records required
+The checked-in plan pins the signed `modern-v0.16.1` baseline. Releases before
+`modern-v0.16.0` lack the signed snapshot and schema-3 records required
 for automatic reuse. Historical modern v0.15.4 evidence remains an audit record
 and precedent, not an automatically imported qualification. Routine operators
 can use the [generated form workflow](RELEASE_QUALIFICATION.md).

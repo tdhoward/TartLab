@@ -4,7 +4,7 @@
   "name": "LilyGO T-Display-S3 (non-touch)",
   "vendor": "LilyGO",
   "runtime_profile": "lvgl-modern",
-  "support_status": "candidate",
+  "support_status": "qualified",
   "hardware": {
     "revisions": ["1.2"],
     "mcu": "ESP32-S3",
@@ -38,7 +38,10 @@
     "lock": "firmware/lvgl-modern/reference.lock.json",
     "provenance": "firmware/lvgl-modern/reference/provenance.json"
   },
-  "qualification": null,
+  "qualification": {
+    "release_version": "modern-v0.16.1",
+    "evidence": "tests/evidence/modern-v0.16.1-qualification.json"
+  },
   "documentation": [
     "boards/lilygo_t_display_s3/README.md",
     "boards/lilygo_t_display_s3/BRINGUP_RESULTS.md",

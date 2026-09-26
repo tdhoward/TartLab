@@ -2,30 +2,26 @@
 
 [Project index](../README.md)
 
-Status: Candidate integration implemented; physical validation in progress.
+Status: Core non-touch support qualified in modern-v0.16.1; optional
+navigation refinements and example adaptations remain open.
 The standalone pinned-modern display and physical-button bench results are recorded in
 [T-Display-S3 bring-up results](../../../boards/lilygo_t_display_s3/BRINGUP_RESULTS.md).
 The shared configuration, I80 transport, optional touch, button input, launcher,
 chooser and settings focus paths are implemented. Follow-up integration evidence
 is in [DEVELOPMENT_RESULTS.md](../../../boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md).
-No modern non-touch board is qualified by this document.
+The [promoted qualification record](../../../tests/evidence/modern-v0.16.1-qualification.json)
+and [non-Pro physical transcript](../../../tests/evidence/modern-v0.16.1-nonpro-physical-transcript.txt)
+establish supported status for the LilyGO T-Display-S3 PCB 1.2.
 
-## Current milestone and next gate
+## Qualified milestone
 
-The [development results](../../../boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md)
-record owner-confirmed button navigation, brightness save, Wi-Fi/settings access,
-three-minute dim/wake behavior, browser use and the adapted sprite example. The
-later follow-up establishes one configured-station association; it supersedes
-the earlier AP-only checkpoint. Native probes also completed 100 UI/direct
-ownership cycles. These observations do not establish release qualification.
-
-The owner confirmed on 2026-09-23 that three physical A releases advanced the
-counter to 3 and B returned to the launcher. Still open: authenticated
-firmware/candidate binding;
-held-button/reset and sustained resource checks; provisioning, OTA and
-recovery qualification; and fresh physical regressions on affected touch boards.
-Three unplugged power cycles reached the IDE on the development installation;
-the exact release candidate still needs its full physical power checks.
+The signed modern-v0.16.1 candidate completed clean provisioning and
+interruption/resume checks, held-button/reset and resource tests, browser
+programming and app navigation, OTA and recovery power-loss checks, and
+fresh Pro and Elecrow regressions. The protected promotion run published
+the exact tested candidate. Earlier
+[development results](../../../boards/lilygo_t_display_s3/DEVELOPMENT_RESULTS.md)
+remain a record of the steps leading to qualification.
 Racer adaptation remains optional and does not block the core milestone.
 
 ## Objective and scope
@@ -132,6 +128,9 @@ in [`BOARD_SUPPORT.md`](../../../BOARD_SUPPORT.md); retain experimental status u
 required artifacts and evidence exist.
 
 ## Development sequence and completion evidence
+
+The five steps below were completed for the modern-v0.16.1 release. They
+remain the reference sequence for extending this support to another board.
 
 1. **Establish the board path.** Create a `bringup` catalog entry with verified
    hardware references. Determine the reproducible modern firmware/driver path

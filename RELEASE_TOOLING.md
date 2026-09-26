@@ -39,11 +39,12 @@ invent physical observations or complete tests on an operator's behalf.
 
 ## Capture and select a baseline
 
-The checked-in plan remains in `platform` mode and now pins the authenticated
-`modern-v0.16.0` baseline in `profiles/baselines/modern-v0.16.0.json`. That
-release established the first baseline with fresh evidence for all five gates
-on both included boards. Earlier published
-releases, including `modern-v0.15.4`, lack these signed snapshots and schema-3
+The checked-in plan remains in `platform` mode and pins the authenticated
+`modern-v0.16.1` baseline in `profiles/baselines/modern-v0.16.1.json`. The
+`modern-v0.16.0` release established the first baseline on two boards;
+`modern-v0.16.1` adds the non-Pro T-Display-S3 and fresh evidence for all
+three included boards. Releases before `modern-v0.16.0`, including
+`modern-v0.15.4`, lack these signed snapshots and schema-3
 records. Their historical evidence is preserved, but it cannot be imported as
 an automatically reusable baseline by this tool.
 

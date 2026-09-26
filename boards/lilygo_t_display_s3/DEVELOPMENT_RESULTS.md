@@ -3,6 +3,10 @@
 Date: 2026-09-09. Status: experimental integration; candidate on 2026-09-23,
 not a qualified release.
 
+This records development at those dates. The board was later qualified in
+[`modern-v0.16.1`](https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.16.1);
+see its [qualification record](../../tests/evidence/modern-v0.16.1-qualification.json).
+
 This continues the [initial bench results](BRINGUP_RESULTS.md). The fixture now
 runs the shared modern platform and TartLab filesystem with a protected
 non-Pro board identity and selector. No Pro selector, PyDevices payload,

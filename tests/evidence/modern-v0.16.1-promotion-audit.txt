@@ -1,0 +1,32 @@
+TartLab modern-v0.16.1 postpromotion audit
+Audit date: 2026-09-26 UTC
+Source tag: refs/tags/modern-v0.16.1
+Source commit: b6cd060b08fe53979271247c4160d41da3115fec
+Protected promotion run: https://github.com/tdhoward/TartLab/actions/runs/36272636208
+Published release: https://github.com/tdhoward/TartLab-modern-releases/releases/tag/modern-v0.16.1
+
+The protected promotion run completed successfully after the modern-release
+environment review. The published release is stable, not draft or prerelease,
+and contains 34 assets. Its checksums.json is byte-identical to the hardware
+tested signed candidate, with SHA-256
+d635e6dfe56cfa3fa29c2dbb1adc9722840599f18949a63570c60d309ae0ba8b.
+All 31 subjects listed in that file matched their published SHA-256 values.
+
+The promotion attestation binds the same candidate checksum, qualification
+evidence SHA-256
+6a01dc4f76753052700cefee02be83eb52a735bbcd1bcb99c1bf1b4dacfb83b2,
+and the durable evidence URL at
+https://raw.githubusercontent.com/tdhoward/TartLab/evidence-modern-v0.16.1/tests/evidence/modern-v0.16.1-qualification.json.
+The hosted evidence bytes matched that SHA-256. Independent GitHub Artifact
+Attestation verification passed for all 33 signed published subjects against
+the protected release signer and source tag.
+
+The live feed isolation audit selected modern-v0.16.1 from
+tdhoward/TartLab-modern-releases and v0.15 from the separate legacy feed.
+No cross-profile assets appeared. The captured, signature-verified platform
+baseline for future releases is profiles/baselines/modern-v0.16.1.json with
+LF-normalized SHA-256
+c8068aa038dfce9f91756bb7f09bf2385c2de156d46818d01d64b81558dfb823.
+The pinned baseline prepared successfully from the checked-in release plan.
+The read-only supported-installation preflight also accepted the published
+release for the qualified non-Pro board and its pinned firmware hash.
