@@ -1,0 +1,61 @@
+TartLab modern-v0.16.1 qualification summary
+Candidate source tag: refs/tags/modern-v0.16.1
+Candidate source commit: b6cd060b08fe53979271247c4160d41da3115fec
+Candidate checksums SHA-256: d635e6dfe56cfa3fa29c2dbb1adc9722840599f18949a63570c60d309ae0ba8b
+Signed qualification report SHA-256: dafcef85f52038ff5fe92853bba12e7dcb5ab1611fbf96d11eb896c1cdab04d9
+
+Protected qualification run 35935734637 rebuilt the candidate twice with
+byte-identical output, passed 390 host tests, and authenticated all 32
+release subjects against the source tag and protected signer policy. The
+candidate is a platform-path release: it adds the non-Pro T-Display-S3
+BOARD_CONFIG and RGB driver, changes shared display/input/runtime code,
+changes the device IDE and browser bundle, and updates host build inputs.
+The signed report therefore requests fresh adult provisioning, hardware,
+OTA, recovery and release-feed isolation for all three included boards.
+
+The new non-Pro board PCB v1.2 received full clean provisioning, a broad
+host-process interruption/resume campaign, display/button/browser/resource
+checks, corrupted-package rejection, same-version OTA, a physical download
+power cut, two recovery-install power cuts, offline resume and recovery-page
+checks. It has no touch controller; physical design, board configuration,
+runtime capability and a touch-only example's clear fallback establish that
+absence. The complete observations and limitations are in
+modern-v0.16.1-nonpro-physical-transcript.txt.
+
+The existing LilyGO Pro PCB v1.1 and Elecrow DLE06235B fixtures were
+upgraded from installed modern-v0.16.0 using that version's updater with
+authenticated v0.16.1 assets staged over USB. Both kept old committed
+versions through pending_health and reached v0.16.1 only on healthy boot.
+Both had matching protected-state digests before/after normal OTA. Tim
+performed fresh power-cycle, screen, touch/navigation and browser IDE
+checks. Machine probes covered display ownership, Wi-Fi scan concurrency
+and initialization cycles. Both rejected a corrupted archive before active
+installation, survived a physical recovery-install power cut, displayed
+the recovery Wi-Fi controls and redacted diagnostics, resumed staged
+packages offline and reached healthy v0.16.1 with no marker. Both were
+clean provisioned with an intentional host-process termination during final
+boot-file activation, resumed to healthy boot and matched 81 of 81 managed
+files in the signed prepared image. Exact outcomes and limitations are in
+the Pro and Elecrow v0.16.1 physical transcripts.
+
+The existing boards' firmware binary hashes are byte-identical to those
+in the qualified modern-v0.16.0 baseline. The updater and recovery
+implementation did not change. The full baseline power-loss and clean
+provisioning campaigns remain board-bound historical evidence in the
+modern-v0.16.0 Pro and Elecrow physical transcripts. The fresh v0.16.1
+checks above establish behavior with this candidate's shared runtime,
+browser and host tooling. A locally staged update proves installed-updater
+behavior, not delivery from the internet. The signed v0.16.1 request declares
+no older installed update sources; the v0.16.0 to v0.16.1 fixture tests are
+additional coverage. Candidate package limits are 788,480 archive bytes
+and at most 655,018 expanded bytes per board. Measured free filesystem
+space during fresh resource checks exceeded 10 million bytes on each board.
+
+The 2026-09-26 live prepromotion release-feed audit selected legacy v0.15
+from the legacy repository and modern-v0.16.0 from the modern repository,
+with no cross-profile assets. Candidate v0.16.1 was not yet public. A
+postpromotion feed and downloaded-asset audit must be recorded separately.
+
+This summary contains no credentials, device identifiers, private files or
+raw serial logs. It is a companion to the board-specific sanitized records;
+only observations documented there are claimed.

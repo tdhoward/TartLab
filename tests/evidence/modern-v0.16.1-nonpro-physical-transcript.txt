@@ -1,0 +1,108 @@
+TartLab modern-v0.16.1 non-Pro T-Display-S3 physical qualification
+Session: 2026-09-23 to 2026-09-24
+Operator: Tim, with Codex-operated USB probes
+Source tag: refs/tags/modern-v0.16.1
+Source commit: b6cd060b08fe53979271247c4160d41da3115fec
+Candidate checksums SHA-256: d635e6dfe56cfa3fa29c2dbb1adc9722840599f18949a63570c60d309ae0ba8b
+Board: lilygo_t_display_s3, PCB v1.2, ESP32-S3 revision v0.2,
+16 MiB flash, 8 MiB PSRAM, no touch controller, physical A/B buttons.
+
+The board was disposable; Tim said it contained nothing of value and did not
+require a backup. The private qualification workspaces contain journals and
+device logs. This transcript excludes credentials, device addresses, and
+protected file contents.
+
+Candidate and provisioning
+--------------------------
+Protected qualification run 35935734637 succeeded. The CI candidate was
+built twice byte-identically, passed 390 host tests, and all 32 signed subjects
+were authenticated against the protected qualification workflow and the source
+tag. Clean COM5 provisioning erased, wrote and verified the board-bound pinned
+firmware, installed the authenticated filesystem, and completed its health
+check at modern-v0.16.1. No sensitive backup was taken for the clean mode.
+
+The physical interruption campaign terminated live provisioning subprocesses
+at erase-flash, write-flash, verify-flash, boot placeholder, main placeholder,
+defaults/device/files/IDE/library/recovery/state directory uploads, and atomic
+boot-file activation. A supplementary run interrupted the new /board directory
+upload. Each recorded receipt has completed_before_interrupt=false; resume
+replayed the authenticated image and reached a healthy boot. Short subprocess
+receipts sometimes have an empty output tail, so these receipts establish a
+running process termination, not that a specific number of flash bytes had
+already changed. The stock upload-configs checkpoint was inapplicable because
+this board's prepared image has no /configs directory. An attempted check
+reported that checkpoint was not reached; it completed installation normally.
+All three provisioning journals ended complete and healthy. After the final
+replay, 81 of 81 managed files matched the signed prepared image, with no
+missing, extra or changed managed files.
+
+Hardware, input, browser, and resources
+---------------------------------------
+Tim confirmed a readable landscape launcher and IDE, app chooser, Settings,
+Wi-Fi page, Back/Cancel, brightness save and button-only navigation. A held A
+press advanced focus once; holding B across RESET did not activate a page or
+app. The signed button example launched on the candidate, responded to A/B,
+and returned to the launcher. A temporary app using the normal DirectCanvas
+path displayed five full-screen red, green, blue, white, black bands in order
+without clipping or flicker; the temporary test file was hash-verified and
+removed. Tim confirmed final normal launcher/IDE and buttons after the last
+clean installation. Touch is absent by physical design, runtime capability and
+candidate descriptor. A signed touch-only help example produced a clear touch
+error, left the device usable, and RESET restored normal operation; its exact
+temporary copy was removed.
+
+The older serial color probe reported successful 34-row writes but left most
+of the IDE screen visible. Its row height exceeded the board's configured
+24-row transfer size. The app-path color observation above is the visual test
+result; the serial probe is not claimed as a pass.
+
+Tim connected a laptop to the setup Wi-Fi and confirmed the browser IDE could
+create/edit/save/reopen/run a small file and display update controls without
+installing. Station-network access also worked after configuration. The clean
+provisioning campaign later erased that temporary station configuration.
+
+The device completed 100 direct/UI ownership cycles with no pending transfer,
+500 frames during ten Wi-Fi scans, and 75 initialization/deinitialization
+cycles. Initial filesystem free space was 11,288,576 of 12,517,376 bytes,
+with about 8.09 MiB free heap. An earlier per-cycle result list grew while
+heap readings declined about 5.4 KiB across 75 cycles. A fixed-size 50-cycle
+repeat leveled off: cycle 30/40/50 free-heap readings were 8,116,224,
+8,116,352, and 8,116,304 bytes. A 200-cycle attempt exceeded its 120-second
+serial deadline and was reset; it is not counted as a completed test.
+
+Update, recovery, and containment
+---------------------------------
+Eleven authenticated package archives totaling 788,480 bytes were staged and
+verified over USB. A deliberately corrupted assetfiles.tar failed hash
+validation before install; version remained modern-v0.16.1 with no update
+marker. A normal same-version USB-staged OTA installed all applicable packages,
+held the committed version until a healthy boot, and cleared its pending marker
+on that boot. Device and user-file digests stayed stable.
+
+During a normal-download test Tim disconnected USB after the white signal.
+The helper detected physical USB removal. Reconnection reached a normal IDE
+boot, with the installed version unchanged and no update marker; temporary
+download staging remained separate from active files.
+
+Two recovery-install cuts were made after white signals: before extracting
+assetfiles.tar and before extracting libahttpserver.tar. Each had all 12
+authenticated assets staged. Offline resume installed the exact packages; in
+the second case it reported Already installed assetfiles.tar from the durable
+completed-package marker. Subsequent healthy boot committed the pending
+same-version install and removed the update marker; a second healthy boot
+did not recommit. Protected device, user-file and selected-app digests were
+unchanged. Managed inventory again matched all 81 signed expected files.
+
+Tim observed the expected blank LCD in display-independent recovery, with the
+recovery Wi-Fi active. Its browser page showed Retry normal boot, Force IDE on
+next boot, and Install latest corrective release. The redacted diagnostic
+status opened without exposing credentials or user-file contents. The
+corrective-update button was inspected but not activated. Offline staged
+resume was exercised through the USB service instead.
+
+Release-feed policy
+-------------------
+The prepublication live audit found no legacy/modern cross-profile assets.
+The modern public feed selected modern-v0.16.0 at the time; candidate
+modern-v0.16.1 had not yet been promoted. Postpublication feed behavior
+remains a separate promotion audit.
